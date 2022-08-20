@@ -1,0 +1,120 @@
+# Package ######################################################################
+
+[build-system]
+requires = ["setuptools", "pybind11"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "optree"
+description = "Optimized PyTree."
+readme = "README.md"
+requires-python = ">= 3.6"
+authors = [
+    { name = "OpTree Contributors" },
+    { name = "Xuehai Pan", email = "XuehaiPan@pku.edu.cn" },
+    { name = "Jie Ren", email = "jieren9806@gmail.com" },
+]
+license = { text = "Apache License, Version 2.0" }
+keywords = [
+    "PyTree",
+    "Tree Manipulation",
+    "Tree Traversal",
+    "Functional Programming",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "Topic :: Utilities",
+]
+dependencies = []
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/metaopt/optree"
+Repository = "https://github.com/metaopt/optree"
+Documentation = "https://optree.readthedocs.io"
+"Bug Report" = "https://github.com/metaopt/optree/issues"
+
+[project.optional-dependencies]
+lint = [
+    "isort",
+    "black >= 22.6.0",
+    "pylint",
+    "mypy",
+    "flake8",
+    "flake8-bugbear",
+    "doc8 < 1.0.0a0",
+    "pydocstyle",
+    "pyenchant",
+    "cpplint",
+    "pre-commit",
+]
+test = [
+    'pytest',
+    'pytest-cov',
+    'pytest-xdist',
+]
+
+[tool.setuptools.packages.find]
+include = ["optree", "optree.*"]
+
+# Wheel builder ################################################################
+# Reference: https://cibuildwheel.readthedocs.io
+[tool.cibuildwheel]
+archs = ["x86_64"]
+build-frontend = "build"
+build-verbosity = 3
+container-engine = "docker"
+
+# Linter tools #################################################################
+
+[tool.black]
+safe = true
+line-length = 100
+skip-string-normalization = true
+target-version = ["py36", "py37", "py38", "py39", "py310"]
+
+[tool.isort]
+profile = "black"
+src_paths = ["pytree", "tests"]
+indent = 4
+line_length = 100
+lines_after_imports = 2
+multi_line_output = 3
+
+[tool.mypy]
+allow_redefinition = true
+check_untyped_defs = true
+disallow_incomplete_defs = false
+disallow_untyped_defs = false
+ignore_missing_imports = true
+no_implicit_optional = true
+pretty = true
+show_error_codes = true
+show_error_context = true
+show_traceback = true
+strict_equality = true
+strict_optional = true
+warn_no_return = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[tool.pydocstyle]
+convention = "google"
+
+[tool.doc8]
+max-line-length = 500
