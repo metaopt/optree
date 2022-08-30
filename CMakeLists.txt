@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,11 +21,21 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pthread -fPIC -Xpreprocessor -fopenmp -fvisibility=hidden")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
-set(ABSL_PROPAGATE_CXX_STD ON)
-set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+find_package(Threads REQUIRED)             # -pthread
+find_package(OpenMP REQUIRED)              # -Xpreprocessor -fopenmp
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)  # -fPIC
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)    # -fvisibility=hidden
+
+if(MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Wall /W4")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_RELEASE} -g -Og")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+endif()
 
 function(system)
     set(options STRIP)
@@ -63,13 +73,19 @@ function(system)
 endfunction()
 
 if(NOT DEFINED PYTHON_EXECUTABLE)
-    set(PYTHON_EXECUTABLE python3)
+    if(WIN32)
+        set(PYTHON_EXECUTABLE "python.exe")
+    else()
+        set(PYTHON_EXECUTABLE "python")
+    endif()
 endif()
 
-system(
-    STRIP OUTPUT_VARIABLE PYTHON_EXECUTABLE
-    COMMAND bash -c "type -P '${PYTHON_EXECUTABLE}'"
-)
+if(UNIX)
+    system(
+        STRIP OUTPUT_VARIABLE PYTHON_EXECUTABLE
+        COMMAND bash -c "type -P '${PYTHON_EXECUTABLE}'"
+    )
+endif()
 
 system(
     STRIP OUTPUT_VARIABLE PYTHON_VERSION
@@ -112,13 +128,14 @@ else()
     find_package(pybind11 CONFIG PATHS "${PYBIND11_CMAKE_DIR}")
 endif()
 
+set(ABSL_PROPAGATE_CXX_STD TRUE)
 add_subdirectory(third_party/abseil-cpp)
 include_directories(third_party/pybind11_abseil)
 
 include_directories("${CMAKE_SOURCE_DIR}")
 
 pybind11_add_module(
-    _C
+    _C THIN_LTO
     src/registry.cpp
     src/treedef.cpp
     src/optree.cpp

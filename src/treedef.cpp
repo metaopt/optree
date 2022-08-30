@@ -29,14 +29,14 @@ namespace optree {
 
 namespace py = pybind11;
 
-ssize_t PyTreeDef::num_leaves() const {
+Py_ssize_t PyTreeDef::num_leaves() const {
     if (traversal.empty()) {
         return 0;
     }
     return traversal.back().num_leaves;
 }
 
-ssize_t PyTreeDef::num_nodes() const { return traversal.size(); }
+Py_ssize_t PyTreeDef::num_nodes() const { return traversal.size(); }
 
 bool PyTreeDef::operator==(const PyTreeDef& other) const {
     if (traversal.size() != other.traversal.size()) {
@@ -63,7 +63,7 @@ bool PyTreeDef::operator!=(const PyTreeDef& other) const { return !(*this == oth
 
 /*static*/ py::object PyTreeDef::MakeNode(const PyTreeDef::Node& node,
                                           absl::Span<py::object> children) {
-    if ((ssize_t)children.size() != node.arity) {
+    if ((Py_ssize_t)children.size() != node.arity) {
         throw std::logic_error("Node arity mismatch.");
     }
     switch (node.kind) {
@@ -76,7 +76,7 @@ bool PyTreeDef::operator!=(const PyTreeDef& other) const { return !(*this == oth
         case PyTreeKind::Tuple:
         case PyTreeKind::NamedTuple: {
             py::tuple tuple(node.arity);
-            for (ssize_t i = 0; i < node.arity; ++i) {
+            for (Py_ssize_t i = 0; i < node.arity; ++i) {
                 tuple[i] = std::move(children[i]);
             }
             if (node.kind == PyTreeKind::NamedTuple) {
@@ -88,7 +88,7 @@ bool PyTreeDef::operator!=(const PyTreeDef& other) const { return !(*this == oth
 
         case PyTreeKind::List: {
             py::list list(node.arity);
-            for (ssize_t i = 0; i < node.arity; ++i) {
+            for (Py_ssize_t i = 0; i < node.arity; ++i) {
                 list[i] = std::move(children[i]);
             }
             return std::move(list);
@@ -97,7 +97,7 @@ bool PyTreeDef::operator!=(const PyTreeDef& other) const { return !(*this == oth
         case PyTreeKind::Dict: {
             py::dict dict;
             py::list keys = py::reinterpret_borrow<py::list>(node.node_data);
-            for (ssize_t i = 0; i < node.arity; ++i) {
+            for (Py_ssize_t i = 0; i < node.arity; ++i) {
                 dict[keys[i]] = std::move(children[i]);
             }
             return std::move(dict);
@@ -105,7 +105,7 @@ bool PyTreeDef::operator!=(const PyTreeDef& other) const { return !(*this == oth
         }
         case PyTreeKind::Custom: {
             py::tuple tuple(node.arity);
-            for (ssize_t i = 0; i < node.arity; ++i) {
+            for (Py_ssize_t i = 0; i < node.arity; ++i) {
                 tuple[i] = std::move(children[i]);
             }
             return node.custom->from_iterable(node.node_data, tuple);
@@ -139,8 +139,8 @@ void PyTreeDef::FlattenIntoImpl(py::handle handle,
                                 T& leaves,
                                 const std::optional<py::function>& leaf_predicate) {
     Node node;
-    ssize_t start_num_nodes = traversal.size();
-    ssize_t start_num_leaves = leaves.size();
+    Py_ssize_t start_num_nodes = traversal.size();
+    Py_ssize_t start_num_leaves = leaves.size();
     if (leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) {
         leaves.push_back(py::reinterpret_borrow<py::object>(handle));
     } else {
@@ -154,14 +154,14 @@ void PyTreeDef::FlattenIntoImpl(py::handle handle,
                 break;
             case PyTreeKind::Tuple: {
                 node.arity = PyTuple_GET_SIZE(handle.ptr());
-                for (ssize_t i = 0; i < node.arity; ++i) {
+                for (Py_ssize_t i = 0; i < node.arity; ++i) {
                     recurse(PyTuple_GET_ITEM(handle.ptr(), i));
                 }
                 break;
             }
             case PyTreeKind::List: {
                 node.arity = PyList_GET_SIZE(handle.ptr());
-                for (ssize_t i = 0; i < node.arity; ++i) {
+                for (Py_ssize_t i = 0; i < node.arity; ++i) {
                     recurse(PyList_GET_ITEM(handle.ptr(), i));
                 }
                 break;
@@ -268,9 +268,9 @@ template <typename T>
 py::object PyTreeDef::UnflattenImpl(T leaves) const {
     absl::InlinedVector<py::object, 4> agenda;
     auto it = leaves.begin();
-    ssize_t leaf_count = 0;
+    Py_ssize_t leaf_count = 0;
     for (const Node& node : traversal) {
-        if ((ssize_t)agenda.size() < node.arity) {
+        if ((Py_ssize_t)agenda.size() < node.arity) {
             throw std::logic_error("Too few elements for TreeDef node.");
         }
         switch (node.kind) {
@@ -292,7 +292,7 @@ py::object PyTreeDef::UnflattenImpl(T leaves) const {
             case PyTreeKind::List:
             case PyTreeKind::Dict:
             case PyTreeKind::Custom: {
-                const ssize_t size = agenda.size();
+                const Py_ssize_t size = agenda.size();
                 absl::Span<py::object> span;
                 if (node.arity > 0) {
                     span = absl::Span<py::object>(&agenda[size - node.arity], node.arity);
@@ -325,7 +325,7 @@ py::list PyTreeDef::FlattenUpTo(py::handle xs) const {
     std::vector<py::object> agenda;
     agenda.push_back(py::reinterpret_borrow<py::object>(xs));
     auto it = traversal.rbegin();
-    ssize_t leaf = num_leaves() - 1;
+    Py_ssize_t leaf = num_leaves() - 1;
     while (!agenda.empty()) {
         if (it == traversal.rend()) {
             throw std::invalid_argument(absl::StrFormat(
@@ -354,7 +354,7 @@ py::list PyTreeDef::FlattenUpTo(py::handle xs) const {
                         absl::StrFormat("Expected tuple, got %s.", py::repr(object)));
                 }
                 py::tuple tuple = py::reinterpret_borrow<py::tuple>(object);
-                if ((ssize_t)tuple.size() != node.arity) {
+                if ((Py_ssize_t)tuple.size() != node.arity) {
                     throw std::invalid_argument(
                         absl::StrFormat("Tuple arity mismatch: %ld != %ld; tuple: %s.",
                                         tuple.size(),
@@ -373,7 +373,7 @@ py::list PyTreeDef::FlattenUpTo(py::handle xs) const {
                         absl::StrFormat("Expected list, got %s.", py::repr(object)));
                 }
                 py::list list = py::reinterpret_borrow<py::list>(object);
-                if ((ssize_t)list.size() != node.arity) {
+                if ((Py_ssize_t)list.size() != node.arity) {
                     throw std::invalid_argument(
                         absl::StrFormat("List arity mismatch: %ld != %ld; list: %s.",
                                         list.size(),
@@ -414,7 +414,7 @@ py::list PyTreeDef::FlattenUpTo(py::handle xs) const {
                         absl::StrFormat("Expected named tuple, got %s.", py::repr(object)));
                 }
                 py::tuple tuple = py::reinterpret_borrow<py::tuple>(object);
-                if ((ssize_t)tuple.size() != node.arity) {
+                if ((Py_ssize_t)tuple.size() != node.arity) {
                     throw std::invalid_argument(
                         absl::StrFormat("Named tuple arity mismatch: %ld != %ld; tuple: %s.",
                                         tuple.size(),
@@ -453,7 +453,7 @@ py::list PyTreeDef::FlattenUpTo(py::handle xs) const {
                                         py::repr(out[1]),
                                         py::repr(object)));
                 }
-                ssize_t arity = 0;
+                Py_ssize_t arity = 0;
                 for (py::handle entry : py::cast<py::iterable>(out[0])) {
                     ++arity;
                     agenda.push_back(py::reinterpret_borrow<py::object>(entry));
@@ -500,11 +500,11 @@ py::object PyTreeDef::Walk(const py::function& f_node,
             case PyTreeKind::List:
             case PyTreeKind::Dict:
             case PyTreeKind::Custom: {
-                if ((ssize_t)agenda.size() < node.arity) {
+                if ((Py_ssize_t)agenda.size() < node.arity) {
                     throw std::logic_error("Too few elements for custom type.");
                 }
                 py::tuple tuple(node.arity);
-                for (ssize_t i = node.arity - 1; i >= 0; --i) {
+                for (Py_ssize_t i = node.arity - 1; i >= 0; --i) {
                     tuple[i] = agenda.back();
                     agenda.pop_back();
                 }
@@ -537,10 +537,10 @@ py::object PyTreeDef::FromIterableTreeHelper(
     for (py::handle x : iterable) {
         ys.push_back(py::reinterpret_borrow<py::object>(x));
     }
-    if ((ssize_t)ys.size() != node.arity) {
+    if ((Py_ssize_t)ys.size() != node.arity) {
         throw std::invalid_argument("Arity mismatch between trees");
     }
-    for (ssize_t j = node.arity - 1; j >= 0; --j) {
+    for (Py_ssize_t j = node.arity - 1; j >= 0; --j) {
         ys[j] = FromIterableTreeHelper(ys[j], it);
     }
 
@@ -577,7 +577,7 @@ std::unique_ptr<PyTreeDef> PyTreeDef::Compose(const PyTreeDef& inner) const {
 
 /*static*/ std::unique_ptr<PyTreeDef> PyTreeDef::Tuple(const std::vector<PyTreeDef>& defs) {
     auto out = std::make_unique<PyTreeDef>();
-    ssize_t num_leaves = 0;
+    Py_ssize_t num_leaves = 0;
     for (const PyTreeDef& def : defs) {
         absl::c_copy(def.traversal, std::back_inserter(out->traversal));
         num_leaves += def.num_leaves();
@@ -598,8 +598,8 @@ std::vector<std::unique_ptr<PyTreeDef>> PyTreeDef::Children() const {
     }
     Node const& root = traversal.back();
     children.resize(root.arity);
-    ssize_t pos = traversal.size() - 1;
-    for (ssize_t i = root.arity - 1; i >= 0; --i) {
+    Py_ssize_t pos = traversal.size() - 1;
+    for (Py_ssize_t i = root.arity - 1; i >= 0; --i) {
         children[i] = std::make_unique<PyTreeDef>();
         const Node& node = traversal.at(pos - 1);
         if (pos < node.num_nodes) {
@@ -619,7 +619,7 @@ std::vector<std::unique_ptr<PyTreeDef>> PyTreeDef::Children() const {
 std::string PyTreeDef::ToString() const {
     std::vector<std::string> agenda;
     for (const Node& node : traversal) {
-        if ((ssize_t)agenda.size() < node.arity) {
+        if ((Py_ssize_t)agenda.size() < node.arity) {
             throw std::logic_error("Too few elements for container.");
         }
 
@@ -641,7 +641,7 @@ std::string PyTreeDef::ToString() const {
                 representation = absl::StrCat("[", children, "]");
                 break;
             case PyTreeKind::Dict: {
-                if ((ssize_t)py::len(node.node_data) != node.arity) {
+                if ((Py_ssize_t)py::len(node.node_data) != node.arity) {
                     throw std::logic_error("Number of keys and entries does not match.");
                 }
                 representation = "{";

@@ -94,9 +94,9 @@ class PyTreeDef {
     // TODO(phawkins): use flattening everywhere instead and delete this method.
     py::object FromIterableTree(py::handle xs) const;
 
-    ssize_t num_leaves() const;
+    Py_ssize_t num_leaves() const;
 
-    ssize_t num_nodes() const;
+    Py_ssize_t num_nodes() const;
 
     bool operator==(const PyTreeDef &other) const;
     bool operator!=(const PyTreeDef &other) const;
@@ -130,7 +130,7 @@ class PyTreeDef {
         PyTreeKind kind = PyTreeKind::Leaf;
 
         // Arity for non-Leaf types.
-        ssize_t arity = 0;
+        Py_ssize_t arity = 0;
 
         // Kind-specific auxiliary data.
         // For a NamedTuple, contains the tuple type object.
@@ -142,10 +142,10 @@ class PyTreeDef {
         const PyTreeTypeRegistry::Registration *custom = nullptr;
 
         // Number of leaf nodes in the subtree rooted at this node.
-        ssize_t num_leaves = 0;
+        Py_ssize_t num_leaves = 0;
 
         // Number of leaf and interior nodes in the subtree rooted at this node.
-        ssize_t num_nodes = 0;
+        Py_ssize_t num_nodes = 0;
     };
 
     // Helper that manufactures an instance of a node given its children.
