@@ -23,12 +23,12 @@ limitations under the License.
 
 #pragma once
 
-#include <memory>
+#include <absl/container/flat_hash_map.h>
+#include <absl/hash/hash.h>
+#include <pybind11/pybind11.h>
+#include <pybind11_abseil/absl_casters.h>
 
-#include "absl/container/flat_hash_map.h"
-#include "absl/hash/hash.h"
-#include "pybind11/pybind11.h"
-#include "pybind11_abseil/absl_casters.h"
+#include <memory>
 
 namespace optree {
 
@@ -46,7 +46,7 @@ enum class PyTreeKind {
 
 // Registry of custom node types.
 class PyTreeTypeRegistry {
-   public:
+ public:
     struct Registration {
         PyTreeKind kind;
 
@@ -67,17 +67,17 @@ class PyTreeTypeRegistry {
     // exists.
     static const Registration *Lookup(py::handle type);
 
-   private:
+ private:
     static PyTreeTypeRegistry *Singleton();
 
     class TypeHash {
-       public:
+     public:
         using is_transparent = void;
         size_t operator()(const py::object &t) const;
         size_t operator()(const py::handle &t) const;
     };
     class TypeEq {
-       public:
+     public:
         using is_transparent = void;
         bool operator()(const py::object &a, const py::object &b) const;
         bool operator()(const py::object &a, const py::handle &b) const;

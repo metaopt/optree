@@ -23,15 +23,16 @@ limitations under the License.
 
 #pragma once
 
+#include <absl/container/inlined_vector.h>
+#include <absl/hash/hash.h>
+#include <pybind11/pybind11.h>
+
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include "absl/container/inlined_vector.h"
-#include "absl/hash/hash.h"
-#include "pybind11/pybind11.h"
 
 #include "include/registry.h"
 
@@ -43,10 +44,10 @@ namespace py = pybind11;
 // the interior nodes are tuples, lists, dictionaries, or user-defined containers, and the leaves
 // are other objects.
 class PyTreeDef {
-   private:
+ private:
     struct Node;
 
-   public:
+ public:
     PyTreeDef() = default;
 
     // Flattens a PyTree into a list of leaves and a PyTreeDef.
@@ -56,9 +57,11 @@ class PyTreeDef {
         py::handle x, std::optional<py::function> leaf_predicate = std::nullopt);
 
     // Recursive helper used to implement Flatten().
-    void FlattenInto(py::handle handle, std::vector<py::object> &leaves,
+    void FlattenInto(py::handle handle,
+                     std::vector<py::object> &leaves,  // NOLINT
                      std::optional<py::function> leaf_predicate = std::nullopt);
-    void FlattenInto(py::handle handle, absl::InlinedVector<py::object, 2> &leaves,
+    void FlattenInto(py::handle handle,
+                     absl::InlinedVector<py::object, 2> &leaves,  // NOLINT
                      std::optional<py::function> leaf_predicate = std::nullopt);
 
     // Tests whether the given list is a flat list of leaves.
@@ -122,7 +125,7 @@ class PyTreeDef {
     // Used to implement `PyTreeDef.__setstate__`.
     static PyTreeDef FromPickleable(py::object pickleable);
 
-   private:
+ private:
     struct Node {
         PyTreeKind kind = PyTreeKind::Leaf;
 
@@ -157,7 +160,8 @@ class PyTreeDef {
                               PyTreeTypeRegistry::Registration const **custom);
 
     template <typename T>
-    void FlattenIntoImpl(py::handle handle, T &leaves,
+    void FlattenIntoImpl(py::handle handle,
+                         T &leaves,  // NOLINT
                          const std::optional<py::function> &leaf_predicate);
 
     template <typename T>

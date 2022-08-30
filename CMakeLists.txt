@@ -118,14 +118,14 @@ include_directories(third_party/pybind11_abseil)
 include_directories("${CMAKE_SOURCE_DIR}")
 
 pybind11_add_module(
-    _optree
+    _C
     src/registry.cpp
     src/treedef.cpp
     src/optree.cpp
 )
 
 target_link_libraries(
-    _optree
+    _C
     PUBLIC
     absl::flat_hash_map
     absl::str_format

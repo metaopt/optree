@@ -18,10 +18,11 @@ limitations under the License.
 // Caution: this code uses exceptions. The exception use is local to the
 // binding code and the idiomatic way to emit Python exceptions.
 
-#include "absl/strings/str_format.h"
-#include "absl/strings/str_join.h"
-
 #include "include/registry.h"
+
+#include <absl/strings/str_format.h>
+#include <absl/strings/str_join.h>
+
 #include "include/utils.h"
 
 namespace optree {
@@ -49,7 +50,8 @@ namespace py = pybind11;
     return registry.get();
 }
 
-/*static*/ void PyTreeTypeRegistry::Register(py::object type, py::function to_iterable,
+/*static*/ void PyTreeTypeRegistry::Register(py::object type,
+                                             py::function to_iterable,
                                              py::function from_iterable) {
     PyTreeTypeRegistry* registry = Singleton();
     auto registration = std::make_unique<Registration>();

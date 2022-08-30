@@ -33,7 +33,7 @@ from typing import (
     overload,
 )
 
-import optree._optree as pytree
+from optree import _C
 from optree.typing import PyTree, PyTreeDef
 
 
@@ -73,7 +73,7 @@ def treedef_is_strict_leaf(treedef: PyTreeDef) -> bool:
 
 def treedef_tuple(treedefs: Iterable[PyTreeDef]) -> PyTreeDef:
     """Makes a tuple treedef from a list of child treedefs."""
-    return pytree.tuple(list(treedefs))
+    return _C.tuple(list(treedefs))
 
 
 def tree_flatten(
@@ -95,7 +95,7 @@ def tree_flatten(
         A pair where the first element is a list of leaf values and the second
         element is a treedef representing the structure of the flattened tree.
     """
-    return pytree.flatten(tree, is_leaf)
+    return _C.flatten(tree, is_leaf)
 
 
 def tree_unflatten(treedef: PyTreeDef, leaves: Iterable[Any]) -> PyTree:
@@ -117,12 +117,12 @@ def tree_unflatten(treedef: PyTreeDef, leaves: Iterable[Any]) -> PyTree:
 
 def tree_leaves(tree: PyTree, is_leaf: Optional[Callable[[Any], bool]] = None) -> List[Any]:
     """Gets the leaves of a pytree."""
-    return pytree.flatten(tree, is_leaf)[0]
+    return _C.flatten(tree, is_leaf)[0]
 
 
 def tree_structure(tree: PyTree, is_leaf: Optional[Callable[[Any], bool]] = None) -> PyTreeDef:
     """Gets the treedef for a pytree."""
-    return pytree.flatten(tree, is_leaf)[1]
+    return _C.flatten(tree, is_leaf)[1]
 
 
 def all_leaves(iterable: Iterable[Any], is_leaf: Optional[Callable[[Any], bool]] = None) -> bool:
@@ -143,7 +143,7 @@ def all_leaves(iterable: Iterable[Any], is_leaf: Optional[Callable[[Any], bool]]
         A boolean indicating if all elements in the input are leaves.
     """
     if is_leaf is None:
-        return pytree.all_leaves(iterable)
+        return _C.all_leaves(iterable)
 
     lst = list(iterable)
     return lst == tree_leaves(lst, is_leaf)

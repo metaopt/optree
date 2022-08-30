@@ -63,7 +63,9 @@ class cmake_build_ext(build_ext):
             and hasattr(self, 'parallel')
             and self.parallel
         ):
-            build_args.append(f'-j{self.parallel}')
+            build_args.append(f'--parallel={self.parallel}')
+        else:
+            build_args.append('--parallel')
 
         try:
             os.chdir(build_temp)
@@ -80,5 +82,5 @@ setup(
     package_data={'sharedlib': ['*.so']},
     include_package_data=True,
     cmdclass={'build_ext': cmake_build_ext},
-    ext_modules=[CMakeExtension('optree._optree', source_dir=HERE)],
+    ext_modules=[CMakeExtension('optree._C', source_dir=HERE)],
 )

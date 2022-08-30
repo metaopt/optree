@@ -23,6 +23,8 @@ limitations under the License.
 
 #pragma once
 
+#include <string>
+
 #define CHECK(condition)                                                              \
     if (!(condition))                                                                 \
     throw std::runtime_error(std::string(#condition) + " failed at " __FILE__ + ':' + \

@@ -21,7 +21,7 @@ import functools
 from operator import methodcaller
 from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Tuple, Type
 
-import optree._optree as pytree
+from optree import _C
 from optree.typing import AuxData, Children, CustomTreeNode, PyTree, PyTreeDef
 from optree.utils import safe_zip, unzip2
 
@@ -67,7 +67,7 @@ def register_pytree_node(
             unflattened children. The function should return an instance of
             ``nodetype``.
     """
-    pytree.register_node(nodetype, flatten_func, unflatten_func)
+    _C.register_node(nodetype, flatten_func, unflatten_func)
     CustomTreeNode.register(nodetype)
     _nodetype_registry[nodetype] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
     return nodetype

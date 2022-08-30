@@ -19,7 +19,7 @@
 from collections import OrderedDict, defaultdict
 from typing import Any, Hashable, NamedTuple, Sequence, Tuple, TypeVar, Union
 
-from optree import _optree as pytree
+from optree import _C
 
 
 try:
@@ -28,7 +28,7 @@ except ImportError:
     from typing_extensions import Protocol  # type: ignore[misc]
 
 
-PyTreeDef = pytree.PyTreeDef
+PyTreeDef = _C.PyTreeDef
 
 Children = TypeVar('Children', bound=Sequence[Any])
 AuxData = TypeVar('AuxData', bound=Hashable)
