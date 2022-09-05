@@ -22,19 +22,19 @@ endif()
 
 set(CMAKE_CXX_STANDARD 17)
 
-find_package(Threads REQUIRED)             # -pthread
-find_package(OpenMP REQUIRED)              # -Xpreprocessor -fopenmp
-set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)  # -fPIC
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)    # -fvisibility=hidden
+find_package(Threads REQUIRED)           # -pthread
+find_package(OpenMP REQUIRED)            # -Xpreprocessor -fopenmp
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)  # -fPIC
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)  # -fvisibility=hidden
 
 if(MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Wall /W4")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2")
+    string(APPEND CMAKE_CXX_FLAGS " /Wall")
+    string(APPEND CMAKE_CXX_FLAGS_DEBUG " /Zi")
+    string(APPEND CMAKE_CXX_FLAGS_RELEASE " /O2 /Ob2")
 else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_RELEASE} -g -Og")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+    string(APPEND CMAKE_CXX_FLAGS " -Wall")
+    string(APPEND CMAKE_CXX_FLAGS_DEBUG " -g -Og")
+    string(APPEND CMAKE_CXX_FLAGS_RELEASE " -O3")
 endif()
 
 function(system)
@@ -128,7 +128,7 @@ else()
     find_package(pybind11 CONFIG PATHS "${PYBIND11_CMAKE_DIR}")
 endif()
 
-set(ABSL_PROPAGATE_CXX_STD TRUE)
+set(ABSL_PROPAGATE_CXX_STD ON)
 add_subdirectory(third_party/abseil-cpp)
 include_directories(third_party/pybind11_abseil)
 
