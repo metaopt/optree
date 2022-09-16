@@ -20,21 +20,31 @@ import difflib
 import functools
 import textwrap
 from functools import partial
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Hashable,
+from typing import Any, Callable, Optional, cast, overload
+
+import optree._C as _C
+from optree.registry import (
+    AttributeKeyPathEntry,
+    FlattenedKeyPathEntry,
+    KeyPath,
+    KeyPathEntry,
+    register_keypaths,
+    register_pytree_node,
+)
+from optree.typing import (
+    AuxData,
+    Children,
     Iterable,
     List,
-    Optional,
+    NamedTuple,
+    PyTree,
+    PyTreeDef,
+    S,
+    T,
     Tuple,
-    TypeVar,
-    overload,
+    U,
+    is_namedtuple,
 )
-
-from optree import _C
-from optree.typing import PyTree, PyTreeDef
 
 
 __all__ = [
@@ -55,19 +65,19 @@ __all__ = [
     'treedef_tuple',
 ]
 
-if TYPE_CHECKING:
-    from optree.registry import KeyPath, KeyPathEntry
-
 
 def treedef_children(treedef: PyTreeDef) -> List[PyTreeDef]:
+    """Return a list of treedefs for the children of a treedef."""
     return treedef.children()
 
 
 def treedef_is_leaf(treedef: PyTreeDef) -> bool:
+    """Returns whether the treedef is a leaf."""
     return treedef.num_nodes == 1
 
 
 def treedef_is_strict_leaf(treedef: PyTreeDef) -> bool:
+    """Returns whether the treedef is a strict leaf."""
     return treedef.num_nodes == 1 and treedef.num_leaves == 1
 
 
@@ -77,8 +87,8 @@ def treedef_tuple(treedefs: Iterable[PyTreeDef]) -> PyTreeDef:
 
 
 def tree_flatten(
-    tree: PyTree, is_leaf: Optional[Callable[[Any], bool]] = None
-) -> Tuple[List[Any], PyTreeDef]:
+    tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None
+) -> Tuple[List[T], PyTreeDef]:
     """Flattens a pytree.
 
     The flattening order (i.e. the order of elements in the output list)
@@ -98,7 +108,7 @@ def tree_flatten(
     return _C.flatten(tree, is_leaf)
 
 
-def tree_unflatten(treedef: PyTreeDef, leaves: Iterable[Any]) -> PyTree:
+def tree_unflatten(treedef: PyTreeDef, leaves: Iterable[T]) -> PyTree[T]:
     """Reconstructs a pytree from the treedef and the leaves.
 
     The inverse of :func:`tree_flatten`.
@@ -115,17 +125,17 @@ def tree_unflatten(treedef: PyTreeDef, leaves: Iterable[Any]) -> PyTree:
     return treedef.unflatten(leaves)
 
 
-def tree_leaves(tree: PyTree, is_leaf: Optional[Callable[[Any], bool]] = None) -> List[Any]:
+def tree_leaves(tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None) -> List[T]:
     """Gets the leaves of a pytree."""
     return _C.flatten(tree, is_leaf)[0]
 
 
-def tree_structure(tree: PyTree, is_leaf: Optional[Callable[[Any], bool]] = None) -> PyTreeDef:
+def tree_structure(tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None) -> PyTreeDef:
     """Gets the treedef for a pytree."""
     return _C.flatten(tree, is_leaf)[1]
 
 
-def all_leaves(iterable: Iterable[Any], is_leaf: Optional[Callable[[Any], bool]] = None) -> bool:
+def all_leaves(iterable: Iterable[T], is_leaf: Optional[Callable[[T], bool]] = None) -> bool:
     """Tests whether all elements in the given iterable are all leaves.
 
     >>> tree = {"a": [1, 2, 3]}
@@ -145,16 +155,16 @@ def all_leaves(iterable: Iterable[Any], is_leaf: Optional[Callable[[Any], bool]]
     if is_leaf is None:
         return _C.all_leaves(iterable)
 
-    lst = list(iterable)
-    return lst == tree_leaves(lst, is_leaf)
+    nodes = list(iterable)
+    return nodes == tree_leaves(nodes, is_leaf)
 
 
 def tree_map(
-    func: Callable[..., Any],
-    tree: PyTree,
-    *rest: PyTree,
-    is_leaf: Optional[Callable[[Any], bool]] = None,
-) -> PyTree:
+    func: Callable[..., U],
+    tree: PyTree[T],
+    *rest: PyTree[S],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+) -> PyTree[U]:
     """Maps a multi-input function over pytree args to produce a new pytree.
 
     Args:
@@ -190,16 +200,19 @@ def tree_map(
     leaves, treedef = tree_flatten(tree, is_leaf)
     # pylint: disable-next=redefined-outer-name
     all_leaves = [leaves] + [treedef.flatten_up_to(r) for r in rest]
-    return treedef.unflatten(func(*xs) for xs in zip(*all_leaves))
+    return treedef.unflatten(func(*args) for args in zip(*all_leaves))
 
 
-def build_tree(treedef: PyTreeDef, xs):
-    return treedef.from_iterable_tree(xs)
+def build_tree(treedef: PyTreeDef, subtrees: Iterable[PyTree[T]]) -> PyTree[T]:
+    """Builds a pytree from a treedef and a list of subtrees."""
+    return treedef.from_iterable_tree(subtrees)
 
 
 def tree_transpose(
-    outer_treedef: PyTreeDef, inner_treedef: PyTreeDef, pytree_to_transpose: PyTree
-) -> PyTree:
+    outer_treedef: PyTreeDef,
+    inner_treedef: PyTreeDef,
+    pytree_to_transpose: PyTree[T],
+) -> PyTree[T]:
     """Transform a tree having tree structure (outer, inner) into one having
     structure (inner, outer).
     """
@@ -216,105 +229,110 @@ def tree_transpose(
     ]  # fmt: skip
     transposed_lol = zip(*lol)
     subtrees = map(partial(tree_unflatten, outer_treedef), transposed_lol)
-    return tree_unflatten(inner_treedef, subtrees)
+    return tree_unflatten(inner_treedef, subtrees)  # type: ignore[arg-type]
 
 
-def _replace_nones(sentinel: Any, tree: Optional[PyTree]) -> PyTree:
+def _replace_nones(sentinel: Any, tree: Optional[PyTree[T]]) -> PyTree[T]:
     """Replaces ``None`` in ``tree`` with ``sentinel``."""
     if tree is None:
         return sentinel
-
-    from optree.registry import register_pytree_node  # pylint: disable=import-outside-toplevel
 
     handler = register_pytree_node.get(type(tree))  # type: ignore[attr-defined]
     if handler:
         children, metadata = handler.to_iter(tree)
         proc_children: List[PyTree] = [_replace_nones(sentinel, child) for child in children]
         return handler.from_iter(metadata, proc_children)
-    if isinstance(tree, tuple) and hasattr(tree, '_fields'):
+
+    if is_namedtuple(tree):
         # handle namedtuple as a special case, based on heuristic
-        children = iter(tree)
-        proc_children = [_replace_nones(sentinel, child) for child in children]
-        return type(tree)(*proc_children)  # type: ignore[arg-type,return-value]
+        tree = cast(NamedTuple, tree)
+        proc_children = [_replace_nones(sentinel, child) for child in tree]
+        return type(tree)(*proc_children)  # type: ignore[arg-type]
 
     return tree
 
 
-T = TypeVar('T')
-__NO_INITIALIZER = object()
+__INITIAL_MISSING: T = object()  # type: ignore[valid-type]
 
 
 @overload
-def tree_reduce(func: Callable[[T, T], T], tree: PyTree) -> T:
+def tree_reduce(func: Callable[[T, T], T], tree: PyTree[T]) -> T:
     ...
 
 
 @overload
-def tree_reduce(func: Callable[[T, T], T], tree: PyTree, initializer: T) -> T:
+def tree_reduce(func: Callable[[T, T], T], tree: PyTree[T], initial: T) -> T:
     ...
 
 
-def tree_reduce(func: Callable[[T, T], T], tree: PyTree, initializer: T = __NO_INITIALIZER) -> T:
-    if initializer is __NO_INITIALIZER:
+def tree_reduce(func: Callable[[T, T], T], tree: PyTree[T], initial: T = __INITIAL_MISSING) -> T:
+    """Traversals through a pytree and reduces the leaves."""
+    if initial is __INITIAL_MISSING:
         return functools.reduce(func, tree_leaves(tree))
 
-    return functools.reduce(func, tree_leaves(tree), initializer)
+    return functools.reduce(func, tree_leaves(tree), initial)
 
 
-def tree_all(tree: PyTree) -> bool:
+def tree_all(tree: PyTree[T]) -> bool:
+    """Returns whether all leaves in the tree are true."""
     return all(tree_leaves(tree))
 
 
-def tree_any(tree: PyTree) -> bool:
+def tree_any(tree: PyTree[T]) -> bool:
+    """Returns whether any leaves in the tree are true."""
     return any(tree_leaves(tree))
 
 
 def broadcast_prefix(
-    prefix_tree: PyTree, full_tree: PyTree, is_leaf: Optional[Callable[[Any], bool]] = None
-) -> List[Any]:
+    prefix_tree: PyTree[T],
+    full_tree: PyTree[S],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+) -> List[T]:
+    # pylint: disable-next=line-too-long
+    """Returns a list of broadcasted leaves in ``prefix_tree`` to match the number of leaves in ``full_tree``."""
     # If prefix_tree is not a tree prefix of full_tree, this code can raise a
     # ValueError; use prefix_errors to find disagreements and raise more precise
     # error messages.
-    result = []
+    result: List[T] = []
 
-    def num_leaves(tree):
+    def num_leaves(tree: PyTree[U]) -> int:
         return tree_structure(tree).num_leaves
 
-    def add_leaves(x, subtree):
-        return result.extend([x] * num_leaves(subtree))
+    def add_leaves(x: T, subtree: PyTree[S]) -> None:
+        result.extend([x] * num_leaves(subtree))
 
     tree_map(add_leaves, prefix_tree, full_tree, is_leaf=is_leaf)
     return result
 
 
-def flatten_one_level(tree: PyTree) -> Tuple[List[Any], Hashable]:
-    from optree.registry import register_pytree_node  # pylint: disable=import-outside-toplevel
-
+def flatten_one_level(tree: PyTree[T]) -> Tuple[Children[T], AuxData]:
+    """Flatten the pytree one level, returning a tuple of children and auxiliary data."""
     handler = register_pytree_node.get(type(tree))  # type: ignore[attr-defined]
     if handler:
         children, meta = handler.to_iter(tree)
         return list(children), meta
-    if isinstance(tree, tuple) and hasattr(tree, '_fields'):
-        return list(tree), None
-    raise ValueError(f"can't tree-flatten type: {type(tree)}")
+
+    if is_namedtuple(tree):
+        return list(cast(NamedTuple, tree)), None
+
+    raise ValueError(f"Can't tree-flatten type: {type(tree)}.")
 
 
 def prefix_errors(
-    prefix_tree: PyTree,
-    full_tree: PyTree,
-    is_leaf: Optional[Callable[[Any], bool]] = None,
+    prefix_tree: PyTree[T],
+    full_tree: PyTree[S],
+    is_leaf: Optional[Callable[[T], bool]] = None,
 ) -> List[Callable[[str], ValueError]]:
-    from optree.registry import KeyPath  # pylint: disable=import-outside-toplevel
-
+    """Return a list of errors that would be raised by :func:`broadcast_prefix`."""
     return list(_prefix_error(KeyPath(), prefix_tree, full_tree, is_leaf))
 
 
 # pylint: disable-next=too-many-locals
 def _prefix_error(
-    key_path: 'KeyPath',
-    prefix_tree: PyTree,
-    full_tree: PyTree,
-    is_leaf: Optional[Callable[[Any], bool]] = None,
+    key_path: KeyPath,
+    prefix_tree: PyTree[T],
+    full_tree: PyTree[S],
+    is_leaf: Optional[Callable[[T], bool]] = None,
 ) -> Iterable[Callable[[str], ValueError]]:
     # A leaf is a valid prefix of any tree:
     if treedef_is_strict_leaf(tree_structure(prefix_tree, is_leaf=is_leaf)):
@@ -384,9 +402,8 @@ def _prefix_error(
         yield from _prefix_error(key_path + k, t1, t2)
 
 
-def _child_keys(tree: PyTree) -> List['KeyPathEntry']:
+def _child_keys(tree: PyTree[T]) -> List[KeyPathEntry]:
     # pylint: disable-next=import-outside-toplevel
-    from optree.registry import AttributeKeyPathEntry, FlattenedKeyPathEntry, register_keypaths
 
     assert not treedef_is_strict_leaf(tree_structure(tree))
 
@@ -394,9 +411,9 @@ def _child_keys(tree: PyTree) -> List['KeyPathEntry']:
     if handler:
         return handler(tree)
 
-    if isinstance(tree, tuple) and hasattr(tree, '_fields'):
+    if is_namedtuple(tree):
         # handle namedtuple as a special case, based on heuristic
-        return [AttributeKeyPathEntry(s) for s in tree._fields]
+        return list(map(AttributeKeyPathEntry, cast(NamedTuple, tree)._fields))
 
     num_children = len(treedef_children(tree_structure(tree)))
-    return [FlattenedKeyPathEntry(i) for i in range(num_children)]
+    return list(map(FlattenedKeyPathEntry, range(num_children)))

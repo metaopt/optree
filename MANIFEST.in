@@ -1,4 +1,5 @@
 recursive-include optree *.pyi
+recursive-include optree *.typed
 include LICENSE
 
 # Include source files in sdist

@@ -207,7 +207,7 @@ void PyTreeDef::FlattenIntoImpl(py::handle handle,
                 py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(handle));
                 if (out.size() != 2) {
                     throw std::runtime_error(
-                        "PyTree custom to_iterable function should return a pair");
+                        "PyTree custom to_iterable function should return a pair.");
                 }
                 node.node_data = out[1];
                 node.arity = 0;
@@ -249,16 +249,16 @@ void PyTreeDef::FlattenInto(py::handle handle,
 }
 
 /*static*/ std::pair<std::vector<py::object>, std::unique_ptr<PyTreeDef>> PyTreeDef::Flatten(
-    py::handle x, std::optional<py::function> leaf_predicate) {
+    py::handle tree, std::optional<py::function> leaf_predicate) {
     std::vector<py::object> leaves;
-    auto tree = std::make_unique<PyTreeDef>();
-    tree->FlattenInto(x, leaves, leaf_predicate);
-    return std::make_pair(std::move(leaves), std::move(tree));
+    auto treedef = std::make_unique<PyTreeDef>();
+    treedef->FlattenInto(tree, leaves, leaf_predicate);
+    return std::make_pair(std::move(leaves), std::move(treedef));
 }
 
-/*static*/ bool PyTreeDef::AllLeaves(const py::iterable& x) {
+/*static*/ bool PyTreeDef::AllLeaves(const py::iterable& iterable) {
     const PyTreeTypeRegistry::Registration* custom;
-    for (const py::handle& h : x) {
+    for (const py::handle& h : iterable) {
         if (GetKind(h, &custom) != PyTreeKind::Leaf) return false;
     }
     return true;
@@ -278,7 +278,7 @@ py::object PyTreeDef::UnflattenImpl(T leaves) const {
             case PyTreeKind::Leaf:
                 if (it == leaves.end()) {
                     throw std::invalid_argument(
-                        absl::StrFormat("Too few leaves for PyTreeDef; expected %ld, got %ld",
+                        absl::StrFormat("Too few leaves for PyTreeDef; expected %ld, got %ld.",
                                         num_leaves(),
                                         leaf_count));
                 }
@@ -320,16 +320,16 @@ py::object PyTreeDef::Unflatten(absl::Span<const py::object> leaves) const {
     return UnflattenImpl(leaves);
 }
 
-py::list PyTreeDef::FlattenUpTo(py::handle xs) const {
+py::list PyTreeDef::FlattenUpTo(py::handle full_tree) const {
     py::list leaves(num_leaves());
     std::vector<py::object> agenda;
-    agenda.push_back(py::reinterpret_borrow<py::object>(xs));
+    agenda.push_back(py::reinterpret_borrow<py::object>(full_tree));
     auto it = traversal.rbegin();
     Py_ssize_t leaf = num_leaves() - 1;
     while (!agenda.empty()) {
         if (it == traversal.rend()) {
             throw std::invalid_argument(absl::StrFormat(
-                "Tree structures did not match: %s vs %s", py::repr(xs), ToString()));
+                "Tree structures did not match: %s vs %s.", py::repr(full_tree), ToString()));
         }
         const Node& node = *it;
         py::object object = agenda.back();
@@ -444,7 +444,7 @@ py::list PyTreeDef::FlattenUpTo(py::handle xs) const {
                 py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(object));
                 if (out.size() != 2) {
                     throw std::runtime_error(
-                        "PyTree custom to_iterable function should return a pair");
+                        "PyTree custom to_iterable function should return a pair.");
                 }
                 if (node.node_data.not_equal(out[1])) {
                     throw std::invalid_argument(
@@ -470,8 +470,8 @@ py::list PyTreeDef::FlattenUpTo(py::handle xs) const {
         }
     }
     if (it != traversal.rend() || leaf != -1) {
-        throw std::invalid_argument(
-            absl::StrFormat("Tree structures did not match: %s vs %s", py::repr(xs), ToString()));
+        throw std::invalid_argument(absl::StrFormat(
+            "Tree structures did not match: %s vs %s.", py::repr(full_tree), ToString()));
     }
     return leaves;
 }
@@ -481,6 +481,7 @@ py::object PyTreeDef::Walk(const py::function& f_node,
                            py::iterable leaves) const {
     std::vector<py::object> agenda;
     auto it = leaves.begin();
+    const bool f_leaf_identity = f_leaf.is_none();
     for (const Node& node : traversal) {
         switch (node.kind) {
             case PyTreeKind::Leaf: {
@@ -489,7 +490,7 @@ py::object PyTreeDef::Walk(const py::function& f_node,
                 }
 
                 py::object leaf = py::reinterpret_borrow<py::object>(*it);
-                agenda.push_back(f_leaf.is_none() ? std::move(leaf) : f_leaf(std::move(leaf)));
+                agenda.push_back(f_leaf_identity ? std::move(leaf) : f_leaf(std::move(leaf)));
                 ++it;
                 break;
             }
@@ -513,7 +514,7 @@ py::object PyTreeDef::Walk(const py::function& f_node,
         }
     }
     if (it != leaves.end()) {
-        throw std::invalid_argument("Too many leaves for PyTreeDef");
+        throw std::invalid_argument("Too many leaves for PyTreeDef.");
     }
     if (agenda.size() != 1) {
         throw std::logic_error("PyTreeDef traversal did not yield a singleton.");
@@ -522,23 +523,23 @@ py::object PyTreeDef::Walk(const py::function& f_node,
 }
 
 py::object PyTreeDef::FromIterableTreeHelper(
-    py::handle xs, absl::InlinedVector<PyTreeDef::Node, 1>::const_reverse_iterator* it) const {
+    py::handle subtree, absl::InlinedVector<PyTreeDef::Node, 1>::const_reverse_iterator* it) const {
     if (*it == traversal.rend()) {
         throw std::invalid_argument("Tree structures did not match.");
     }
     const Node& node = **it;
     ++*it;
     if (node.kind == PyTreeKind::Leaf) {
-        return py::reinterpret_borrow<py::object>(xs);
+        return py::reinterpret_borrow<py::object>(subtree);
     }
-    py::iterable iterable = py::reinterpret_borrow<py::iterable>(xs);
+    py::iterable iterable = py::reinterpret_borrow<py::iterable>(subtree);
     std::vector<py::object> ys;
     ys.reserve(node.arity);
     for (py::handle x : iterable) {
         ys.push_back(py::reinterpret_borrow<py::object>(x));
     }
     if ((Py_ssize_t)ys.size() != node.arity) {
-        throw std::invalid_argument("Arity mismatch between trees");
+        throw std::invalid_argument("Arity mismatch between trees.");
     }
     for (Py_ssize_t j = node.arity - 1; j >= 0; --j) {
         ys[j] = FromIterableTreeHelper(ys[j], it);
@@ -547,26 +548,26 @@ py::object PyTreeDef::FromIterableTreeHelper(
     return MakeNode(node, absl::MakeSpan(ys));
 }
 
-py::object PyTreeDef::FromIterableTree(py::handle xs) const {
+py::object PyTreeDef::FromIterableTree(py::handle subtrees) const {
     auto it = traversal.rbegin();
-    py::object out = FromIterableTreeHelper(xs, &it);
+    py::object out = FromIterableTreeHelper(subtrees, &it);
     if (it != traversal.rend()) {
         throw std::invalid_argument("Tree structures did not match.");
     }
     return out;
 }
 
-std::unique_ptr<PyTreeDef> PyTreeDef::Compose(const PyTreeDef& inner) const {
+std::unique_ptr<PyTreeDef> PyTreeDef::Compose(const PyTreeDef& inner_treedef) const {
     auto out = std::make_unique<PyTreeDef>();
     for (const Node& n : traversal) {
         if (n.kind == PyTreeKind::Leaf) {
-            absl::c_copy(inner.traversal, std::back_inserter(out->traversal));
+            absl::c_copy(inner_treedef.traversal, std::back_inserter(out->traversal));
         } else {
             out->traversal.push_back(n);
         }
     }
     const auto& root = traversal.back();
-    const auto& inner_root = inner.traversal.back();
+    const auto& inner_root = inner_treedef.traversal.back();
     // TODO(tomhennigan): This should update all nodes in the traversal.
     auto& out_root = out->traversal.back();
     out_root.num_nodes =
@@ -575,16 +576,16 @@ std::unique_ptr<PyTreeDef> PyTreeDef::Compose(const PyTreeDef& inner) const {
     return out;
 }
 
-/*static*/ std::unique_ptr<PyTreeDef> PyTreeDef::Tuple(const std::vector<PyTreeDef>& defs) {
+/*static*/ std::unique_ptr<PyTreeDef> PyTreeDef::Tuple(const std::vector<PyTreeDef>& treedefs) {
     auto out = std::make_unique<PyTreeDef>();
     Py_ssize_t num_leaves = 0;
-    for (const PyTreeDef& def : defs) {
-        absl::c_copy(def.traversal, std::back_inserter(out->traversal));
-        num_leaves += def.num_leaves();
+    for (const PyTreeDef& treedef : treedefs) {
+        absl::c_copy(treedef.traversal, std::back_inserter(out->traversal));
+        num_leaves += treedef.num_leaves();
     }
     Node node;
     node.kind = PyTreeKind::Tuple;
-    node.arity = defs.size();
+    node.arity = treedefs.size();
     node.num_leaves = num_leaves;
     node.num_nodes = out->traversal.size() + 1;
     out->traversal.push_back(node);
@@ -603,7 +604,7 @@ std::vector<std::unique_ptr<PyTreeDef>> PyTreeDef::Children() const {
         children[i] = std::make_unique<PyTreeDef>();
         const Node& node = traversal.at(pos - 1);
         if (pos < node.num_nodes) {
-            throw std::logic_error("children() walked off start of array");
+            throw std::logic_error("Children() walked off start of array.");
         }
         std::copy(traversal.begin() + pos - node.num_nodes,
                   traversal.begin() + pos,
@@ -611,7 +612,7 @@ std::vector<std::unique_ptr<PyTreeDef>> PyTreeDef::Children() const {
         pos -= node.num_nodes;
     }
     if (pos != 0) {
-        throw std::logic_error("pos != 0 at end of PyTreeDef::Children");
+        throw std::logic_error("pos != 0 at end of PyTreeDef::Children.");
     }
     return children;
 }
@@ -707,7 +708,7 @@ PyTreeDef PyTreeDef::FromPickleable(py::object pickleable) {
     for (const auto& item : pickleable.cast<py::list>()) {
         auto t = item.cast<py::tuple>();
         if (t.size() != 6) {
-            throw std::runtime_error("Malformed pickled PyTreeDef");
+            throw std::runtime_error("Malformed pickled PyTreeDef.");
         }
         Node& node = tree.traversal.emplace_back();
         node.kind = static_cast<PyTreeKind>(t[0].cast<int>());
@@ -724,7 +725,7 @@ PyTreeDef PyTreeDef::FromPickleable(py::object pickleable) {
                 break;
             default:
                 if (!t[2].is_none()) {
-                    throw std::runtime_error("Malformed pickled PyTreeDef");
+                    throw std::runtime_error("Malformed pickled PyTreeDef.");
                 }
                 break;
         }
@@ -732,11 +733,12 @@ PyTreeDef PyTreeDef::FromPickleable(py::object pickleable) {
             node.custom = t[3].is_none() ? nullptr : PyTreeTypeRegistry::Lookup(t[3]);
             if (node.custom == nullptr) {
                 throw std::runtime_error(absl::StrCat("Unknown custom type in pickled PyTreeDef: ",
-                                                      static_cast<std::string>(py::repr(t[3]))));
+                                                      static_cast<std::string>(py::repr(t[3])),
+                                                      "."));
             }
         } else {
             if (!t[3].is_none()) {
-                throw std::runtime_error("Malformed pickled PyTreeDef");
+                throw std::runtime_error("Malformed pickled PyTreeDef.");
             }
         }
         node.num_leaves = t[4].cast<int>();

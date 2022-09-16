@@ -54,7 +54,7 @@ class PyTreeDef {
     // Returns references to the flattened objects, which might be temporary objects in the case of
     // custom PyType handlers.
     static std::pair<std::vector<py::object>, std::unique_ptr<PyTreeDef>> Flatten(
-        py::handle x, std::optional<py::function> leaf_predicate = std::nullopt);
+        py::handle tree, std::optional<py::function> leaf_predicate = std::nullopt);
 
     // Recursive helper used to implement Flatten().
     void FlattenInto(py::handle handle,
@@ -65,23 +65,23 @@ class PyTreeDef {
                      std::optional<py::function> leaf_predicate = std::nullopt);
 
     // Tests whether the given list is a flat list of leaves.
-    static bool AllLeaves(const py::iterable &x);
+    static bool AllLeaves(const py::iterable &iterable);
 
     // Flattens a PyTree up to this PyTreeDef. 'this' must be a tree prefix of the tree-structure of
     // 'x'.
     // For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeDef [(*, *), *],
     // the result is the list of leaves [1, (2, 3), {"foo": 4}].
-    py::list FlattenUpTo(py::handle x) const;
+    py::list FlattenUpTo(py::handle full_tree) const;
 
     // Returns an unflattened PyTree given an iterable of leaves and a PyTreeDef.
     py::object Unflatten(py::iterable leaves) const;
     py::object Unflatten(absl::Span<const py::object> leaves) const;
 
     // Composes two PyTreeDefs, replacing the leaves of this tree with copies of `inner`.
-    std::unique_ptr<PyTreeDef> Compose(const PyTreeDef &inner) const;
+    std::unique_ptr<PyTreeDef> Compose(const PyTreeDef &inner_treedef) const;
 
     // Makes a Tuple PyTreeDef out of a vector of PyTreeDefs.
-    static std::unique_ptr<PyTreeDef> Tuple(const std::vector<PyTreeDef> &defs);
+    static std::unique_ptr<PyTreeDef> Tuple(const std::vector<PyTreeDef> &treedefs);
 
     std::vector<std::unique_ptr<PyTreeDef>> Children() const;
 
@@ -92,7 +92,7 @@ class PyTreeDef {
     // Given a tree of iterables with the same node/leaf structure as this PyTree, build the
     // corresponding PyTree.
     // TODO(phawkins): use flattening everywhere instead and delete this method.
-    py::object FromIterableTree(py::handle xs) const;
+    py::object FromIterableTree(py::handle subtrees) const;
 
     Py_ssize_t num_leaves() const;
 
@@ -153,7 +153,8 @@ class PyTreeDef {
 
     // Recursive helper used to implement FromIterableTree().
     py::object FromIterableTreeHelper(
-        py::handle xs, absl::InlinedVector<PyTreeDef::Node, 1>::const_reverse_iterator *it) const;
+        py::handle subtree,
+        absl::InlinedVector<PyTreeDef::Node, 1>::const_reverse_iterator *it) const;
 
     // Computes the node kind of a given Python object.
     static PyTreeKind GetKind(const py::handle &obj,

@@ -30,26 +30,26 @@ namespace py = pybind11;
 void BuildModule(py::module& mod) {  // NOLINT
     mod.def(
         "flatten", &PyTreeDef::Flatten, py::arg("tree"), py::arg("leaf_predicate") = std::nullopt);
-    mod.def("tuple", &PyTreeDef::Tuple);
-    mod.def("all_leaves", &PyTreeDef::AllLeaves);
+    mod.def("tuple", &PyTreeDef::Tuple, py::arg("treedefs"));
+    mod.def("all_leaves", &PyTreeDef::AllLeaves, py::arg("iterable"));
 
     py::class_<PyTreeDef>(mod, "PyTreeDef")
+        .def_property_readonly("num_leaves", &PyTreeDef::num_leaves)
+        .def_property_readonly("num_nodes", &PyTreeDef::num_nodes)
         .def("unflatten",
              static_cast<py::object (PyTreeDef::*)(py::iterable leaves) const>(
                  &PyTreeDef::Unflatten),
              py::arg("leaves"))
-        .def("flatten_up_to", &PyTreeDef::FlattenUpTo, py::arg("xs"))
-        .def("compose", &PyTreeDef::Compose, py::arg("inner"))
+        .def("flatten_up_to", &PyTreeDef::FlattenUpTo, py::arg("full_trees"))
+        .def("compose", &PyTreeDef::Compose, py::arg("inner_treedef"))
         .def("walk",
              &PyTreeDef::Walk,
-             "Walk PyTree, calling f_node(node, node_data) at nodes, and f_leaf at leaves",
+             "Walk PyTree, calling f_node(node, node_data) at nodes, and f_leaf(leaf) at leaves",
              py::arg("f_node"),
              py::arg("f_leaf"),
              py::arg("leaves"))
-        .def("from_iterable_tree", &PyTreeDef::FromIterableTree, py::arg("xs"))
+        .def("from_iterable_tree", &PyTreeDef::FromIterableTree, py::arg("subtrees"))
         .def("children", &PyTreeDef::Children)
-        .def_property_readonly("num_leaves", &PyTreeDef::num_leaves)
-        .def_property_readonly("num_nodes", &PyTreeDef::num_nodes)
         .def("__repr__", &PyTreeDef::ToString)
         .def(
             "__eq__",
