@@ -51,9 +51,7 @@ def register_pytree_node(
     flatten_func: Callable[[CustomTreeNode[T]], Tuple[Children[T], AuxData]],
     unflatten_func: Callable[[AuxData, Children[T]], PyTree[T]],
 ) -> Type[CustomTreeNode[T]]:
-    """Extends the set of types that are considered internal nodes in pytrees.
-
-    See :ref:`example usage <pytrees>`.
+    """Extend the set of types that are considered internal nodes in pytrees.
 
     Args:
         nodetype: a Python type to treat as an internal pytree node.
@@ -68,13 +66,13 @@ def register_pytree_node(
             ``nodetype``.
     """
     _C.register_node(nodetype, flatten_func, unflatten_func)
-    CustomTreeNode.register(nodetype)
+    CustomTreeNode.register(nodetype)  # pylint: disable=no-member
     _nodetype_registry[nodetype] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
     return nodetype
 
 
 def register_pytree_node_class(cls: Type[CustomTreeNode[T]]) -> Type[CustomTreeNode[T]]:
-    """Extends the set of types that are considered internal nodes in pytrees.
+    """Extend the set of types that are considered internal nodes in pytrees.
 
     This function is a thin wrapper around ``register_pytree_node``, and provides
     a class-oriented interface::
@@ -181,7 +179,7 @@ class Partial(functools.partial, CustomTreeNode):  # pylint: disable=too-few-pub
     Use it for partial function evaluation in a way that is compatible with JAX's
     transformations, e.g., ``Partial(func, *args, **kwargs)``.
 
-    (You need to explicitly opt-in to this behavior because we didn't want to give
+    (You need to explicitly opt-in to this behavior because we did not want to give
     functools.partial different semantics than normal function closures.)
 
     For example, here is a basic usage of ``Partial`` in a manner similar to
@@ -225,6 +223,7 @@ class Partial(functools.partial, CustomTreeNode):  # pylint: disable=too-few-pub
     """
 
     def __new__(cls, func: Callable[..., Any], *args, **keywords) -> 'Partial':
+        """Create a new :class:`Partial` instance."""
         # In Python 3.10+, if func is itself a functools.partial instance,
         # functools.partial.__new__ would merge the arguments of this Partial
         # instance with the arguments of the func. We box func in a class that does
@@ -242,6 +241,7 @@ class Partial(functools.partial, CustomTreeNode):  # pylint: disable=too-few-pub
         return super().__new__(cls, func, *args, **keywords)
 
     def tree_flatten(self) -> Tuple[Tuple[Tuple[Any, ...], Dict[str, Any]], Callable[..., Any]]:
+        """Flattens the :class:`Partial` instance to children and auxiliary data."""
         return (self.args, self.keywords), self.func
 
     @classmethod
@@ -250,6 +250,7 @@ class Partial(functools.partial, CustomTreeNode):  # pylint: disable=too-few-pub
         func: Callable[..., Any],
         args: Tuple[Tuple[Any, ...], Dict[str, Any]],
     ) -> 'Partial':
+        """Unflattens the children and auxiliary data into a :class:`Partial` instance."""
         return cls(func, *args[0], **args[1])
 
 
@@ -257,6 +258,7 @@ class KeyPathEntry(NamedTuple):
     key: Any
 
     def pprint(self) -> str:
+        """Pretty name of the key path entry."""
         return NotImplemented
 
 
@@ -269,23 +271,33 @@ class KeyPath(NamedTuple):
         raise TypeError(type(other))
 
     def pprint(self) -> str:
+        """Pretty name of the key path."""
         if not self.keys:
             return ' tree root'
         return ''.join(k.pprint() for k in self.keys)
 
 
 class GetitemKeyPathEntry(KeyPathEntry):
+    """The key path entry class for sequences and dictionaries."""
+
     def pprint(self) -> str:
+        """Pretty name of the key path entry."""
         return f'[{repr(self.key)}]'
 
 
 class AttributeKeyPathEntry(KeyPathEntry):
+    """The key path entry class for namedtuples."""
+
     def pprint(self) -> str:
+        """Pretty name of the key path entry."""
         return f'.{self.key}'
 
 
 class FlattenedKeyPathEntry(KeyPathEntry):  # fallback
+    """The fallback key path entry class."""
+
     def pprint(self) -> str:
+        """Pretty name of the key path entry."""
         return f'[<flat index {self.key}>]'
 
 
@@ -297,7 +309,7 @@ def register_keypaths(
     nodetype: Type[CustomTreeNode[T]],
     handler: KeyPathHandler,
 ) -> KeyPathHandler:
-    """Registers a key path handler for a custom pytree node type."""
+    """Register a key path handler for a custom pytree node type."""
     _keypath_registry[nodetype] = handler
     return handler
 

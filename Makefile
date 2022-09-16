@@ -14,13 +14,13 @@ PYTHON         ?= $(shell command -v python3 || command -v python)
 default: install
 
 install:
-	$(PYTHON) -m pip install .
+	$(PYTHON) -m pip install -vvv .
 
 install-editable:
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install --upgrade setuptools wheel
 	$(PYTHON) -m pip install pybind11
-	USE_FP16=ON TORCH_CUDA_ARCH_LIST=Auto $(PYTHON) -m pip install -vvv --no-build-isolation --editable .
+	$(PYTHON) -m pip install -vvv --no-build-isolation --editable .
 
 install-e: install-editable  # alias
 
@@ -106,7 +106,7 @@ flake8: flake8-install
 	$(PYTHON) -m flake8 $(PYTHON_FILES) --count --select=E9,F63,F7,F82,E225,E251 --show-source --statistics
 
 py-format: py-format-install
-	$(PYTHON) -m isort --project torchopt --check $(PYTHON_FILES) && \
+	$(PYTHON) -m isort --project $(PROJECT_NAME) --check $(PYTHON_FILES) && \
 	$(PYTHON) -m black --check $(PYTHON_FILES)
 
 mypy: mypy-install
@@ -145,7 +145,7 @@ clean-docs:
 lint: flake8 py-format mypy clang-format cpplint docstyle spelling
 
 format: py-format-install clang-format-install addlicense-install
-	$(PYTHON) -m isort --project torchopt $(PYTHON_FILES)
+	$(PYTHON) -m isort --project $(PROJECT_NAME) $(PYTHON_FILES)
 	$(PYTHON) -m black $(PYTHON_FILES)
 	clang-format -style=file -i $(CXX_FILES)
 	addlicense -c $(COPYRIGHT) -l apache -y 2022 $(SOURCE_FOLDERS)

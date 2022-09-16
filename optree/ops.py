@@ -72,24 +72,24 @@ def treedef_children(treedef: PyTreeDef) -> List[PyTreeDef]:
 
 
 def treedef_is_leaf(treedef: PyTreeDef) -> bool:
-    """Returns whether the treedef is a leaf."""
+    """Return whether the treedef is a leaf."""
     return treedef.num_nodes == 1
 
 
 def treedef_is_strict_leaf(treedef: PyTreeDef) -> bool:
-    """Returns whether the treedef is a strict leaf."""
+    """Return whether the treedef is a strict leaf."""
     return treedef.num_nodes == 1 and treedef.num_leaves == 1
 
 
 def treedef_tuple(treedefs: Iterable[PyTreeDef]) -> PyTreeDef:
-    """Makes a tuple treedef from a list of child treedefs."""
+    """Make a tuple treedef from a list of child treedefs."""
     return _C.tuple(list(treedefs))
 
 
 def tree_flatten(
     tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None
 ) -> Tuple[List[T], PyTreeDef]:
-    """Flattens a pytree.
+    """Flatten a pytree.
 
     The flattening order (i.e. the order of elements in the output list)
     is deterministic, corresponding to a left-to-right depth-first tree
@@ -101,6 +101,7 @@ def tree_flatten(
             flattening step. It should return a boolean, with true stopping the
             traversal and the whole subtree being treated as a leaf, and false
             indicating the flattening should traverse the current object.
+
     Returns:
         A pair where the first element is a list of leaf values and the second
         element is a treedef representing the structure of the flattened tree.
@@ -126,17 +127,17 @@ def tree_unflatten(treedef: PyTreeDef, leaves: Iterable[T]) -> PyTree[T]:
 
 
 def tree_leaves(tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None) -> List[T]:
-    """Gets the leaves of a pytree."""
+    """Get the leaves of a pytree."""
     return _C.flatten(tree, is_leaf)[0]
 
 
 def tree_structure(tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None) -> PyTreeDef:
-    """Gets the treedef for a pytree."""
+    """Get the treedef for a pytree."""
     return _C.flatten(tree, is_leaf)[1]
 
 
 def all_leaves(iterable: Iterable[T], is_leaf: Optional[Callable[[T], bool]] = None) -> bool:
-    """Tests whether all elements in the given iterable are all leaves.
+    """Test whether all elements in the given iterable are all leaves.
 
     >>> tree = {"a": [1, 2, 3]}
     >>> assert all_leaves(optree.tree_leaves(tree))
@@ -165,7 +166,7 @@ def tree_map(
     *rest: PyTree[S],
     is_leaf: Optional[Callable[[T], bool]] = None,
 ) -> PyTree[U]:
-    """Maps a multi-input function over pytree args to produce a new pytree.
+    """Map a multi-input function over pytree args to produce a new pytree.
 
     Args:
         f: function that takes ``1 + len(rest)`` arguments, to be applied at the
@@ -186,7 +187,6 @@ def tree_map(
         in ``rest``.
 
     Examples:
-
         >>> import optree
         >>> optree.tree_map(lambda x: x + 1, {"x": 7, "y": 42})
         {'x': 8, 'y': 43}
@@ -204,7 +204,7 @@ def tree_map(
 
 
 def build_tree(treedef: PyTreeDef, subtrees: Iterable[PyTree[T]]) -> PyTree[T]:
-    """Builds a pytree from a treedef and a list of subtrees."""
+    """Build a pytree from a treedef and a list of subtrees."""
     return treedef.from_iterable_tree(subtrees)
 
 
@@ -213,9 +213,8 @@ def tree_transpose(
     inner_treedef: PyTreeDef,
     pytree_to_transpose: PyTree[T],
 ) -> PyTree[T]:
-    """Transform a tree having tree structure (outer, inner) into one having
-    structure (inner, outer).
-    """
+    # pylint: disable-next=line-too-long
+    """Transform a tree having tree structure (outer, inner) into one having structure (inner, outer)."""
     flat, treedef = tree_flatten(pytree_to_transpose)
     inner_size = inner_treedef.num_leaves
     outer_size = outer_treedef.num_leaves
@@ -233,7 +232,7 @@ def tree_transpose(
 
 
 def _replace_nones(sentinel: Any, tree: Optional[PyTree[T]]) -> PyTree[T]:
-    """Replaces ``None`` in ``tree`` with ``sentinel``."""
+    """Replace :data:`None` in ``tree`` with ``sentinel``."""
     if tree is None:
         return sentinel
 
@@ -274,12 +273,12 @@ def tree_reduce(func: Callable[[T, T], T], tree: PyTree[T], initial: T = __INITI
 
 
 def tree_all(tree: PyTree[T]) -> bool:
-    """Returns whether all leaves in the tree are true."""
+    """Test whether all leaves in the tree are true."""
     return all(tree_leaves(tree))
 
 
 def tree_any(tree: PyTree[T]) -> bool:
-    """Returns whether any leaves in the tree are true."""
+    """Test whether any leaves in the tree are true."""
     return any(tree_leaves(tree))
 
 
@@ -289,7 +288,7 @@ def broadcast_prefix(
     is_leaf: Optional[Callable[[T], bool]] = None,
 ) -> List[T]:
     # pylint: disable-next=line-too-long
-    """Returns a list of broadcasted leaves in ``prefix_tree`` to match the number of leaves in ``full_tree``."""
+    """Return a list of broadcasted leaves in ``prefix_tree`` to match the number of leaves in ``full_tree``."""
     # If prefix_tree is not a tree prefix of full_tree, this code can raise a
     # ValueError; use prefix_errors to find disagreements and raise more precise
     # error messages.

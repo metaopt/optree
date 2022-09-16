@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-# pylint: disable=missing-module-docstring
+"""Utility functions for OpTree."""
 
 from typing import Any, Iterable, List, Sequence, Tuple
 

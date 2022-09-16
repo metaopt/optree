@@ -12,24 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""OpTree: Optimized PyTree."""
+"""Typing utilities for OpTree."""
 
 # mypy: no-warn-unused-ignores
 # pylint: disable=missing-class-docstring,missing-function-docstring
 
-from typing import (
-    Any,
-    Dict,
-    Generic,
-    Hashable,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Any, Dict, Hashable, Iterable, List, Optional, Sequence, Tuple, TypeVar, Union
 
 from optree import _C
 
@@ -58,22 +46,22 @@ __all__ = [
 
 # pylint: disable=unused-import
 try:
-    from typing_extensions import NamedTuple
+    from typing_extensions import NamedTuple  # type: ignore[attr-defined]
 except ImportError:
     from typing import NamedTuple  # type: ignore[assignment]
 
 try:
-    from typing import OrderedDict
+    from typing import OrderedDict  # type: ignore[attr-defined]
 except ImportError:
     from typing_extensions import OrderedDict  # type: ignore[assignment]
 
 try:
-    from typing import DefaultDict
+    from typing import DefaultDict  # type: ignore[attr-defined]
 except ImportError:
     from typing_extensions import DefaultDict  # type: ignore[assignment]
 
 try:
-    from typing import Protocol
+    from typing import Protocol  # type: ignore[attr-defined]
 except ImportError:
     from typing_extensions import Protocol  # type: ignore[assignment]
 # pylint: enable=unused-import
@@ -92,13 +80,15 @@ _AuxData = TypeVar('_AuxData', bound=Hashable)
 AuxData = Optional[_AuxData]
 
 
-class CustomTreeNode(Protocol, Generic[T]):
+class CustomTreeNode(Protocol[T]):
+    """The abstract base class for custom pytree nodes."""
+
     def tree_flatten(self) -> Tuple[Children[T], AuxData]:
-        ...
+        """Flattens the custom pytree node into children and auxiliary data."""
 
     @classmethod
     def tree_unflatten(cls, aux_data: AuxData, children: Children[T]) -> 'CustomTreeNode[T]':
-        ...
+        """Unflattens the children and auxiliary data into the custom pytree node."""
 
 
 PyTree = Union[
@@ -111,4 +101,5 @@ PyTree = Union[
 
 
 def is_namedtuple(obj: object) -> bool:
+    """Return whether the object is a namedtuple."""
     return isinstance(obj, tuple) and hasattr(obj, '_fields')

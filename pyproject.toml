@@ -88,14 +88,14 @@ target-version = ["py36", "py37", "py38", "py39", "py310"]
 
 [tool.isort]
 profile = "black"
-src_paths = ["pytree", "tests"]
+src_paths = ["optree", "tests"]
 indent = 4
 line_length = 100
 lines_after_imports = 2
 multi_line_output = 3
 
 [tool.mypy]
-python_version = 3.7
+python_version = 3.6
 pretty = true
 show_error_codes = true
 show_error_context = true
