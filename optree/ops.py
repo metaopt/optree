@@ -157,7 +157,7 @@ def all_leaves(iterable: Iterable[T], is_leaf: Optional[Callable[[T], bool]] = N
         return _C.all_leaves(iterable)
 
     nodes = list(iterable)
-    return nodes == tree_leaves(nodes, is_leaf)
+    return nodes == tree_leaves(nodes, is_leaf)  # type: ignore[arg-type]
 
 
 def tree_map(
@@ -228,7 +228,7 @@ def tree_transpose(
     ]  # fmt: skip
     transposed_lol = zip(*lol)
     subtrees = map(partial(tree_unflatten, outer_treedef), transposed_lol)
-    return tree_unflatten(inner_treedef, subtrees)  # type: ignore[arg-type]
+    return tree_unflatten(inner_treedef, subtrees)
 
 
 def _replace_nones(sentinel: Any, tree: Optional[PyTree[T]]) -> PyTree[T]:

@@ -93,10 +93,10 @@ class CustomTreeNode(Protocol[T]):
 
 PyTree = Union[
     T,
-    Tuple[T, ...],  # Tuple, NamedTuple
-    List[T],
-    Dict[Any, T],  # Dict, OrderedDict, DefaultDict
-    CustomTreeNode[T],
+    Tuple['PyTree[T]', ...],  # Tuple, NamedTuple
+    List['PyTree[T]'],
+    Dict[Any, 'PyTree[T]'],  # Dict, OrderedDict, DefaultDict
+    CustomTreeNode['PyTree[T]'],
 ]
 
 

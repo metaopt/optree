@@ -41,7 +41,7 @@ PyTreeNodeRegistryEntry = NamedTuple(
     'PyTreeNodeRegistryEntry',
     [
         ('to_iter', Callable[[CustomTreeNode[T]], Tuple[Children[T], AuxData]]),
-        ('from_iter', Callable[[AuxData, Children[T]], PyTree[T]]),
+        ('from_iter', Callable[[AuxData, Children[T]], CustomTreeNode[T]]),
     ],
 )
 
@@ -49,7 +49,7 @@ PyTreeNodeRegistryEntry = NamedTuple(
 def register_pytree_node(
     nodetype: Type[CustomTreeNode[T]],
     flatten_func: Callable[[CustomTreeNode[T]], Tuple[Children[T], AuxData]],
-    unflatten_func: Callable[[AuxData, Children[T]], PyTree[T]],
+    unflatten_func: Callable[[AuxData, Children[T]], CustomTreeNode[T]],
 ) -> Type[CustomTreeNode[T]]:
     """Extend the set of types that are considered internal nodes in pytrees.
 
@@ -122,30 +122,30 @@ def _sorted_keys(dct: Dict[KT, VT]) -> Iterable[KT]:
 _nodetype_registry: Dict[Type, PyTreeNodeRegistryEntry] = {
     tuple: PyTreeNodeRegistryEntry(
         lambda xs: (xs, None),  # type: ignore[arg-type,return-value]
-        lambda _, xs: tuple(xs),
+        lambda _, xs: tuple(xs),  # type: ignore[arg-type,return-value]
     ),
     list: PyTreeNodeRegistryEntry(
         lambda xs: (xs, None),  # type: ignore[arg-type,return-value]
-        lambda _, xs: list(xs),
+        lambda _, xs: list(xs),  # type: ignore[arg-type,return-value]
     ),
     dict: PyTreeNodeRegistryEntry(
         lambda d: unzip2(_sorted_items(d.items()))[::-1],  # type: ignore[attr-defined]
-        lambda keys, values: dict(zip(keys, values)),  # type: ignore[arg-type]
+        lambda keys, values: dict(zip(keys, values)),  # type: ignore[arg-type,return-value]
     ),
     type(None): PyTreeNodeRegistryEntry(
         lambda xs: ((), None),
-        lambda _, xs: None,
+        lambda _, xs: None,  # type: ignore[arg-type,return-value]
     ),
 }
 register_pytree_node(
     collections.OrderedDict,  # type: ignore[arg-type]
     lambda od: (tuple(od.values()), tuple(od.keys())),  # type: ignore[attr-defined]
-    lambda keys, values: collections.OrderedDict(safe_zip(keys, values)),  # type: ignore[arg-type]
+    lambda keys, values: collections.OrderedDict(safe_zip(keys, values)),  # type: ignore[arg-type,return-value]
 )
 register_pytree_node(
     collections.defaultdict,  # type: ignore[arg-type]
     lambda dd: (tuple(dd.values()), (dd.default_factory, tuple(dd.keys()))),  # type: ignore[attr-defined]
-    lambda aux, values: collections.defaultdict(aux[0], safe_zip(aux[1], values)),  # type: ignore[arg-type,index]
+    lambda aux, values: collections.defaultdict(aux[0], safe_zip(aux[1], values)),  # type: ignore[arg-type,return-value,index]
 )
 
 register_pytree_node.get: Callable[[Type[CustomTreeNode[T]]], PyTreeNodeRegistryEntry] = _nodetype_registry.get  # type: ignore[attr-defined,misc]
@@ -302,7 +302,7 @@ class FlattenedKeyPathEntry(KeyPathEntry):  # fallback
 
 
 KeyPathHandler = Callable[[PyTree], List[KeyPathEntry]]
-_keypath_registry: Dict[Type[CustomTreeNode[T]], KeyPathHandler] = {}
+_keypath_registry: Dict[Type[CustomTreeNode], KeyPathHandler] = {}
 
 
 def register_keypaths(

@@ -38,7 +38,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Utilities",
 ]
-dependencies = []
+dependencies = ["typing-extensions"]
 dynamic = ["version"]
 
 [project.urls]
@@ -61,11 +61,7 @@ lint = [
     "cpplint",
     "pre-commit",
 ]
-test = [
-    'pytest',
-    'pytest-cov',
-    'pytest-xdist',
-]
+test = ['pytest', 'pytest-cov', 'pytest-xdist']
 
 [tool.setuptools.packages.find]
 include = ["optree", "optree.*"]

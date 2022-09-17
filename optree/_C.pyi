@@ -62,5 +62,5 @@ class PyTreeDef:
 def register_node(
     nodetype: Type[CustomTreeNode[T]],
     to_iterable: Callable[[CustomTreeNode[T]], Tuple[Children[T], AuxData]],
-    from_iterable: Callable[[AuxData, Children[T]], PyTree[T]],
+    from_iterable: Callable[[AuxData, Children[T]], CustomTreeNode[T]],
 ) -> None: ...
