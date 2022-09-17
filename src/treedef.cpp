@@ -700,7 +700,7 @@ py::object PyTreeDef::ToPickleable() const {
                                      node.num_leaves,
                                      node.num_nodes));
     }
-    return result;
+    return std::move(result);
 }
 
 PyTreeDef PyTreeDef::FromPickleable(py::object pickleable) {
