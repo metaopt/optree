@@ -35,19 +35,21 @@ from optree.registry import (
     AttributeKeyPathEntry,
     GetitemKeyPathEntry,
     Partial,
-    PyTreeDef,
     register_keypaths,
     register_pytree_node,
     register_pytree_node_class,
 )
+from optree.typing import CustomTreeNode, PyTree, PyTreeDef
 from optree.version import __version__
 
 
 __all__ = [
+    'PyTreeDef',
+    'PyTree',
+    'CustomTreeNode',
     'AttributeKeyPathEntry',
     'GetitemKeyPathEntry',
     'Partial',
-    'PyTreeDef',
     'all_leaves',
     'build_tree',
     'register_keypaths',
