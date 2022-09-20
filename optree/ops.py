@@ -212,7 +212,7 @@ def tree_transpose(
     outer_treedef: PyTreeDef,
     inner_treedef: PyTreeDef,
     pytree_to_transpose: PyTree[T],
-) -> PyTree[T]:
+) -> PyTree[PyTree[T]]:
     # pylint: disable-next=line-too-long
     """Transform a tree having tree structure (outer, inner) into one having structure (inner, outer)."""
     flat, treedef = tree_flatten(pytree_to_transpose)
@@ -228,7 +228,7 @@ def tree_transpose(
     ]  # fmt: skip
     transposed_lol = zip(*lol)
     subtrees = map(partial(tree_unflatten, outer_treedef), transposed_lol)
-    return tree_unflatten(inner_treedef, subtrees)
+    return tree_unflatten(inner_treedef, cast(Iterable[PyTree[T]], subtrees))
 
 
 def _replace_nones(sentinel: Any, tree: Optional[PyTree[T]]) -> PyTree[T]:
@@ -244,9 +244,8 @@ def _replace_nones(sentinel: Any, tree: Optional[PyTree[T]]) -> PyTree[T]:
 
     if is_namedtuple(tree):
         # handle namedtuple as a special case, based on heuristic
-        tree = cast(NamedTuple, tree)
-        proc_children = [_replace_nones(sentinel, child) for child in tree]
-        return type(tree)(*proc_children)  # type: ignore[arg-type]
+        proc_children = [_replace_nones(sentinel, child) for child in cast(NamedTuple, tree)]
+        return type(tree)(*proc_children)
 
     return tree
 
@@ -255,31 +254,45 @@ __INITIAL_MISSING: T = object()  # type: ignore[valid-type]
 
 
 @overload
-def tree_reduce(func: Callable[[T, T], T], tree: PyTree[T]) -> T:
+def tree_reduce(
+    func: Callable[[T, T], T],
+    tree: PyTree[T],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+) -> T:
     ...
 
 
 @overload
-def tree_reduce(func: Callable[[T, T], T], tree: PyTree[T], initial: T) -> T:
+def tree_reduce(
+    func: Callable[[T, T], T],
+    tree: PyTree[T],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    initial: T = __INITIAL_MISSING,
+) -> T:
     ...
 
 
-def tree_reduce(func: Callable[[T, T], T], tree: PyTree[T], initial: T = __INITIAL_MISSING) -> T:
+def tree_reduce(
+    func: Callable[[T, T], T],
+    tree: PyTree[T],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    initial: T = __INITIAL_MISSING,
+) -> T:
     """Traversals through a pytree and reduces the leaves."""
     if initial is __INITIAL_MISSING:
-        return functools.reduce(func, tree_leaves(tree))
+        return functools.reduce(func, tree_leaves(tree, is_leaf))
 
-    return functools.reduce(func, tree_leaves(tree), initial)
+    return functools.reduce(func, tree_leaves(tree, is_leaf), initial)
 
 
-def tree_all(tree: PyTree[T]) -> bool:
+def tree_all(tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None) -> bool:
     """Test whether all leaves in the tree are true."""
-    return all(tree_leaves(tree))
+    return all(tree_leaves(tree, is_leaf))  # type: ignore[arg-type]
 
 
-def tree_any(tree: PyTree[T]) -> bool:
+def tree_any(tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None) -> bool:
     """Test whether any leaves in the tree are true."""
-    return any(tree_leaves(tree))
+    return any(tree_leaves(tree, is_leaf))  # type: ignore[arg-type]
 
 
 def broadcast_prefix(
@@ -398,7 +411,7 @@ def _prefix_error(
     assert keys == keys_, f'equal pytree nodes gave differing keys: {keys} and {keys_}'
     # pylint: disable-next=invalid-name
     for k, t1, t2 in zip(keys, prefix_tree_children, full_tree_children):
-        yield from _prefix_error(key_path + k, t1, t2)
+        yield from _prefix_error(key_path + k, cast(PyTree[T], t1), cast(PyTree[S], t2))
 
 
 def _child_keys(tree: PyTree[T]) -> List[KeyPathEntry]:
