@@ -69,10 +69,11 @@ include = ["optree", "optree.*"]
 # Wheel builder ################################################################
 # Reference: https://cibuildwheel.readthedocs.io
 [tool.cibuildwheel]
+archs = ["auto64"]
 build-frontend = "build"
 build-verbosity = 3
 container-engine = "docker"
-test-command = """python -c 'import optree'"""
+test-command = """python -c \"import optree\""""
 
 # Linter tools #################################################################
 

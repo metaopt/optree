@@ -99,7 +99,7 @@ if(NOT DEFINED PYTHON_INCLUDE_DIR)
     message(STATUS "Auto detecting Python include directory...")
     system(
         STRIP OUTPUT_VARIABLE PYTHON_INCLUDE_DIR
-        COMMAND "${PYTHON_EXECUTABLE}" -c "print(__import__('sysconfig').get_path('include'))"
+        COMMAND "${PYTHON_EXECUTABLE}" -c "print(__import__('sysconfig').get_path('platinclude'))"
     )
 endif()
 

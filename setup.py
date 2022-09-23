@@ -2,6 +2,7 @@ import os
 import pathlib
 import shutil
 import sys
+import sysconfig
 
 from setuptools import setup
 
@@ -46,15 +47,13 @@ class cmake_build_ext(build_ext):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
         print(self.get_ext_fullpath(ext.name))
 
-        PYTHON_INCLUDE_DIR = ';'.join(self.include_dirs)
-
         cmake_args = [
             f'-DCMAKE_BUILD_TYPE={config}',
             f'-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{config.upper()}={extdir}',
             f'-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_{config.upper()}={self.build_temp}',
             f'-DPYTHON_EXECUTABLE={sys.executable}',
             f'-DPYBIND11_CMAKE_DIR={pybind11.get_cmake_dir()}',
-            f'-DPYTHON_INCLUDE_DIR={PYTHON_INCLUDE_DIR}',
+            f'-DPYTHON_INCLUDE_DIR={sysconfig.get_path("platinclude")}',
         ]
 
         build_args = ['--config', config]
