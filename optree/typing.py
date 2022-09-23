@@ -127,7 +127,6 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
     """Generic PyTree type.
 
     Examples:
-
         >>> import torch
         >>> from optree.typing import PyTree
         >>> TensorTree = PyTree[torch.Tensor]
@@ -143,6 +142,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
 
     @_tp_cache
     def __class_getitem__(cls, item: Union[T, Tuple[T]]):
+        """Instantiate a PyTree type with the given item type."""
         if not isinstance(item, tuple):
             item = (item,)
         if len(item) != 1:

@@ -677,7 +677,8 @@ std::string PyTreeDef::ToString() const {
                     }
                 }
 
-                representation = absl::StrFormat("CustomTreeNode(%s%s, [%s])", kind, data, children);
+                representation =
+                    absl::StrFormat("CustomTreeNode(%s%s, [%s])", kind, data, children);
                 break;
             }
         }
