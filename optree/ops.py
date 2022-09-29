@@ -19,7 +19,6 @@
 import difflib
 import functools
 import textwrap
-from functools import partial
 from typing import Any, Callable, Optional, cast, overload
 
 import optree._C as _C
@@ -198,9 +197,9 @@ def tree_map(
         [[5, 7, 9], [6, 1, 2]]
     """
     leaves, treedef = tree_flatten(tree, is_leaf)
-    # pylint: disable-next=redefined-outer-name
-    all_leaves = [leaves] + [treedef.flatten_up_to(r) for r in rest]
-    return treedef.unflatten(func(*args) for args in zip(*all_leaves))
+    arglists = [leaves] + [treedef.flatten_up_to(r) for r in rest]
+    results = map(func, *arglists)
+    return treedef.unflatten(results)
 
 
 def build_tree(treedef: PyTreeDef, subtrees: Iterable[PyTree[T]]) -> PyTree[T]:
@@ -215,19 +214,19 @@ def tree_transpose(
 ) -> PyTree[PyTree[T]]:
     # pylint: disable-next=line-too-long
     """Transform a tree having tree structure (outer, inner) into one having structure (inner, outer)."""
-    flat, treedef = tree_flatten(pytree_to_transpose)
+    flattened, treedef = tree_flatten(pytree_to_transpose)
     inner_size = inner_treedef.num_leaves
     outer_size = outer_treedef.num_leaves
     if treedef.num_leaves != (inner_size * outer_size):
         expected_treedef = outer_treedef.compose(inner_treedef)
         raise TypeError(f'Mismatch\n{treedef}\n != \n{expected_treedef}')
-    iter_flat = iter(flat)
+    iter_flat = iter(flattened)
     lol = [
         [next(iter_flat) for _ in range(inner_size)]
         for __ in range(outer_size)
     ]  # fmt: skip
     transposed_lol = zip(*lol)
-    subtrees = map(partial(tree_unflatten, outer_treedef), transposed_lol)
+    subtrees = map(functools.partial(tree_unflatten, outer_treedef), transposed_lol)
     return tree_unflatten(inner_treedef, cast(Iterable[PyTree[T]], subtrees))
 
 

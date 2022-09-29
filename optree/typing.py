@@ -59,24 +59,24 @@ __all__ = [
 
 # pylint: disable=unused-import
 try:
-    from typing_extensions import NamedTuple  # type: ignore[attr-defined]
+    from typing_extensions import NamedTuple  # type: ignore[attr-defined,misc]
 except ImportError:
-    from typing import NamedTuple  # type: ignore[assignment]
+    from typing import NamedTuple  # type: ignore[assignment,misc]
 
 try:
-    from typing import OrderedDict  # type: ignore[attr-defined]
+    from typing import OrderedDict  # type: ignore[attr-defined,misc]
 except ImportError:
-    from typing_extensions import OrderedDict  # type: ignore[assignment]
+    from typing_extensions import OrderedDict  # type: ignore[assignment,misc]
 
 try:
-    from typing import DefaultDict  # type: ignore[attr-defined]
+    from typing import DefaultDict  # type: ignore[attr-defined,misc]
 except ImportError:
-    from typing_extensions import DefaultDict  # type: ignore[assignment]
+    from typing_extensions import DefaultDict  # type: ignore[assignment,misc]
 
 try:
-    from typing import Protocol  # type: ignore[attr-defined]
+    from typing import Protocol  # type: ignore[attr-defined,misc]
 except ImportError:
-    from typing_extensions import Protocol  # type: ignore[assignment]
+    from typing_extensions import Protocol  # type: ignore[assignment,misc]
 # pylint: enable=unused-import
 
 PyTreeDef = _C.PyTreeDef

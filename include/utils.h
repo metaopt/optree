@@ -23,6 +23,8 @@ limitations under the License.
 
 #pragma once
 
+#include <pybind11/pybind11.h>
+
 #include <string>
 
 #define CHECK(condition)                                                              \
@@ -31,3 +33,10 @@ limitations under the License.
                              std::to_string(__LINE__))
 
 #define DCHECK(condition) CHECK(condition)
+
+namespace pybind11 {
+const module_ collections_module = module_::import("collections");
+const object OrderedDict = collections_module.attr("OrderedDict");
+const object DefaultDict = collections_module.attr("defaultdict");
+const object Deque = collections_module.attr("deque");
+}  // namespace pybind11

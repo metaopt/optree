@@ -91,7 +91,6 @@ class PyTreeDef {
 
     // Given a tree of iterables with the same node/leaf structure as this PyTree, build the
     // corresponding PyTree.
-    // TODO(phawkins): use flattening everywhere instead and delete this method.
     py::object FromIterableTree(py::handle subtrees) const;
 
     Py_ssize_t num_leaves() const;

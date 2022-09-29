@@ -16,8 +16,8 @@
 
 # pylint: disable=missing-class-docstring,missing-function-docstring
 
-import collections
 import functools
+from collections import OrderedDict, defaultdict, deque
 from operator import methodcaller
 from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Tuple, Type
 
@@ -138,14 +138,19 @@ _nodetype_registry: Dict[Type, PyTreeNodeRegistryEntry] = {
     ),
 }
 register_pytree_node(
-    collections.OrderedDict,  # type: ignore[arg-type]
+    OrderedDict,  # type: ignore[arg-type]
     lambda od: (tuple(od.values()), tuple(od.keys())),  # type: ignore[attr-defined]
-    lambda keys, values: collections.OrderedDict(safe_zip(keys, values)),  # type: ignore[arg-type,return-value]
+    lambda keys, values: OrderedDict(safe_zip(keys, values)),  # type: ignore[arg-type,return-value]
 )
 register_pytree_node(
-    collections.defaultdict,  # type: ignore[arg-type]
+    defaultdict,  # type: ignore[arg-type]
     lambda dd: (tuple(dd.values()), (dd.default_factory, tuple(dd.keys()))),  # type: ignore[attr-defined]
-    lambda aux, values: collections.defaultdict(aux[0], safe_zip(aux[1], values)),  # type: ignore[arg-type,return-value,index]
+    lambda aux, values: defaultdict(aux[0], safe_zip(aux[1], values)),  # type: ignore[arg-type,return-value,index]
+)
+register_pytree_node(
+    deque,  # type: ignore[arg-type]
+    lambda d: (list(d), None),  # type: ignore[call-overload]
+    lambda _, d: deque(d),  # type: ignore[arg-type,return-value,call-overload]
 )
 
 register_pytree_node.get: Callable[[Type[CustomTreeNode[T]]], PyTreeNodeRegistryEntry] = _nodetype_registry.get  # type: ignore[attr-defined,misc]

@@ -558,22 +558,22 @@ py::object PyTreeDef::FromIterableTree(py::handle subtrees) const {
 }
 
 std::unique_ptr<PyTreeDef> PyTreeDef::Compose(const PyTreeDef& inner_treedef) const {
-    auto out = std::make_unique<PyTreeDef>();
+    auto outer_treedef = std::make_unique<PyTreeDef>();
     for (const Node& n : traversal) {
         if (n.kind == PyTreeKind::Leaf) {
-            absl::c_copy(inner_treedef.traversal, std::back_inserter(out->traversal));
+            absl::c_copy(inner_treedef.traversal, std::back_inserter(outer_treedef->traversal));
         } else {
-            out->traversal.push_back(n);
+            outer_treedef->traversal.push_back(n);
         }
     }
+
     const auto& root = traversal.back();
     const auto& inner_root = inner_treedef.traversal.back();
-    // TODO(tomhennigan): This should update all nodes in the traversal.
-    auto& out_root = out->traversal.back();
-    out_root.num_nodes =
+    auto& outer_root = outer_treedef->traversal.back();
+    outer_root.num_nodes =
         (root.num_nodes - root.num_leaves) + (inner_root.num_nodes * root.num_leaves);
-    out_root.num_leaves *= inner_root.num_leaves;
-    return out;
+    outer_root.num_leaves *= inner_root.num_leaves;
+    return outer_treedef;
 }
 
 /*static*/ std::unique_ptr<PyTreeDef> PyTreeDef::Tuple(const std::vector<PyTreeDef>& treedefs) {
@@ -620,7 +620,7 @@ std::vector<std::unique_ptr<PyTreeDef>> PyTreeDef::Children() const {
 std::string PyTreeDef::ToString() const {
     std::vector<std::string> agenda;
     for (const Node& node : traversal) {
-        if ((Py_ssize_t)agenda.size() < node.arity) {
+        if ((ssize_t)agenda.size() < node.arity) {
             throw std::logic_error("Too few elements for container.");
         }
 
@@ -628,19 +628,23 @@ std::string PyTreeDef::ToString() const {
         std::string representation;
         switch (node.kind) {
             case PyTreeKind::Leaf:
-                agenda.push_back("*");
+                agenda.emplace_back("*");
                 continue;
+
             case PyTreeKind::None:
                 representation = "None";
                 break;
+
             case PyTreeKind::Tuple:
                 // Tuples with only one element must have a trailing comma.
                 if (node.arity == 1) children += ",";
                 representation = absl::StrCat("(", children, ")");
                 break;
+
             case PyTreeKind::List:
                 representation = absl::StrCat("[", children, "]");
                 break;
+
             case PyTreeKind::Dict: {
                 if ((Py_ssize_t)py::len(node.node_data) != node.arity) {
                     throw std::logic_error("Number of keys and entries does not match.");
@@ -651,37 +655,88 @@ std::string PyTreeDef::ToString() const {
                 for (const py::handle& key : node.node_data) {
                     absl::StrAppendFormat(
                         &representation, "%s%s: %s", separator, py::repr(key), *child_iter);
-                    child_iter++;
+                    ++child_iter;
                     separator = ", ";
                 }
                 representation += "}";
                 break;
             }
 
-            case PyTreeKind::NamedTuple:
+            case PyTreeKind::NamedTuple: {
+                py::object type = node.node_data;
+                py::tuple fields = py::reinterpret_borrow<py::tuple>(py::getattr(type, "_fields"));
+                if ((Py_ssize_t)py::len(fields) != node.arity) {
+                    throw std::logic_error("Number of fields and entries does not match.");
+                }
+                std::string kind = static_cast<std::string>(py::str(py::getattr(type, "__name__")));
+                representation = absl::StrFormat("%s(", kind);
+                std::string separator;
+                auto child_iter = agenda.end() - node.arity;
+                for (const py::handle& field : fields) {
+                    absl::StrAppendFormat(
+                        &representation,
+                        "%s%s=%s",
+                        separator,
+                        static_cast<std::string>(py::reinterpret_borrow<py::str>(field)),
+                        *child_iter);
+                    ++child_iter;
+                    separator = ", ";
+                }
+                representation += ")";
+                break;
+            }
+
             case PyTreeKind::Custom: {
-                std::string kind;
-                std::string data;
-                if (node.kind == PyTreeKind::NamedTuple) {
-                    kind = "namedtuple";
-                    if (node.node_data) {
-                        // Node data for named tuples is the type.
-                        data = absl::StrFormat("[%s]",
-                                               py::str(py::getattr(node.node_data, "__name__")));
+                py::object type = node.custom->type;
+                std::string kind = static_cast<std::string>(py::str(py::getattr(type, "__name__")));
+                if (type.is(py::OrderedDict)) {
+                    representation = absl::StrFormat("%s([", kind);
+                    std::string separator;
+                    auto child_iter = agenda.end() - node.arity;
+                    for (const py::handle& key : node.node_data) {
+                        absl::StrAppendFormat(
+                            &representation, "%s(%s, %s)", separator, py::repr(key), *child_iter);
+                        ++child_iter;
+                        separator = ", ";
                     }
+                    representation += "])";
+                } else if (type.is(py::DefaultDict)) {
+                    if ((Py_ssize_t)py::len(node.node_data) != 2) {
+                        throw std::logic_error("Number of auxiliary data mismatch.");
+                    }
+                    py::tuple aux_data = py::reinterpret_borrow<py::tuple>(node.node_data);
+                    py::object factory = aux_data[0];
+                    py::tuple keys = py::reinterpret_borrow<py::tuple>(aux_data[1]);
+                    if ((Py_ssize_t)py::len(keys) != node.arity) {
+                        throw std::logic_error("Number of keys and entries does not match.");
+                    }
+                    representation = absl::StrFormat("%s(%s, {", kind, py::repr(factory));
+                    std::string separator;
+                    auto child_iter = agenda.end() - node.arity;
+                    for (const py::handle& key : keys) {
+                        absl::StrAppendFormat(
+                            &representation, "%s%s: %s", separator, py::repr(key), *child_iter);
+                        ++child_iter;
+                        separator = ", ";
+                    }
+                    representation += "})";
+                } else if (type.is(py::Deque)) {
+                    representation = absl::StrFormat("%s([%s])", kind, children);
                 } else {
-                    kind = static_cast<std::string>(
-                        py::str(py::getattr(node.custom->type, "__name__")));
+                    std::string data;
                     if (node.node_data) {
                         data = absl::StrFormat("[%s]", py::str(node.node_data));
                     }
+                    representation =
+                        absl::StrFormat("CustomTreeNode(%s%s, [%s])", kind, data, children);
                 }
-
-                representation =
-                    absl::StrFormat("CustomTreeNode(%s%s, [%s])", kind, data, children);
                 break;
             }
+
+            default:
+                throw std::logic_error("Unreachable code.");
         }
+
         agenda.erase(agenda.end() - node.arity, agenda.end());
         agenda.push_back(std::move(representation));
     }
