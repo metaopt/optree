@@ -2,10 +2,6 @@
 	path = third_party/pybind11
 	url = git@github.com:pybind/pybind11.git
 	shallow = true
-[submodule "third_party/pybind11_abseil"]
-	path = third_party/pybind11_abseil
-	url = git@github.com:pybind/pybind11_abseil.git
-	shallow = true
 [submodule "third_party/abseil-cpp"]
 	path = third_party/abseil-cpp
 	url = git@github.com:abseil/abseil-cpp.git

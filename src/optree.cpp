@@ -19,6 +19,7 @@ limitations under the License.
 // binding code and the idiomatic way to emit Python exceptions.
 
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 #include "include/registry.h"
 #include "include/treedef.h"

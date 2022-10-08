@@ -26,7 +26,6 @@ limitations under the License.
 #include <absl/container/flat_hash_map.h>
 #include <absl/hash/hash.h>
 #include <pybind11/pybind11.h>
-#include <pybind11_abseil/absl_casters.h>
 
 #include <memory>
 
