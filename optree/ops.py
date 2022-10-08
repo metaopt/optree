@@ -37,7 +37,7 @@ from optree.typing import (
     List,
     NamedTuple,
     PyTree,
-    PyTreeDef,
+    PyTreeSpec,
     S,
     T,
     Tuple,
@@ -48,7 +48,6 @@ from optree.typing import (
 
 __all__ = [
     'all_leaves',
-    'build_tree',
     'tree_all',
     'tree_any',
     'tree_flatten',
@@ -58,36 +57,36 @@ __all__ = [
     'tree_structure',
     'tree_transpose',
     'tree_unflatten',
-    'treedef_children',
-    'treedef_is_leaf',
-    'treedef_is_strict_leaf',
-    'treedef_tuple',
+    'treespec_children',
+    'treespec_is_leaf',
+    'treespec_is_strict_leaf',
+    'treespec_tuple',
 ]
 
 
-def treedef_children(treedef: PyTreeDef) -> List[PyTreeDef]:
-    """Return a list of treedefs for the children of a treedef."""
-    return treedef.children()
+def treespec_children(treespec: PyTreeSpec) -> List[PyTreeSpec]:
+    """Return a list of treespecs for the children of a treespec."""
+    return treespec.children()
 
 
-def treedef_is_leaf(treedef: PyTreeDef) -> bool:
-    """Return whether the treedef is a leaf."""
-    return treedef.num_nodes == 1
+def treespec_is_leaf(treespec: PyTreeSpec) -> bool:
+    """Return whether the treespec is a leaf."""
+    return treespec.num_nodes == 1
 
 
-def treedef_is_strict_leaf(treedef: PyTreeDef) -> bool:
-    """Return whether the treedef is a strict leaf."""
-    return treedef.num_nodes == 1 and treedef.num_leaves == 1
+def treespec_is_strict_leaf(treespec: PyTreeSpec) -> bool:
+    """Return whether the treespec is a strict leaf."""
+    return treespec.num_nodes == 1 and treespec.num_leaves == 1
 
 
-def treedef_tuple(treedefs: Iterable[PyTreeDef]) -> PyTreeDef:
-    """Make a tuple treedef from a list of child treedefs."""
-    return _C.tuple(list(treedefs))
+def treespec_tuple(treespecs: Iterable[PyTreeSpec]) -> PyTreeSpec:
+    """Make a tuple treespec from a list of child treespecs."""
+    return _C.tuple(list(treespecs))
 
 
 def tree_flatten(
     tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None
-) -> Tuple[List[T], PyTreeDef]:
+) -> Tuple[List[T], PyTreeSpec]:
     """Flatten a pytree.
 
     The flattening order (i.e. the order of elements in the output list)
@@ -103,26 +102,26 @@ def tree_flatten(
 
     Returns:
         A pair where the first element is a list of leaf values and the second
-        element is a treedef representing the structure of the flattened tree.
+        element is a treespec representing the structure of the flattened tree.
     """
     return _C.flatten(tree, is_leaf)
 
 
-def tree_unflatten(treedef: PyTreeDef, leaves: Iterable[T]) -> PyTree[T]:
-    """Reconstructs a pytree from the treedef and the leaves.
+def tree_unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
+    """Reconstructs a pytree from the treespec and the leaves.
 
     The inverse of :func:`tree_flatten`.
 
     Args:
-        treedef: the treedef to reconstruct
+        treespec: the treespec to reconstruct
         leaves: the list of leaves to use for reconstruction. The list must match
-            the leaves of the treedef.
+            the leaves of the treespec.
 
     Returns:
         The reconstructed pytree, containing the ``leaves`` placed in the structure
-        described by ``treedef``.
+        described by ``treespec``.
     """
-    return treedef.unflatten(leaves)
+    return treespec.unflatten(leaves)
 
 
 def tree_leaves(tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None) -> List[T]:
@@ -130,8 +129,8 @@ def tree_leaves(tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None) 
     return _C.flatten(tree, is_leaf)[0]
 
 
-def tree_structure(tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None) -> PyTreeDef:
-    """Get the treedef for a pytree."""
+def tree_structure(tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None) -> PyTreeSpec:
+    """Get the treespec for a pytree."""
     return _C.flatten(tree, is_leaf)[1]
 
 
@@ -196,38 +195,32 @@ def tree_map(
         >>> optree.tree_map(lambda x, y: [x] + y, [5, 6], [[7, 9], [1, 2]])
         [[5, 7, 9], [6, 1, 2]]
     """
-    leaves, treedef = tree_flatten(tree, is_leaf)
-    arglists = [leaves] + [treedef.flatten_up_to(r) for r in rest]
+    leaves, treespec = tree_flatten(tree, is_leaf)
+    arglists = [leaves] + [treespec.flatten_up_to(r) for r in rest]
     results = map(func, *arglists)
-    return treedef.unflatten(results)
-
-
-def build_tree(treedef: PyTreeDef, subtrees: Iterable[PyTree[T]]) -> PyTree[T]:
-    """Build a pytree from a treedef and a list of subtrees."""
-    return treedef.from_iterable_tree(subtrees)
+    return treespec.unflatten(results)
 
 
 def tree_transpose(
-    outer_treedef: PyTreeDef,
-    inner_treedef: PyTreeDef,
-    pytree_to_transpose: PyTree[T],
+    outer_treespec: PyTreeSpec,
+    inner_treespec: PyTreeSpec,
+    tree: PyTree[T],
 ) -> PyTree[PyTree[T]]:
-    # pylint: disable-next=line-too-long
     """Transform a tree having tree structure (outer, inner) into one having structure (inner, outer)."""
-    flattened, treedef = tree_flatten(pytree_to_transpose)
-    inner_size = inner_treedef.num_leaves
-    outer_size = outer_treedef.num_leaves
-    if treedef.num_leaves != (inner_size * outer_size):
-        expected_treedef = outer_treedef.compose(inner_treedef)
-        raise TypeError(f'Mismatch\n{treedef}\n != \n{expected_treedef}')
-    iter_flat = iter(flattened)
-    lol = [
-        [next(iter_flat) for _ in range(inner_size)]
+    leaves, treespec = tree_flatten(tree)
+    inner_size = inner_treespec.num_leaves
+    outer_size = outer_treespec.num_leaves
+    if treespec.num_leaves != inner_size * outer_size:
+        expected_treespec = outer_treespec.compose(inner_treespec)
+        raise TypeError(f'Tree structure mismatch:\n{treespec}\n != \n{expected_treespec}')
+    iter_leaves = iter(leaves)
+    grouped = [
+        [next(iter_leaves) for _ in range(inner_size)]
         for __ in range(outer_size)
     ]  # fmt: skip
-    transposed_lol = zip(*lol)
-    subtrees = map(functools.partial(tree_unflatten, outer_treedef), transposed_lol)
-    return tree_unflatten(inner_treedef, cast(Iterable[PyTree[T]], subtrees))
+    transposed = zip(*grouped)
+    subtrees = map(functools.partial(tree_unflatten, outer_treespec), transposed)
+    return tree_unflatten(inner_treespec, cast(Iterable[PyTree[T]], subtrees))
 
 
 def _replace_nones(sentinel: Any, tree: Optional[PyTree[T]]) -> PyTree[T]:
@@ -299,7 +292,6 @@ def broadcast_prefix(
     full_tree: PyTree[S],
     is_leaf: Optional[Callable[[T], bool]] = None,
 ) -> List[T]:
-    # pylint: disable-next=line-too-long
     """Return a list of broadcasted leaves in ``prefix_tree`` to match the number of leaves in ``full_tree``."""
     # If prefix_tree is not a tree prefix of full_tree, this code can raise a
     # ValueError; use prefix_errors to find disagreements and raise more precise
@@ -346,7 +338,7 @@ def _prefix_error(
     is_leaf: Optional[Callable[[T], bool]] = None,
 ) -> Iterable[Callable[[str], ValueError]]:
     # A leaf is a valid prefix of any tree:
-    if treedef_is_strict_leaf(tree_structure(prefix_tree, is_leaf=is_leaf)):
+    if treespec_is_strict_leaf(tree_structure(prefix_tree, is_leaf=is_leaf)):
         return
 
     # The subtrees may disagree because their roots are of different types:
@@ -416,7 +408,7 @@ def _prefix_error(
 def _child_keys(tree: PyTree[T]) -> List[KeyPathEntry]:
     # pylint: disable-next=import-outside-toplevel
 
-    assert not treedef_is_strict_leaf(tree_structure(tree))
+    assert not treespec_is_strict_leaf(tree_structure(tree))
 
     handler = register_keypaths.get(type(tree))  # type: ignore[attr-defined]
     if handler:
@@ -426,5 +418,5 @@ def _child_keys(tree: PyTree[T]) -> List[KeyPathEntry]:
         # handle namedtuple as a special case, based on heuristic
         return list(map(AttributeKeyPathEntry, cast(NamedTuple, tree)._fields))
 
-    num_children = len(treedef_children(tree_structure(tree)))
+    num_children = len(treespec_children(tree_structure(tree)))
     return list(map(FlattenedKeyPathEntry, range(num_children)))

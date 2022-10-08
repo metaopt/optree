@@ -86,6 +86,7 @@ target-version = ["py36", "py37", "py38", "py39", "py310"]
 [tool.isort]
 profile = "black"
 src_paths = ["optree", "tests"]
+extra_standard_library = ["typing_extensions"]
 indent = 4
 line_length = 100
 lines_after_imports = 2

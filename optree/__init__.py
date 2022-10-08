@@ -16,7 +16,6 @@
 
 from optree.ops import (
     all_leaves,
-    build_tree,
     tree_all,
     tree_any,
     tree_flatten,
@@ -26,10 +25,10 @@ from optree.ops import (
     tree_structure,
     tree_transpose,
     tree_unflatten,
-    treedef_children,
-    treedef_is_leaf,
-    treedef_is_strict_leaf,
-    treedef_tuple,
+    treespec_children,
+    treespec_is_leaf,
+    treespec_is_strict_leaf,
+    treespec_tuple,
 )
 from optree.registry import (
     AttributeKeyPathEntry,
@@ -39,11 +38,12 @@ from optree.registry import (
     register_pytree_node,
     register_pytree_node_class,
 )
-from optree.typing import CustomTreeNode, PyTree, PyTreeDef
+from optree.typing import CustomTreeNode, PyTree, PyTreeDef, PyTreeSpec
 from optree.version import __version__
 
 
 __all__ = [
+    'PyTreeSpec',
     'PyTreeDef',
     'PyTree',
     'CustomTreeNode',
@@ -51,7 +51,6 @@ __all__ = [
     'GetitemKeyPathEntry',
     'Partial',
     'all_leaves',
-    'build_tree',
     'register_keypaths',
     'register_pytree_node',
     'register_pytree_node_class',
@@ -64,8 +63,8 @@ __all__ = [
     'tree_structure',
     'tree_transpose',
     'tree_unflatten',
-    'treedef_children',
-    'treedef_is_leaf',
-    'treedef_is_strict_leaf',
-    'treedef_tuple',
+    'treespec_children',
+    'treespec_is_leaf',
+    'treespec_is_strict_leaf',
+    'treespec_tuple',
 ]

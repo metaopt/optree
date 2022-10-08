@@ -1,8 +1,8 @@
 PyTree
 pytree
 pytrees
-treedef
-treedefs
+treespec
+treespecs
 subtree
 subtrees
 OpTree

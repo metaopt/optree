@@ -22,54 +22,56 @@ limitations under the License.
 #include <pybind11/stl.h>
 
 #include "include/registry.h"
-#include "include/treedef.h"
+#include "include/treespec.h"
 
 namespace optree {
 
-namespace py = pybind11;
-
 void BuildModule(py::module& mod) {  // NOLINT
     mod.def(
-        "flatten", &PyTreeDef::Flatten, py::arg("tree"), py::arg("leaf_predicate") = std::nullopt);
-    mod.def("tuple", &PyTreeDef::Tuple, py::arg("treedefs"));
-    mod.def("all_leaves", &PyTreeDef::AllLeaves, py::arg("iterable"));
+        "flatten", &PyTreeSpec::Flatten, py::arg("tree"), py::arg("leaf_predicate") = std::nullopt);
+    mod.def("all_leaves", &PyTreeSpec::AllLeaves, py::arg("iterable"));
+    mod.def("tuple", &PyTreeSpec::Tuple, py::arg("treespecs"));
 
-    py::class_<PyTreeDef>(mod, "PyTreeDef")
-        .def_property_readonly("num_leaves", &PyTreeDef::num_leaves)
-        .def_property_readonly("num_nodes", &PyTreeDef::num_nodes)
+    py::class_<PyTreeSpec>(mod, "PyTreeSpec")
+        .def_property_readonly("num_leaves", &PyTreeSpec::num_leaves)
+        .def_property_readonly("num_nodes", &PyTreeSpec::num_nodes)
         .def("unflatten",
-             static_cast<py::object (PyTreeDef::*)(py::iterable leaves) const>(
-                 &PyTreeDef::Unflatten),
+             static_cast<py::object (PyTreeSpec::*)(py::iterable leaves) const>(
+                 &PyTreeSpec::Unflatten),
              py::arg("leaves"))
-        .def("flatten_up_to", &PyTreeDef::FlattenUpTo, py::arg("full_trees"))
-        .def("compose", &PyTreeDef::Compose, py::arg("inner_treedef"))
+        .def("flatten_up_to", &PyTreeSpec::FlattenUpTo, py::arg("full_trees"))
+        .def("compose", &PyTreeSpec::Compose, py::arg("inner_treespec"))
         .def("walk",
-             &PyTreeDef::Walk,
+             &PyTreeSpec::Walk,
              "Walk PyTree, calling f_node(node, node_data) at nodes, and f_leaf(leaf) at leaves",
              py::arg("f_node"),
              py::arg("f_leaf"),
              py::arg("leaves"))
-        .def("from_iterable_tree", &PyTreeDef::FromIterableTree, py::arg("subtrees"))
-        .def("children", &PyTreeDef::Children)
-        .def("__repr__", &PyTreeDef::ToString)
+        .def("children", &PyTreeSpec::Children)
+        .def("__str__", &PyTreeSpec::ToString)
+        .def("__repr__", &PyTreeSpec::ToString)
         .def(
             "__eq__",
-            [](const PyTreeDef& a, const PyTreeDef& b) { return a == b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a == b; },
             py::is_operator(),
             py::arg("other"))
         .def(
             "__ne__",
-            [](const PyTreeDef& a, const PyTreeDef& b) { return a != b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a != b; },
             py::is_operator(),
             py::arg("other"))
-        .def("__hash__", [](const PyTreeDef& t) { return absl::HashOf(t); })
-        .def(py::pickle([](const PyTreeDef& t) { return t.ToPickleable(); },
-                        [](py::object o) { return PyTreeDef::FromPickleable(o); }));
+        .def("__hash__", [](const PyTreeSpec& t) { return absl::HashOf(t); })
+        .def(py::pickle([](const PyTreeSpec& t) { return t.ToPicklable(); },
+                        [](py::object o) { return PyTreeSpec::FromPicklable(o); }));
 
-    mod.def("register_node",
-            [](py::object type, py::function to_iterable, py::function from_iterable) {
-                return PyTreeTypeRegistry::Register(type, to_iterable, from_iterable);
-            });
+    mod.def(
+        "register_node",
+        [](py::object type, py::function to_iterable, py::function from_iterable) {
+            return PyTreeTypeRegistry::Register(type, to_iterable, from_iterable);
+        },
+        py::arg("type"),
+        py::arg("to_iterable"),
+        py::arg("from_iterable"));
 }
 
 }  // namespace optree

@@ -29,9 +29,9 @@ limitations under the License.
 
 #include <memory>
 
-namespace optree {
+#include "include/utils.h"
 
-namespace py = pybind11;
+namespace optree {
 
 enum class PyTreeKind {
     Leaf,        // An opaque leaf node

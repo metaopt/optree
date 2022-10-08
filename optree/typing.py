@@ -19,23 +19,29 @@
 
 from typing import (
     Any,
+    DefaultDict,
+    Deque,
     Dict,
     ForwardRef,
     Generic,
     Hashable,
     Iterable,
     List,
+    NamedTuple,
     Optional,
     Sequence,
     Tuple,
     TypeVar,
     Union,
 )
+from typing_extensions import OrderedDict  # Generic OrderedDict: Python 3.7.2+
+from typing_extensions import Protocol  # Python 3.8+
 
 from optree import _C
 
 
 __all__ = [
+    'PyTreeSpec',
     'PyTreeDef',
     'PyTree',
     'CustomTreeNode',
@@ -55,31 +61,12 @@ __all__ = [
     'Dict',
     'OrderedDict',
     'DefaultDict',
+    'Deque',
 ]
 
-# pylint: disable=unused-import
-try:
-    from typing_extensions import NamedTuple  # type: ignore[attr-defined,misc]
-except ImportError:
-    from typing import NamedTuple  # type: ignore[assignment,misc]
 
-try:
-    from typing import OrderedDict  # type: ignore[attr-defined,misc]
-except ImportError:
-    from typing_extensions import OrderedDict  # type: ignore[assignment,misc]
-
-try:
-    from typing import DefaultDict  # type: ignore[attr-defined,misc]
-except ImportError:
-    from typing_extensions import DefaultDict  # type: ignore[assignment,misc]
-
-try:
-    from typing import Protocol  # type: ignore[attr-defined,misc]
-except ImportError:
-    from typing_extensions import Protocol  # type: ignore[assignment,misc]
-# pylint: enable=unused-import
-
-PyTreeDef = _C.PyTreeDef
+PyTreeSpec = _C.PyTreeSpec
+PyTreeDef = _C.PyTreeSpec  # alias
 
 T = TypeVar('T')
 S = TypeVar('S')
@@ -136,6 +123,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
             typing.Tuple[ForwardRef('PyTree[torch.Tensor]'), ...],
             typing.List[ForwardRef('PyTree[torch.Tensor]')],
             typing.Dict[typing.Any, ForwardRef('PyTree[torch.Tensor]')],
+            typing.Deque[ForwardRef('PyTree[torch.Tensor]')],
             optree.typing.CustomTreeNode[ForwardRef('PyTree[torch.Tensor]')]
         ]
     """
@@ -175,6 +163,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
             Tuple[recurse_ref, ...],  # type: ignore[valid-type] # Tuple, NamedTuple
             List[recurse_ref],  # type: ignore[valid-type]
             Dict[Any, recurse_ref],  # type: ignore[valid-type] # Dict, OrderedDict, DefaultDict
+            Deque[recurse_ref],  # type: ignore[valid-type]
             CustomTreeNode[recurse_ref],  # type: ignore[valid-type]
         ]
         pytree_alias.__pytree_args__ = item  # type: ignore[attr-defined]

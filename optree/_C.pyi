@@ -16,51 +16,40 @@
 # pylint: disable=all
 # isort: off
 
-from typing import (
-    Callable,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    List,
-    TYPE_CHECKING,
-)
+from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Sequence, Tuple, Type
 
 if TYPE_CHECKING:
-    from optree.typing import T, Children, AuxData, PyTree, T, CustomTreeNode, U
+    from optree.typing import AuxData, Children, CustomTreeNode, PyTree, T, U
 
 version: int
 
 def flatten(
     tree: PyTree[T],
     leaf_predicate: Optional[Callable[[T], bool]] = None,
-) -> Tuple[List[T], 'PyTreeDef']: ...
-def tuple(treedefs: Sequence['PyTreeDef']) -> 'PyTreeDef': ...
+) -> Tuple[List[T], 'PyTreeSpec']: ...
 def all_leaves(iterable: Iterable[T]) -> bool: ...
+def tuple(treespecs: Sequence['PyTreeSpec']) -> 'PyTreeSpec': ...
 
-class PyTreeDef:
+class PyTreeSpec:
     num_nodes: int
     num_leaves: int
     def unflatten(self, leaves: Iterable[T]) -> PyTree[T]: ...
     def flatten_up_to(self, full_tree: PyTree[T]) -> List[PyTree[T]]: ...
-    def compose(self, inner_treedef: 'PyTreeDef') -> 'PyTreeDef': ...
+    def compose(self, inner_treespec: 'PyTreeSpec') -> 'PyTreeSpec': ...
     def walk(
         self,
         f_node: Callable[[Tuple[U, ...], AuxData], U],
         f_leaf: Optional[Callable[[T], U]],
         leaves: Iterable[T],
     ) -> U: ...
-    def from_iterable_tree(self, subtrees: Iterable[PyTree[T]]): ...
-    def children(self) -> List['PyTreeDef']: ...
+    def children(self) -> List['PyTreeSpec']: ...
     def __repr__(self) -> str: ...
     def __eq__(self, other: object) -> bool: ...
     def __ne__(self, other: object) -> bool: ...
     def __hash__(self) -> int: ...
 
 def register_node(
-    nodetype: Type[CustomTreeNode[T]],
+    type: Type[CustomTreeNode[T]],
     to_iterable: Callable[[CustomTreeNode[T]], Tuple[Children[T], AuxData]],
     from_iterable: Callable[[AuxData, Children[T]], CustomTreeNode[T]],
 ) -> None: ...

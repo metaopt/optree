@@ -35,25 +35,24 @@ limitations under the License.
 #include <vector>
 
 #include "include/registry.h"
+#include "include/utils.h"
 
 namespace optree {
 
-namespace py = pybind11;
-
-// A PyTreeDef describes the tree structure of a PyTree. A PyTree is a tree of Python values, where
+// A PyTreeSpec describes the tree structure of a PyTree. A PyTree is a tree of Python values, where
 // the interior nodes are tuples, lists, dictionaries, or user-defined containers, and the leaves
 // are other objects.
-class PyTreeDef {
+class PyTreeSpec {
  private:
     struct Node;
 
  public:
-    PyTreeDef() = default;
+    PyTreeSpec() = default;
 
-    // Flattens a PyTree into a list of leaves and a PyTreeDef.
+    // Flattens a PyTree into a list of leaves and a PyTreeSpec.
     // Returns references to the flattened objects, which might be temporary objects in the case of
     // custom PyType handlers.
-    static std::pair<std::vector<py::object>, std::unique_ptr<PyTreeDef>> Flatten(
+    static std::pair<std::vector<py::object>, std::unique_ptr<PyTreeSpec>> Flatten(
         py::handle tree, std::optional<py::function> leaf_predicate = std::nullopt);
 
     // Recursive helper used to implement Flatten().
@@ -67,38 +66,33 @@ class PyTreeDef {
     // Tests whether the given list is a flat list of leaves.
     static bool AllLeaves(const py::iterable &iterable);
 
-    // Flattens a PyTree up to this PyTreeDef. 'this' must be a tree prefix of the tree-structure of
-    // 'x'.
-    // For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeDef [(*, *), *],
-    // the result is the list of leaves [1, (2, 3), {"foo": 4}].
+    // Flattens a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure
+    // of 'x'. For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeSpec [(*,
+    // *), *], the result is the list of leaves [1, (2, 3), {"foo": 4}].
     py::list FlattenUpTo(py::handle full_tree) const;
 
-    // Returns an unflattened PyTree given an iterable of leaves and a PyTreeDef.
+    // Returns an unflattened PyTree given an iterable of leaves and a PyTreeSpec.
     py::object Unflatten(py::iterable leaves) const;
     py::object Unflatten(absl::Span<const py::object> leaves) const;
 
-    // Composes two PyTreeDefs, replacing the leaves of this tree with copies of `inner`.
-    std::unique_ptr<PyTreeDef> Compose(const PyTreeDef &inner_treedef) const;
+    // Composes two PyTreeSpecs, replacing the leaves of this tree with copies of `inner`.
+    std::unique_ptr<PyTreeSpec> Compose(const PyTreeSpec &inner_treespec) const;
 
-    // Makes a Tuple PyTreeDef out of a vector of PyTreeDefs.
-    static std::unique_ptr<PyTreeDef> Tuple(const std::vector<PyTreeDef> &treedefs);
+    // Makes a Tuple PyTreeSpec out of a vector of PyTreeSpecs.
+    static std::unique_ptr<PyTreeSpec> Tuple(const std::vector<PyTreeSpec> &treespecs);
 
-    std::vector<std::unique_ptr<PyTreeDef>> Children() const;
+    std::vector<std::unique_ptr<PyTreeSpec>> Children() const;
 
     // Maps a function over a PyTree structure, applying f_leaf to each leaf, and
     // f_node(node, node_data) to each container node.
     py::object Walk(const py::function &f_node, py::handle f_leaf, py::iterable leaves) const;
 
-    // Given a tree of iterables with the same node/leaf structure as this PyTree, build the
-    // corresponding PyTree.
-    py::object FromIterableTree(py::handle subtrees) const;
+    ssize_t num_leaves() const;
 
-    Py_ssize_t num_leaves() const;
+    ssize_t num_nodes() const;
 
-    Py_ssize_t num_nodes() const;
-
-    bool operator==(const PyTreeDef &other) const;
-    bool operator!=(const PyTreeDef &other) const;
+    bool operator==(const PyTreeSpec &other) const;
+    bool operator!=(const PyTreeSpec &other) const;
 
     size_t Hash() const;
 
@@ -109,27 +103,27 @@ class PyTreeDef {
     }
 
     template <typename H>
-    friend H AbslHashValue(H h, const PyTreeDef &t) {
+    friend H AbslHashValue(H h, const PyTreeSpec &t) {
         h = H::combine(std::move(h), t.traversal);
         return h;
     }
 
     std::string ToString() const;
 
-    // Transforms the PyTreeDef into a pickleable object.
-    // Used to implement `PyTreeDef.__getstate__`.
-    py::object ToPickleable() const;
+    // Transforms the PyTreeSpec into a picklable object.
+    // Used to implement `PyTreeSpec.__getstate__`.
+    py::object ToPicklable() const;
 
-    // Transforms the object returned by `ToPickleable()` back to PyTreeDef.
-    // Used to implement `PyTreeDef.__setstate__`.
-    static PyTreeDef FromPickleable(py::object pickleable);
+    // Transforms the object returned by `ToPicklable()` back to PyTreeSpec.
+    // Used to implement `PyTreeSpec.__setstate__`.
+    static PyTreeSpec FromPicklable(py::object picklable);
 
  private:
     struct Node {
         PyTreeKind kind = PyTreeKind::Leaf;
 
         // Arity for non-Leaf types.
-        Py_ssize_t arity = 0;
+        ssize_t arity = 0;
 
         // Kind-specific auxiliary data.
         // For a NamedTuple, contains the tuple type object.
@@ -141,35 +135,36 @@ class PyTreeDef {
         const PyTreeTypeRegistry::Registration *custom = nullptr;
 
         // Number of leaf nodes in the subtree rooted at this node.
-        Py_ssize_t num_leaves = 0;
+        ssize_t num_leaves = 0;
 
         // Number of leaf and interior nodes in the subtree rooted at this node.
-        Py_ssize_t num_nodes = 0;
+        ssize_t num_nodes = 0;
     };
-
-    // Helper that manufactures an instance of a node given its children.
-    static py::object MakeNode(const Node &node, absl::Span<py::object> children);
-
-    // Recursive helper used to implement FromIterableTree().
-    py::object FromIterableTreeHelper(
-        py::handle subtree,
-        absl::InlinedVector<PyTreeDef::Node, 1>::const_reverse_iterator *it) const;
-
-    // Computes the node kind of a given Python object.
-    static PyTreeKind GetKind(const py::handle &obj,
-                              PyTreeTypeRegistry::Registration const **custom);
-
-    template <typename T>
-    void FlattenIntoImpl(py::handle handle,
-                         T &leaves,  // NOLINT
-                         const std::optional<py::function> &leaf_predicate);
-
-    template <typename T>
-    py::object UnflattenImpl(T leaves) const;
 
     // Nodes, in a post-order traversal. We use an ordered traversal to minimize allocations, and
     // post-order corresponds to the order we need to rebuild the tree structure.
     absl::InlinedVector<Node, 1> traversal;
+
+    // Helper that manufactures an instance of a node given its children.
+    static py::object MakeNode(const Node &node, absl::Span<py::object> children);
+
+    // Computes the node kind of a given Python object.
+    static PyTreeKind GetKind(const py::handle &handle,
+                              PyTreeTypeRegistry::Registration const **custom);
+
+    template <typename Span>
+    void FlattenIntoImpl(py::handle handle,
+                         Span &leaves,  // NOLINT
+                         const std::optional<py::function> &leaf_predicate);
+
+    py::list FlattenUpToImpl(py::handle full_tree) const;
+
+    static bool AllLeavesImpl(const py::iterable &iterable);
+
+    template <typename Span>
+    py::object UnflattenImpl(Span leaves) const;
+
+    static PyTreeSpec FromPicklableImpl(py::object picklable);
 };
 
 }  // namespace optree

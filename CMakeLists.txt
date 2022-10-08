@@ -130,20 +130,6 @@ endif()
 
 set(ABSL_PROPAGATE_CXX_STD ON)
 add_subdirectory(third_party/abseil-cpp)
-include_directories(third_party/pybind11_abseil)
 
 include_directories("${CMAKE_SOURCE_DIR}")
-
-pybind11_add_module(
-    _C THIN_LTO
-    src/registry.cpp
-    src/treedef.cpp
-    src/optree.cpp
-)
-
-target_link_libraries(
-    _C
-    PUBLIC
-    absl::flat_hash_map
-    absl::str_format
-)
+add_subdirectory(src)

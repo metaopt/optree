@@ -22,7 +22,7 @@ from operator import methodcaller
 from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Tuple, Type
 
 import optree._C as _C
-from optree.typing import KT, VT, AuxData, Children, CustomTreeNode, PyTree, PyTreeDef, T
+from optree.typing import KT, VT, AuxData, Children, CustomTreeNode, PyTree, PyTreeSpec, T
 from optree.utils import safe_zip, unzip2
 
 
@@ -30,7 +30,7 @@ __all__ = [
     'AttributeKeyPathEntry',
     'GetitemKeyPathEntry',
     'Partial',
-    'PyTreeDef',
+    'PyTreeSpec',
     'register_keypaths',
     'register_pytree_node',
     'register_pytree_node_class',
@@ -47,28 +47,28 @@ PyTreeNodeRegistryEntry = NamedTuple(
 
 
 def register_pytree_node(
-    nodetype: Type[CustomTreeNode[T]],
+    type: Type[CustomTreeNode[T]],  # pylint: disable=redefined-builtin
     flatten_func: Callable[[CustomTreeNode[T]], Tuple[Children[T], AuxData]],
     unflatten_func: Callable[[AuxData, Children[T]], CustomTreeNode[T]],
 ) -> Type[CustomTreeNode[T]]:
     """Extend the set of types that are considered internal nodes in pytrees.
 
     Args:
-        nodetype: a Python type to treat as an internal pytree node.
+        type: a Python type to treat as an internal pytree node.
         flatten_func: a function to be used during flattening, taking a value of
-            type ``nodetype`` and returning a pair, with (1) an iterable for the
+            type ``type`` and returning a pair, with (1) an iterable for the
             children to be flattened recursively, and (2) some hashable auxiliary
-            data to be stored in the treedef and to be passed to the
+            data to be stored in the treespec and to be passed to the
             ``unflatten_func``.
         unflatten_func: a function taking two arguments: the auxiliary data that
-            was returned by ``flatten_func`` and stored in the treedef, and the
+            was returned by ``flatten_func`` and stored in the treespec, and the
             unflattened children. The function should return an instance of
-            ``nodetype``.
+            ``type``.
     """
-    _C.register_node(nodetype, flatten_func, unflatten_func)
-    CustomTreeNode.register(nodetype)  # pylint: disable=no-member
-    _nodetype_registry[nodetype] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
-    return nodetype
+    _C.register_node(type, flatten_func, unflatten_func)
+    CustomTreeNode.register(type)  # pylint: disable=no-member
+    _nodetype_registry[type] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
+    return type
 
 
 def register_pytree_node_class(cls: Type[CustomTreeNode[T]]) -> Type[CustomTreeNode[T]]:
@@ -118,7 +118,6 @@ def _sorted_keys(dct: Dict[KT, VT]) -> Iterable[KT]:
             return dct  # fallback to insertion order
 
 
-# pylint: disable=line-too-long
 _nodetype_registry: Dict[Type, PyTreeNodeRegistryEntry] = {
     tuple: PyTreeNodeRegistryEntry(
         lambda xs: (xs, None),  # type: ignore[arg-type,return-value]
@@ -153,8 +152,8 @@ register_pytree_node(
     lambda _, d: deque(d),  # type: ignore[arg-type,return-value,call-overload]
 )
 
+# pylint: disable-next=line-too-long
 register_pytree_node.get: Callable[[Type[CustomTreeNode[T]]], PyTreeNodeRegistryEntry] = _nodetype_registry.get  # type: ignore[attr-defined,misc]
-# pylint: enable=line-too-long
 
 
 class _HashableCallableShim:
@@ -311,18 +310,17 @@ _keypath_registry: Dict[Type[CustomTreeNode], KeyPathHandler] = {}
 
 
 def register_keypaths(
-    nodetype: Type[CustomTreeNode[T]],
+    type: Type[CustomTreeNode[T]],  # pylint: disable=redefined-builtin
     handler: KeyPathHandler,
 ) -> KeyPathHandler:
     """Register a key path handler for a custom pytree node type."""
-    _keypath_registry[nodetype] = handler
+    _keypath_registry[type] = handler
     return handler
 
 
-# pylint: disable=line-too-long
 register_keypaths(tuple, lambda tup: list(map(GetitemKeyPathEntry, range(len(tup)))))  # type: ignore[arg-type]
 register_keypaths(list, lambda lst: list(map(GetitemKeyPathEntry, range(len(lst)))))  # type: ignore[arg-type]
 register_keypaths(dict, lambda dct: list(map(GetitemKeyPathEntry, _sorted_keys(dct))))  # type: ignore[arg-type]
 
+# pylint: disable-next=line-too-long
 register_keypaths.get: Callable[[Type[CustomTreeNode[T]]], KeyPathHandler] = _keypath_registry.get  # type: ignore[attr-defined,misc]
-# pylint: enable=line-too-long

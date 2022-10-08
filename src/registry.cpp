@@ -20,14 +20,7 @@ limitations under the License.
 
 #include "include/registry.h"
 
-#include <absl/strings/str_format.h>
-#include <absl/strings/str_join.h>
-
-#include "include/utils.h"
-
 namespace optree {
-
-namespace py = pybind11;
 
 /*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton() {
     static std::unique_ptr<PyTreeTypeRegistry> registry([]() -> PyTreeTypeRegistry* {
@@ -59,10 +52,9 @@ namespace py = pybind11;
     registration->type = type;
     registration->to_iterable = std::move(to_iterable);
     registration->from_iterable = std::move(from_iterable);
-    auto it = registry->registrations.emplace(type, std::move(registration));
-    if (!it.second) {
-        throw std::invalid_argument(absl::StrFormat(
-            "Duplicate custom PyTreeDef type registration for %s.", py::repr(type)));
+    if (!registry->registrations.emplace(type, std::move(registration)).second) {
+        throw std::invalid_argument(
+            absl::StrFormat("Duplicate custom PyTree type registration for %s.", py::repr(type)));
     }
 }
 
