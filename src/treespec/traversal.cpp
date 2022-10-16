@@ -24,8 +24,8 @@ limitations under the License.
 namespace optree {
 
 py::object PyTreeSpec::Walk(const py::function& f_node,
-                            py::handle f_leaf,
-                            py::iterable leaves) const {
+                            const py::handle& f_leaf,
+                            const py::iterable& leaves) const {
     std::vector<py::object> agenda;
     auto it = leaves.begin();
     const bool f_leaf_identity = f_leaf.is_none();
@@ -37,7 +37,7 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
                 }
 
                 py::object leaf = py::reinterpret_borrow<py::object>(*it);
-                agenda.push_back(f_leaf_identity ? std::move(leaf) : f_leaf(std::move(leaf)));
+                agenda.emplace_back(f_leaf_identity ? std::move(leaf) : f_leaf(std::move(leaf)));
                 ++it;
                 break;
             }
@@ -53,10 +53,10 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
                 }
                 py::tuple tuple{node.arity};
                 for (ssize_t i = node.arity - 1; i >= 0; --i) {
-                    tuple[i] = agenda.back();
+                    SET_ITEM<py::tuple>(tuple, i, std::move(agenda.back()));
                     agenda.pop_back();
                 }
-                agenda.push_back(f_node(tuple, node.node_data ? node.node_data : py::none()));
+                agenda.emplace_back(f_node(tuple, node.node_data ? node.node_data : py::none()));
             }
 
             default:
@@ -74,11 +74,11 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
 
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
     auto outer_treespec = std::make_unique<PyTreeSpec>();
-    for (const Node& n : traversal) {
-        if (n.kind == PyTreeKind::Leaf) {
+    for (const Node& node : traversal) {
+        if (node.kind == PyTreeKind::Leaf) {
             absl::c_copy(inner_treespec.traversal, std::back_inserter(outer_treespec->traversal));
         } else {
-            outer_treespec->traversal.push_back(n);
+            outer_treespec->traversal.emplace_back(std::move(node));
         }
     }
     const auto& root = traversal.back();
@@ -102,7 +102,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     node.arity = treespecs.size();
     node.num_leaves = num_leaves;
     node.num_nodes = out->traversal.size() + 1;
-    out->traversal.push_back(node);
+    out->traversal.emplace_back(std::move(node));
     return out;
 }
 
@@ -111,7 +111,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
     if (traversal.empty()) {
         return children;
     }
-    Node const& root = traversal.back();
+    const Node& root = traversal.back();
     children.resize(root.arity);
     ssize_t pos = traversal.size() - 1;
     for (ssize_t i = root.arity - 1; i >= 0; --i) {

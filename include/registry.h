@@ -60,13 +60,19 @@ class PyTreeTypeRegistry {
 
     // Registers a new custom type. Objects of `type` will be treated as container
     // node types in PyTrees.
-    static void Register(py::object type, py::function to_iterable, py::function from_iterable);
+    static void Register(const py::object &type,
+                         const py::function &to_iterable,
+                         const py::function &from_iterable);
 
     // Finds the custom type registration for `type`. Returns nullptr if none
     // exists.
-    static const Registration *Lookup(py::handle type);
+    static const Registration *Lookup(const py::handle &type);
 
  private:
+    struct SingletonHelper {
+        static PyTreeTypeRegistry *get();
+    };
+
     static PyTreeTypeRegistry *Singleton();
 
     class TypeHash {

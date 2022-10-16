@@ -23,84 +23,57 @@ limitations under the License.
 namespace optree {
 
 template <typename Span>
-void PyTreeSpec::FlattenIntoImpl(py::handle handle,
+void PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                                  Span& leaves,
                                  const std::optional<py::function>& leaf_predicate) {
     Node node;
     ssize_t start_num_nodes = traversal.size();
     ssize_t start_num_leaves = leaves.size();
     if (leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) {
-        leaves.push_back(py::reinterpret_borrow<py::object>(handle));
+        leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
     } else {
         node.kind = GetKind(handle, &node.custom);
         auto recurse = [this, &leaf_predicate, &leaves](py::handle child) {
-            FlattenInto(child, leaves, leaf_predicate);
+            FlattenIntoImpl(child, leaves, leaf_predicate);
         };
         switch (node.kind) {
             case PyTreeKind::Leaf:
             case PyTreeKind::None:
-                leaves.push_back(py::reinterpret_borrow<py::object>(handle));
+                leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
                 break;
 
             case PyTreeKind::Tuple: {
-                node.arity = PyTuple_GET_SIZE(handle.ptr());
+                node.arity = GET_SIZE<py::tuple>(handle);
                 for (ssize_t i = 0; i < node.arity; ++i) {
-                    recurse(PyTuple_GET_ITEM(handle.ptr(), i));
+                    recurse(GET_ITEM_HANDLE<py::tuple>(handle, i));
                 }
                 break;
             }
 
             case PyTreeKind::List: {
-                node.arity = PyList_GET_SIZE(handle.ptr());
+                node.arity = GET_SIZE<py::list>(handle);
                 for (ssize_t i = 0; i < node.arity; ++i) {
-                    recurse(PyList_GET_ITEM(handle.ptr(), i));
+                    recurse(GET_ITEM_HANDLE<py::list>(handle, i));
                 }
                 break;
             }
 
             case PyTreeKind::Dict: {
                 py::dict dict = py::reinterpret_borrow<py::dict>(handle);
-                py::list keys = py::reinterpret_steal<py::list>(PyDict_Keys(dict.ptr()));
-                try {
-                    // Sort directly if possible.
-                    if (PyList_Sort(keys.ptr())) {
-                        throw py::error_already_set();
-                    }
-                } catch (py::error_already_set& ex1) {
-                    if (ex1.matches(PyExc_TypeError)) {
-                        // Found incomparable keys (e.g. `int` vs. `str`, or user-defined types).
-                        try {
-                            // Sort with `keys.sort(key=lambda o: (o.__class__.__qualname__, o))`.
-                            auto sort_key_fn = py::cpp_function([](const py::object& o) {
-                                return py::make_tuple(o.get_type().attr("__qualname__"), o);
-                            });
-                            keys.attr("sort")(py::arg("key") = sort_key_fn);
-                        } catch (py::error_already_set& ex2) {
-                            if (ex2.matches(PyExc_TypeError)) {
-                                // Found incomparable user-defined key types.
-                                // The keys remain in the insertion order.
-                                PyErr_Clear();
-                            } else {
-                                throw;
-                            }
-                        }
-                    } else {
-                        throw;
-                    }
-                }
-                for (py::handle key : keys) {
+                py::list keys = SortedDictKeys(dict);
+                for (const py::handle& key : keys) {
                     recurse(dict[key]);
                 }
-                node.arity = dict.size();
+                node.arity = GET_SIZE<py::dict>(handle);
                 node.node_data = std::move(keys);
                 break;
             }
 
             case PyTreeKind::NamedTuple: {
                 py::tuple tuple = py::reinterpret_borrow<py::tuple>(handle);
-                node.arity = tuple.size();
+                node.arity = GET_SIZE<py::tuple>(tuple);
                 node.node_data = py::reinterpret_borrow<py::object>(tuple.get_type());
-                for (py::handle entry : tuple) {
+                for (const py::handle& entry : tuple) {
                     recurse(entry);
                 }
                 break;
@@ -114,7 +87,7 @@ void PyTreeSpec::FlattenIntoImpl(py::handle handle,
                 }
                 node.arity = 0;
                 node.node_data = out[1];
-                for (py::handle child : py::cast<py::iterable>(out[0])) {
+                for (const py::handle& child : py::cast<py::iterable>(out[0])) {
                     ++node.arity;
                     recurse(child);
                 }
@@ -127,42 +100,45 @@ void PyTreeSpec::FlattenIntoImpl(py::handle handle,
     }
     node.num_nodes = traversal.size() - start_num_nodes + 1;
     node.num_leaves = leaves.size() - start_num_leaves;
-    traversal.push_back(std::move(node));
+    traversal.emplace_back(std::move(node));
 }
 
-void PyTreeSpec::FlattenInto(py::handle handle,
+void PyTreeSpec::FlattenInto(const py::handle& handle,
                              absl::InlinedVector<py::object, 2>& leaves,
-                             std::optional<py::function> leaf_predicate) {
+                             const std::optional<py::function>& leaf_predicate) {
     FlattenIntoImpl(handle, leaves, leaf_predicate);
 }
 
-void PyTreeSpec::FlattenInto(py::handle handle,
+void PyTreeSpec::FlattenInto(const py::handle& handle,
                              std::vector<py::object>& leaves,
-                             std::optional<py::function> leaf_predicate) {
+                             const std::optional<py::function>& leaf_predicate) {
     FlattenIntoImpl(handle, leaves, leaf_predicate);
 }
 
 /*static*/ std::pair<std::vector<py::object>, std::unique_ptr<PyTreeSpec>> PyTreeSpec::Flatten(
-    py::handle tree, std::optional<py::function> leaf_predicate) {
+    const py::handle& tree, const std::optional<py::function>& leaf_predicate) {
     std::vector<py::object> leaves;
     auto treespec = std::make_unique<PyTreeSpec>();
     treespec->FlattenInto(tree, leaves, leaf_predicate);
     return std::make_pair(std::move(leaves), std::move(treespec));
 }
 
-py::list PyTreeSpec::FlattenUpToImpl(py::handle full_tree) const {
-    py::list leaves(num_leaves());
+py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
+    const ssize_t num_leaves = PyTreeSpec::num_leaves();
+
     std::vector<py::object> agenda;
-    agenda.push_back(py::reinterpret_borrow<py::object>(full_tree));
+    agenda.emplace_back(py::reinterpret_borrow<py::object>(full_tree));
+
     auto it = traversal.rbegin();
-    ssize_t leaf = num_leaves() - 1;
+    py::list leaves{num_leaves};
+    ssize_t leaf = num_leaves - 1;
     while (!agenda.empty()) {
         if (it == traversal.rend()) {
             throw std::invalid_argument(absl::StrFormat(
                 "Tree structures did not match: %s vs %s.", py::repr(full_tree), ToString()));
         }
         const Node& node = *it;
-        py::object object = agenda.back();
+        py::object object = std::move(agenda.back());
         agenda.pop_back();
         ++it;
 
@@ -179,10 +155,7 @@ py::list PyTreeSpec::FlattenUpToImpl(py::handle full_tree) const {
                 break;
 
             case PyTreeKind::Tuple: {
-                if (!PyTuple_CheckExact(object.ptr())) {
-                    throw std::invalid_argument(
-                        absl::StrFormat("Expected tuple, got %s.", py::repr(object)));
-                }
+                AssertExact<py::tuple>(object);
                 py::tuple tuple = py::reinterpret_borrow<py::tuple>(object);
                 if ((ssize_t)tuple.size() != node.arity) {
                     throw std::invalid_argument(
@@ -192,16 +165,13 @@ py::list PyTreeSpec::FlattenUpToImpl(py::handle full_tree) const {
                                         py::repr(object)));
                 }
                 for (py::handle entry : tuple) {
-                    agenda.push_back(py::reinterpret_borrow<py::object>(entry));
+                    agenda.emplace_back(py::reinterpret_borrow<py::object>(entry));
                 }
                 break;
             }
 
             case PyTreeKind::List: {
-                if (!PyList_CheckExact(object.ptr())) {
-                    throw std::invalid_argument(
-                        absl::StrFormat("Expected list, got %s.", py::repr(object)));
-                }
+                AssertExact<py::list>(object);
                 py::list list = py::reinterpret_borrow<py::list>(object);
                 if ((ssize_t)list.size() != node.arity) {
                     throw std::invalid_argument(
@@ -211,21 +181,15 @@ py::list PyTreeSpec::FlattenUpToImpl(py::handle full_tree) const {
                                         py::repr(object)));
                 }
                 for (py::handle entry : list) {
-                    agenda.push_back(py::reinterpret_borrow<py::object>(entry));
+                    agenda.emplace_back(py::reinterpret_borrow<py::object>(entry));
                 }
                 break;
             }
 
             case PyTreeKind::Dict: {
-                if (!PyDict_CheckExact(object.ptr())) {
-                    throw std::invalid_argument(
-                        absl::StrFormat("Expected dict, got %s.", py::repr(object)));
-                }
+                AssertExact<py::dict>(object);
                 py::dict dict = py::reinterpret_borrow<py::dict>(object);
-                py::list keys = py::reinterpret_steal<py::list>(PyDict_Keys(dict.ptr()));
-                if (PyList_Sort(keys.ptr())) {
-                    throw std::runtime_error("Dictionary key sort failed.");
-                }
+                py::list keys = SortedDictKeys(dict);
                 if (keys.not_equal(node.node_data)) {
                     throw std::invalid_argument(
                         absl::StrFormat("Dict key mismatch; expected keys: %s; dict: %s.",
@@ -233,16 +197,13 @@ py::list PyTreeSpec::FlattenUpToImpl(py::handle full_tree) const {
                                         py::repr(object)));
                 }
                 for (py::handle key : keys) {
-                    agenda.push_back(dict[key]);
+                    agenda.emplace_back(dict[key]);
                 }
                 break;
             }
 
             case PyTreeKind::NamedTuple: {
-                if (!py::isinstance<py::tuple>(object) || !py::hasattr(object, "_fields")) {
-                    throw std::invalid_argument(
-                        absl::StrFormat("Expected named tuple, got %s.", py::repr(object)));
-                }
+                AssertExactNamedTuple(object);
                 py::tuple tuple = py::reinterpret_borrow<py::tuple>(object);
                 if ((ssize_t)tuple.size() != node.arity) {
                     throw std::invalid_argument(
@@ -258,7 +219,7 @@ py::list PyTreeSpec::FlattenUpToImpl(py::handle full_tree) const {
                                         py::repr(object)));
                 }
                 for (py::handle entry : tuple) {
-                    agenda.push_back(py::reinterpret_borrow<py::object>(entry));
+                    agenda.emplace_back(py::reinterpret_borrow<py::object>(entry));
                 }
                 break;
             }
@@ -286,7 +247,7 @@ py::list PyTreeSpec::FlattenUpToImpl(py::handle full_tree) const {
                 ssize_t arity = 0;
                 for (py::handle entry : py::cast<py::iterable>(out[0])) {
                     ++arity;
-                    agenda.push_back(py::reinterpret_borrow<py::object>(entry));
+                    agenda.emplace_back(py::reinterpret_borrow<py::object>(entry));
                 }
                 if (arity != node.arity) {
                     throw std::invalid_argument(
@@ -309,7 +270,9 @@ py::list PyTreeSpec::FlattenUpToImpl(py::handle full_tree) const {
     return leaves;
 }
 
-py::list PyTreeSpec::FlattenUpTo(py::handle full_tree) const { return FlattenUpToImpl(full_tree); }
+py::list PyTreeSpec::FlattenUpTo(const py::handle& full_tree) const {
+    return FlattenUpToImpl(full_tree);
+}
 
 /*static*/ bool PyTreeSpec::AllLeavesImpl(const py::iterable& iterable) {
     const PyTreeTypeRegistry::Registration* custom;

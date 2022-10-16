@@ -23,7 +23,7 @@ limitations under the License.
 namespace optree {
 
 template <typename Span>
-py::object PyTreeSpec::UnflattenImpl(Span leaves) const {
+py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
     absl::InlinedVector<py::object, 4> agenda;
     auto it = leaves.begin();
     ssize_t leaf_count = 0;
@@ -40,7 +40,7 @@ py::object PyTreeSpec::UnflattenImpl(Span leaves) const {
                                         num_leaves(),
                                         leaf_count));
                 }
-                agenda.push_back(py::reinterpret_borrow<py::object>(*it));
+                agenda.emplace_back(py::reinterpret_borrow<py::object>(*it));
                 ++it;
                 ++leaf_count;
                 break;
@@ -57,7 +57,7 @@ py::object PyTreeSpec::UnflattenImpl(Span leaves) const {
                 }
                 py::object out = MakeNode(node, span);
                 agenda.resize(size - node.arity);
-                agenda.push_back(out);
+                agenda.emplace_back(std::move(out));
                 break;
             }
 
@@ -75,9 +75,9 @@ py::object PyTreeSpec::UnflattenImpl(Span leaves) const {
     return std::move(agenda.back());
 }
 
-py::object PyTreeSpec::Unflatten(py::iterable leaves) const { return UnflattenImpl(leaves); }
+py::object PyTreeSpec::Unflatten(const py::iterable& leaves) const { return UnflattenImpl(leaves); }
 
-py::object PyTreeSpec::Unflatten(absl::Span<const py::object> leaves) const {
+py::object PyTreeSpec::Unflatten(const absl::Span<const py::object>& leaves) const {
     return UnflattenImpl(leaves);
 }
 

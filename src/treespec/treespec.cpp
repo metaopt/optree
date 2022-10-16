@@ -54,7 +54,7 @@ bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
 bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == other); }
 
 /*static*/ py::object PyTreeSpec::MakeNode(const PyTreeSpec::Node& node,
-                                           absl::Span<py::object> children) {
+                                           const absl::Span<py::object>& children) {
     if ((ssize_t)children.size() != node.arity) {
         throw std::logic_error("Node arity did not match.");
     }
@@ -69,7 +69,7 @@ bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == o
         case PyTreeKind::NamedTuple: {
             py::tuple tuple{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
-                tuple[i] = std::move(children[i]);
+                SET_ITEM<py::tuple>(tuple, i, std::move(children[i]));
             }
             if (node.kind == PyTreeKind::NamedTuple) {
                 return node.node_data(*tuple);
@@ -81,7 +81,7 @@ bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == o
         case PyTreeKind::List: {
             py::list list{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
-                list[i] = std::move(children[i]);
+                SET_ITEM<py::list>(list, i, std::move(children[i]));
             }
             return std::move(list);
         }
@@ -90,7 +90,7 @@ bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == o
             py::dict dict;
             py::list keys = py::reinterpret_borrow<py::list>(node.node_data);
             for (ssize_t i = 0; i < node.arity; ++i) {
-                dict[keys[i]] = std::move(children[i]);
+                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = std::move(children[i]);
             }
             return std::move(dict);
         }
@@ -98,7 +98,7 @@ bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == o
         case PyTreeKind::Custom: {
             py::tuple tuple(node.arity);
             for (ssize_t i = 0; i < node.arity; ++i) {
-                tuple[i] = std::move(children[i]);
+                SET_ITEM<py::tuple>(tuple, i, std::move(children[i]));
             }
             return node.custom->from_iterable(node.node_data, tuple);
         }
@@ -119,9 +119,7 @@ bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == o
             *custom = nullptr;
         }
         return registration->kind;
-    } else if (py::isinstance<py::tuple>(handle) && py::hasattr(handle, "_fields")) {
-        // We can only identify namedtuples heuristically, here by the presence of
-        // a _fields attribute.
+    } else if (IsNamedTuple(handle)) {
         return PyTreeKind::NamedTuple;
     } else {
         return PyTreeKind::Leaf;
@@ -270,7 +268,7 @@ py::object PyTreeSpec::ToPicklable() const {
     return std::move(result);
 }
 
-/*static*/ PyTreeSpec PyTreeSpec::FromPicklableImpl(py::object picklable) {
+/*static*/ PyTreeSpec PyTreeSpec::FromPicklableImpl(const py::object& picklable) {
     PyTreeSpec tree;
     for (const auto& item : picklable.cast<py::list>()) {
         auto t = item.cast<py::tuple>();
@@ -314,7 +312,7 @@ py::object PyTreeSpec::ToPicklable() const {
     return tree;
 }
 
-/*static*/ PyTreeSpec PyTreeSpec::FromPicklable(py::object picklable) {
+/*static*/ PyTreeSpec PyTreeSpec::FromPicklable(const py::object& picklable) {
     return FromPicklableImpl(picklable);
 }
 

@@ -53,27 +53,27 @@ class PyTreeSpec {
     // Returns references to the flattened objects, which might be temporary objects in the case of
     // custom PyType handlers.
     static std::pair<std::vector<py::object>, std::unique_ptr<PyTreeSpec>> Flatten(
-        py::handle tree, std::optional<py::function> leaf_predicate = std::nullopt);
+        const py::handle &tree, const std::optional<py::function> &leaf_predicate = std::nullopt);
 
     // Recursive helper used to implement Flatten().
-    void FlattenInto(py::handle handle,
+    void FlattenInto(const py::handle &handle,
                      std::vector<py::object> &leaves,  // NOLINT
-                     std::optional<py::function> leaf_predicate = std::nullopt);
-    void FlattenInto(py::handle handle,
+                     const std::optional<py::function> &leaf_predicate = std::nullopt);
+    void FlattenInto(const py::handle &handle,
                      absl::InlinedVector<py::object, 2> &leaves,  // NOLINT
-                     std::optional<py::function> leaf_predicate = std::nullopt);
-
-    // Tests whether the given list is a flat list of leaves.
-    static bool AllLeaves(const py::iterable &iterable);
+                     const std::optional<py::function> &leaf_predicate = std::nullopt);
 
     // Flattens a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure
     // of 'x'. For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeSpec [(*,
     // *), *], the result is the list of leaves [1, (2, 3), {"foo": 4}].
-    py::list FlattenUpTo(py::handle full_tree) const;
+    py::list FlattenUpTo(const py::handle &full_tree) const;
+
+    // Tests whether the given list is a flat list of leaves.
+    static bool AllLeaves(const py::iterable &iterable);
 
     // Returns an unflattened PyTree given an iterable of leaves and a PyTreeSpec.
-    py::object Unflatten(py::iterable leaves) const;
-    py::object Unflatten(absl::Span<const py::object> leaves) const;
+    py::object Unflatten(const py::iterable &leaves) const;
+    py::object Unflatten(const absl::Span<const py::object> &leaves) const;
 
     // Composes two PyTreeSpecs, replacing the leaves of this tree with copies of `inner`.
     std::unique_ptr<PyTreeSpec> Compose(const PyTreeSpec &inner_treespec) const;
@@ -85,7 +85,9 @@ class PyTreeSpec {
 
     // Maps a function over a PyTree structure, applying f_leaf to each leaf, and
     // f_node(node, node_data) to each container node.
-    py::object Walk(const py::function &f_node, py::handle f_leaf, py::iterable leaves) const;
+    py::object Walk(const py::function &f_node,
+                    const py::handle &f_leaf,
+                    const py::iterable &leaves) const;
 
     ssize_t num_leaves() const;
 
@@ -116,7 +118,7 @@ class PyTreeSpec {
 
     // Transforms the object returned by `ToPicklable()` back to PyTreeSpec.
     // Used to implement `PyTreeSpec.__setstate__`.
-    static PyTreeSpec FromPicklable(py::object picklable);
+    static PyTreeSpec FromPicklable(const py::object &picklable);
 
  private:
     struct Node {
@@ -146,25 +148,25 @@ class PyTreeSpec {
     absl::InlinedVector<Node, 1> traversal;
 
     // Helper that manufactures an instance of a node given its children.
-    static py::object MakeNode(const Node &node, absl::Span<py::object> children);
+    static py::object MakeNode(const Node &node, const absl::Span<py::object> &children);
 
     // Computes the node kind of a given Python object.
     static PyTreeKind GetKind(const py::handle &handle,
                               PyTreeTypeRegistry::Registration const **custom);
 
     template <typename Span>
-    void FlattenIntoImpl(py::handle handle,
+    void FlattenIntoImpl(const py::handle &handle,
                          Span &leaves,  // NOLINT
                          const std::optional<py::function> &leaf_predicate);
 
-    py::list FlattenUpToImpl(py::handle full_tree) const;
+    py::list FlattenUpToImpl(const py::handle &full_tree) const;
 
     static bool AllLeavesImpl(const py::iterable &iterable);
 
     template <typename Span>
-    py::object UnflattenImpl(Span leaves) const;
+    py::object UnflattenImpl(const Span &leaves) const;
 
-    static PyTreeSpec FromPicklableImpl(py::object picklable);
+    static PyTreeSpec FromPicklableImpl(const py::object &picklable);
 };
 
 }  // namespace optree

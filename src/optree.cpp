@@ -36,7 +36,7 @@ void BuildModule(py::module& mod) {  // NOLINT
         .def_property_readonly("num_leaves", &PyTreeSpec::num_leaves)
         .def_property_readonly("num_nodes", &PyTreeSpec::num_nodes)
         .def("unflatten",
-             static_cast<py::object (PyTreeSpec::*)(py::iterable leaves) const>(
+             static_cast<py::object (PyTreeSpec::*)(const py::iterable&) const>(
                  &PyTreeSpec::Unflatten),
              py::arg("leaves"))
         .def("flatten_up_to", &PyTreeSpec::FlattenUpTo, py::arg("full_trees"))
@@ -62,16 +62,13 @@ void BuildModule(py::module& mod) {  // NOLINT
             py::arg("other"))
         .def("__hash__", [](const PyTreeSpec& t) { return absl::HashOf(t); })
         .def(py::pickle([](const PyTreeSpec& t) { return t.ToPicklable(); },
-                        [](py::object o) { return PyTreeSpec::FromPicklable(o); }));
+                        [](const py::object& o) { return PyTreeSpec::FromPicklable(o); }));
 
-    mod.def(
-        "register_node",
-        [](py::object type, py::function to_iterable, py::function from_iterable) {
-            return PyTreeTypeRegistry::Register(type, to_iterable, from_iterable);
-        },
-        py::arg("type"),
-        py::arg("to_iterable"),
-        py::arg("from_iterable"));
+    mod.def("register_node",
+            &PyTreeTypeRegistry::Register,
+            py::arg("type"),
+            py::arg("to_iterable"),
+            py::arg("from_iterable"));
 }
 
 }  // namespace optree

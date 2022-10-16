@@ -22,30 +22,30 @@ limitations under the License.
 
 namespace optree {
 
-/*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton() {
-    static std::unique_ptr<PyTreeTypeRegistry> registry([]() -> PyTreeTypeRegistry* {
-        auto* registry = new PyTreeTypeRegistry;
+/*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::SingletonHelper::get() {
+    static PyTreeTypeRegistry registry([]() {
+        PyTreeTypeRegistry registry;
 
         auto add_builtin_type = [&](PyTypeObject* type_obj, PyTreeKind kind) {
-            py::object type =
-                py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(type_obj));
+            auto type = py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(type_obj));
             auto registration = std::make_unique<Registration>();
             registration->kind = kind;
             registration->type = type;
-            CHECK(registry->registrations.emplace(type, std::move(registration)).second);
+            CHECK(registry.registrations.emplace(type, std::move(registration)).second);
         };
-        add_builtin_type(Py_TYPE(Py_None), PyTreeKind::None);
         add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
         add_builtin_type(&PyList_Type, PyTreeKind::List);
         add_builtin_type(&PyDict_Type, PyTreeKind::Dict);
         return registry;
     }());
-    return registry.get();
+    return &registry;
 }
 
-/*static*/ void PyTreeTypeRegistry::Register(py::object type,
-                                             py::function to_iterable,
-                                             py::function from_iterable) {
+/*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton() { return SingletonHelper::get(); }
+
+/*static*/ void PyTreeTypeRegistry::Register(const py::object& type,
+                                             const py::function& to_iterable,
+                                             const py::function& from_iterable) {
     PyTreeTypeRegistry* registry = Singleton();
     auto registration = std::make_unique<Registration>();
     registration->kind = PyTreeKind::Custom;
@@ -58,7 +58,8 @@ namespace optree {
     }
 }
 
-/*static*/ const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup(py::handle type) {
+/*static*/ const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup(
+    const py::handle& type) {
     PyTreeTypeRegistry* registry = Singleton();
     auto it = registry->registrations.find(type);
     return it == registry->registrations.end() ? nullptr : it->second.get();
