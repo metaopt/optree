@@ -131,10 +131,17 @@ template <>
 inline size_t GET_SIZE<py::list>(const py::handle& list) {
     return PyList_GET_SIZE(list.ptr());
 }
+#ifdef PyDict_GET_SIZE
 template <>
 inline size_t GET_SIZE<py::dict>(const py::handle& dict) {
     return PyDict_GET_SIZE(dict.ptr());
 }
+#else
+template <>
+inline size_t GET_SIZE<py::dict>(const py::handle& dict) {
+    return PyDict_Size(dict.ptr());
+}
+#endif
 
 template <typename Container, typename Item>
 inline py::handle GET_ITEM_HANDLE(const py::handle& container, const Item& item) {

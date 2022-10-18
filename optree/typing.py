@@ -22,7 +22,6 @@ from typing import (
     DefaultDict,
     Deque,
     Dict,
-    ForwardRef,
     Generic,
     Hashable,
     Iterable,
@@ -38,6 +37,13 @@ from typing_extensions import OrderedDict  # Generic OrderedDict: Python 3.7.2+
 from typing_extensions import Protocol  # Python 3.8+
 
 from optree import _C
+
+
+try:
+    # Python 3.6
+    from typing import _ForwardRef as ForwardRef  # type: ignore[attr-defined]
+except ImportError:
+    from typing import ForwardRef
 
 
 __all__ = [
