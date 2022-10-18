@@ -98,9 +98,13 @@ def _sorted_items(items: Iterable[Tuple[KT, VT]]) -> Iterable[Tuple[KT, VT]]:
         return sorted(items)
     except TypeError:  # the keys are not comparable
         try:
-            # Add `obj.__class__.__qualname__` to the key order to make it sortable
-            # between different types (e.g. `int` vs. `str`)
-            return sorted(items, key=lambda kv: (kv[0].__class__.__qualname__, kv))
+            # Add `{obj.__class__.__module__}.{obj.__class__.__qualname__}` to the key order to make
+            # it sortable between different types (e.g. `int` vs. `str`)
+            return sorted(
+                items,
+                # pylint: disable-next=consider-using-f-string
+                key=lambda kv: ('{0.__module__}.{0.__qualname__}'.format(kv[0].__class__), kv),
+            )
         except TypeError:  # cannot sort the keys (e.g. user-defined types)
             return items  # fallback to insertion order
 
@@ -111,9 +115,13 @@ def _sorted_keys(dct: Dict[KT, VT]) -> Iterable[KT]:
         return sorted(dct)  # type: ignore[type-var]
     except TypeError:  # the keys are not comparable
         try:
-            # Add `obj.__class__.__qualname__` to the key order to make it sortable
-            # between different types (e.g. `int` vs. `str`)
-            return sorted(dct, key=lambda o: (o.__class__.__qualname__, o))
+            # Add `{obj.__class__.__module__}.{obj.__class__.__qualname__}` to the key order to make
+            # it sortable between different types (e.g. `int` vs. `str`)
+            return sorted(
+                dct,
+                # pylint: disable-next=consider-using-f-string
+                key=lambda o: ('{0.__module__}.{0.__qualname__}'.format(o.__class__), o),
+            )
         except TypeError:  # cannot sort the keys (e.g. user-defined types)
             return dct  # fallback to insertion order
 

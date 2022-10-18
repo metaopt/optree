@@ -71,9 +71,14 @@ inline py::list SortedDictKeys(const py::dict& dict) {
         if (ex1.matches(PyExc_TypeError)) {
             // Found incomparable keys (e.g. `int` vs. `str`, or user-defined types).
             try {
-                // Sort with `keys.sort(key=lambda o: (o.__class__.__qualname__, o))`.
+                // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
                 auto sort_key_fn = py::cpp_function([](const py::object& o) {
-                    return py::make_tuple(o.get_type().attr("__qualname__"), o);
+                    py::handle t = o.get_type();
+                    py::str qualname{absl::StrFormat(
+                        "%s.%s",
+                        static_cast<std::string>(py::getattr(t, "__module__").cast<py::str>()),
+                        static_cast<std::string>(py::getattr(t, "__qualname__").cast<py::str>()))};
+                    return py::make_tuple(qualname, o);
                 });
                 keys.attr("sort")(py::arg("key") = sort_key_fn);
             } catch (py::error_already_set& ex2) {
