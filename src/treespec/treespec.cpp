@@ -73,15 +73,18 @@ bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == o
             }
             if (node.kind == PyTreeKind::NamedTuple) {
                 return node.node_data(*tuple);
-            } else {
-                return std::move(tuple);
             }
+            return std::move(tuple);
         }
 
-        case PyTreeKind::List: {
+        case PyTreeKind::List:
+        case PyTreeKind::Deque: {
             py::list list{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
                 SET_ITEM<py::list>(list, i, std::move(children[i]));
+            }
+            if (node.kind == PyTreeKind::Deque) {
+                return py::Deque(list, py::arg("maxlen") = node.node_data);
             }
             return std::move(list);
         }
@@ -93,6 +96,29 @@ bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == o
                 dict[GET_ITEM_HANDLE<py::list>(keys, i)] = std::move(children[i]);
             }
             return std::move(dict);
+        }
+
+        case PyTreeKind::OrderedDict: {
+            py::list items{node.arity};
+            py::list keys = py::reinterpret_borrow<py::list>(node.node_data);
+            for (ssize_t i = 0; i < node.arity; ++i) {
+                SET_ITEM<py::list>(
+                    items,
+                    i,
+                    py::make_tuple(GET_ITEM_HANDLE<py::list>(keys, i), std::move(children[i])));
+            }
+            return py::OrderedDict(items);
+        }
+
+        case PyTreeKind::DefaultDict: {
+            py::dict dict;
+            py::tuple node_data = py::reinterpret_borrow<py::tuple>(node.node_data);
+            py::object default_factory = py::reinterpret_borrow<py::object>(node_data[0]);
+            py::list keys = py::reinterpret_borrow<py::list>(node_data[1]);
+            for (ssize_t i = 0; i < node.arity; ++i) {
+                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = std::move(children[i]);
+            }
+            return py::DefaultDict(default_factory, dict);
         }
 
         case PyTreeKind::Custom: {
@@ -151,7 +177,16 @@ std::string PyTreeSpec::ToString() const {
                 break;
 
             case PyTreeKind::List:
+            case PyTreeKind::Deque:
                 representation = absl::StrCat("[", children, "]");
+                if (node.kind == PyTreeKind::Deque) {
+                    if (node.node_data.is_none()) {
+                        representation = absl::StrCat("deque(", representation, ")");
+                    } else {
+                        representation = absl::StrFormat(
+                            "deque(%s, maxlen=%s)", representation, py::str(node.node_data));
+                    }
+                }
                 break;
 
             case PyTreeKind::Dict: {
@@ -195,50 +230,55 @@ std::string PyTreeSpec::ToString() const {
                 break;
             }
 
+            case PyTreeKind::OrderedDict: {
+                if ((ssize_t)py::len(node.node_data) != node.arity) {
+                    throw std::logic_error("Number of keys and entries does not match.");
+                }
+                representation = absl::StrFormat("OrderedDict([");
+                std::string separator;
+                auto child_iter = agenda.end() - node.arity;
+                for (const py::handle& key : node.node_data) {
+                    absl::StrAppendFormat(
+                        &representation, "%s(%s, %s)", separator, py::repr(key), *child_iter);
+                    ++child_iter;
+                    separator = ", ";
+                }
+                representation += "])";
+                break;
+            }
+
+            case PyTreeKind::DefaultDict: {
+                py::tuple node_data = py::reinterpret_borrow<py::tuple>(node.node_data);
+                if ((ssize_t)GET_SIZE<py::tuple>(node_data) != 2) {
+                    throw std::logic_error("Number of auxiliary data mismatch.");
+                }
+                py::object factory = node_data[0];
+                py::list keys = py::reinterpret_borrow<py::list>(node_data[1]);
+                if ((ssize_t)GET_SIZE<py::list>(keys) != node.arity) {
+                    throw std::logic_error("Number of keys and entries does not match.");
+                }
+                representation = absl::StrFormat("defaultdict(%s, {", py::repr(factory));
+                std::string separator;
+                auto child_iter = agenda.end() - node.arity;
+                for (const py::handle& key : keys) {
+                    absl::StrAppendFormat(
+                        &representation, "%s%s: %s", separator, py::repr(key), *child_iter);
+                    ++child_iter;
+                    separator = ", ";
+                }
+                representation += "})";
+                break;
+            }
+
             case PyTreeKind::Custom: {
                 py::object type = node.custom->type;
                 std::string kind = static_cast<std::string>(py::str(py::getattr(type, "__name__")));
-                if (type.is(py::OrderedDict)) {
-                    representation = absl::StrFormat("%s([", kind);
-                    std::string separator;
-                    auto child_iter = agenda.end() - node.arity;
-                    for (const py::handle& key : node.node_data) {
-                        absl::StrAppendFormat(
-                            &representation, "%s(%s, %s)", separator, py::repr(key), *child_iter);
-                        ++child_iter;
-                        separator = ", ";
-                    }
-                    representation += "])";
-                } else if (type.is(py::DefaultDict)) {
-                    if ((ssize_t)py::len(node.node_data) != 2) {
-                        throw std::logic_error("Number of auxiliary data mismatch.");
-                    }
-                    py::tuple aux_data = py::reinterpret_borrow<py::tuple>(node.node_data);
-                    py::object factory = aux_data[0];
-                    py::tuple keys = py::reinterpret_borrow<py::tuple>(aux_data[1]);
-                    if ((ssize_t)py::len(keys) != node.arity) {
-                        throw std::logic_error("Number of keys and entries does not match.");
-                    }
-                    representation = absl::StrFormat("%s(%s, {", kind, py::repr(factory));
-                    std::string separator;
-                    auto child_iter = agenda.end() - node.arity;
-                    for (const py::handle& key : keys) {
-                        absl::StrAppendFormat(
-                            &representation, "%s%s: %s", separator, py::repr(key), *child_iter);
-                        ++child_iter;
-                        separator = ", ";
-                    }
-                    representation += "})";
-                } else if (type.is(py::Deque)) {
-                    representation = absl::StrFormat("%s([%s])", kind, children);
-                } else {
-                    std::string data;
-                    if (node.node_data) {
-                        data = absl::StrFormat("[%s]", py::str(node.node_data));
-                    }
-                    representation =
-                        absl::StrFormat("CustomTreeNode(%s%s, [%s])", kind, data, children);
+                std::string data;
+                if (node.node_data) {
+                    data = absl::StrFormat("[%s]", py::repr(node.node_data));
                 }
+                representation =
+                    absl::StrFormat("CustomTreeNode(%s%s, [%s])", kind, data, children);
                 break;
             }
 
@@ -283,8 +323,11 @@ py::object PyTreeSpec::ToPicklable() const {
                 node.node_data = t[2].cast<py::type>();
                 break;
             case PyTreeKind::Dict:
+            case PyTreeKind::OrderedDict:
                 node.node_data = t[2].cast<py::list>();
                 break;
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::Deque:
             case PyTreeKind::Custom:
                 node.node_data = t[2];
                 break;

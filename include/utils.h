@@ -59,8 +59,12 @@ inline std::vector<T> reserved_vector(const size_t& size) {
     return v;
 }
 
+inline py::list DictKeys(const py::dict& dict) {
+    return py::reinterpret_borrow<py::list>(PyDict_Keys(dict.ptr()));
+}
+
 inline py::list SortedDictKeys(const py::dict& dict) {
-    py::list keys = py::reinterpret_borrow<py::list>(PyDict_Keys(dict.ptr()));
+    py::list keys = DictKeys(dict);
 
     try {
         // Sort directly if possible.
@@ -296,6 +300,27 @@ inline bool IsNamedTuple(const py::handle& object) {
 inline void AssertExactNamedTuple(const py::handle& object) {
     if (!IsNamedTuple(object)) {
         throw std::invalid_argument(
-            absl::StrFormat("Expected named tuple, got %s.", py::repr(object)));
+            absl::StrFormat("Expected collections.namedtuple, got %s.", py::repr(object)));
+    }
+}
+
+inline void AssertExactOrderedDict(const py::handle& object) {
+    if (!object.get_type().is(py::OrderedDict)) {
+        throw std::invalid_argument(
+            absl::StrFormat("Expected collections.OrderedDict, got %s.", py::repr(object)));
+    }
+}
+
+inline void AssertExactDefaultDict(const py::handle& object) {
+    if (!object.get_type().is(py::DefaultDict)) {
+        throw std::invalid_argument(
+            absl::StrFormat("Expected collections.defaultdict, got %s.", py::repr(object)));
+    }
+}
+
+inline void AssertExactDeque(const py::handle& object) {
+    if (!object.get_type().is(py::Deque)) {
+        throw std::invalid_argument(
+            absl::StrFormat("Expected collections.deque, got %s.", py::repr(object)));
     }
 }

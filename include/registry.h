@@ -34,13 +34,16 @@ limitations under the License.
 namespace optree {
 
 enum class PyTreeKind {
-    Leaf,        // An opaque leaf node
-    None,        // None
-    Tuple,       // A tuple
-    NamedTuple,  // A collections.namedtuple
-    List,        // A list
-    Dict,        // A dict
-    Custom,      // A custom type
+    Leaf,         // An opaque leaf node
+    None,         // None
+    Tuple,        // A tuple
+    NamedTuple,   // A collections.namedtuple
+    List,         // A list
+    Dict,         // A dict
+    OrderedDict,  // A collections.OrderedDict
+    DefaultDict,  // A collections.defaultdict
+    Deque,        // A collections.deque
+    Custom,       // A custom type
 };
 
 // Registry of custom node types.

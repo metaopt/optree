@@ -47,6 +47,9 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
             case PyTreeKind::NamedTuple:
             case PyTreeKind::List:
             case PyTreeKind::Dict:
+            case PyTreeKind::OrderedDict:
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::Deque:
             case PyTreeKind::Custom: {
                 if ((ssize_t)agenda.size() < node.arity) {
                     throw std::logic_error("Too few elements for custom type.");

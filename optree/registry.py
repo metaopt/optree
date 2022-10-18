@@ -19,10 +19,12 @@
 import functools
 from collections import OrderedDict, defaultdict, deque
 from operator import methodcaller
-from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Tuple, Type
+from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type
 
 import optree._C as _C
-from optree.typing import KT, VT, AuxData, Children, CustomTreeNode, PyTree, PyTreeSpec, T
+from optree.typing import KT, VT, AuxData, Children, CustomTreeNode, DefaultDict
+from optree.typing import OrderedDict as GenericOrderedDict
+from optree.typing import PyTree, PyTreeSpec, T
 from optree.utils import safe_zip, unzip2
 
 
@@ -126,39 +128,56 @@ def _sorted_keys(dct: Dict[KT, VT]) -> Iterable[KT]:
             return dct  # fallback to insertion order
 
 
+def _dict_flatten(dct: Dict[KT, VT]) -> Tuple[Tuple[VT, ...], Tuple[KT, ...]]:
+    keys, values = unzip2(_sorted_items(dct.items()))
+    return values, keys
+
+
+def _ordereddict_flatten(dct: GenericOrderedDict[KT, VT]) -> Tuple[Tuple[VT, ...], Tuple[KT, ...]]:
+    keys, values = unzip2(dct.items())
+    return values, keys
+
+
+def _defaultdict_flatten(
+    dct: DefaultDict[KT, VT]
+) -> Tuple[Tuple[VT, ...], Tuple[Optional[Callable[[], VT]], Tuple[KT, ...]]]:
+    values, keys = _dict_flatten(dct)
+    return values, (dct.default_factory, keys)
+
+
+# pylint: disable=all
 _nodetype_registry: Dict[Type, PyTreeNodeRegistryEntry] = {
+    type(None): PyTreeNodeRegistryEntry(
+        lambda n: ((), None),
+        lambda _, n: None,  # type: ignore[arg-type,return-value]
+    ),
     tuple: PyTreeNodeRegistryEntry(
-        lambda xs: (xs, None),  # type: ignore[arg-type,return-value]
-        lambda _, xs: tuple(xs),  # type: ignore[arg-type,return-value]
+        lambda t: (t, None),  # type: ignore[arg-type,return-value]
+        lambda _, t: tuple(t),  # type: ignore[arg-type,return-value]
     ),
     list: PyTreeNodeRegistryEntry(
-        lambda xs: (xs, None),  # type: ignore[arg-type,return-value]
-        lambda _, xs: list(xs),  # type: ignore[arg-type,return-value]
+        lambda l: (l, None),  # type: ignore[arg-type,return-value]
+        lambda _, l: list(l),  # type: ignore[arg-type,return-value]
     ),
     dict: PyTreeNodeRegistryEntry(
-        lambda d: unzip2(_sorted_items(d.items()))[::-1],  # type: ignore[attr-defined]
-        lambda keys, values: dict(zip(keys, values)),  # type: ignore[arg-type,return-value]
+        _dict_flatten,  # type: ignore[arg-type]
+        lambda keys, values: dict(safe_zip(keys, values)),  # type: ignore[arg-type,return-value]
     ),
-    type(None): PyTreeNodeRegistryEntry(
-        lambda xs: ((), None),
-        lambda _, xs: None,  # type: ignore[arg-type,return-value]
+    OrderedDict: PyTreeNodeRegistryEntry(
+        _ordereddict_flatten,  # type: ignore[arg-type]
+        lambda keys, values: OrderedDict(safe_zip(keys, values)),  # type: ignore[arg-type,return-value]
+    ),
+    defaultdict: PyTreeNodeRegistryEntry(
+        _defaultdict_flatten,  # type: ignore[arg-type]
+        lambda aux, values: defaultdict(aux[0], safe_zip(aux[1], values)),  # type: ignore[arg-type,return-value,index]
+    ),
+    deque: PyTreeNodeRegistryEntry(
+        lambda d: (list(d), d.maxlen),  # type: ignore[call-overload,attr-defined]
+        lambda maxlen, d: deque(d, maxlen=maxlen),  # type: ignore[arg-type,return-value]
     ),
 }
-register_pytree_node(
-    OrderedDict,  # type: ignore[arg-type]
-    lambda od: (tuple(od.values()), tuple(od.keys())),  # type: ignore[attr-defined]
-    lambda keys, values: OrderedDict(safe_zip(keys, values)),  # type: ignore[arg-type,return-value]
-)
-register_pytree_node(
-    defaultdict,  # type: ignore[arg-type]
-    lambda dd: (tuple(dd.values()), (dd.default_factory, tuple(dd.keys()))),  # type: ignore[attr-defined]
-    lambda aux, values: defaultdict(aux[0], safe_zip(aux[1], values)),  # type: ignore[arg-type,return-value,index]
-)
-register_pytree_node(
-    deque,  # type: ignore[arg-type]
-    lambda d: (list(d), None),  # type: ignore[call-overload]
-    lambda _, d: deque(d),  # type: ignore[arg-type,return-value,call-overload]
-)
+# pylint: enable=all
+
 
 # pylint: disable-next=line-too-long
 register_pytree_node.get: Callable[[Type[CustomTreeNode[T]]], PyTreeNodeRegistryEntry] = _nodetype_registry.get  # type: ignore[attr-defined,misc]

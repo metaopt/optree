@@ -49,6 +49,9 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
             case PyTreeKind::NamedTuple:
             case PyTreeKind::List:
             case PyTreeKind::Dict:
+            case PyTreeKind::OrderedDict:
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::Deque:
             case PyTreeKind::Custom: {
                 const ssize_t size = agenda.size();
                 absl::Span<py::object> span;
