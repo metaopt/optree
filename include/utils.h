@@ -41,6 +41,9 @@ limitations under the License.
 
 #define DCHECK(condition) CHECK(condition)
 
+#define NONE_IS_LEAF true
+#define NONE_IS_NODE false
+
 namespace py = pybind11;
 using size_t = py::size_t;
 using ssize_t = py::ssize_t;

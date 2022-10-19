@@ -33,17 +33,20 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
         }
         switch (node.kind) {
             case PyTreeKind::None:
-            case PyTreeKind::Leaf:
-                if (it == leaves.end()) [[unlikely]] {
-                    throw std::invalid_argument(
-                        absl::StrFormat("Too few leaves for PyTreeSpec; expected %ld, got %ld.",
-                                        num_leaves(),
-                                        leaf_count));
+            case PyTreeKind::Leaf: {
+                if (node.kind == PyTreeKind::Leaf || none_is_leaf) [[likely]] {  // NOLINT
+                    if (it == leaves.end()) [[unlikely]] {
+                        throw std::invalid_argument(
+                            absl::StrFormat("Too few leaves for PyTreeSpec; expected %ld, got %ld.",
+                                            num_leaves(),
+                                            leaf_count));
+                    }
+                    agenda.emplace_back(py::reinterpret_borrow<py::object>(*it));
+                    ++it;
+                    ++leaf_count;
+                    break;
                 }
-                agenda.emplace_back(py::reinterpret_borrow<py::object>(*it));
-                ++it;
-                ++leaf_count;
-                break;
+            }
 
             case PyTreeKind::Tuple:
             case PyTreeKind::NamedTuple:

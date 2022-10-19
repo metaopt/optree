@@ -22,7 +22,34 @@ limitations under the License.
 
 namespace optree {
 
-/*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::SingletonHelper::get() {
+template <>
+/*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::SingletonHelper<NONE_IS_NODE>::get() {
+    static PyTreeTypeRegistry registry([]() {
+        PyTreeTypeRegistry registry;
+
+        auto add_builtin_type = [&](PyTypeObject* type_obj, PyTreeKind kind) {
+            auto type = py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(type_obj));
+            auto registration = std::make_unique<Registration>();
+            registration->kind = kind;
+            registration->type = type;
+            CHECK(registry.registrations.emplace(type, std::move(registration)).second);
+        };
+        add_builtin_type(Py_TYPE(Py_None), PyTreeKind::None);
+        add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
+        add_builtin_type(&PyList_Type, PyTreeKind::List);
+        add_builtin_type(&PyDict_Type, PyTreeKind::Dict);
+        add_builtin_type(reinterpret_cast<PyTypeObject*>(py::OrderedDict.ptr()),
+                         PyTreeKind::OrderedDict);
+        add_builtin_type(reinterpret_cast<PyTypeObject*>(py::DefaultDict.ptr()),
+                         PyTreeKind::DefaultDict);
+        add_builtin_type(reinterpret_cast<PyTypeObject*>(py::Deque.ptr()), PyTreeKind::Deque);
+        return registry;
+    }());
+    return &registry;
+}
+
+template <>
+/*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::SingletonHelper<NONE_IS_LEAF>::get() {
     static PyTreeTypeRegistry registry([]() {
         PyTreeTypeRegistry registry;
 
@@ -46,29 +73,52 @@ namespace optree {
     return &registry;
 }
 
-/*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton() { return SingletonHelper::get(); }
+template <bool NoneIsLeaf>
+/*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton() {
+    return SingletonHelper<NoneIsLeaf>::get();
+}
 
 /*static*/ void PyTreeTypeRegistry::Register(const py::object& type,
                                              const py::function& to_iterable,
                                              const py::function& from_iterable) {
-    PyTreeTypeRegistry* registry = Singleton();
-    auto registration = std::make_unique<Registration>();
-    registration->kind = PyTreeKind::Custom;
-    registration->type = type;
-    registration->to_iterable = std::move(to_iterable);
-    registration->from_iterable = std::move(from_iterable);
-    if (!registry->registrations.emplace(type, std::move(registration)).second) [[unlikely]] {
-        throw std::invalid_argument(
-            absl::StrFormat("Duplicate custom PyTree type registration for %s.", py::repr(type)));
+    {
+        PyTreeTypeRegistry* registry = Singleton<NONE_IS_NODE>();
+        auto registration = std::make_unique<Registration>();
+        registration->kind = PyTreeKind::Custom;
+        registration->type = type;
+        registration->to_iterable = std::move(to_iterable);
+        registration->from_iterable = std::move(from_iterable);
+        if (!registry->registrations.emplace(type, std::move(registration)).second) [[unlikely]] {
+            throw std::invalid_argument(absl::StrFormat(
+                "Duplicate custom PyTree type registration for %s.", py::repr(type)));
+        }
+    }
+    {
+        PyTreeTypeRegistry* registry = Singleton<NONE_IS_LEAF>();
+        auto registration = std::make_unique<Registration>();
+        registration->kind = PyTreeKind::Custom;
+        registration->type = type;
+        registration->to_iterable = std::move(to_iterable);
+        registration->from_iterable = std::move(from_iterable);
+        if (!registry->registrations.emplace(type, std::move(registration)).second) [[unlikely]] {
+            throw std::invalid_argument(absl::StrFormat(
+                "Duplicate custom PyTree type registration for %s.", py::repr(type)));
+        }
     }
 }
 
+template <bool NoneIsLeaf>
 /*static*/ const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup(
     const py::handle& type) {
-    PyTreeTypeRegistry* registry = Singleton();
+    PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
     auto it = registry->registrations.find(type);
     return it == registry->registrations.end() ? nullptr : it->second.get();
 }
+
+template const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(
+    const py::handle& type);
+template const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(
+    const py::handle& type);
 
 size_t PyTreeTypeRegistry::TypeHash::operator()(const py::object& t) const {
     return absl::HashOf(t.ptr());

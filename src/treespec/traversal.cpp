@@ -77,6 +77,7 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
 
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
     auto outer_treespec = std::make_unique<PyTreeSpec>();
+    outer_treespec->none_is_leaf = none_is_leaf;
     for (const Node& node : traversal) {
         if (node.kind == PyTreeKind::Leaf) [[likely]] {
             absl::c_copy(inner_treespec.traversal, std::back_inserter(outer_treespec->traversal));
@@ -93,7 +94,15 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     return outer_treespec;
 }
 
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::Tuple(const std::vector<PyTreeSpec>& treespecs) {
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::Tuple(const std::vector<PyTreeSpec>& treespecs,
+                                                         const bool& none_is_leaf) {
+    for (const PyTreeSpec& treespec : treespecs) {
+        if (treespec.none_is_leaf != none_is_leaf) [[unlikely]] {
+            throw std::invalid_argument(absl::StrFormat(
+                "Expected TreeSpecs with `node_is_leaf=%s`.", (none_is_leaf ? "True" : "False")));
+        }
+    }
+
     auto out = std::make_unique<PyTreeSpec>();
     ssize_t num_leaves = 0;
     for (const PyTreeSpec& treespec : treespecs) {
@@ -106,6 +115,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     node.num_leaves = num_leaves;
     node.num_nodes = out->traversal.size() + 1;
     out->traversal.emplace_back(std::move(node));
+    out->none_is_leaf = none_is_leaf;
     return out;
 }
 

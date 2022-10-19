@@ -69,13 +69,16 @@ class PyTreeTypeRegistry {
 
     // Finds the custom type registration for `type`. Returns nullptr if none
     // exists.
+    template <bool NoneIsLeaf>
     static const Registration *Lookup(const py::handle &type);
 
  private:
+    template <bool NoneIsLeaf>
     struct SingletonHelper {
         static PyTreeTypeRegistry *get();
     };
 
+    template <bool NoneIsLeaf>
     static PyTreeTypeRegistry *Singleton();
 
     class TypeHash {

@@ -27,3 +27,4 @@ subclasscheck
 Iterable
 iterable
 boolean
+arity

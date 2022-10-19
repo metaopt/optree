@@ -15,6 +15,8 @@
 """OpTree: Optimized PyTree."""
 
 from optree.ops import (
+    NONE_IS_LEAF,
+    NONE_IS_NODE,
     all_leaves,
     tree_all,
     tree_any,
@@ -45,6 +47,8 @@ from optree.version import __version__
 __all__ = [
     'PyTreeSpec',
     'PyTreeDef',
+    'NONE_IS_NODE',
+    'NONE_IS_LEAF',
     'PyTree',
     'CustomTreeNode',
     'AttributeKeyPathEntry',

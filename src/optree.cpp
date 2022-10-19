@@ -27,14 +27,19 @@ limitations under the License.
 namespace optree {
 
 void BuildModule(py::module& mod) {  // NOLINT
+    mod.def("flatten",
+            &PyTreeSpec::Flatten,
+            py::arg("tree"),
+            py::arg("leaf_predicate") = std::nullopt,
+            py::arg("none_is_leaf") = false);
     mod.def(
-        "flatten", &PyTreeSpec::Flatten, py::arg("tree"), py::arg("leaf_predicate") = std::nullopt);
-    mod.def("all_leaves", &PyTreeSpec::AllLeaves, py::arg("iterable"));
-    mod.def("tuple", &PyTreeSpec::Tuple, py::arg("treespecs"));
+        "all_leaves", &PyTreeSpec::AllLeaves, py::arg("iterable"), py::arg("none_is_leaf") = false);
+    mod.def("tuple", &PyTreeSpec::Tuple, py::arg("treespecs"), py::arg("none_is_leaf") = false);
 
     py::class_<PyTreeSpec>(mod, "PyTreeSpec")
         .def_property_readonly("num_leaves", &PyTreeSpec::num_leaves)
         .def_property_readonly("num_nodes", &PyTreeSpec::num_nodes)
+        .def_property_readonly("none_is_leaf", &PyTreeSpec::get_none_is_leaf)
         .def("unflatten",
              static_cast<py::object (PyTreeSpec::*)(const py::iterable&) const>(
                  &PyTreeSpec::Unflatten),

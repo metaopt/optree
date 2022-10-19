@@ -22,7 +22,7 @@ limitations under the License.
 
 namespace optree {
 
-template <typename Span>
+template <bool NoneIsLeaf, typename Span>
 void PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                                  Span& leaves,
                                  const std::optional<py::function>& leaf_predicate) {
@@ -32,12 +32,13 @@ void PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
     if (leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) [[unlikely]] {
         leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
     } else [[likely]] {  // NOLINT
-        node.kind = GetKind(handle, &node.custom);
+        node.kind = GetKind<NoneIsLeaf>(handle, &node.custom);
         auto recurse = [this, &leaf_predicate, &leaves](py::handle child) {
-            FlattenIntoImpl(child, leaves, leaf_predicate);
+            FlattenIntoImpl<NoneIsLeaf>(child, leaves, leaf_predicate);
         };
         switch (node.kind) {
             case PyTreeKind::None:
+                if (!NoneIsLeaf) break;
             case PyTreeKind::Leaf:
                 leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
                 break;
@@ -128,21 +129,34 @@ void PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
 
 void PyTreeSpec::FlattenInto(const py::handle& handle,
                              absl::InlinedVector<py::object, 2>& leaves,
-                             const std::optional<py::function>& leaf_predicate) {
-    FlattenIntoImpl(handle, leaves, leaf_predicate);
+                             const std::optional<py::function>& leaf_predicate,
+                             const bool& none_is_leaf) {
+    if (none_is_leaf) [[unlikely]] {
+        FlattenIntoImpl<NONE_IS_LEAF>(handle, leaves, leaf_predicate);
+    } else [[likely]] {  // NOLINT
+        FlattenIntoImpl<NONE_IS_NODE>(handle, leaves, leaf_predicate);
+    }
 }
 
 void PyTreeSpec::FlattenInto(const py::handle& handle,
                              std::vector<py::object>& leaves,
-                             const std::optional<py::function>& leaf_predicate) {
-    FlattenIntoImpl(handle, leaves, leaf_predicate);
+                             const std::optional<py::function>& leaf_predicate,
+                             const bool& none_is_leaf) {
+    if (none_is_leaf) [[unlikely]] {
+        FlattenIntoImpl<NONE_IS_LEAF>(handle, leaves, leaf_predicate);
+    } else [[likely]] {  // NOLINT
+        FlattenIntoImpl<NONE_IS_NODE>(handle, leaves, leaf_predicate);
+    }
 }
 
 /*static*/ std::pair<std::vector<py::object>, std::unique_ptr<PyTreeSpec>> PyTreeSpec::Flatten(
-    const py::handle& tree, const std::optional<py::function>& leaf_predicate) {
+    const py::handle& tree,
+    const std::optional<py::function>& leaf_predicate,
+    const bool& none_is_leaf) {
     std::vector<py::object> leaves;
     auto treespec = std::make_unique<PyTreeSpec>();
-    treespec->FlattenInto(tree, leaves, leaf_predicate);
+    treespec->none_is_leaf = none_is_leaf;
+    treespec->FlattenInto(tree, leaves, leaf_predicate, none_is_leaf);
     return std::make_pair(std::move(leaves), std::move(treespec));
 }
 
@@ -166,15 +180,15 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
         ++it;
 
         switch (node.kind) {
+            case PyTreeKind::None:
+                break;
+
             case PyTreeKind::Leaf:
                 if (leaf < 0) [[unlikely]] {
                     throw std::logic_error("Leaf count mismatch.");
                 }
                 leaves[leaf] = py::reinterpret_borrow<py::object>(object);
                 --leaf;
-                break;
-
-            case PyTreeKind::None:
                 break;
 
             case PyTreeKind::Tuple: {
@@ -301,7 +315,12 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
             }
 
             case PyTreeKind::Custom: {
-                auto* registration = PyTreeTypeRegistry::Lookup(object.get_type());
+                const PyTreeTypeRegistry::Registration* registration;
+                if (none_is_leaf) [[unlikely]] {
+                    registration = PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(object.get_type());
+                } else [[likely]] {  // NOLINT
+                    registration = PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(object.get_type());
+                }
                 if (registration != node.custom) [[unlikely]] {
                     throw std::invalid_argument(
                         absl::StrFormat("Custom node type mismatch: expected type: %s, value: %s.",
@@ -351,18 +370,23 @@ py::list PyTreeSpec::FlattenUpTo(const py::handle& full_tree) const {
     return FlattenUpToImpl(full_tree);
 }
 
+template <bool NoneIsLeaf>
 /*static*/ bool PyTreeSpec::AllLeavesImpl(const py::iterable& iterable) {
     const PyTreeTypeRegistry::Registration* custom;
     for (const py::handle& h : iterable) {
-        if (GetKind(h, &custom) != PyTreeKind::Leaf) [[unlikely]] {
+        if (GetKind<NoneIsLeaf>(h, &custom) != PyTreeKind::Leaf) [[unlikely]] {
             return false;
         }
     }
     return true;
 }
 
-/*static*/ bool PyTreeSpec::AllLeaves(const py::iterable& iterable) {
-    return AllLeavesImpl(iterable);
+/*static*/ bool PyTreeSpec::AllLeaves(const py::iterable& iterable, const bool& none_is_leaf) {
+    if (none_is_leaf) [[unlikely]] {
+        return AllLeavesImpl<NONE_IS_LEAF>(iterable);
+    } else [[likely]] {  // NOLINT
+        return AllLeavesImpl<NONE_IS_NODE>(iterable);
+    }
 }
 
 }  // namespace optree
