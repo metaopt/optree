@@ -62,6 +62,12 @@ lint = [
     "pre-commit",
 ]
 test = ['pytest', 'pytest-cov', 'pytest-xdist']
+benchmark = [
+    'jax[cpu] >= 0.3, < 0.4.0a0',
+    'torch >= 1.12, < 1.13.0a0',
+    'torchvision',
+    'termcolor',
+]
 
 [tool.setuptools.packages.find]
 include = ["optree", "optree.*"]

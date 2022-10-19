@@ -24,6 +24,9 @@ install-editable:
 
 install-e: install-editable  # alias
 
+uninstall:
+	$(PYTHON) -m pip uninstall -y $(PROJECT_NAME)
+
 build:
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install --upgrade setuptools wheel build

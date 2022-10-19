@@ -38,7 +38,7 @@ jobs:
 
       - name: Install OpTree
         run: |
-          python -m pip install -vvv --no-build-isolation --editable '.[lint]'
+          python -m pip install -vvv --no-build-isolation --editable '.[lint,benchmark]'
 
       - name: pre-commit
         run: |
