@@ -57,7 +57,7 @@ namespace optree {
     registration->type = type;
     registration->to_iterable = std::move(to_iterable);
     registration->from_iterable = std::move(from_iterable);
-    if (!registry->registrations.emplace(type, std::move(registration)).second) {
+    if (!registry->registrations.emplace(type, std::move(registration)).second) [[unlikely]] {
         throw std::invalid_argument(
             absl::StrFormat("Duplicate custom PyTree type registration for %s.", py::repr(type)));
     }

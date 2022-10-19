@@ -20,7 +20,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)  # for likely/unlikely attributes
 
 find_package(Threads REQUIRED)           # -pthread
 find_package(OpenMP REQUIRED)            # -Xpreprocessor -fopenmp

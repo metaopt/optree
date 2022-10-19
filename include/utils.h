@@ -35,7 +35,7 @@ limitations under the License.
 #include <vector>
 
 #define CHECK(condition)                                                              \
-    if (!(condition))                                                                 \
+    if (!(condition)) [[likely]]                                                      \
     throw std::runtime_error(std::string(#condition) + " failed at " __FILE__ + ':' + \
                              std::to_string(__LINE__))
 
@@ -60,7 +60,7 @@ inline std::vector<T> reserved_vector(const size_t& size) {
 }
 
 inline py::list DictKeys(const py::dict& dict) {
-    return py::reinterpret_borrow<py::list>(PyDict_Keys(dict.ptr()));
+    return py::reinterpret_steal<py::list>(PyDict_Keys(dict.ptr()));
 }
 
 inline py::list SortedDictKeys(const py::dict& dict) {
@@ -68,11 +68,11 @@ inline py::list SortedDictKeys(const py::dict& dict) {
 
     try {
         // Sort directly if possible.
-        if (PyList_Sort(keys.ptr())) {
+        if (PyList_Sort(keys.ptr())) [[unlikely]] {
             throw py::error_already_set();
         }
     } catch (py::error_already_set& ex1) {
-        if (ex1.matches(PyExc_TypeError)) {
+        if (ex1.matches(PyExc_TypeError)) [[likely]] {  // NOLINT
             // Found incomparable keys (e.g. `int` vs. `str`, or user-defined types).
             try {
                 // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
@@ -86,15 +86,15 @@ inline py::list SortedDictKeys(const py::dict& dict) {
                 });
                 keys.attr("sort")(py::arg("key") = sort_key_fn);
             } catch (py::error_already_set& ex2) {
-                if (ex2.matches(PyExc_TypeError)) {
+                if (ex2.matches(PyExc_TypeError)) [[likely]] {
                     // Found incomparable user-defined key types.
                     // The keys remain in the insertion order.
                     PyErr_Clear();
-                } else {
+                } else [[unlikely]] {  // NOLINT
                     throw;
                 }
             }
-        } else {
+        } else [[unlikely]] {  // NOLINT
             throw;
         }
     }
@@ -275,26 +275,26 @@ inline void SET_ITEM<py::list>(const py::handle& list, const int& index, const p
 
 template <typename PyType>
 inline void AssertExact(const py::handle& object) {
-    if (!py::isinstance<PyType>(object)) {
+    if (!py::isinstance<PyType>(object)) [[unlikely]] {
         throw std::runtime_error(absl::StrFormat(
             "Expected an instance of %s, got %s.", typeid(PyType).name(), py::repr(object)));
     }
 }
 template <>
 inline void AssertExact<py::list>(const py::handle& object) {
-    if (!PyList_CheckExact(object.ptr())) {
+    if (!PyList_CheckExact(object.ptr())) [[unlikely]] {
         throw std::invalid_argument(absl::StrFormat("Expected list, got %s.", py::repr(object)));
     }
 }
 template <>
 inline void AssertExact<py::tuple>(const py::handle& object) {
-    if (!PyTuple_CheckExact(object.ptr())) {
+    if (!PyTuple_CheckExact(object.ptr())) [[unlikely]] {
         throw std::invalid_argument(absl::StrFormat("Expected tuple, got %s.", py::repr(object)));
     }
 }
 template <>
 inline void AssertExact<py::dict>(const py::handle& object) {
-    if (!PyDict_CheckExact(object.ptr())) {
+    if (!PyDict_CheckExact(object.ptr())) [[unlikely]] {
         throw std::invalid_argument(absl::StrFormat("Expected dict, got %s.", py::repr(object)));
     }
 }
@@ -305,28 +305,28 @@ inline bool IsNamedTuple(const py::handle& object) {
 }
 
 inline void AssertExactNamedTuple(const py::handle& object) {
-    if (!IsNamedTuple(object)) {
+    if (!IsNamedTuple(object)) [[unlikely]] {
         throw std::invalid_argument(
             absl::StrFormat("Expected collections.namedtuple, got %s.", py::repr(object)));
     }
 }
 
 inline void AssertExactOrderedDict(const py::handle& object) {
-    if (!object.get_type().is(py::OrderedDict)) {
+    if (!object.get_type().is(py::OrderedDict)) [[unlikely]] {
         throw std::invalid_argument(
             absl::StrFormat("Expected collections.OrderedDict, got %s.", py::repr(object)));
     }
 }
 
 inline void AssertExactDefaultDict(const py::handle& object) {
-    if (!object.get_type().is(py::DefaultDict)) {
+    if (!object.get_type().is(py::DefaultDict)) [[unlikely]] {
         throw std::invalid_argument(
             absl::StrFormat("Expected collections.defaultdict, got %s.", py::repr(object)));
     }
 }
 
 inline void AssertExactDeque(const py::handle& object) {
-    if (!object.get_type().is(py::Deque)) {
+    if (!object.get_type().is(py::Deque)) [[unlikely]] {
         throw std::invalid_argument(
             absl::StrFormat("Expected collections.deque, got %s.", py::repr(object)));
     }

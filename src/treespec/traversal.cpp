@@ -32,7 +32,7 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
     for (const Node& node : traversal) {
         switch (node.kind) {
             case PyTreeKind::Leaf: {
-                if (it == leaves.end()) {
+                if (it == leaves.end()) [[unlikely]] {
                     throw std::invalid_argument("Too few leaves for PyTreeSpec");
                 }
 
@@ -51,7 +51,7 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
             case PyTreeKind::DefaultDict:
             case PyTreeKind::Deque:
             case PyTreeKind::Custom: {
-                if ((ssize_t)agenda.size() < node.arity) {
+                if ((ssize_t)agenda.size() < node.arity) [[unlikely]] {
                     throw std::logic_error("Too few elements for custom type.");
                 }
                 py::tuple tuple{node.arity};
@@ -66,10 +66,10 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
                 throw std::logic_error("Unreachable code.");
         }
     }
-    if (it != leaves.end()) {
+    if (it != leaves.end()) [[unlikely]] {
         throw std::invalid_argument("Too many leaves for PyTreeSpec.");
     }
-    if (agenda.size() != 1) {
+    if (agenda.size() != 1) [[unlikely]] {
         throw std::logic_error("PyTreeSpec traversal did not yield a singleton.");
     }
     return std::move(agenda.back());
@@ -78,9 +78,9 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
     auto outer_treespec = std::make_unique<PyTreeSpec>();
     for (const Node& node : traversal) {
-        if (node.kind == PyTreeKind::Leaf) {
+        if (node.kind == PyTreeKind::Leaf) [[likely]] {
             absl::c_copy(inner_treespec.traversal, std::back_inserter(outer_treespec->traversal));
-        } else {
+        } else [[unlikely]] {  // NOLINT
             outer_treespec->traversal.emplace_back(std::move(node));
         }
     }
@@ -111,7 +111,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
 
 std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
     std::vector<std::unique_ptr<PyTreeSpec>> children;
-    if (traversal.empty()) {
+    if (traversal.empty()) [[likely]] {
         return children;
     }
     const Node& root = traversal.back();
@@ -120,16 +120,16 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
     for (ssize_t i = root.arity - 1; i >= 0; --i) {
         children[i] = std::make_unique<PyTreeSpec>();
         const Node& node = traversal.at(pos - 1);
-        if (pos < node.num_nodes) {
-            throw std::logic_error("Children() walked off start of array.");
+        if (pos < node.num_nodes) [[unlikely]] {
+            throw std::logic_error("PyTreeSpec::Children() walked off start of array.");
         }
         std::copy(traversal.begin() + pos - node.num_nodes,
                   traversal.begin() + pos,
                   std::back_inserter(children[i]->traversal));
         pos -= node.num_nodes;
     }
-    if (pos != 0) {
-        throw std::logic_error("pos != 0 at end of PyTreeSpec::Children.");
+    if (pos != 0) [[unlikely]] {
+        throw std::logic_error("pos != 0 at end of PyTreeSpec::Children().");
     }
     return children;
 }

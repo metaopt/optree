@@ -28,13 +28,13 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
     auto it = leaves.begin();
     ssize_t leaf_count = 0;
     for (const Node& node : traversal) {
-        if ((ssize_t)agenda.size() < node.arity) {
+        if ((ssize_t)agenda.size() < node.arity) [[unlikely]] {
             throw std::logic_error("Too few elements for PyTreeSpec node.");
         }
         switch (node.kind) {
-            case PyTreeKind::Leaf:
             case PyTreeKind::None:
-                if (it == leaves.end()) {
+            case PyTreeKind::Leaf:
+                if (it == leaves.end()) [[unlikely]] {
                     throw std::invalid_argument(
                         absl::StrFormat("Too few leaves for PyTreeSpec; expected %ld, got %ld.",
                                         num_leaves(),
@@ -55,7 +55,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
             case PyTreeKind::Custom: {
                 const ssize_t size = agenda.size();
                 absl::Span<py::object> span;
-                if (node.arity > 0) {
+                if (node.arity > 0) [[likely]] {
                     span = absl::Span<py::object>(&agenda[size - node.arity], node.arity);
                 }
                 py::object out = MakeNode(node, span);
@@ -68,11 +68,11 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
                 throw std::logic_error("Unreachable code.");
         }
     }
-    if (it != leaves.end()) {
+    if (it != leaves.end()) [[unlikely]] {
         throw std::invalid_argument(
             absl::StrFormat("Too many leaves for PyTreeSpec; expected %ld.", num_leaves()));
     }
-    if (agenda.size() != 1) {
+    if (agenda.size() != 1) [[unlikely]] {
         throw std::logic_error("PyTreeSpec traversal did not yield a singleton.");
     }
     return std::move(agenda.back());
