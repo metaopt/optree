@@ -26,17 +26,17 @@ from typing import (
     Hashable,
     Iterable,
     List,
-    NamedTuple,
     Optional,
     Sequence,
     Tuple,
     TypeVar,
     Union,
 )
+from typing_extensions import NamedTuple  # Generic NamedTuple: Python 3.11+
 from typing_extensions import OrderedDict  # Generic OrderedDict: Python 3.7.2+
 from typing_extensions import Protocol  # Python 3.8+
 
-from optree import _C
+import optree._C as _C
 
 
 try:
