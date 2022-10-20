@@ -38,11 +38,12 @@ template <>
         add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
         add_builtin_type(&PyList_Type, PyTreeKind::List);
         add_builtin_type(&PyDict_Type, PyTreeKind::Dict);
-        add_builtin_type(reinterpret_cast<PyTypeObject*>(py::OrderedDict.ptr()),
+        add_builtin_type(reinterpret_cast<PyTypeObject*>(PyOrderedDictTypeObject.ptr()),
                          PyTreeKind::OrderedDict);
-        add_builtin_type(reinterpret_cast<PyTypeObject*>(py::DefaultDict.ptr()),
+        add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDefaultDictTypeObject.ptr()),
                          PyTreeKind::DefaultDict);
-        add_builtin_type(reinterpret_cast<PyTypeObject*>(py::Deque.ptr()), PyTreeKind::Deque);
+        add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDequeTypeObject.ptr()),
+                         PyTreeKind::Deque);
         return registry;
     }());
     return &registry;
@@ -63,11 +64,12 @@ template <>
         add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
         add_builtin_type(&PyList_Type, PyTreeKind::List);
         add_builtin_type(&PyDict_Type, PyTreeKind::Dict);
-        add_builtin_type(reinterpret_cast<PyTypeObject*>(py::OrderedDict.ptr()),
+        add_builtin_type(reinterpret_cast<PyTypeObject*>(PyOrderedDictTypeObject.ptr()),
                          PyTreeKind::OrderedDict);
-        add_builtin_type(reinterpret_cast<PyTypeObject*>(py::DefaultDict.ptr()),
+        add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDefaultDictTypeObject.ptr()),
                          PyTreeKind::DefaultDict);
-        add_builtin_type(reinterpret_cast<PyTypeObject*>(py::Deque.ptr()), PyTreeKind::Deque);
+        add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDequeTypeObject.ptr()),
+                         PyTreeKind::Deque);
         return registry;
     }());
     return &registry;

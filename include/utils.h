@@ -48,12 +48,19 @@ namespace py = pybind11;
 using size_t = py::size_t;
 using ssize_t = py::ssize_t;
 
-namespace pybind11 {
-const module_ collections_module = module_::import("collections");
-const object OrderedDict = collections_module.attr("OrderedDict");
-const object DefaultDict = collections_module.attr("defaultdict");
-const object Deque = collections_module.attr("deque");
-}  // namespace pybind11
+#ifdef _WIN32  // Windows
+const py::object& ImportOrderedDict();
+const py::object& ImportDefaultDict();
+const py::object& ImportDeque();
+#define PyOrderedDictTypeObject ImportOrderedDict()
+#define PyDefaultDictTypeObject ImportDefaultDict()
+#define PyDequeTypeObject ImportDeque()
+#else  // UNIX
+static const py::module_ PyCollectionsModule = py::module_::import("collections");
+static const py::object PyOrderedDictTypeObject = py::getattr(PyCollectionsModule, "OrderedDict");
+static const py::object PyDefaultDictTypeObject = py::getattr(PyCollectionsModule, "defaultdict");
+static const py::object PyDequeTypeObject = py::getattr(PyCollectionsModule, "deque");
+#endif
 
 template <typename T>
 inline std::vector<T> reserved_vector(const size_t& size) {
@@ -315,21 +322,21 @@ inline void AssertExactNamedTuple(const py::handle& object) {
 }
 
 inline void AssertExactOrderedDict(const py::handle& object) {
-    if (!object.get_type().is(py::OrderedDict)) [[unlikely]] {
+    if (!object.get_type().is(PyOrderedDictTypeObject)) [[unlikely]] {
         throw std::invalid_argument(
             absl::StrFormat("Expected collections.OrderedDict, got %s.", py::repr(object)));
     }
 }
 
 inline void AssertExactDefaultDict(const py::handle& object) {
-    if (!object.get_type().is(py::DefaultDict)) [[unlikely]] {
+    if (!object.get_type().is(PyDefaultDictTypeObject)) [[unlikely]] {
         throw std::invalid_argument(
             absl::StrFormat("Expected collections.defaultdict, got %s.", py::repr(object)));
     }
 }
 
 inline void AssertExactDeque(const py::handle& object) {
-    if (!object.get_type().is(py::Deque)) [[unlikely]] {
+    if (!object.get_type().is(PyDequeTypeObject)) [[unlikely]] {
         throw std::invalid_argument(
             absl::StrFormat("Expected collections.deque, got %s.", py::repr(object)));
     }

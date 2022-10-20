@@ -87,7 +87,7 @@ bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == o
                 SET_ITEM<py::list>(list, i, std::move(children[i]));
             }
             if (node.kind == PyTreeKind::Deque) [[unlikely]] {
-                return py::Deque(list, py::arg("maxlen") = node.node_data);
+                return PyDequeTypeObject(list, py::arg("maxlen") = node.node_data);
             }
             return std::move(list);
         }
@@ -110,7 +110,7 @@ bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == o
                     i,
                     py::make_tuple(GET_ITEM_HANDLE<py::list>(keys, i), std::move(children[i])));
             }
-            return py::OrderedDict(items);
+            return PyOrderedDictTypeObject(items);
         }
 
         case PyTreeKind::DefaultDict: {
@@ -120,7 +120,7 @@ bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == o
             for (ssize_t i = 0; i < node.arity; ++i) {
                 dict[GET_ITEM_HANDLE<py::list>(keys, i)] = std::move(children[i]);
             }
-            return py::DefaultDict(default_factory, dict);
+            return PyDefaultDictTypeObject(default_factory, dict);
         }
 
         case PyTreeKind::Custom: {

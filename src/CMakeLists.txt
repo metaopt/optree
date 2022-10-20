@@ -21,6 +21,7 @@ set(
     treespec/flatten.cpp
     treespec/unflatten.cpp
     treespec/traversal.cpp
+    utils.cpp
 )
 
 pybind11_add_module(_C THIN_LTO "${optree_csrc}")
