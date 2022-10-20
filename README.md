@@ -1,6 +1,49 @@
 # OpTree
 
+![Python 3.6+](https://img.shields.io/badge/Python-3.6%2B-brightgreen)
+[![PyPI](https://img.shields.io/pypi/v/optree?logo=pypi)](https://pypi.org/project/optree)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/metaopt/optree/Build?label=build&logo=github)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/metaopt/optree/Tests?label=tests&logo=github)
+[![Codecov](https://img.shields.io/codecov/c/github/metaopt/optree/main?logo=codecov)](https://codecov.io/gh/metaopt/optree)
+[![Documentation Status](https://img.shields.io/readthedocs/optree?logo=readthedocs)](https://optree.readthedocs.io/en/latest/?badge=latest)
+[![Downloads](https://static.pepy.tech/personalized-badge/optree?period=total&left_color=grey&right_color=blue&left_text=downloads)](https://pepy.tech/project/optree)
+[![GitHub Repo Stars](https://img.shields.io/github/stars/metaopt/optree?color=brightgreen&logo=github)](https://github.com/metaopt/optree/stargazers)
+
 Optimized PyTree Utilities.
+
+--------------------------------------------------------------------------------
+
+### Table of Contents  <!-- omit in toc --> <!-- markdownlint-disable heading-increment -->
+
+- [Installation](#installation)
+- [Benchmark](#benchmark)
+- [License](#license)
+
+--------------------------------------------------------------------------------
+
+## Installation
+
+Install from PyPI ([![PyPI](https://img.shields.io/pypi/v/optree?logo=pypi)](https://pypi.org/project/optree) / ![Status](https://img.shields.io/pypi/status/optree)):
+
+```bash
+pip3 install --upgrade optree
+```
+
+Install the latest version from GitHub:
+
+```bash
+pip3 install git+https://github.com/metaopt/optree.git#egg=optree
+```
+
+Or, clone this repo and install manually:
+
+```bash
+git clone --depth=1 --recurse-submodules https://github.com/metaopt/optree.git
+cd optree
+pip3 install .
+```
+
+Compiling from the source requires Python 3.6+, a compiler (`gcc` / `clang` / `icc` / `cl.exe`) supports C++20 and a `cmake` installation.
 
 --------------------------------------------------------------------------------
 
@@ -19,7 +62,11 @@ compared with the following libraries:
 - JAX XLA ([`jax[cpu] == 0.3.23`](https://pypi.org/project/jax/0.3.23))
 - PyTorch ([`torch == 1.12.1`](https://pypi.org/project/torch/1.12.1))
 
-All results are reported on a workstation with an AMD Ryzen 9 5950X CPU @ 4.45GHz in an isolated virtual environment with Python 3.10.8.
+All results are reported on a workstation with an AMD Ryzen 9 5950X CPU @ 4.45GHz in an isolated virtual environment with Python 3.10.8. Run with the following command:
+
+```bash
+python3 benchmark.py --number=10000 --repeat=5
+```
 
 The test inputs are nested containers (i.e., PyTrees) extracted from `torch.nn.Module` objects. They are:
 
