@@ -1,0 +1,18 @@
+--requirement ../requirements.txt
+
+pytest
+pytest-cov
+pytest-xdist
+isort
+black >= 22.6.0
+pylint
+mypy
+flake8
+flake8-bugbear
+# https://github.com/PyCQA/doc8/issues/112
+doc8 < 1.0.0a0
+pydocstyle
+pyenchant
+cpplint
+pre-commit
+jax[cpu] >= 0.3

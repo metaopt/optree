@@ -64,6 +64,7 @@ __all__ = [
     'treespec_leaf',
     'treespec_none',
     'treespec_tuple',
+    'prefix_errors',
 ]
 
 
@@ -424,9 +425,11 @@ def tree_transpose(
     """
     if outer_treespec.none_is_leaf != inner_treespec.none_is_leaf:
         raise ValueError('Tree structures must have the same none_is_leaf value.')
-    leaves, treespec = tree_flatten(tree, none_is_leaf=outer_treespec.none_is_leaf)
-    inner_size = inner_treespec.num_leaves
     outer_size = outer_treespec.num_leaves
+    inner_size = inner_treespec.num_leaves
+    if outer_size == 0 or inner_size == 0:
+        raise ValueError('Tree structures must have at least one leaf.')
+    leaves, treespec = tree_flatten(tree, none_is_leaf=outer_treespec.none_is_leaf)
     if treespec.num_leaves != inner_size * outer_size:
         expected_treespec = outer_treespec.compose(inner_treespec)
         raise TypeError(f'Tree structure mismatch:\n{treespec}\n != \n{expected_treespec}')
@@ -671,26 +674,44 @@ def broadcast_prefix(
     return result
 
 
-def flatten_one_level(tree: PyTree[T]) -> Tuple[Children[T], AuxData]:
+def flatten_one_level(
+    tree: PyTree[T], *, none_is_leaf: bool = False
+) -> Tuple[Children[T], AuxData]:
     """Flattens the pytree one level, returning a tuple of children and auxiliary data."""
-    handler = register_pytree_node.get(type(tree))  # type: ignore[attr-defined]
+    if tree is None:
+        if none_is_leaf:  # type: ignore[unreachable]
+            raise ValueError('Cannot flatten None')
+        return (), None
+
+    node_type = type(tree)
+    handler = register_pytree_node.get(node_type)  # type: ignore[attr-defined]
     if handler:
-        children, meta = handler.to_iter(tree)
-        return list(children), meta
+        children, aux_data = handler.to_iter(tree)
+        return list(children), aux_data
 
     if is_namedtuple(tree):
-        return list(cast(NamedTuple, tree)), None
+        return list(cast(NamedTuple, tree)), node_type
 
-    raise ValueError(f"Can't tree-flatten type: {type(tree)}.")
+    raise ValueError(f'Cannot tree-flatten type: {node_type}.')
 
 
 def prefix_errors(
     prefix_tree: PyTree[T],
     full_tree: PyTree[S],
     is_leaf: Optional[Callable[[T], bool]] = None,
+    *,
+    none_is_leaf: bool = False,
 ) -> List[Callable[[str], ValueError]]:
     """Returns a list of errors that would be raised by :func:`broadcast_prefix`."""
-    return list(_prefix_error(KeyPath(), prefix_tree, full_tree, is_leaf))
+    return list(
+        _prefix_error(
+            KeyPath(),
+            prefix_tree,
+            full_tree,
+            is_leaf,
+            none_is_leaf=none_is_leaf,
+        )
+    )
 
 
 # pylint: disable-next=too-many-locals

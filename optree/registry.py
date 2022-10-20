@@ -180,28 +180,30 @@ _nodetype_registry: Dict[Type, PyTreeNodeRegistryEntry] = {
 register_pytree_node.get: Callable[[Type[CustomTreeNode[T]]], PyTreeNodeRegistryEntry] = _nodetype_registry.get  # type: ignore[attr-defined,misc]
 
 
-class _HashableCallableShim:
+class _HashablePartialShim:
     """Object that delegates :meth:`__call__`, :meth:`__hash__`, and :meth:`__eq__` to another object."""
 
-    def __init__(self, func: Callable[..., Any]) -> None:
-        self.func: Callable[..., Any] = func
-        self.args: Tuple[Any, ...] = None  # type: ignore[assignment]
-        self.keywords: Dict[str, Any] = None  # type: ignore[assignment]
+    func: Callable[..., Any]
+    args: Tuple[Any, ...]
+    keywords: Dict[str, Any]
+
+    def __init__(self, partial_func: functools.partial) -> None:
+        self.partial_func: functools.partial = partial_func
 
     def __call__(self, *args, **kwargs) -> Any:
-        return self.func(*args, **kwargs)
+        return self.partial_func(*args, **kwargs)
 
     def __hash__(self) -> int:
-        return hash(self.func)
+        return hash(self.partial_func)
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, _HashableCallableShim):
-            return self.func == other.func
-        return self.func == other
+        if isinstance(other, _HashablePartialShim):
+            return self.partial_func == other.partial_func
+        return self.partial_func == other
 
 
 @register_pytree_node_class
-class Partial(functools.partial, CustomTreeNode):  # pylint: disable=too-few-public-methods
+class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-few-public-methods
     """A version of :func:`functools.partial` that works in pytrees.
 
     Use it for partial function evaluation in a way that is compatible with JAX's transformations,
@@ -249,6 +251,10 @@ class Partial(functools.partial, CustomTreeNode):  # pylint: disable=too-few-pub
     Traced<ShapedArray(int32[], weak_type=True)>with<DynamicJaxprTrace(level=0/1)>
     """
 
+    func: Callable[..., Any]
+    args: Tuple[Any, ...]
+    keywords: Dict[str, Any]
+
     def __new__(cls, func: Callable[..., Any], *args, **keywords) -> 'Partial':
         """Creates a new :class:`Partial` instance."""
         # In Python 3.10+, if func is itself a functools.partial instance, functools.partial.__new__
@@ -257,7 +263,8 @@ class Partial(functools.partial, CustomTreeNode):  # pylint: disable=too-few-pub
         # since we care exactly which arguments are considered part of the pytree.
         if isinstance(func, functools.partial):
             original_func = func
-            func = _HashableCallableShim(original_func)
+            func = _HashablePartialShim(original_func)
+            assert not hasattr(func, 'func')
             out = super().__new__(cls, func, *args, **keywords)
             func.func = original_func.func
             func.args = original_func.args
