@@ -108,15 +108,12 @@ jobs:
       - name: Print version
         run: python setup.py --version
 
-      - name: Print Python specification
-        id: pyspec
+      - name: Set Python specification
         run: |
-          python -c "print('::set-output name=pyspec::*p%d%d-*' % __import__('sys').version_info[:2])"
+          python -c "print('CIBW_BUILD=*p%d%d-*' % __import__('sys').version_info[:2])"  >> "${GITHUB_ENV}"
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.11.1
-        env:
-          CIBW_BUILD: ${{ steps.pyspec.outputs.pyspec }}
         with:
           package-dir: .
           output-dir: wheelhouse
@@ -161,15 +158,12 @@ jobs:
       - name: Print version
         run: python setup.py --version
 
-      - name: Print Python specification
-        id: pyspec
+      - name: Set Python specification
         run: |
-          python -c "print('::set-output name=pyspec::*p%d%d-*' % __import__('sys').version_info[:2])"
+          python -c "print('CIBW_BUILD=*p%d%d-*' % __import__('sys').version_info[:2])"  >> "${GITHUB_ENV}"
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.11.1
-        env:
-          CIBW_BUILD: ${{ steps.pyspec.outputs.pyspec }}
         with:
           package-dir: .
           output-dir: wheelhouse
