@@ -15,8 +15,8 @@ limitations under the License.
 ================================================================================
 */
 
-// Caution: this code uses exceptions. The exception use is local to the
-// binding code and the idiomatic way to emit Python exceptions.
+// Caution: this code uses exceptions. The exception use is local to the binding
+// code and the idiomatic way to emit Python exceptions.
 
 #include "include/treespec.h"
 
@@ -276,9 +276,8 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 py::dict dict = py::reinterpret_borrow<py::dict>(object);
                 py::list keys = SortedDictKeys(dict);
                 py::object default_factory = py::getattr(object, "default_factory");
-                py::tuple node_data = py::reinterpret_borrow<py::tuple>(node.node_data);
-                py::object expected_default_factory = GET_ITEM_BORROW<py::tuple>(node_data, 0);
-                py::list expected_keys = GET_ITEM_BORROW<py::tuple>(node_data, 1);
+                py::object expected_default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
+                py::list expected_keys = GET_ITEM_BORROW<py::tuple>(node.node_data, 1);
                 if (default_factory.not_equal(expected_default_factory)) [[unlikely]] {
                     throw std::invalid_argument(
                         absl::StrFormat("Defaultdict factory mismatch; expected factory: "

@@ -14,12 +14,10 @@
 # ==============================================================================
 """OpTree: Optimized PyTree Utilities."""
 
-# pylint: disable=missing-class-docstring,missing-function-docstring
-
 import difflib
 import functools
 import textwrap
-from typing import Any, Callable, Optional, cast
+from typing import Any, Callable, Optional, cast, overload
 
 import optree._C as _C
 from optree.registry import (
@@ -49,19 +47,22 @@ from optree.typing import (
 __all__ = [
     'NONE_IS_NODE',
     'NONE_IS_LEAF',
-    'all_leaves',
-    'tree_all',
-    'tree_any',
     'tree_flatten',
+    'tree_unflatten',
     'tree_leaves',
+    'tree_structure',
+    'all_leaves',
     'tree_map',
     'tree_reduce',
-    'tree_structure',
     'tree_transpose',
-    'tree_unflatten',
+    'tree_replace_nones',
+    'tree_all',
+    'tree_any',
     'treespec_children',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',
+    'treespec_leaf',
+    'treespec_none',
     'treespec_tuple',
 ]
 
@@ -70,50 +71,49 @@ NONE_IS_NODE: bool = False  # literal constant
 NONE_IS_LEAF: bool = True  # literal constant
 
 
-def treespec_children(treespec: PyTreeSpec) -> List[PyTreeSpec]:
-    """Return a list of treespecs for the children of a treespec."""
-    return treespec.children()
-
-
-def treespec_is_leaf(treespec: PyTreeSpec) -> bool:
-    """Return whether the treespec is a leaf."""
-    return treespec.num_nodes == 1
-
-
-def treespec_is_strict_leaf(treespec: PyTreeSpec) -> bool:
-    """Return whether the treespec is a strict leaf."""
-    return treespec.num_nodes == 1 and treespec.num_leaves == 1
-
-
-def treespec_tuple(treespecs: Iterable[PyTreeSpec], *, none_is_leaf: bool = False) -> PyTreeSpec:
-    """Make a tuple treespec from a list of child treespecs."""
-    return _C.tuple(list(treespecs), none_is_leaf)
-
-
 def tree_flatten(
     tree: PyTree[T],
     is_leaf: Optional[Callable[[T], bool]] = None,
     *,
     none_is_leaf: bool = False,
 ) -> Tuple[List[T], PyTreeSpec]:
-    """Flatten a pytree.
+    """Flattens a pytree.
 
-    The flattening order (i.e. the order of elements in the output list)
-    is deterministic, corresponding to a left-to-right depth-first tree
-    traversal.
+    The flattening order (i.e., the order of elements in the output list) is deterministic,
+    corresponding to a left-to-right depth-first tree traversal.
+
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> tree_flatten(tree)
+    ([1, 2, 3, 4, 5], PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *}))
+    >>> tree_flatten(tree, none_is_leaf=True)
+    ([1, 2, 3, 4, None, 5], PyTreeSpec(NoneIsLeaf, {'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}))
+    >>> tree_flatten(1)
+    ([1], PyTreeSpec(*))
+    >>> tree_flatten(None)
+    ([], PyTreeSpec(None))
+    >>> tree_flatten(None, none_is_leaf=True)
+    ([None], PyTreeSpec(NoneIsLeaf, *))
+
+    For unordered dictionaries, :class:`dict` and :class:`collections.defaultdict`, the order is
+    dependent on the **sorted** keys in the dictionary. Please use :class:`collections.OrderedDict`
+    if you want to keep the keys in the insertion order.
+
+    >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
+    ([2, 3, 4, 1, 5], PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)])))
 
     Args:
-        tree: a pytree to flatten.
-        is_leaf: an optionally specified function that will be called at each
-            flattening step. It should return a boolean, with true stopping the
-            traversal and the whole subtree being treated as a leaf, and false
-            indicating the flattening should traverse the current object.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`,
-            :data:`None` is a node with arity 0. (default: :data:`False`)
+        tree: A pytree to flatten.
+        is_leaf: An optionally specified function that will be called at each flattening step. It
+            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
+            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
+            current object.
+        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
+            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
+            in the leaves list. (default: :data:`False`)
 
     Returns:
-        A pair where the first element is a list of leaf values and the second
-        element is a treespec representing the structure of the flattened tree.
+        A pair where the first element is a list of leaf values and the second element is a treespec
+        representing the structure of the pytree.
     """
     return _C.flatten(tree, is_leaf, none_is_leaf)
 
@@ -123,14 +123,18 @@ def tree_unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
 
     The inverse of :func:`tree_flatten`.
 
+    >>> leaves, treespec = tree_flatten(tree)
+    >>> tree == tree_unflatten(treespec, leaves)
+    True
+
     Args:
-        treespec: the treespec to reconstruct
-        leaves: the list of leaves to use for reconstruction. The list must match
-            the leaves of the treespec.
+        treespec: The treespec to reconstruct.
+        leaves: The list of leaves to use for reconstruction. The list must match the number of
+            leaves of the treespec.
 
     Returns:
-        The reconstructed pytree, containing the ``leaves`` placed in the structure
-        described by ``treespec``.
+        The reconstructed pytree, containing the ``leaves`` placed in the structure described by
+        ``treespec``.
     """
     return treespec.unflatten(leaves)
 
@@ -141,7 +145,35 @@ def tree_leaves(
     *,
     none_is_leaf: bool = False,
 ) -> List[T]:
-    """Get the leaves of a pytree."""
+    """Gets the leaves of a pytree.
+
+    See also :func:`tree_flatten`.
+
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> tree_leaves(tree)
+    [1, 2, 3, 4, 5]
+    >>> tree_leaves(tree)
+    [1, 2, 3, 4, None, 5]
+    >>> tree_leaves(1)
+    [1]
+    >>> tree_leaves(None)
+    []
+    >>> tree_leaves(None, none_is_leaf=True)
+    [None]
+
+    Args:
+        tree: A pytree to flatten.
+        is_leaf: An optionally specified function that will be called at each flattening step. It
+            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
+            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
+            current object.
+        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
+            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
+            in the leaves list. (default: :data:`False`)
+
+    Returns:
+        A list of leaf values.
+    """
     return _C.flatten(tree, is_leaf, none_is_leaf)[0]
 
 
@@ -151,7 +183,35 @@ def tree_structure(
     *,
     none_is_leaf: bool = False,
 ) -> PyTreeSpec:
-    """Get the treespec for a pytree."""
+    """Gets the treespec for a pytree.
+
+    See also :func:`tree_flatten`.
+
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> tree_structure(tree)
+    PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
+    >>> tree_structure(tree, none_is_leaf=True)
+    PyTreeSpec(NoneIsLeaf, {'a': *, 'b': (*, [*, *]), 'c': *, 'd': *})
+    >>> tree_structure(1)
+    PyTreeSpec(*)
+    >>> tree_structure(None)
+    PyTreeSpec(None)
+    >>> tree_structure(None, none_is_leaf=True)
+    PyTreeSpec(NoneIsLeaf, *)
+
+    Args:
+        tree: A pytree to flatten.
+        is_leaf: An optionally specified function that will be called at each flattening step. It
+            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
+            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
+            current object.
+        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
+            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
+            in the leaves list. (default: :data:`False`)
+
+    Returns:
+        A treespec object representing the structure of the pytree.
+    """
     return _C.flatten(tree, is_leaf, none_is_leaf)[1]
 
 
@@ -161,23 +221,41 @@ def all_leaves(
     *,
     none_is_leaf: bool = False,
 ) -> bool:
-    """Test whether all elements in the given iterable are all leaves.
+    """Tests whether all elements in the given iterable are all leaves.
 
-    >>> tree = {"a": [1, 2, 3]}
-    >>> assert all_leaves(optree.tree_leaves(tree))
-    >>> assert not all_leaves([tree])
+    See also :func:`tree_flatten` and :func:`tree_leaves`.
 
-    This function is useful in advanced cases, for example if a library allows
-    arbitrary map operations on a flat list of leaves it may want to check if
-    the result is still a flat list of leaves.
+    >>> tree = {'a': [1, 2, 3]}
+    >>> all_leaves(tree_leaves(tree))
+    True
+    >>> all_leaves([tree])
+    False
+    >>> all_leaves([1, 2, None, 3])
+    False
+    >>> all_leaves([1, 2, None, 3], none_is_leaf=True)
+    True
+
+    Note that this function iterates and checks the elements in the input iterable object, which
+    uses the :func:`iter` function. For dictionaries, ``iter(d)`` for a dictionary ``d`` iterates
+    the keys of the dictionary, not the values.
+
+    >>> list({'a': 1, 'b': (2, 3)})
+    ['a', 'b']
+    >>> all_leaves({'a': 1, 'b': (2, 3)})
+    True
+
+    This function is useful in advanced cases. For example, if a library allows arbitrary map
+    operations on a flat list of leaves it may want to check if the result is still a flat list
+    of leaves.
 
     Args:
-        iterable: Iterable of leaves.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`,
-            :data:`None` is a node with arity 0. (default: :data:`False`)
+        iterable: A iterable of leaves.
+        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
+            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
+            a leaf. (default: :data:`False`)
 
     Returns:
-        A boolean indicating if all elements in the input are leaves.
+        A boolean indicating if all elements in the input iterable are leaves.
     """
     if is_leaf is None:
         return _C.all_leaves(iterable, none_is_leaf)
@@ -189,47 +267,123 @@ def all_leaves(
 def tree_map(
     func: Callable[..., U],
     tree: PyTree[T],
-    *rest: PyTree[S],
+    *rests: PyTree[S],
     is_leaf: Optional[Callable[[T], bool]] = None,
     none_is_leaf: bool = False,
 ) -> PyTree[U]:
-    """Map a multi-input function over pytree args to produce a new pytree.
+    """Maps a multi-input function over pytree args to produce a new pytree.
+
+    See also :func:`tree_flatten`, :func:`tree_leaves`, and :func:`tree_unflatten`.
+
+    >>> tree_map(lambda x: x + 1, {'x': 7, 'y': (42, 64)})
+    {'x': 8, 'y': (43, 65)}
+    >>> tree_map(lambda x: x + 1, {'x': 7, 'y': (42, 64), 'z': None})
+    {'x': 8, 'y': (43, 65), 'z': None}
+    >>> tree_map(lambda x: x is None, {'x': 7, 'y': (42, 64), 'z': None})
+    {'x': False, 'y': (False, False), 'z': None}
+    >>> tree_map(lambda x: x is None, {'x': 7, 'y': (42, 64), 'z': None}, none_is_leaf=True)
+    {'x': False, 'y': (False, False), 'z': True}
+
+    If multiple inputs are given, the structure of the tree is taken from the first input;
+    subsequent inputs need only have ``tree`` as a prefix:
+
+    >>> tree_map(lambda x, y: [x] + y, [5, 6], [[7, 9], [1, 2]])
+    [[5, 7, 9], [6, 1, 2]]
 
     Args:
-        f: function that takes ``1 + len(rest)`` arguments, to be applied at the
-            corresponding leaves of the pytrees.
-        tree: a pytree to be mapped over, with each leaf providing the first
-            positional argument to ``f``.
-        rest: a tuple of pytrees, each of which has the same structure as ``tree``
-            or has ``tree`` as a prefix.
-        is_leaf: an optionally specified function that will be called at each
-            flattening step. It should return a boolean, which indicates whether
-            the flattening should traverse the current object, or if it should be
-            stopped immediately, with the whole subtree being treated as a leaf.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`,
-            :data:`None` is a node with arity 0. (default: :data:`False`)
+        func: A function that takes ``1 + len(rests)`` arguments, to be applied at the corresponding
+            leaves of the pytrees.
+        tree: A pytree to be mapped over, with each leaf providing the first positional argument to
+            function ``func``.
+        rests: A tuple of pytrees, each of which has the same structure as ``tree`` or has ``tree``
+            as a prefix.
+        is_leaf: An optionally specified function that will be called at each flattening step. It
+            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
+            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
+            current object.
+        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
+            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
+            in the leaves list and :data:`None` will be remain in the result pytree. (default:
+            :data:`False`)
 
     Returns:
-        A new pytree with the same structure as ``tree`` but with the value at each
-        leaf given by ``f(x, *xs)`` where ``x`` is the value at the corresponding
-        leaf in ``tree`` and ``xs`` is the tuple of values at corresponding nodes
-        in ``rest``.
-
-    Examples:
-        >>> import optree
-        >>> optree.tree_map(lambda x: x + 1, {"x": 7, "y": 42})
-        {'x': 8, 'y': 43}
-
-        If multiple inputs are passed, the structure of the tree is taken from
-        the first input; subsequent inputs need only have ``tree`` as a prefix:
-
-        >>> optree.tree_map(lambda x, y: [x] + y, [5, 6], [[7, 9], [1, 2]])
-        [[5, 7, 9], [6, 1, 2]]
+        A new pytree with the same structure as ``tree`` but with the value at each leaf given by
+        ``func(x, *xs)`` where ``x`` is the value at the corresponding leaf in ``tree`` and ``xs``
+        is the tuple of values at corresponding nodes in ``rests``.
     """
     leaves, treespec = tree_flatten(tree, is_leaf, none_is_leaf=none_is_leaf)
-    arglists = [leaves] + [treespec.flatten_up_to(r) for r in rest]
+    arglists = [leaves] + [treespec.flatten_up_to(r) for r in rests]
     results = map(func, *arglists)
     return treespec.unflatten(results)
+
+
+__INITIAL_MISSING: T = object()  # type: ignore[valid-type]
+
+
+@overload
+def tree_reduce(
+    func: Callable[[T, T], T],
+    tree: PyTree[T],
+    *,
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    none_is_leaf: bool = False,
+) -> T:
+    ...
+
+
+@overload
+def tree_reduce(
+    func: Callable[[T, T], T],
+    tree: PyTree[T],
+    initial: T = __INITIAL_MISSING,
+    *,
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    none_is_leaf: bool = False,
+) -> T:
+    ...
+
+
+def tree_reduce(  # type: ignore[misc]
+    func: Callable[[T, T], T],
+    tree: PyTree[T],
+    initial: T = __INITIAL_MISSING,
+    *,
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    none_is_leaf: bool = False,
+) -> T:
+    """Traversals through a pytree and reduces the leaves.
+
+    See also :func:`tree_leaves`.
+
+    >>> tree_reduce(lambda x, y: x + y, {'x': 1, 'y': (2, 3)})
+    6
+    >>> tree_reduce(lambda x, y: x + y, {'x': 1, 'y': (2, None), 'z': 3})
+    6
+    >>> tree_reduce(lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3})
+    3
+    >>> tree_reduce(lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
+    None
+
+    Args:
+        func: A function that takes two arguments and returns a value of the same type.
+        tree: A pytree to be traversed.
+        initial: An initial value to be used for the reduction. If not provided, the first leaf
+            value is used as the initial value.
+        is_leaf: An optionally specified function that will be called at each flattening step. It
+            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
+            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
+            current object.
+        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
+            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
+            in the leaves list. (default: :data:`False`)
+
+    Returns:
+        The result of reducing the leaves of the pytree using ``func``.
+    """
+    if initial is __INITIAL_MISSING:
+        return functools.reduce(func, tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf))
+
+    return functools.reduce(func, tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf), initial)
 
 
 def tree_transpose(
@@ -237,7 +391,37 @@ def tree_transpose(
     inner_treespec: PyTreeSpec,
     tree: PyTree[T],
 ) -> PyTree[PyTree[T]]:
-    """Transform a tree having tree structure (outer, inner) into one having structure (inner, outer)."""
+    """Transforms a tree having tree structure (outer, inner) into one having structure (inner, outer).
+
+    See also :func:`tree_flatten` and :func:`tree_unflatten`.
+
+    >>> outer_treespec = tree_structure({'a': 1, 'b': 2, 'c': (3, 4)})
+    >>> outer_treespec
+    PyTreeSpec({'a': *, 'b': *, 'c': (*, *)})
+    >>> inner_treespec = tree_structure((1, 2))
+    PyTreeSpec((*, *))
+    >>> tree = {'a': (1, 2), 'b': (3, 4), 'c': ((5, 6), (7, 8))}
+    >>> tree_transpose(outer_treespec, inner_treespec, tree)
+    ({'a': 1, 'b': 3, 'c': (5, 7)}, {'a': 2, 'b': 4, 'c': (6, 8)})
+
+    For performance reasons, this function is only checks for the number of leaves in the input
+    pytree, not the structure. The result is only enumerated up to the original order of leaves in
+    ``tree``, then transpose depends on the number of leaves in structure (inner, outer). The caller
+    is responsible for ensuring that the input pytree has a prefix structure of ``outer_treespec``
+    followed by a prefix structure of ``inner_treespec``. Otherwise, the result may be incorrect.
+
+    >>> tree_transpose(outer_treespec, inner_treespec, list(range(1, 9)))
+    ({'a': 1, 'b': 3, 'c': (5, 7)}, {'a': 2, 'b': 4, 'c': (6, 8)})
+
+    Args:
+        outer_treespec: A treespec object representing the outer structure of the pytree.
+        inner_treespec: A treespec object representing the inner structure of the pytree.
+        tree: A pytree to be transposed.
+
+    Returns:
+        A new pytree with the same structure as ``inner_treespec`` but with the value at each leaf
+        has the same structure as ``outer_treespec``.
+    """
     if outer_treespec.none_is_leaf != inner_treespec.none_is_leaf:
         raise ValueError('Tree structures must have the same none_is_leaf value.')
     leaves, treespec = tree_flatten(tree, none_is_leaf=outer_treespec.none_is_leaf)
@@ -252,45 +436,15 @@ def tree_transpose(
         for __ in range(outer_size)
     ]  # fmt: skip
     transposed = zip(*grouped)
-    subtrees = map(functools.partial(tree_unflatten, outer_treespec), transposed)
-    return tree_unflatten(inner_treespec, cast(Iterable[PyTree[T]], subtrees))
+    subtrees = map(outer_treespec.unflatten, transposed)
+    return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
 
-def _replace_nones(sentinel: Any, tree: Optional[PyTree[T]]) -> PyTree[T]:
-    """Replace :data:`None` in ``tree`` with ``sentinel``."""
+def tree_replace_nones(sentinel: Any, tree: Optional[PyTree[T]]) -> PyTree[T]:
+    """Replaces :data:`None` in ``tree`` with ``sentinel``."""
     if tree is None:
         return sentinel
-
-    handler = register_pytree_node.get(type(tree))  # type: ignore[attr-defined]
-    if handler:
-        children, metadata = handler.to_iter(tree)
-        proc_children: List[PyTree] = [_replace_nones(sentinel, child) for child in children]
-        return handler.from_iter(metadata, proc_children)
-
-    if is_namedtuple(tree):
-        # handle namedtuple as a special case, based on heuristic
-        proc_children = [_replace_nones(sentinel, child) for child in cast(NamedTuple, tree)]
-        return type(tree)(*proc_children)
-
-    return tree
-
-
-__INITIAL_MISSING: T = object()  # type: ignore[valid-type]
-
-
-def tree_reduce(
-    func: Callable[[T, T], T],
-    tree: PyTree[T],
-    is_leaf: Optional[Callable[[T], bool]] = None,
-    initial: T = __INITIAL_MISSING,
-    *,
-    none_is_leaf: bool = False,
-) -> T:
-    """Traversals through a pytree and reduces the leaves."""
-    if initial is __INITIAL_MISSING:
-        return functools.reduce(func, tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf))
-
-    return functools.reduce(func, tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf), initial)
+    return tree_map(lambda x: x if x is not None else sentinel, tree, none_is_leaf=True)
 
 
 def tree_all(
@@ -299,7 +453,37 @@ def tree_all(
     *,
     none_is_leaf: bool = False,
 ) -> bool:
-    """Test whether all leaves in the tree are true."""
+    """Tests whether all leaves in ``tree`` are true (or if ``tree`` is empty).
+
+    See also :func:`tree_leaves` and :func:`tree_any`.
+
+    >>> tree_any({})
+    True
+    >>> tree_all({'x': 1, 'y': (2, 3)})
+    True
+    >>> tree_all({'x': 1, 'y': (2, None), 'z': 3})  # `None` is a non-leaf node by default
+    True
+    >>> tree_all({'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
+    False
+    >>> tree_all(None)  # `None` is a non-leaf node by default
+    True
+    >>> tree_all(None, none_is_leaf=True)
+    False
+
+    Args:
+        tree: A pytree to be traversed.
+        is_leaf: An optionally specified function that will be called at each flattening step. It
+            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
+            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
+            current object.
+        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
+            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
+            in the leaves list. (default: :data:`False`)
+
+    Returns:
+        :data:`True` if all leaves in ``tree`` are true, or if ``tree`` is empty.
+        Otherwise, :data:`False`.
+    """
     return all(tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf))  # type: ignore[arg-type]
 
 
@@ -309,8 +493,160 @@ def tree_any(
     *,
     none_is_leaf: bool = False,
 ) -> bool:
-    """Test whether any leaves in the tree are true."""
+    """Tests whether all leaves in ``tree`` are true (or :data:`False` if ``tree`` is empty).
+
+    See also :func:`tree_leaves` and :func:`tree_all`.
+
+    >>> tree_any({})
+    False
+    >>> tree_any({'x': 0, 'y': (2, 0)})
+    True
+    >>> tree_any({'a': None})  # `None` is a non-leaf node with arity 0 by default
+    False
+    >>> tree_any({'a': None}, none_is_leaf=True)  # `None` is evaluated as false
+    False
+    >>> tree_any(None)  # `None` is a non-leaf node with arity 0 by default
+    False
+    >>> tree_any(None, none_is_leaf=True)  # `None` is evaluated as false
+    False
+
+    Args:
+        tree: A pytree to be traversed.
+        is_leaf: An optionally specified function that will be called at each flattening step. It
+            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
+            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
+            current object.
+        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
+            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
+            in the leaves list. (default: :data:`False`)
+
+    Returns:
+        :data:`True` if any leaves in ``tree`` are true, otherwise, :data:`False`. If ``tree`` is
+        empty, return :data:`False`.
+    """
     return any(tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf))  # type: ignore[arg-type]
+
+
+def treespec_children(treespec: PyTreeSpec) -> List[PyTreeSpec]:
+    """Returns a list of treespecs for the children of a treespec."""
+    return treespec.children()
+
+
+def treespec_is_leaf(treespec: PyTreeSpec) -> bool:
+    """Returns whether the treespec is a leaf.
+
+    This function does not check whether the treespec set ``none_is_leaf``.
+
+    >>> treespec_is_leaf(tree_structure(1))
+    True
+    >>> treespec_is_leaf(tree_structure((1, 2)))
+    False
+    >>> treespec_is_leaf(tree_structure(None))
+    True
+    >>> treespec_is_leaf(tree_structure(None, none_is_leaf=True))
+    True
+    """
+    return treespec.num_nodes == 1
+
+
+def treespec_is_strict_leaf(treespec: PyTreeSpec) -> bool:
+    """Returns whether the treespec is a strict leaf.
+
+    >>> treespec_is_strict_leaf(tree_structure(1))
+    True
+    >>> treespec_is_strict_leaf(tree_structure((1, 2)))
+    False
+    >>> treespec_is_strict_leaf(tree_structure(None))
+    False
+    >>> treespec_is_strict_leaf(tree_structure(None, none_is_leaf=True))
+    True
+    """
+    return treespec.num_nodes == 1 and treespec.num_leaves == 1
+
+
+def treespec_leaf(*, none_is_leaf: bool = False) -> PyTreeSpec:
+    """Makes a treespec representing a leaf node.
+
+    See also :func:`tree_structure`, :func:`treespec_none`, and `func`:`treespec_tuple`.
+
+    >>> treespec_leaf()
+    PyTreeSpec(*)
+    >>> treespec_leaf(none_is_leaf=True)
+    PyTreeSpec(NoneIsLeaf, *)
+    >>> treespec_leaf(none_is_leaf=False) == treespec_leaf(none_is_leaf=True)
+    False
+    >>> treespec_leaf() == tree_structure(1)
+    True
+    >>> treespec_leaf(none_is_leaf=True) == tree_structure(1, none_is_leaf=True)
+    True
+    >>> treespec_leaf(none_is_leaf=True) == tree_structure(None, none_is_leaf=True)
+    True
+    >>> treespec_leaf(none_is_leaf=True) == tree_structure(None, none_is_leaf=False)
+    False
+    >>> treespec_leaf(none_is_leaf=True) == treespec_none(none_is_leaf=True)
+    True
+    >>> treespec_leaf(none_is_leaf=True) == treespec_none(none_is_leaf=False)
+    False
+    >>> treespec_leaf(none_is_leaf=False) == treespec_none(none_is_leaf=True)
+    False
+    >>> treespec_leaf(none_is_leaf=False) == treespec_none(none_is_leaf=False)
+    False
+    """
+    return _C.leaf(none_is_leaf)
+
+
+def treespec_none(*, none_is_leaf: bool = False) -> PyTreeSpec:
+    """Makes a treespec representing a :data:`None` node.
+
+    See also :func:`tree_structure`, :func:`treespec_leaf`, and `func`:`treespec_tuple`.
+
+    >>> treespec_none()
+    PyTreeSpec(None)
+    >>> treespec_none(none_is_leaf=True)
+    PyTreeSpec(NoneIsLeaf, *)
+    >>> treespec_none(none_is_leaf=False) == treespec_none(none_is_leaf=True)
+    False
+    >>> treespec_none() == tree_structure(None)
+    True
+    >>> treespec_none() == tree_structure(1)
+    False
+    >>> treespec_none(none_is_leaf=True) == tree_structure(1, none_is_leaf=True)
+    True
+    >>> treespec_none(none_is_leaf=True) == tree_structure(None, none_is_leaf=True)
+    True
+    >>> treespec_none(none_is_leaf=True) == tree_structure(None, none_is_leaf=False)
+    False
+    >>> treespec_none(none_is_leaf=True) == treespec_leaf(none_is_leaf=True)
+    True
+    >>> treespec_none(none_is_leaf=False) == treespec_leaf(none_is_leaf=True)
+    False
+    >>> treespec_none(none_is_leaf=True) == treespec_leaf(none_is_leaf=False)
+    False
+    >>> treespec_none(none_is_leaf=False) == treespec_leaf(none_is_leaf=False)
+    False
+    """
+    return _C.none(none_is_leaf)
+
+
+def treespec_tuple(
+    treespecs: Iterable[PyTreeSpec] = (), *, none_is_leaf: bool = False
+) -> PyTreeSpec:
+    """Makes a tuple treespec from a list of child treespecs.
+
+    See also :func:`tree_structure`, :func:`treespec_leaf`, and `func`:`treespec_none`.
+
+    >>> treespec_tuple([treespec_leaf(), treespec_leaf()])
+    PyTreeSpec((*, *))
+    >>> treespec_tuple([treespec_leaf(), treespec_leaf(), treespec_none()])
+    PyTreeSpec((*, *, None))
+    >>> treespec_tuple()
+    PyTreeSpec(())
+    >>> treespec_tuple([treespec_leaf(), treespec_tuple([treespec_leaf(), treespec_leaf()])])
+    PyTreeSpec((*, (*, *)))
+    >>> treespec_tuple([treespec_leaf(), tree_structure({'a': 1, 'b': 2})])
+    PyTreeSpec((*, {'a': *, 'b': *}))
+    """
+    return _C.tuple(list(treespecs), none_is_leaf)
 
 
 def broadcast_prefix(
@@ -320,10 +656,9 @@ def broadcast_prefix(
     *,
     none_is_leaf: bool = False,
 ) -> List[T]:
-    """Return a list of broadcasted leaves in ``prefix_tree`` to match the number of leaves in ``full_tree``."""
-    # If prefix_tree is not a tree prefix of full_tree, this code can raise a
-    # ValueError; use prefix_errors to find disagreements and raise more precise
-    # error messages.
+    """Returns a list of broadcasted leaves in ``prefix_tree`` to match the number of leaves in ``full_tree``."""
+    # If prefix_tree is not a tree prefix of full_tree, this code can raise a ValueError;
+    # use prefix_errors to find disagreements and raise more precise error messages.
     result: List[T] = []
 
     def num_leaves(tree: PyTree[U]) -> int:
@@ -337,7 +672,7 @@ def broadcast_prefix(
 
 
 def flatten_one_level(tree: PyTree[T]) -> Tuple[Children[T], AuxData]:
-    """Flatten the pytree one level, returning a tuple of children and auxiliary data."""
+    """Flattens the pytree one level, returning a tuple of children and auxiliary data."""
     handler = register_pytree_node.get(type(tree))  # type: ignore[attr-defined]
     if handler:
         children, meta = handler.to_iter(tree)
@@ -354,7 +689,7 @@ def prefix_errors(
     full_tree: PyTree[S],
     is_leaf: Optional[Callable[[T], bool]] = None,
 ) -> List[Callable[[str], ValueError]]:
-    """Return a list of errors that would be raised by :func:`broadcast_prefix`."""
+    """Returns a list of errors that would be raised by :func:`broadcast_prefix`."""
     return list(_prefix_error(KeyPath(), prefix_tree, full_tree, is_leaf))
 
 
@@ -385,9 +720,9 @@ def _prefix_error(
         )
         return  # don't look for more errors in this subtree
 
-    # Or they may disagree if their roots have different numbers of children (note
-    # that because both prefix_tree and full_tree have the same type at this
-    # point, and because prefix_tree is not a leaf, each can be flattened once):
+    # Or they may disagree if their roots have different numbers of children (note that because both
+    # prefix_tree and full_tree have the same type at this point, and because prefix_tree is not a
+    # leaf, each can be flattened once):
     prefix_tree_children, prefix_tree_meta = flatten_one_level(prefix_tree)
     full_tree_children, full_tree_meta = flatten_one_level(full_tree)
     if len(prefix_tree_children) != len(full_tree_children):
@@ -427,8 +762,8 @@ def _prefix_error(
         )
         return  # don't look for more errors in this subtree
 
-    # If the root types and numbers of children agree, there must be an error
-    # in a subtree, so recurse:
+    # If the root types and numbers of children agree, there must be an error in a subtree,
+    # so recurse:
     keys = _child_keys(prefix_tree)
     keys_ = _child_keys(full_tree)
     assert keys == keys_, f'equal pytree nodes gave differing keys: {keys} and {keys_}'

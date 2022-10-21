@@ -15,8 +15,8 @@ limitations under the License.
 ================================================================================
 */
 
-// Caution: this code uses exceptions. The exception use is local to the
-// binding code and the idiomatic way to emit Python exceptions.
+// Caution: this code uses exceptions. The exception use is local to the binding
+// code and the idiomatic way to emit Python exceptions.
 
 #include "include/treespec.h"
 
@@ -55,6 +55,105 @@ bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
 }
 
 bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == other); }
+
+std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
+    if (inner_treespec.none_is_leaf == none_is_leaf) {
+        throw std::invalid_argument("PyTreeSpecs must have the same none_is_leaf value.");
+    }
+    auto outer_treespec = std::make_unique<PyTreeSpec>();
+    outer_treespec->none_is_leaf = none_is_leaf;
+    for (const Node& node : traversal) {
+        if (node.kind == PyTreeKind::Leaf) [[likely]] {
+            absl::c_copy(inner_treespec.traversal, std::back_inserter(outer_treespec->traversal));
+        } else [[unlikely]] {  // NOLINT
+            outer_treespec->traversal.emplace_back(std::move(node));
+        }
+    }
+    const auto& root = traversal.back();
+    const auto& inner_root = inner_treespec.traversal.back();
+    auto& outer_root = outer_treespec->traversal.back();
+    outer_root.num_nodes =
+        (root.num_nodes - root.num_leaves) + (inner_root.num_nodes * root.num_leaves);
+    outer_root.num_leaves *= inner_root.num_leaves;
+    return outer_treespec;
+}
+
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::Tuple(const std::vector<PyTreeSpec>& treespecs,
+                                                         const bool& none_is_leaf) {
+    for (const PyTreeSpec& treespec : treespecs) {
+        if (treespec.none_is_leaf != none_is_leaf) [[unlikely]] {
+            throw std::invalid_argument(absl::StrFormat(
+                "Expected TreeSpecs with `node_is_leaf=%s`.", (none_is_leaf ? "True" : "False")));
+        }
+    }
+
+    auto out = std::make_unique<PyTreeSpec>();
+    ssize_t num_leaves = 0;
+    for (const PyTreeSpec& treespec : treespecs) {
+        absl::c_copy(treespec.traversal, std::back_inserter(out->traversal));
+        num_leaves += treespec.num_leaves();
+    }
+    Node node;
+    node.kind = PyTreeKind::Tuple;
+    node.arity = treespecs.size();
+    node.num_leaves = num_leaves;
+    node.num_nodes = out->traversal.size() + 1;
+    out->traversal.emplace_back(std::move(node));
+    out->none_is_leaf = none_is_leaf;
+    return out;
+}
+
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::Leaf(const bool& none_is_leaf) {
+    auto out = std::make_unique<PyTreeSpec>();
+    Node node;
+    node.kind = PyTreeKind::Leaf;
+    node.arity = 0;
+    node.num_leaves = 1;
+    node.num_nodes = 1;
+    out->traversal.emplace_back(std::move(node));
+    out->none_is_leaf = none_is_leaf;
+    return out;
+}
+
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::None(const bool& none_is_leaf) {
+    if (none_is_leaf) [[unlikely]] {
+        return Leaf(none_is_leaf);
+    }
+    auto out = std::make_unique<PyTreeSpec>();
+    Node node;
+    node.kind = PyTreeKind::None;
+    node.arity = 0;
+    node.num_leaves = 0;
+    node.num_nodes = 1;
+    out->traversal.emplace_back(std::move(node));
+    out->none_is_leaf = none_is_leaf;
+    return out;
+}
+
+std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
+    std::vector<std::unique_ptr<PyTreeSpec>> children;
+    if (traversal.empty()) [[likely]] {
+        return children;
+    }
+    const Node& root = traversal.back();
+    children.resize(root.arity);
+    ssize_t pos = traversal.size() - 1;
+    for (ssize_t i = root.arity - 1; i >= 0; --i) {
+        children[i] = std::make_unique<PyTreeSpec>();
+        const Node& node = traversal.at(pos - 1);
+        if (pos < node.num_nodes) [[unlikely]] {
+            throw std::logic_error("PyTreeSpec::Children() walked off start of array.");
+        }
+        std::copy(traversal.begin() + pos - node.num_nodes,
+                  traversal.begin() + pos,
+                  std::back_inserter(children[i]->traversal));
+        pos -= node.num_nodes;
+    }
+    if (pos != 0) [[unlikely]] {
+        throw std::logic_error("pos != 0 at end of PyTreeSpec::Children().");
+    }
+    return children;
+}
 
 /*static*/ py::object PyTreeSpec::MakeNode(const PyTreeSpec::Node& node,
                                            const absl::Span<py::object>& children) {

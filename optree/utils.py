@@ -29,6 +29,7 @@ def unzip2(xys: Iterable[Tuple[Any, Any]]) -> Tuple[Tuple[Any, ...], Tuple[Any, 
     """Unzip sequence of length-2 tuples into two tuples."""
     # Note: we deliberately don't use zip(*xys) because it is lazily evaluated,
     # is too permissive about inputs, and does not guarantee a length-2 output.
+    # For example, for empty dict: tuple(zip(*{}.items())) -> ()
     xs = []
     ys = []
     for x, y in xys:

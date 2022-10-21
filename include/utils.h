@@ -15,11 +15,8 @@ limitations under the License.
 ================================================================================
 */
 
-// See https://jax.readthedocs.io/en/latest/pytrees.html for the documentation
-// about PyTrees.
-
-// Caution: this code uses exceptions. The exception use is local to the
-// binding code and the idiomatic way to emit Python exceptions.
+// Caution: this code uses exceptions. The exception use is local to the binding
+// code and the idiomatic way to emit Python exceptions.
 
 #pragma once
 

@@ -15,11 +15,8 @@ limitations under the License.
 ================================================================================
 */
 
-// See https://jax.readthedocs.io/en/latest/pytrees.html for the documentation
-// about PyTrees.
-
-// Caution: this code uses exceptions. The exception use is local to the
-// binding code and the idiomatic way to emit Python exceptions.
+// Caution: this code uses exceptions. The exception use is local to the binding
+// code and the idiomatic way to emit Python exceptions.
 
 #pragma once
 
@@ -61,14 +58,13 @@ class PyTreeTypeRegistry {
         py::function from_iterable;
     };
 
-    // Registers a new custom type. Objects of `type` will be treated as container
-    // node types in PyTrees.
+    // Registers a new custom type. Objects of `type` will be treated as container node types in
+    // PyTrees.
     static void Register(const py::object &type,
                          const py::function &to_iterable,
                          const py::function &from_iterable);
 
-    // Finds the custom type registration for `type`. Returns nullptr if none
-    // exists.
+    // Finds the custom type registration for `type`. Returns nullptr if none exists.
     template <bool NoneIsLeaf>
     static const Registration *Lookup(const py::handle &type);
 

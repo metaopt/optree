@@ -15,11 +15,8 @@ limitations under the License.
 ================================================================================
 */
 
-// See https://jax.readthedocs.io/en/latest/pytrees.html for the documentation
-// about PyTrees.
-
-// Caution: this code uses exceptions. The exception use is local to the
-// binding code and the idiomatic way to emit Python exceptions.
+// Caution: this code uses exceptions. The exception use is local to the binding
+// code and the idiomatic way to emit Python exceptions.
 
 #pragma once
 
@@ -86,6 +83,12 @@ class PyTreeSpec {
     static std::unique_ptr<PyTreeSpec> Tuple(const std::vector<PyTreeSpec> &treespecs,
                                              const bool &none_is_leaf);
 
+    // Makes a PyTreeSpec representing a leaf node.
+    static std::unique_ptr<PyTreeSpec> Leaf(const bool &none_is_leaf);
+
+    // Makes a PyTreeSpec representing a `None` node.
+    static std::unique_ptr<PyTreeSpec> None(const bool &none_is_leaf);
+
     std::vector<std::unique_ptr<PyTreeSpec>> Children() const;
 
     // Maps a function over a PyTree structure, applying f_leaf to each leaf, and
@@ -137,6 +140,9 @@ class PyTreeSpec {
         // Kind-specific auxiliary data.
         // For a NamedTuple, contains the tuple type object.
         // For a Dict, contains a sorted list of keys.
+        // For a OrderedDict, contains a list of keys.
+        // For a DefaultDict, contains a tuple of (default_factory, sorted list of keys).
+        // For a Deque, contains the `maxlen` attribute.
         // For a Custom type, contains the auxiliary data returned by the `to_iterable` function.
         py::object node_data;
 
@@ -154,7 +160,7 @@ class PyTreeSpec {
     // post-order corresponds to the order we need to rebuild the tree structure.
     absl::InlinedVector<Node, 1> traversal;
 
-    // Whether to treat `None` as a leaf. If false, `None` is a node with arity 0.
+    // Whether to treat `None` as a leaf. If false, `None` is a non-leaf node with arity 0.
     bool none_is_leaf;
 
     // Helper that manufactures an instance of a node given its children.

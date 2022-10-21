@@ -14,8 +14,6 @@
 # ==============================================================================
 """OpTree: Optimized PyTree Utilities."""
 
-# pylint: disable=missing-class-docstring,missing-function-docstring
-
 import functools
 from collections import OrderedDict, defaultdict, deque
 from operator import methodcaller
@@ -29,13 +27,12 @@ from optree.utils import safe_zip, unzip2
 
 
 __all__ = [
-    'AttributeKeyPathEntry',
-    'GetitemKeyPathEntry',
-    'Partial',
-    'PyTreeSpec',
-    'register_keypaths',
     'register_pytree_node',
     'register_pytree_node_class',
+    'Partial',
+    'register_keypaths',
+    'AttributeKeyPathEntry',
+    'GetitemKeyPathEntry',
 ]
 
 
@@ -53,19 +50,17 @@ def register_pytree_node(
     flatten_func: Callable[[CustomTreeNode[T]], Tuple[Children[T], AuxData]],
     unflatten_func: Callable[[AuxData, Children[T]], CustomTreeNode[T]],
 ) -> Type[CustomTreeNode[T]]:
-    """Extend the set of types that are considered internal nodes in pytrees.
+    """Extends the set of types that are considered internal nodes in pytrees.
 
     Args:
-        type: a Python type to treat as an internal pytree node.
-        flatten_func: a function to be used during flattening, taking a value of
-            type ``type`` and returning a pair, with (1) an iterable for the
-            children to be flattened recursively, and (2) some hashable auxiliary
-            data to be stored in the treespec and to be passed to the
+        type: A Python type to treat as an internal pytree node.
+        flatten_func: A function to be used during flattening, taking a value of type ``type`` and
+            returning a pair, with (1) an iterable for the children to be flattened recursively, and
+            (2) some hashable auxiliary data to be stored in the treespec and to be passed to the
             ``unflatten_func``.
-        unflatten_func: a function taking two arguments: the auxiliary data that
-            was returned by ``flatten_func`` and stored in the treespec, and the
-            unflattened children. The function should return an instance of
-            ``type``.
+        unflatten_func: A function taking two arguments: the auxiliary data that was returned by
+            ``flatten_func`` and stored in the treespec, and the unflattened children. The function
+            should return an instance of ``type``.
     """
     _C.register_node(type, flatten_func, unflatten_func)
     CustomTreeNode.register(type)  # pylint: disable=no-member
@@ -74,18 +69,20 @@ def register_pytree_node(
 
 
 def register_pytree_node_class(cls: Type[CustomTreeNode[T]]) -> Type[CustomTreeNode[T]]:
-    """Extend the set of types that are considered internal nodes in pytrees.
+    """Extends the set of types that are considered internal nodes in pytrees.
 
-    This function is a thin wrapper around ``register_pytree_node``, and provides
-    a class-oriented interface::
+    This function is a thin wrapper around :func:`register_pytree_node`, and provides a
+    class-oriented interface::
 
         @register_pytree_node_class
         class Special:
             def __init__(self, x, y):
                 self.x = x
                 self.y = y
+
             def tree_flatten(self):
                 return ((self.x, self.y), None)
+
             @classmethod
             def tree_unflatten(cls, aux_data, children):
                 return cls(*children)
@@ -184,7 +181,7 @@ register_pytree_node.get: Callable[[Type[CustomTreeNode[T]]], PyTreeNodeRegistry
 
 
 class _HashableCallableShim:
-    """Object that delegates __call__, __hash__, and __eq__ to another object."""
+    """Object that delegates :meth:`__call__`, :meth:`__hash__`, and :meth:`__eq__` to another object."""
 
     def __init__(self, func: Callable[..., Any]) -> None:
         self.func: Callable[..., Any] = func
@@ -205,25 +202,25 @@ class _HashableCallableShim:
 
 @register_pytree_node_class
 class Partial(functools.partial, CustomTreeNode):  # pylint: disable=too-few-public-methods
-    """A version of functools.partial that works in pytrees.
+    """A version of :func:`functools.partial` that works in pytrees.
 
-    Use it for partial function evaluation in a way that is compatible with JAX's
-    transformations, e.g., ``Partial(func, *args, **kwargs)``.
+    Use it for partial function evaluation in a way that is compatible with JAX's transformations,
+    e.g., ``Partial(func, *args, **kwargs)``.
 
     (You need to explicitly opt-in to this behavior because we did not want to give
-    functools.partial different semantics than normal function closures.)
+    :func:`functools.partial` different semantics than normal function closures.)
 
-    For example, here is a basic usage of ``Partial`` in a manner similar to
-    ``functools.partial``:
+    For example, here is a basic usage of :class:`Partial` in a manner similar to
+    :func:`functools.partial`:
 
     >>> import jax.numpy as jnp
     >>> add_one = Partial(jnp.add, 1)
     >>> add_one(2)
     DeviceArray(3, dtype=int32, weak_type=True)
 
-    Pytree compatibility means that the resulting partial function can be passed
-    as an argument within transformed JAX functions, which is not possible with a
-    standard ``functools.partial`` function:
+    Pytree compatibility means that the resulting partial function can be passed as an argument
+    within transformed JAX functions, which is not possible with a standard :func:`functools.partial`
+    function:
 
     >>> from jax import jit
     >>> @jit
@@ -233,18 +230,17 @@ class Partial(functools.partial, CustomTreeNode):  # pylint: disable=too-few-pub
     >>> call_func(add_one, 2)
     DeviceArray(3, dtype=int32, weak_type=True)
 
-    Passing zero arguments to ``Partial`` effectively wraps the original function,
-    making it a valid argument in JAX transformed functions:
+    Passing zero arguments to :class:`Partial` effectively wraps the original function, making it a
+    valid argument in JAX transformed functions:
 
     >>> call_func(Partial(jnp.add), 1, 2)
     DeviceArray(3, dtype=int32, weak_type=True)
 
-    Had we passed ``jnp.add`` to ``call_func`` directly, it would have resulted in a
-    ``TypeError``.
+    Had we passed :func:`jnp.add` to ``call_func`` directly, it would have resulted in a
+    :class:`TypeError`.
 
-    Note that if the result of ``Partial`` is used in the context where the
-    value is traced, it results in all bound arguments being traced when passed
-    to the partially-evaluated function:
+    Note that if the result of :class:`Partial` is used in the context where the value is traced, it
+    results in all bound arguments being traced when passed to the partially-evaluated function:
 
     >>> print_zero = Partial(print, 0)
     >>> print_zero()
@@ -254,12 +250,11 @@ class Partial(functools.partial, CustomTreeNode):  # pylint: disable=too-few-pub
     """
 
     def __new__(cls, func: Callable[..., Any], *args, **keywords) -> 'Partial':
-        """Create a new :class:`Partial` instance."""
-        # In Python 3.10+, if func is itself a functools.partial instance,
-        # functools.partial.__new__ would merge the arguments of this Partial
-        # instance with the arguments of the func. We box func in a class that does
-        # not (yet) have a `func` attribute to defeat this optimization, since we
-        # care exactly which arguments are considered part of the pytree.
+        """Creates a new :class:`Partial` instance."""
+        # In Python 3.10+, if func is itself a functools.partial instance, functools.partial.__new__
+        # would merge the arguments of this Partial instance with the arguments of the func. We box
+        # func in a class that does not (yet) have a `func` attribute to defeat this optimization,
+        # since we care exactly which arguments are considered part of the pytree.
         if isinstance(func, functools.partial):
             original_func = func
             func = _HashableCallableShim(original_func)
@@ -340,7 +335,7 @@ def register_keypaths(
     type: Type[CustomTreeNode[T]],  # pylint: disable=redefined-builtin
     handler: KeyPathHandler,
 ) -> KeyPathHandler:
-    """Register a key path handler for a custom pytree node type."""
+    """Registers a key path handler for a custom pytree node type."""
     _keypath_registry[type] = handler
     return handler
 

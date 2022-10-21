@@ -15,7 +15,6 @@
 """Typing utilities for OpTree."""
 
 # mypy: no-warn-unused-ignores
-# pylint: disable=missing-class-docstring,missing-function-docstring
 
 from typing import (
     Any,
