@@ -29,8 +29,6 @@ import os
 import pathlib
 import sys
 
-import sphinxcontrib.katex as katex
-
 
 HERE = pathlib.Path(__file__).absolute().parent
 PROJECT_ROOT = HERE.parent.parent
@@ -73,9 +71,7 @@ extensions = [
     'sphinx_copybutton',
     'sphinx_rtd_theme',
     'sphinxcontrib.bibtex',
-    'sphinxcontrib.katex',
     'sphinx_autodoc_typehints',
-    'myst_nb',  # This is used for the .ipynb notebooks
 ]
 
 if not os.getenv('READTHEDOCS', None):
@@ -129,20 +125,6 @@ bibtex_bibfiles = ['references.bib']
 
 nb_execution_mode = 'force'
 nb_execution_allow_errors = False
-
-# -- Options for katex ------------------------------------------------------
-
-# See: https://sphinxcontrib-katex.readthedocs.io/en/0.4.1/macros.html
-latex_macros = r"""
-    \def \d              #1{\operatorname{#1}}
-"""
-
-# Translate LaTeX macros to KaTeX and add to options for HTML builder
-katex_macros = katex.latex_defs_to_katex_macros(latex_macros)
-katex_options = 'macros: {' + katex_macros + '}'
-
-# Add LaTeX macros for LATEX builder
-latex_elements = {'preamble': latex_macros}
 
 # -- Options for HTML output -------------------------------------------------
 

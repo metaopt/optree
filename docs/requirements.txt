@@ -1,13 +1,10 @@
-sphinx >= 5.0
+--requirement ../requirements.txt
+
+sphinx >= 5.2.1
 sphinx-autoapi
 sphinx-autobuild
 sphinx-copybutton
 sphinx-rtd-theme
-sphinxcontrib-katex
 sphinxcontrib-bibtex
-sphinx-autodoc-typehints
-IPython
-ipykernel
-pandoc
-myst_nb
-docutils == 0.16
+sphinx-autodoc-typehints >= 1.19.2
+docutils
