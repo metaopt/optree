@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""OpTree: Optimized PyTree."""
+"""OpTree: Optimized PyTree Utilities."""
 
 # pylint: disable=missing-class-docstring,missing-function-docstring
 

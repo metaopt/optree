@@ -1,8 +1,8 @@
 # OpTree
 
-Optimized PyTree.
+Optimized PyTree Utilities.
 
-------
+--------------------------------------------------------------------------------
 
 ## Benchmark
 
@@ -78,7 +78,9 @@ TinyCustom(num_leaves=16, num_nodes=53, treespec=PyTreeSpec([OrderedDict([('tens
 ~ OpTree :   142.06us -- x1.02   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
 ~ OpTree :   143.19us -- x1.03   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
   JAX XLA:   377.20us -- x2.70   <=  jax.tree_util.tree_map(fn3, x, y, z)
+```
 
+```text
 AlexNet(num_leaves=32, num_nodes=188, treespec=PyTreeSpec(OrderedDict([('featur...]), buffers=OrderedDict([])))])))
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -120,7 +122,9 @@ AlexNet(num_leaves=32, num_nodes=188, treespec=PyTreeSpec(OrderedDict([('featur.
 ~ OpTree :   499.80us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
 ~ OpTree :   499.17us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
   JAX XLA:  1447.79us -- x2.90   <=  jax.tree_util.tree_map(fn3, x, y, z)
+```
 
+```text
 ResNet18(num_leaves=244, num_nodes=698, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -162,7 +166,9 @@ ResNet18(num_leaves=244, num_nodes=698, treespec=PyTreeSpec(OrderedDict([('conv1
 ~ OpTree :  1758.19us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
 ~ OpTree :  1763.34us -- x1.01   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
   JAX XLA:  4581.00us -- x2.61   <=  jax.tree_util.tree_map(fn3, x, y, z)
+```
 
+```text
 ResNet50(num_leaves=640, num_nodes=1702, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -204,7 +210,9 @@ ResNet50(num_leaves=640, num_nodes=1702, treespec=PyTreeSpec(OrderedDict([('conv
 ✔ OpTree :  4187.02us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
 ~ OpTree :  4200.12us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
   JAX XLA: 10519.68us -- x2.51   <=  jax.tree_util.tree_map(fn3, x, y, z)
+```
 
+```text
 ResNet101(num_leaves=1252, num_nodes=3317, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -246,7 +254,9 @@ ResNet101(num_leaves=1252, num_nodes=3317, treespec=PyTreeSpec(OrderedDict([('co
 ✔ OpTree :  8138.75us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
 ~ OpTree :  8148.81us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
   JAX XLA: 20070.87us -- x2.46   <=  jax.tree_util.tree_map(fn3, x, y, z)
+```
 
+```text
 ResNet152(num_leaves=1864, num_nodes=4932, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -288,7 +298,9 @@ ResNet152(num_leaves=1864, num_nodes=4932, treespec=PyTreeSpec(OrderedDict([('co
 ~ OpTree : 11928.96us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
 ~ OpTree : 11902.22us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
   JAX XLA: 29821.16us -- x2.51   <=  jax.tree_util.tree_map(fn3, x, y, z)
+```
 
+```text
 VisionTransformerH14(num_leaves=784, num_nodes=3420, treespec=PyTreeSpec(OrderedDict([('conv_p...]), buffers=OrderedDict([])))])))
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -330,7 +342,9 @@ VisionTransformerH14(num_leaves=784, num_nodes=3420, treespec=PyTreeSpec(Ordered
 ~ OpTree :  8893.93us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
 ~ OpTree :  8932.03us -- x1.01   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
   JAX XLA: 23434.28us -- x2.64   <=  jax.tree_util.tree_map(fn3, x, y, z)
+```
 
+```text
 SwinTransformerB(num_leaves=706, num_nodes=2867, treespec=PyTreeSpec(OrderedDict([('featur...]), buffers=OrderedDict([])))])))
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -374,10 +388,10 @@ SwinTransformerB(num_leaves=706, num_nodes=2867, treespec=PyTreeSpec(OrderedDict
   JAX XLA: 19884.10us -- x2.64   <=  jax.tree_util.tree_map(fn3, x, y, z)
 ```
 
-------
+--------------------------------------------------------------------------------
 
 ## License
 
 OpTree is released under the Apache License 2.0.
 
-OpTree is heavily based on JAX's implementation of the PyTree utility, with deep refactoring and several improvements. The original licenses can be found at [JAX's Apache License 2.0](https://github.com/google/jax/blob/HEAD/LICENSE) and [Tensorflow's Apache License 2.0](https://github.com/tensorflow/tensorflow/blob/HEAD/LICENSE) .
+OpTree is heavily based on JAX's implementation of the PyTree utility, with deep refactoring and several improvements. The original licenses can be found at [JAX's Apache License 2.0](https://github.com/google/jax/blob/HEAD/LICENSE) and [Tensorflow's Apache License 2.0](https://github.com/tensorflow/tensorflow/blob/HEAD/LICENSE).

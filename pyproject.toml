@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "optree"
-description = "Optimized PyTree."
+description = "Optimized PyTree Utilities."
 readme = "README.md"
 requires-python = ">= 3.6"
 authors = [

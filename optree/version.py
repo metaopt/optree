@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""OpTree: Optimized PyTree."""
+"""OpTree: Optimized PyTree Utilities."""
 
 __version__ = '0.2.0'
 __license__ = 'Apache License, Version 2.0'
