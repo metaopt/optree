@@ -55,7 +55,9 @@ jobs:
           update-environment: true
 
       - name: Set __release__
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        if: |
+          startsWith(github.ref, 'refs/tags/') ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'build-and-publish')
         run: |
           python .github/workflows/set_release.py
 
@@ -101,7 +103,9 @@ jobs:
           update-environment: true
 
       - name: Set __release__
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        if: |
+          startsWith(github.ref, 'refs/tags/') ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'build-and-publish')
         run: |
           python .github/workflows/set_release.py
 
@@ -151,7 +155,9 @@ jobs:
           update-environment: true
 
       - name: Set __release__
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        if: |
+          startsWith(github.ref, 'refs/tags/') ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'build-and-publish')
         run: |
           python .github/workflows/set_release.py
 
