@@ -106,18 +106,18 @@ jobs:
         if: |
           startsWith(github.ref, 'refs/tags/') ||
           (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'build-and-publish')
-        run: |
-          python .github/workflows/set_release.py
+        run: python .github/workflows/set_release.py
 
       - name: Print version
         run: python setup.py --version
 
-      - name: Set Python specification
-        run: |
-          python -c "print('CIBW_BUILD=*p%d%d-*' % __import__('sys').version_info[:2])"  >> "${GITHUB_ENV}"
+      - name: Set CIBW_BUILD
+        run: python .github/workflows/set_cibw_build.py
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.11.1
+        env:
+          CIBW_BUILD: ${{ env.CIBW_BUILD }}
         with:
           package-dir: .
           output-dir: wheelhouse
@@ -158,18 +158,18 @@ jobs:
         if: |
           startsWith(github.ref, 'refs/tags/') ||
           (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'build-and-publish')
-        run: |
-          python .github/workflows/set_release.py
+        run: python .github/workflows/set_release.py
 
       - name: Print version
         run: python setup.py --version
 
-      - name: Set Python specification
-        run: |
-          python -c "print('CIBW_BUILD=*p%d%d-*' % __import__('sys').version_info[:2])"  >> "${GITHUB_ENV}"
+      - name: Set CIBW_BUILD
+        run: python .github/workflows/set_cibw_build.py
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.11.1
+        env:
+          CIBW_BUILD: ${{ env.CIBW_BUILD }}
         with:
           package-dir: .
           output-dir: wheelhouse
