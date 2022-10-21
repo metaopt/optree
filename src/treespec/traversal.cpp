@@ -76,6 +76,9 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
 }
 
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
+    if (inner_treespec.none_is_leaf == none_is_leaf) {
+        throw std::invalid_argument("PyTreeSpecs must have the same none_is_leaf value.");
+    }
     auto outer_treespec = std::make_unique<PyTreeSpec>();
     outer_treespec->none_is_leaf = none_is_leaf;
     for (const Node& node : traversal) {
