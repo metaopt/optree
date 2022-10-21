@@ -19,7 +19,7 @@
 import difflib
 import functools
 import textwrap
-from typing import Any, Callable, Optional, cast, overload
+from typing import Any, Callable, Optional, cast
 
 import optree._C as _C
 from optree.registry import (
@@ -278,52 +278,47 @@ def _replace_nones(sentinel: Any, tree: Optional[PyTree[T]]) -> PyTree[T]:
 __INITIAL_MISSING: T = object()  # type: ignore[valid-type]
 
 
-@overload
-def tree_reduce(
-    func: Callable[[T, T], T],
-    tree: PyTree[T],
-    is_leaf: Optional[Callable[[T], bool]] = None,
-) -> T:
-    ...
-
-
-@overload
 def tree_reduce(
     func: Callable[[T, T], T],
     tree: PyTree[T],
     is_leaf: Optional[Callable[[T], bool]] = None,
     initial: T = __INITIAL_MISSING,
-) -> T:
-    ...
-
-
-def tree_reduce(
-    func: Callable[[T, T], T],
-    tree: PyTree[T],
-    is_leaf: Optional[Callable[[T], bool]] = None,
-    initial: T = __INITIAL_MISSING,
+    *,
+    none_is_leaf: bool = False,
 ) -> T:
     """Traversals through a pytree and reduces the leaves."""
     if initial is __INITIAL_MISSING:
-        return functools.reduce(func, tree_leaves(tree, is_leaf))
+        return functools.reduce(func, tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf))
 
-    return functools.reduce(func, tree_leaves(tree, is_leaf), initial)
+    return functools.reduce(func, tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf), initial)
 
 
-def tree_all(tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None) -> bool:
+def tree_all(
+    tree: PyTree[T],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    *,
+    none_is_leaf: bool = False,
+) -> bool:
     """Test whether all leaves in the tree are true."""
-    return all(tree_leaves(tree, is_leaf))  # type: ignore[arg-type]
+    return all(tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf))  # type: ignore[arg-type]
 
 
-def tree_any(tree: PyTree[T], is_leaf: Optional[Callable[[T], bool]] = None) -> bool:
+def tree_any(
+    tree: PyTree[T],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    *,
+    none_is_leaf: bool = False,
+) -> bool:
     """Test whether any leaves in the tree are true."""
-    return any(tree_leaves(tree, is_leaf))  # type: ignore[arg-type]
+    return any(tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf))  # type: ignore[arg-type]
 
 
 def broadcast_prefix(
     prefix_tree: PyTree[T],
     full_tree: PyTree[S],
     is_leaf: Optional[Callable[[T], bool]] = None,
+    *,
+    none_is_leaf: bool = False,
 ) -> List[T]:
     """Return a list of broadcasted leaves in ``prefix_tree`` to match the number of leaves in ``full_tree``."""
     # If prefix_tree is not a tree prefix of full_tree, this code can raise a
@@ -332,12 +327,12 @@ def broadcast_prefix(
     result: List[T] = []
 
     def num_leaves(tree: PyTree[U]) -> int:
-        return tree_structure(tree).num_leaves
+        return tree_structure(tree, none_is_leaf=none_is_leaf).num_leaves
 
     def add_leaves(x: T, subtree: PyTree[S]) -> None:
         result.extend([x] * num_leaves(subtree))
 
-    tree_map(add_leaves, prefix_tree, full_tree, is_leaf=is_leaf)
+    tree_map(add_leaves, prefix_tree, full_tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf)
     return result
 
 
@@ -369,9 +364,13 @@ def _prefix_error(
     prefix_tree: PyTree[T],
     full_tree: PyTree[S],
     is_leaf: Optional[Callable[[T], bool]] = None,
+    *,
+    none_is_leaf: bool = False,
 ) -> Iterable[Callable[[str], ValueError]]:
     # A leaf is a valid prefix of any tree:
-    if treespec_is_strict_leaf(tree_structure(prefix_tree, is_leaf=is_leaf)):
+    if treespec_is_strict_leaf(
+        tree_structure(prefix_tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf)
+    ):
         return
 
     # The subtrees may disagree because their roots are of different types:
@@ -438,10 +437,10 @@ def _prefix_error(
         yield from _prefix_error(key_path + k, cast(PyTree[T], t1), cast(PyTree[S], t2))
 
 
-def _child_keys(tree: PyTree[T]) -> List[KeyPathEntry]:
+def _child_keys(tree: PyTree[T], *, none_is_leaf: bool = False) -> List[KeyPathEntry]:
     # pylint: disable-next=import-outside-toplevel
 
-    assert not treespec_is_strict_leaf(tree_structure(tree))
+    assert not treespec_is_strict_leaf(tree_structure(tree, none_is_leaf=none_is_leaf))
 
     handler = register_keypaths.get(type(tree))  # type: ignore[attr-defined]
     if handler:
@@ -451,5 +450,5 @@ def _child_keys(tree: PyTree[T]) -> List[KeyPathEntry]:
         # handle namedtuple as a special case, based on heuristic
         return list(map(AttributeKeyPathEntry, cast(NamedTuple, tree)._fields))
 
-    num_children = len(treespec_children(tree_structure(tree)))
+    num_children = len(treespec_children(tree_structure(tree, none_is_leaf=none_is_leaf)))
     return list(map(FlattenedKeyPathEntry, range(num_children)))
