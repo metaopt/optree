@@ -33,8 +33,6 @@ class cmake_build_ext(build_ext):
             super().build_extension(ext)
             return
 
-        import pybind11
-
         cmake = shutil.which('cmake')
         if cmake is None:
             raise RuntimeError('Cannot find CMake executable.')
@@ -52,9 +50,17 @@ class cmake_build_ext(build_ext):
             f'-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{config.upper()}={extdir}',
             f'-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_{config.upper()}={self.build_temp}',
             f'-DPYTHON_EXECUTABLE={sys.executable}',
-            f'-DPYBIND11_CMAKE_DIR={pybind11.get_cmake_dir()}',
             f'-DPYTHON_INCLUDE_DIR={sysconfig.get_path("platinclude")}',
         ]
+
+        try:
+            import pybind11
+
+            cmake_args.append(
+                f'-DPYBIND11_CMAKE_DIR={pybind11.get_cmake_dir()}',
+            )
+        except ImportError:
+            pass
 
         build_args = ['--config', config]
 
