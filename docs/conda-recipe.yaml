@@ -35,7 +35,6 @@ dependencies:
   - cmake >= 3.4
   - make
   - cxx-compiler
-  - gxx = 10
   - pybind11
 
   # Documentation

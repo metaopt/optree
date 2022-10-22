@@ -21,6 +21,7 @@
 name: optree
 
 channels:
+  - pytorch
   - defaults
   - conda-forge
 
@@ -35,9 +36,14 @@ dependencies:
   - cmake >= 3.4
   - make
   - cxx-compiler
-  - gxx = 10
   - patchelf >= 0.9
   - pybind11
+
+  # Benchmark
+  - pytorch::pytorch >= 1.12
+  - pytorch::torchvision
+  - pytorch::pytorch-mutex = *=*cpu*
+  - jax >= 0.3
 
   # Documentation
   - sphinx
