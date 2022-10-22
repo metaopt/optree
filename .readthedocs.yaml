@@ -5,6 +5,10 @@
 # Required
 version: 2
 
+
+submodules:
+  include: all
+
 # Set the version of Python and other tools you might need
 build:
   os: ubuntu-20.04
@@ -12,12 +16,13 @@ build:
     python: mambaforge-4.10
   jobs:
     post_install:
+      - python -m pip install --requirement docs/requirements.txt
       - python -m pip install --upgrade pip setuptools
       - python -m pip install --no-build-isolation --editable .
 
 # Optionally declare the Python requirements required to build your docs
-conda:
-  environment: docs/conda-recipe.yaml
+# conda:
+#   environment: docs/conda-recipe.yaml
 
 # If using Sphinx, optionally build your docs in additional formats such as PDF
 formats:
