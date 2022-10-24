@@ -80,11 +80,7 @@ build-frontend = "build"
 build-verbosity = 3
 container-engine = "docker"
 test-extras = ["test"]
-test-command = """
-    python -c "import optree; print(optree.__version__)"
-    cd "{project}"
-    make test
-"""
+test-command = """make -C "{project}" test"""
 
 # Linter tools #################################################################
 
