@@ -262,6 +262,8 @@ def all_leaves(
         return _C.all_leaves(iterable, none_is_leaf)
 
     nodes = list(iterable)
+    if all(map(is_leaf, nodes)):
+        return True
     return nodes == tree_leaves(nodes, is_leaf, none_is_leaf=none_is_leaf)  # type: ignore[arg-type]
 
 
@@ -328,7 +330,7 @@ def tree_reduce(
     *,
     is_leaf: Optional[Callable[[T], bool]] = None,
     none_is_leaf: bool = False,
-) -> T:
+) -> T:  # pragma: no cover
     ...
 
 
@@ -340,7 +342,7 @@ def tree_reduce(
     *,
     is_leaf: Optional[Callable[[T], bool]] = None,
     none_is_leaf: bool = False,
-) -> T:
+) -> T:  # pragma: no cover
     ...
 
 

@@ -91,7 +91,7 @@ def register_pytree_node_class(cls: Type[CustomTreeNode[T]]) -> Type[CustomTreeN
     return cls
 
 
-def _sorted_items(items: Iterable[Tuple[KT, VT]]) -> Iterable[Tuple[KT, VT]]:
+def _sorted_items(items: Iterable[Tuple[KT, VT]]) -> Iterable[Tuple[KT, VT]]:  # pragma: no cover
     try:
         # Sort directly if possible (do not use `key` for performance reasons)
         return sorted(items)
@@ -108,7 +108,7 @@ def _sorted_items(items: Iterable[Tuple[KT, VT]]) -> Iterable[Tuple[KT, VT]]:
             return items  # fallback to insertion order
 
 
-def _sorted_keys(dct: Dict[KT, VT]) -> Iterable[KT]:
+def _sorted_keys(dct: Dict[KT, VT]) -> Iterable[KT]:  # pragma: no cover
     try:
         # Sort directly if possible (do not use `key` for performance reasons)
         return sorted(dct)  # type: ignore[type-var]
@@ -125,19 +125,21 @@ def _sorted_keys(dct: Dict[KT, VT]) -> Iterable[KT]:
             return dct  # fallback to insertion order
 
 
-def _dict_flatten(dct: Dict[KT, VT]) -> Tuple[Tuple[VT, ...], Tuple[KT, ...]]:
+def _dict_flatten(dct: Dict[KT, VT]) -> Tuple[Tuple[VT, ...], Tuple[KT, ...]]:  # pragma: no cover
     keys, values = unzip2(_sorted_items(dct.items()))
     return values, keys
 
 
-def _ordereddict_flatten(dct: GenericOrderedDict[KT, VT]) -> Tuple[Tuple[VT, ...], Tuple[KT, ...]]:
+def _ordereddict_flatten(
+    dct: GenericOrderedDict[KT, VT]
+) -> Tuple[Tuple[VT, ...], Tuple[KT, ...]]:  # pragma: no cover
     keys, values = unzip2(dct.items())
     return values, keys
 
 
 def _defaultdict_flatten(
     dct: DefaultDict[KT, VT]
-) -> Tuple[Tuple[VT, ...], Tuple[Optional[Callable[[], VT]], Tuple[KT, ...]]]:
+) -> Tuple[Tuple[VT, ...], Tuple[Optional[Callable[[], VT]], Tuple[KT, ...]]]:  # pragma: no cover
     values, keys = _dict_flatten(dct)
     return values, (dct.default_factory, keys)
 
