@@ -79,8 +79,8 @@ archs = ["auto64"]
 build-frontend = "build"
 build-verbosity = 3
 container-engine = "docker"
+test-extras = ["test"]
 test-command = """
-    python -m pip install --upgrade pytest pytest-cov pytest-xdist
     python -c "import optree; print(optree.__version__)"
     cd "{project}"
     make test
