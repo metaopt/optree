@@ -462,7 +462,7 @@ def tree_all(
 
     See also :func:`tree_leaves` and :func:`tree_any`.
 
-    >>> tree_any({})
+    >>> tree_all({})
     True
     >>> tree_all({'x': 1, 'y': (2, 3)})
     True

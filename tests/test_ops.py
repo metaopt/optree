@@ -17,7 +17,6 @@
 
 import functools
 import itertools
-import pickle
 from collections import OrderedDict
 
 import pytest
@@ -325,6 +324,24 @@ def test_transpose_with_custom_object():
     assert actual == expected
 
 
+def test_tree_all():
+    assert optree.tree_all({})
+    assert optree.tree_all({'x': 1, 'y': (2, 3)})
+    assert optree.tree_all({'x': 1, 'y': (2, None), 'z': 3})
+    assert not optree.tree_all({'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
+    assert optree.tree_all(None)
+    assert not optree.tree_all(None, none_is_leaf=True)
+
+
+def test_tree_any():
+    assert not optree.tree_any({})
+    assert optree.tree_any({'x': 0, 'y': (2, 0)})
+    assert not optree.tree_any({'a': None})
+    assert not optree.tree_any({'a': None}, none_is_leaf=True)
+    assert not optree.tree_any(None)
+    assert not optree.tree_any(None, none_is_leaf=True)
+
+
 @parametrize(
     data=list(
         itertools.chain(
@@ -333,36 +350,10 @@ def test_transpose_with_custom_object():
         )
     )
 )
-def test_string_representation(data):
+def test_treespec_string_representation(data):
     tree, correct_string, none_is_leaf = data
     treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf)
     assert str(treespec) == correct_string
-
-
-@parametrize(
-    tree=TREES,
-    none_is_leaf=[False, True],
-)
-def test_pickle_round_trip(tree, none_is_leaf):
-    expected = optree.tree_structure(tree, none_is_leaf=none_is_leaf)
-    actual = pickle.loads(pickle.dumps(expected))
-    assert actual == expected
-
-
-def test_treespec_with_empty_tuple_string_representation():
-    assert str(optree.tree_structure(())) == r'PyTreeSpec(())'
-
-
-def test_treespec_with_single_element_tuple_string_representation():
-    assert str(optree.tree_structure((1,))) == r'PyTreeSpec((*,))'
-
-
-def test_treespec_with_empty_list_string_representation():
-    assert str(optree.tree_structure([])) == r'PyTreeSpec([])'
-
-
-def test_treespec_with_empty_dict_string_representation():
-    assert str(optree.tree_structure({})) == r'PyTreeSpec({})'
 
 
 @parametrize(
@@ -400,102 +391,3 @@ def test_partial_func_attribute_has_stable_hash():
     assert fun == p1.func  # pylint: disable=comparison-with-callable
     assert p1.func == p2.func
     assert hash(p1.func) == hash(p2.func)
-
-
-def test_children():
-    _, treespec = optree.tree_flatten(((1, 2, 3), (4,)))
-    _, c0 = optree.tree_flatten((0, 0, 0))
-    _, c1 = optree.tree_flatten((7,))
-    assert treespec.children() == [c0, c1]
-
-    _, treespec = optree.tree_flatten(((1, 2, 3), (4,)))
-    _, c0 = optree.tree_flatten((0, 0, 0))
-    _, c1 = optree.tree_flatten((7,), none_is_leaf=True)
-    assert treespec.children() != [c0, c1]
-
-    _, treespec = optree.tree_flatten(((1, 2, None), (4,)), none_is_leaf=False)
-    _, c0 = optree.tree_flatten((0, 0, None), none_is_leaf=False)
-    _, c1 = optree.tree_flatten((7,), none_is_leaf=False)
-    assert treespec.children() == [c0, c1]
-
-    _, treespec = optree.tree_flatten(((1, 2, 3, None), (4,)), none_is_leaf=True)
-    _, c0 = optree.tree_flatten((0, 0, 0, 0), none_is_leaf=True)
-    _, c1 = optree.tree_flatten((7,), none_is_leaf=True)
-    assert treespec.children() == [c0, c1]
-
-
-@parametrize(
-    none_is_leaf=[False, True],
-)
-def test_treespec_tuple_from_children(none_is_leaf):
-    tree = ((1, 2, (3, 4)), (5,))
-    leaves, treespec1 = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
-    treespec2 = optree.treespec_tuple(treespec1.children(), none_is_leaf=none_is_leaf)
-    assert treespec1.num_leaves == len(leaves)
-    assert treespec1.num_leaves == treespec2.num_leaves
-    assert treespec1.num_nodes == treespec2.num_nodes
-
-    tree = ((1, 2, None, (3, 4, None)), (5,), None)
-    leaves, treespec1 = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
-    treespec2 = optree.treespec_tuple(treespec1.children(), none_is_leaf=none_is_leaf)
-    assert treespec1.num_leaves == len(leaves)
-    assert treespec1.num_leaves == treespec2.num_leaves
-    assert treespec1.num_nodes == treespec2.num_nodes
-
-
-@parametrize(
-    none_is_leaf=[False, True],
-)
-def test_treespec_tuple_compares_equal(none_is_leaf):
-    actual = optree.treespec_tuple(
-        (optree.tree_structure(3, none_is_leaf=none_is_leaf),), none_is_leaf=none_is_leaf
-    )
-    expected = optree.tree_structure((3,), none_is_leaf=none_is_leaf)
-    assert actual == expected
-
-    actual = optree.treespec_tuple(
-        (optree.tree_structure(None, none_is_leaf=none_is_leaf),), none_is_leaf=none_is_leaf
-    )
-    expected = optree.tree_structure((None,), none_is_leaf=none_is_leaf)
-    assert actual == expected
-
-    actual = optree.treespec_tuple(
-        (
-            optree.tree_structure(3, none_is_leaf=none_is_leaf),
-            optree.tree_structure(None, none_is_leaf=none_is_leaf),
-        ),
-        none_is_leaf=none_is_leaf,
-    )
-    expected = optree.tree_structure((3, None), none_is_leaf=none_is_leaf)
-    assert actual == expected
-
-
-def test_treespec_is_leaf():
-    assert optree.treespec_is_leaf(optree.tree_structure(1))
-    assert not optree.treespec_is_leaf(optree.tree_structure((1, 2)))
-    assert optree.treespec_is_leaf(optree.tree_structure(None))
-    assert optree.treespec_is_leaf(optree.tree_structure(None, none_is_leaf=True))
-
-
-def test_treespec_is_strict_leaf():
-    assert optree.treespec_is_strict_leaf(optree.tree_structure(1))
-    assert not optree.treespec_is_strict_leaf(optree.tree_structure((1, 2)))
-    assert not optree.treespec_is_strict_leaf(optree.tree_structure(None))
-    assert optree.treespec_is_strict_leaf(optree.tree_structure(None, none_is_leaf=True))
-
-
-def test_treespec_leaf_none():
-    assert optree.treespec_leaf(none_is_leaf=False) != optree.treespec_leaf(none_is_leaf=True)
-    assert optree.treespec_leaf() == optree.tree_structure(1)
-    assert optree.treespec_leaf(none_is_leaf=True) == optree.tree_structure(1, none_is_leaf=True)
-    assert optree.treespec_leaf(none_is_leaf=True) == optree.tree_structure(None, none_is_leaf=True)
-    assert optree.treespec_leaf(none_is_leaf=True) != optree.tree_structure(
-        None, none_is_leaf=False
-    )
-    assert optree.treespec_leaf(none_is_leaf=True) == optree.treespec_none(none_is_leaf=True)
-    assert optree.treespec_leaf(none_is_leaf=True) != optree.treespec_none(none_is_leaf=False)
-    assert optree.treespec_leaf(none_is_leaf=False) != optree.treespec_none(none_is_leaf=True)
-    assert optree.treespec_leaf(none_is_leaf=False) != optree.treespec_none(none_is_leaf=False)
-    assert optree.treespec_none(none_is_leaf=False) != optree.treespec_none(none_is_leaf=True)
-    assert optree.treespec_none() == optree.tree_structure(None)
-    assert optree.treespec_none() != optree.tree_structure(1)

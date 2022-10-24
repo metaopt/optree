@@ -80,7 +80,10 @@ build-frontend = "build"
 build-verbosity = 3
 container-engine = "docker"
 test-extras = ["test"]
-test-command = """make -C "{project}" test"""
+test-command = """
+    cd "{project}"
+    make test
+"""
 
 # Linter tools #################################################################
 
