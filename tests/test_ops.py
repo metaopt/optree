@@ -342,18 +342,14 @@ def test_tree_any():
     assert not optree.tree_any(None, none_is_leaf=True)
 
 
-@parametrize(
-    data=list(
-        itertools.chain(
-            zip(TREES, TREE_STRINGS[False], itertools.repeat(False)),
-            zip(TREES, TREE_STRINGS[True], itertools.repeat(True)),
-        )
-    )
-)
-def test_treespec_string_representation(data):
-    tree, correct_string, none_is_leaf = data
-    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf)
-    assert str(treespec) == correct_string
+def test_tree_replace_nones():
+    sentinel = object()
+    assert optree.tree_replace_nones(sentinel, {'a': 1, 'b': None, 'c': (2, None)}) == {
+        'a': 1,
+        'b': sentinel,
+        'c': (2, sentinel),
+    }
+    assert optree.tree_replace_nones(sentinel, None) == sentinel
 
 
 @parametrize(
@@ -366,7 +362,7 @@ def test_treespec_string_representation(data):
     ],
     none_is_leaf=[False, True],
 )
-def test_round_trip_partial(tree, none_is_leaf):
+def test_partial_round_trip(tree, none_is_leaf):
     leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
     actual = optree.tree_unflatten(treespec, leaves)
     assert actual.func == tree.func

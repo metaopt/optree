@@ -446,7 +446,15 @@ def tree_transpose(
 
 
 def tree_replace_nones(sentinel: Any, tree: Optional[PyTree[T]]) -> PyTree[T]:
-    """Replaces :data:`None` in ``tree`` with ``sentinel``."""
+    """Replaces :data:`None` in ``tree`` with ``sentinel``.
+
+    See also :func:`tree_flatten` and :func:`tree_map`.
+
+    >>> tree_replace_nones(0, {'a': 1, 'b': None, 'c': (2, None)})
+    {'a': 1, 'b': 0, 'c': (2, 0)}
+    >>> tree_replace_nones(0, None)
+    0
+    """
     if tree is None:
         return sentinel
     return tree_map(lambda x: x if x is not None else sentinel, tree, none_is_leaf=True)
@@ -725,7 +733,7 @@ def _prefix_error(
     *,
     none_is_leaf: bool = False,
 ) -> Iterable[Callable[[str], ValueError]]:
-    # A leaf is a valid prefix of any tree:
+    # A leaf is a valid prefix of any tree
     if treespec_is_strict_leaf(
         tree_structure(prefix_tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf)
     ):
@@ -796,8 +804,6 @@ def _prefix_error(
 
 
 def _child_keys(tree: PyTree[T], *, none_is_leaf: bool = False) -> List[KeyPathEntry]:
-    # pylint: disable-next=import-outside-toplevel
-
     assert not treespec_is_strict_leaf(tree_structure(tree, none_is_leaf=none_is_leaf))
 
     handler = register_keypaths.get(type(tree))  # type: ignore[attr-defined]
