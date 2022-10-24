@@ -16,7 +16,6 @@
 # pylint: disable=missing-function-docstring,invalid-name
 
 import functools
-import itertools
 from collections import OrderedDict
 
 import pytest
@@ -24,7 +23,7 @@ import pytest
 import optree
 
 # pylint: disable-next=wrong-import-order
-from helpers import LEAVES, TREE_STRINGS, TREES, CustomTuple, FlatCache, parametrize
+from helpers import LEAVES, TREES, CustomTuple, FlatCache, parametrize
 
 
 def dummy_func(*args, **kwargs):  # pylint: disable=unused-argument
