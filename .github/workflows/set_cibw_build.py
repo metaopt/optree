@@ -2,7 +2,8 @@ import os
 import sys
 
 
-CIBW_BUILD = 'CIBW_BUILD=*p%d%d-*' % sys.version_info[:2]  # pylint: disable=consider-using-f-string
+# pylint: disable-next=consider-using-f-string
+CIBW_BUILD = 'CIBW_BUILD=*cp%d%d-*' % sys.version_info[:2]
 
 print(CIBW_BUILD)
 with open(os.getenv('GITHUB_ENV'), mode='at', encoding='UTF-8') as file:

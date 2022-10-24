@@ -57,7 +57,11 @@ pre-commit-install:
 
 docs-install:
 	$(call check_pip_install,pydocstyle)
-	$(call check_pip_install,doc8)
+	$(call check_pip_install_extra,doc8,"doc8<1.0.0a0")
+	if ! $(PYTHON) -c "import sys; exit(sys.version_info < (3, 8))"; then \
+		$(PYTHON) -m pip uninstall --yes importlib-metadata; \
+		$(call check_pip_install_extra,importlib-metadata,"importlib-metadata<5.0.0a0"); \
+	fi
 	$(call check_pip_install,sphinx)
 	$(call check_pip_install,sphinx-rtd-theme)
 	$(call check_pip_install,sphinx-autoapi)
@@ -132,12 +136,14 @@ addlicense: addlicense-install
 	addlicense -c $(COPYRIGHT) -l apache -y 2022 -check $(SOURCE_FOLDERS)
 
 docstyle: docs-install
+	make -C docs clean
 	$(PYTHON) -m pydocstyle $(PROJECT_PATH) && doc8 docs && make -C docs html SPHINXOPTS="-W"
 
 docs: docs-install
 	$(PYTHON) -m sphinx_autobuild --watch $(PROJECT_PATH) --open-browser docs/source docs/build
 
 spelling: docs-install
+	make -C docs clean
 	make -C docs spelling SPHINXOPTS="-W"
 
 clean-docs:
@@ -145,7 +151,7 @@ clean-docs:
 
 # Utility functions
 
-lint: flake8 py-format mypy clang-format cpplint docstyle spelling
+lint: flake8 py-format mypy pylint clang-format cpplint docstyle spelling
 
 format: py-format-install clang-format-install addlicense-install
 	$(PYTHON) -m isort --project $(PROJECT_NAME) $(PYTHON_FILES)

@@ -18,6 +18,7 @@ from optree.ops import (
     NONE_IS_LEAF,
     NONE_IS_NODE,
     all_leaves,
+    prefix_errors,
     tree_all,
     tree_any,
     tree_flatten,
@@ -73,6 +74,7 @@ __all__ = [
     'treespec_leaf',
     'treespec_none',
     'treespec_tuple',
+    'prefix_errors',
     # Registry
     'register_pytree_node',
     'register_pytree_node_class',

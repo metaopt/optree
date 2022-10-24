@@ -31,17 +31,23 @@ from typing import (
     TypeVar,
     Union,
 )
-from typing_extensions import NamedTuple  # Generic NamedTuple: Python 3.11+
 from typing_extensions import OrderedDict  # Generic OrderedDict: Python 3.7.2+
 from typing_extensions import Protocol  # Python 3.8+
 
 import optree._C as _C
 
 
-try:
+try:  # pragma: no cover
+    # pylint: disable-next=ungrouped-imports
+    from typing_extensions import NamedTuple  # Generic NamedTuple: Python 3.11+
+except ImportError:  # pragma: no cover
+    from typing import NamedTuple  # type: ignore[assignment]
+
+
+try:  # pragma: no cover
     # Python 3.6
     from typing import _ForwardRef as ForwardRef  # type: ignore[attr-defined]
-except ImportError:
+except ImportError:  # pragma: no cover
     from typing import ForwardRef
 
 
@@ -99,7 +105,7 @@ class CustomTreeNode(Protocol[T]):
 _GenericAlias = type(Union[int, str])
 
 
-def _tp_cache(func):
+def _tp_cache(func):  # pragma: no cover
     import functools  # pylint: disable=import-outside-toplevel
 
     cached = functools.lru_cache()(func)

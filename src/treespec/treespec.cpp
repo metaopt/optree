@@ -48,8 +48,9 @@ bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
         if (a->node_data && a->node_data.not_equal(b->node_data)) [[likely]] {
             return false;
         }
-        // We don't need to test equality of num_leaves and num_nodes since they
-        // are derivable from the other node data.
+        // We don't need to test equality of num_leaves and num_nodes since they are derivable from
+        // the other node data. The num_leaves and num_nodes fields may also change for custom node
+        // types.
     }
     return true;
 }
@@ -57,7 +58,7 @@ bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
 bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == other); }
 
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
-    if (inner_treespec.none_is_leaf == none_is_leaf) {
+    if (inner_treespec.none_is_leaf != none_is_leaf) {
         throw std::invalid_argument("PyTreeSpecs must have the same none_is_leaf value.");
     }
     auto outer_treespec = std::make_unique<PyTreeSpec>();
@@ -66,7 +67,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
         if (node.kind == PyTreeKind::Leaf) [[likely]] {
             absl::c_copy(inner_treespec.traversal, std::back_inserter(outer_treespec->traversal));
         } else [[unlikely]] {  // NOLINT
-            outer_treespec->traversal.emplace_back(std::move(node));
+            outer_treespec->traversal.emplace_back(node);
         }
     }
     const auto& root = traversal.back();
@@ -74,7 +75,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     auto& outer_root = outer_treespec->traversal.back();
     outer_root.num_nodes =
         (root.num_nodes - root.num_leaves) + (inner_root.num_nodes * root.num_leaves);
-    outer_root.num_leaves *= inner_root.num_leaves;
+    outer_root.num_leaves = root.num_leaves * inner_root.num_leaves;
     return outer_treespec;
 }
 
@@ -140,6 +141,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
     ssize_t pos = traversal.size() - 1;
     for (ssize_t i = root.arity - 1; i >= 0; --i) {
         children[i] = std::make_unique<PyTreeSpec>();
+        children[i]->none_is_leaf = none_is_leaf;
         const Node& node = traversal.at(pos - 1);
         if (pos < node.num_nodes) [[unlikely]] {
             throw std::logic_error("PyTreeSpec::Children() walked off start of array.");

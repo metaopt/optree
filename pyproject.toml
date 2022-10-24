@@ -79,7 +79,8 @@ archs = ["auto64"]
 build-frontend = "build"
 build-verbosity = 3
 container-engine = "docker"
-test-command = """python -c \"import optree\""""
+test-extras = ["test"]
+test-command = """make -C "{project}" test PYTHON=python"""
 
 # Linter tools #################################################################
 

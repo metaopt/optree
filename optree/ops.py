@@ -64,6 +64,7 @@ __all__ = [
     'treespec_leaf',
     'treespec_none',
     'treespec_tuple',
+    'prefix_errors',
 ]
 
 
@@ -261,6 +262,8 @@ def all_leaves(
         return _C.all_leaves(iterable, none_is_leaf)
 
     nodes = list(iterable)
+    if all(map(is_leaf, nodes)):
+        return True
     return nodes == tree_leaves(nodes, is_leaf, none_is_leaf=none_is_leaf)  # type: ignore[arg-type]
 
 
@@ -327,7 +330,7 @@ def tree_reduce(
     *,
     is_leaf: Optional[Callable[[T], bool]] = None,
     none_is_leaf: bool = False,
-) -> T:
+) -> T:  # pragma: no cover
     ...
 
 
@@ -339,7 +342,7 @@ def tree_reduce(
     *,
     is_leaf: Optional[Callable[[T], bool]] = None,
     none_is_leaf: bool = False,
-) -> T:
+) -> T:  # pragma: no cover
     ...
 
 
@@ -424,9 +427,11 @@ def tree_transpose(
     """
     if outer_treespec.none_is_leaf != inner_treespec.none_is_leaf:
         raise ValueError('Tree structures must have the same none_is_leaf value.')
-    leaves, treespec = tree_flatten(tree, none_is_leaf=outer_treespec.none_is_leaf)
-    inner_size = inner_treespec.num_leaves
     outer_size = outer_treespec.num_leaves
+    inner_size = inner_treespec.num_leaves
+    if outer_size == 0 or inner_size == 0:
+        raise ValueError('Tree structures must have at least one leaf.')
+    leaves, treespec = tree_flatten(tree, none_is_leaf=outer_treespec.none_is_leaf)
     if treespec.num_leaves != inner_size * outer_size:
         expected_treespec = outer_treespec.compose(inner_treespec)
         raise TypeError(f'Tree structure mismatch:\n{treespec}\n != \n{expected_treespec}')
@@ -441,7 +446,15 @@ def tree_transpose(
 
 
 def tree_replace_nones(sentinel: Any, tree: Optional[PyTree[T]]) -> PyTree[T]:
-    """Replaces :data:`None` in ``tree`` with ``sentinel``."""
+    """Replaces :data:`None` in ``tree`` with ``sentinel``.
+
+    See also :func:`tree_flatten` and :func:`tree_map`.
+
+    >>> tree_replace_nones(0, {'a': 1, 'b': None, 'c': (2, None)})
+    {'a': 1, 'b': 0, 'c': (2, 0)}
+    >>> tree_replace_nones(0, None)
+    0
+    """
     if tree is None:
         return sentinel
     return tree_map(lambda x: x if x is not None else sentinel, tree, none_is_leaf=True)
@@ -457,7 +470,7 @@ def tree_all(
 
     See also :func:`tree_leaves` and :func:`tree_any`.
 
-    >>> tree_any({})
+    >>> tree_all({})
     True
     >>> tree_all({'x': 1, 'y': (2, 3)})
     True
@@ -671,26 +684,44 @@ def broadcast_prefix(
     return result
 
 
-def flatten_one_level(tree: PyTree[T]) -> Tuple[Children[T], AuxData]:
+def flatten_one_level(
+    tree: PyTree[T], *, none_is_leaf: bool = False
+) -> Tuple[Children[T], AuxData]:
     """Flattens the pytree one level, returning a tuple of children and auxiliary data."""
-    handler = register_pytree_node.get(type(tree))  # type: ignore[attr-defined]
+    if tree is None:
+        if none_is_leaf:  # type: ignore[unreachable]
+            raise ValueError('Cannot flatten None')
+        return (), None
+
+    node_type = type(tree)
+    handler = register_pytree_node.get(node_type)  # type: ignore[attr-defined]
     if handler:
-        children, meta = handler.to_iter(tree)
-        return list(children), meta
+        children, aux_data = handler.to_iter(tree)
+        return list(children), aux_data
 
     if is_namedtuple(tree):
-        return list(cast(NamedTuple, tree)), None
+        return list(cast(NamedTuple, tree)), node_type
 
-    raise ValueError(f"Can't tree-flatten type: {type(tree)}.")
+    raise ValueError(f'Cannot tree-flatten type: {node_type}.')
 
 
 def prefix_errors(
     prefix_tree: PyTree[T],
     full_tree: PyTree[S],
     is_leaf: Optional[Callable[[T], bool]] = None,
+    *,
+    none_is_leaf: bool = False,
 ) -> List[Callable[[str], ValueError]]:
     """Returns a list of errors that would be raised by :func:`broadcast_prefix`."""
-    return list(_prefix_error(KeyPath(), prefix_tree, full_tree, is_leaf))
+    return list(
+        _prefix_error(
+            KeyPath(),
+            prefix_tree,
+            full_tree,
+            is_leaf,
+            none_is_leaf=none_is_leaf,
+        )
+    )
 
 
 # pylint: disable-next=too-many-locals
@@ -702,7 +733,7 @@ def _prefix_error(
     *,
     none_is_leaf: bool = False,
 ) -> Iterable[Callable[[str], ValueError]]:
-    # A leaf is a valid prefix of any tree:
+    # A leaf is a valid prefix of any tree
     if treespec_is_strict_leaf(
         tree_structure(prefix_tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf)
     ):
@@ -773,8 +804,6 @@ def _prefix_error(
 
 
 def _child_keys(tree: PyTree[T], *, none_is_leaf: bool = False) -> List[KeyPathEntry]:
-    # pylint: disable-next=import-outside-toplevel
-
     assert not treespec_is_strict_leaf(tree_structure(tree, none_is_leaf=none_is_leaf))
 
     handler = register_keypaths.get(type(tree))  # type: ignore[attr-defined]
