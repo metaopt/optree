@@ -31,11 +31,17 @@ from typing import (
     TypeVar,
     Union,
 )
-from typing_extensions import NamedTuple  # Generic NamedTuple: Python 3.11+
 from typing_extensions import OrderedDict  # Generic OrderedDict: Python 3.7.2+
 from typing_extensions import Protocol  # Python 3.8+
 
 import optree._C as _C
+
+
+try:
+    # pylint: disable-next=ungrouped-imports
+    from typing_extensions import NamedTuple  # Generic NamedTuple: Python 3.11+
+except ImportError:
+    from typing import NamedTuple  # type: ignore[assignment]
 
 
 try:
