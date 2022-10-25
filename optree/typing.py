@@ -16,6 +16,7 @@
 
 # mypy: no-warn-unused-ignores
 
+import sys
 from typing import (
     Any,
     DefaultDict,
@@ -28,26 +29,28 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
+    Type,
     TypeVar,
     Union,
 )
 from typing_extensions import OrderedDict  # Generic OrderedDict: Python 3.7.2+
 from typing_extensions import Protocol  # Python 3.8+
+from typing_extensions import TypeAlias  # Python 3.10+
 
 import optree._C as _C
 
 
-try:  # pragma: no cover
+try:
     # pylint: disable-next=ungrouped-imports
     from typing_extensions import NamedTuple  # Generic NamedTuple: Python 3.11+
-except ImportError:  # pragma: no cover
+except ImportError:
     from typing import NamedTuple  # type: ignore[assignment]
 
 
-try:  # pragma: no cover
+try:
     # Python 3.6
     from typing import _ForwardRef as ForwardRef  # type: ignore[attr-defined]
-except ImportError:  # pragma: no cover
+except ImportError:
     from typing import ForwardRef
 
 
@@ -55,6 +58,7 @@ __all__ = [
     'PyTreeSpec',
     'PyTreeDef',
     'PyTree',
+    'PyTreeTypeVar',
     'CustomTreeNode',
     'Children',
     'MetaData',
@@ -105,7 +109,7 @@ class CustomTreeNode(Protocol[T]):
 _GenericAlias = type(Union[int, str])
 
 
-def _tp_cache(func):  # pragma: no cover
+def _tp_cache(func):
     import functools  # pylint: disable=import-outside-toplevel
 
     cached = functools.lru_cache()(func)
@@ -124,29 +128,36 @@ def _tp_cache(func):  # pragma: no cover
 class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
     """Generic PyTree type.
 
-    Examples:
-        >>> import torch
-        >>> from optree.typing import PyTree
-        >>> TensorTree = PyTree[torch.Tensor]
-        >>> TensorTree
-        typing.Union[
-            torch.Tensor,
-            typing.Tuple[ForwardRef('PyTree[torch.Tensor]'), ...],
-            typing.List[ForwardRef('PyTree[torch.Tensor]')],
-            typing.Dict[typing.Any, ForwardRef('PyTree[torch.Tensor]')],
-            typing.Deque[ForwardRef('PyTree[torch.Tensor]')],
-            optree.typing.CustomTreeNode[ForwardRef('PyTree[torch.Tensor]')]
-        ]
+    >>> import torch
+    >>> from optree.typing import PyTree
+    >>> TensorTree = PyTree[torch.Tensor]
+    >>> TensorTree
+    typing.Union[
+        torch.Tensor,
+        typing.Tuple[ForwardRef('PyTree[torch.Tensor]'), ...],
+        typing.List[ForwardRef('PyTree[torch.Tensor]')],
+        typing.Dict[typing.Any, ForwardRef('PyTree[torch.Tensor]')],
+        typing.Deque[ForwardRef('PyTree[torch.Tensor]')],
+        optree.typing.CustomTreeNode[ForwardRef('PyTree[torch.Tensor]')]
+    ]
     """
 
     @_tp_cache
-    def __class_getitem__(cls, item: Union[T, Tuple[T]]):
-        """Instantiate a PyTree type with the given item type."""
+    def __class_getitem__(cls, item: Union[T, Tuple[T], Tuple[T, Optional[str]]]) -> TypeAlias:
+        """Instantiate a PyTree type with the given type."""
         if not isinstance(item, tuple):
-            item = (item,)
-        if len(item) != 1:
-            raise TypeError(f'{cls.__name__}[...] only supports 1 parameter. Got {item!r}.')
-        param = item[0]
+            item = (item, None)
+        if len(item) != 2:
+            raise TypeError(
+                f'{cls.__name__}[...] only supports a tuple of 2 items, '
+                f'a parameter and a string of type name. Got {item!r}.'
+            )
+        param, name = item
+        if name is not None and not isinstance(name, str):
+            raise TypeError(
+                f'{cls.__name__}[...] only supports a tuple of 2 items, '
+                f'a parameter and a string of type name. Got {item!r}.'
+            )
 
         if (
             isinstance(param, _GenericAlias)
@@ -155,7 +166,9 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
         ):
             return param  # PyTree[PyTree[T]] -> PyTree[T]
 
-        if isinstance(param, TypeVar):
+        if name is not None:
+            recurse_ref = name
+        elif isinstance(param, TypeVar):
             recurse_ref = ForwardRef(f'{cls.__name__}[{param.__name__}]')
         elif isinstance(param, type):
             if param.__module__ == 'builtins':
@@ -179,6 +192,56 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
         ]
         pytree_alias.__pytree_args__ = item  # type: ignore[attr-defined]
         return pytree_alias
+
+    def __init_subclass__(cls, *args, **kwargs):
+        """Prohibit subclassing."""
+        if sys.version_info >= (3, 7):
+            raise TypeError('Cannot subclass special typing classes.')
+
+    def __copy__(self):
+        """Immutable copy."""
+        return self
+
+    def __deepcopy__(self, memo):
+        """Immutable copy."""
+        return self
+
+
+class PyTreeTypeVar:
+    """Type variable for PyTree.
+
+    >>> import torch
+    >>> from optree.typing import PyTreeTypeVar
+    >>> TensorTree = PyTreeTypeVar('TensorTree', torch.Tensor)
+    >>> TensorTree
+    typing.Union[
+        torch.Tensor,
+        typing.Tuple[ForwardRef('TensorTree'), ...],
+        typing.List[ForwardRef('TensorTree')],
+        typing.Dict[typing.Any, ForwardRef('TensorTree')],
+        typing.Deque[ForwardRef('TensorTree')],
+        optree.typing.CustomTreeNode[ForwardRef('TensorTree')]
+    ]
+    """
+
+    @_tp_cache
+    def __new__(cls, name: str, param: Type) -> TypeAlias:
+        """Instantiate a PyTree type variable with the given name and parameter."""
+        if not isinstance(name, str):
+            raise TypeError(f'{cls.__name__} only supports a string of type name. Got {name!r}.')
+        return PyTree[param, name]  # type: ignore[misc,valid-type]
+
+    def __init_subclass__(cls, *args, **kwargs):
+        """Prohibit subclassing."""
+        raise TypeError('Cannot subclass special typing classes.')
+
+    def __copy__(self):
+        """Immutable copy."""
+        return self
+
+    def __deepcopy__(self, memo):
+        """Immutable copy."""
+        return self
 
 
 def is_namedtuple(obj: object) -> bool:
