@@ -57,7 +57,7 @@ __all__ = [
     'PyTree',
     'CustomTreeNode',
     'Children',
-    'AuxData',
+    'MetaData',
     'is_namedtuple',
     'T',
     'S',
@@ -87,18 +87,18 @@ VT = TypeVar('VT')
 
 
 Children = Sequence[T]
-_AuxData = TypeVar('_AuxData', bound=Hashable)
-AuxData = Optional[_AuxData]
+_MetaData = TypeVar('_MetaData', bound=Hashable)
+MetaData = Optional[_MetaData]
 
 
 class CustomTreeNode(Protocol[T]):
     """The abstract base class for custom pytree nodes."""
 
-    def tree_flatten(self) -> Tuple[Children[T], AuxData]:
+    def tree_flatten(self) -> Tuple[Children[T], MetaData]:
         """Flattens the custom pytree node into children and auxiliary data."""
 
     @classmethod
-    def tree_unflatten(cls, aux_data: AuxData, children: Children[T]) -> 'CustomTreeNode[T]':
+    def tree_unflatten(cls, metadata: MetaData, children: Children[T]) -> 'CustomTreeNode[T]':
         """Unflattens the children and auxiliary data into the custom pytree node."""
 
 

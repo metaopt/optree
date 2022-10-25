@@ -20,7 +20,7 @@ from operator import methodcaller
 from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type
 
 import optree._C as _C
-from optree.typing import KT, VT, AuxData, Children, CustomTreeNode, DefaultDict
+from optree.typing import KT, VT, Children, CustomTreeNode, DefaultDict, MetaData
 from optree.typing import OrderedDict as GenericOrderedDict
 from optree.typing import PyTree, PyTreeSpec, T
 from optree.utils import safe_zip, unzip2
@@ -39,16 +39,16 @@ __all__ = [
 PyTreeNodeRegistryEntry = NamedTuple(
     'PyTreeNodeRegistryEntry',
     [
-        ('to_iter', Callable[[CustomTreeNode[T]], Tuple[Children[T], AuxData]]),
-        ('from_iter', Callable[[AuxData, Children[T]], CustomTreeNode[T]]),
+        ('to_iter', Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]]),
+        ('from_iter', Callable[[MetaData, Children[T]], CustomTreeNode[T]]),
     ],
 )
 
 
 def register_pytree_node(
     type: Type[CustomTreeNode[T]],  # pylint: disable=redefined-builtin
-    flatten_func: Callable[[CustomTreeNode[T]], Tuple[Children[T], AuxData]],
-    unflatten_func: Callable[[AuxData, Children[T]], CustomTreeNode[T]],
+    flatten_func: Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]],
+    unflatten_func: Callable[[MetaData, Children[T]], CustomTreeNode[T]],
 ) -> Type[CustomTreeNode[T]]:
     """Extends the set of types that are considered internal nodes in pytrees.
 
@@ -84,7 +84,7 @@ def register_pytree_node_class(cls: Type[CustomTreeNode[T]]) -> Type[CustomTreeN
                 return ((self.x, self.y), None)
 
             @classmethod
-            def tree_unflatten(cls, aux_data, children):
+            def tree_unflatten(cls, metadata, children):
                 return cls(*children)
     """
     register_pytree_node(cls, methodcaller('tree_flatten'), cls.tree_unflatten)
@@ -168,7 +168,7 @@ _nodetype_registry: Dict[Type, PyTreeNodeRegistryEntry] = {
     ),
     defaultdict: PyTreeNodeRegistryEntry(
         _defaultdict_flatten,  # type: ignore[arg-type]
-        lambda aux, values: defaultdict(aux[0], safe_zip(aux[1], values)),  # type: ignore[arg-type,return-value,index]
+        lambda metadata, values: defaultdict(metadata[0], safe_zip(metadata[1], values)),  # type: ignore[arg-type,return-value,index]
     ),
     deque: PyTreeNodeRegistryEntry(
         lambda d: (list(d), d.maxlen),  # type: ignore[call-overload,attr-defined]

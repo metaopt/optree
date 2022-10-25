@@ -29,10 +29,10 @@ from optree.registry import (
     register_pytree_node,
 )
 from optree.typing import (
-    AuxData,
     Children,
     Iterable,
     List,
+    MetaData,
     NamedTuple,
     PyTree,
     PyTreeSpec,
@@ -686,7 +686,7 @@ def broadcast_prefix(
 
 def flatten_one_level(
     tree: PyTree[T], *, none_is_leaf: bool = False
-) -> Tuple[Children[T], AuxData]:
+) -> Tuple[Children[T], MetaData]:
     """Flattens the pytree one level, returning a tuple of children and auxiliary data."""
     if tree is None:
         if none_is_leaf:  # type: ignore[unreachable]
@@ -696,8 +696,8 @@ def flatten_one_level(
     node_type = type(tree)
     handler = register_pytree_node.get(node_type)  # type: ignore[attr-defined]
     if handler:
-        children, aux_data = handler.to_iter(tree)
-        return list(children), aux_data
+        children, metadata = handler.to_iter(tree)
+        return list(children), metadata
 
     if is_namedtuple(tree):
         return list(cast(NamedTuple, tree)), node_type

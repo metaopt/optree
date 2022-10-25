@@ -19,7 +19,7 @@
 from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Sequence, Tuple, Type
 
 if TYPE_CHECKING:
-    from optree.typing import AuxData, Children, CustomTreeNode, PyTree, T, U
+    from optree.typing import MetaData, Children, CustomTreeNode, PyTree, T, U
 
 version: int
 
@@ -42,7 +42,7 @@ class PyTreeSpec:
     def compose(self, inner_treespec: 'PyTreeSpec') -> 'PyTreeSpec': ...
     def walk(
         self,
-        f_node: Callable[[Tuple[U, ...], AuxData], U],
+        f_node: Callable[[Tuple[U, ...], MetaData], U],
         f_leaf: Optional[Callable[[T], U]],
         leaves: Iterable[T],
     ) -> U: ...
@@ -54,6 +54,6 @@ class PyTreeSpec:
 
 def register_node(
     type: Type[CustomTreeNode[T]],
-    to_iterable: Callable[[CustomTreeNode[T]], Tuple[Children[T], AuxData]],
-    from_iterable: Callable[[AuxData, Children[T]], CustomTreeNode[T]],
+    to_iterable: Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]],
+    from_iterable: Callable[[MetaData, Children[T]], CustomTreeNode[T]],
 ) -> None: ...

@@ -75,7 +75,7 @@ class Vector2D:
         return ((self.x, self.y), None)
 
     @classmethod
-    def tree_unflatten(cls, aux_data, children):  # pylint: disable=unused-argument
+    def tree_unflatten(cls, metadata, children):  # pylint: disable=unused-argument
         return cls(*children)
 
     def __eq__(self, other):
@@ -110,10 +110,10 @@ class FlatCache:
         return self.leaves, self.treespec
 
     @classmethod
-    def tree_unflatten(cls, aux_data, children):
+    def tree_unflatten(cls, metadata, children):
         if not optree.all_leaves(children):
-            children, aux_data = optree.tree_flatten(optree.tree_unflatten(aux_data, children))
-        return FlatCache(structured=None, leaves=children, treespec=aux_data)
+            children, metadata = optree.tree_flatten(optree.tree_unflatten(metadata, children))
+        return FlatCache(structured=None, leaves=children, treespec=metadata)
 
 
 TREES = (

@@ -34,9 +34,9 @@ enum class PyTreeKind {
     Leaf,         // An opaque leaf node
     None,         // None
     Tuple,        // A tuple
-    NamedTuple,   // A collections.namedtuple
     List,         // A list
     Dict,         // A dict
+    NamedTuple,   // A collections.namedtuple
     OrderedDict,  // A collections.OrderedDict
     DefaultDict,  // A collections.defaultdict
     Deque,        // A collections.deque
@@ -52,9 +52,9 @@ class PyTreeTypeRegistry {
         // The following values are populated for custom types.
         // The Python type object, used to identify the type.
         py::object type;
-        // A function with signature: object -> (iterable, aux_data)
+        // A function with signature: object -> (iterable, metadata)
         py::function to_iterable;
-        // A function with signature: (aux_data, iterable) -> object
+        // A function with signature: (metadata, iterable) -> object
         py::function from_iterable;
     };
 
