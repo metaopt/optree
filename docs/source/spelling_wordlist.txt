@@ -29,3 +29,4 @@ iterable
 boolean
 arity
 PyTreeTypeVar
+subclassing
