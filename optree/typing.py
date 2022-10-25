@@ -40,17 +40,17 @@ from typing_extensions import TypeAlias  # Python 3.10+
 import optree._C as _C
 
 
-try:  # pragma: no cover
+try:
     # pylint: disable-next=ungrouped-imports
     from typing_extensions import NamedTuple  # Generic NamedTuple: Python 3.11+
-except ImportError:  # pragma: no cover
+except ImportError:
     from typing import NamedTuple  # type: ignore[assignment]
 
 
-try:  # pragma: no cover
+try:
     # Python 3.6
     from typing import _ForwardRef as ForwardRef  # type: ignore[attr-defined]
-except ImportError:  # pragma: no cover
+except ImportError:
     from typing import ForwardRef
 
 
@@ -109,7 +109,7 @@ class CustomTreeNode(Protocol[T]):
 _GenericAlias = type(Union[int, str])
 
 
-def _tp_cache(func):  # pragma: no cover
+def _tp_cache(func):
     import functools  # pylint: disable=import-outside-toplevel
 
     cached = functools.lru_cache()(func)

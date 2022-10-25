@@ -19,7 +19,7 @@ __license__ = 'Apache License, Version 2.0'
 __author__ = 'OpTree Contributors'
 __release__ = False
 
-if not __release__:  # pragma: no cover
+if not __release__:
     import os
     import subprocess
 
