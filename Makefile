@@ -9,6 +9,7 @@ CXX_FILES      = $(shell find $(SOURCE_FOLDERS) -type f -name "*.h" -o -name "*.
 COMMIT_HASH    = $(shell git log -1 --format=%h)
 PATH           := $(HOME)/go/bin:$(PATH)
 PYTHON         ?= $(shell command -v python3 || command -v python)
+CLANG_FORMAT   ?= $(shell command -v clang-format-14 || command -v clang-format)
 
 .PHONY: default
 default: install
@@ -82,7 +83,9 @@ cpplint-install:
 	$(call check_pip_install,cpplint)
 
 clang-format-install:
-	command -v clang-format || sudo apt-get install -y clang-format
+	command -v clang-format-14 || command -v clang-format || \
+	sudo apt-get install -y clang-format-14 || \
+	sudo apt-get install -y clang-format
 
 clang-tidy-install:
 	command -v clang-tidy || sudo apt-get install -y clang-tidy
@@ -128,7 +131,7 @@ cpplint: cpplint-install
 	$(PYTHON) -m cpplint $(CXX_FILES)
 
 clang-format: clang-format-install
-	clang-format --style=file -i $(CXX_FILES) -n --Werror
+	$(CLANG_FORMAT) --style=file -i $(CXX_FILES) -n --Werror
 
 # Documentation
 
@@ -156,7 +159,7 @@ lint: flake8 py-format mypy pylint clang-format cpplint docstyle spelling
 format: py-format-install clang-format-install addlicense-install
 	$(PYTHON) -m isort --project $(PROJECT_NAME) $(PYTHON_FILES)
 	$(PYTHON) -m black $(PYTHON_FILES)
-	clang-format -style=file -i $(CXX_FILES)
+	$(CLANG_FORMAT) -style=file -i $(CXX_FILES)
 	addlicense -c $(COPYRIGHT) -l apache -y 2022 $(SOURCE_FOLDERS)
 
 clean-py:
