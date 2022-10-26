@@ -30,6 +30,7 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS",
@@ -88,7 +89,7 @@ test-command = """make -C "{project}" test PYTHON=python"""
 safe = true
 line-length = 100
 skip-string-normalization = true
-target-version = ["py36", "py37", "py38", "py39", "py310"]
+target-version = ["py36", "py37", "py38", "py39", "py310", "py311"]
 
 [tool.isort]
 profile = "black"

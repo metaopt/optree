@@ -51,7 +51,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.7 - 3.10"
+          python-version: "3.7 - 3.11"
           update-environment: true
 
       - name: Set __release__
@@ -96,7 +96,6 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        id: py
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
@@ -137,7 +136,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.8', '3.9', '3.10']
+        python-version: ['3.8', '3.9', '3.10', '3.11']
       fail-fast: false
     timeout-minutes: 30
     steps:
@@ -148,7 +147,6 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        id: py
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
@@ -200,7 +198,7 @@ jobs:
         uses: actions/setup-python@v4
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          python-version: "3.7 - 3.10"
+          python-version: "3.7 - 3.11"
           update-environment: true
 
       - name: Set __release__
@@ -246,8 +244,7 @@ jobs:
           path: dist
 
       - name: List distributions
-        run:
-          ls -lh dist/*
+        run: ls -lh dist/*
 
       - name: Publish to TestPyPI
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
