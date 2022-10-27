@@ -173,7 +173,7 @@ There are several limitations of the pytree type registry:
 1. **The type registry is per-interpreter-dependent.** This means registering a custom type in the registry affects all modules that use OpTree. The type registry does not support per-module isolation such as namespaces.
 2. **The elements in the type registry are immutable.** Users either cannot register the same type twice (i.e., update the type registry). Nor cannot remove a type from the type registry.
 3. **Users cannot modify the behavior of already registered built-in types** listed [Built-in PyTree Node Types](#built-in-pytree-node-types), such as key order sorting for `dict` and `collections.defaultdict`.
-4. **Inherited subclasses are not implicitly registered.** The registration lookup uses `type(obj) is registered_type` rather than `isinstance(obj, registered_type)`. Users need to explicitly register all custom classes explicitly.
+4. **Inherited subclasses are not implicitly registered.** The registration lookup uses `type(obj) is registered_type` rather than `isinstance(obj, registered_type)`. Users need to register the subclasses explicitly.
 
 ### `None` is non-leaf Node vs. `None` is Leaf
 
