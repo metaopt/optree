@@ -36,6 +36,12 @@ Install from PyPI ([![PyPI](https://img.shields.io/pypi/v/optree?logo=pypi)](htt
 pip3 install --upgrade optree
 ```
 
+Install from conda-forge ([![conda-forge](https://img.shields.io/conda/v/conda-forge/optree?logo=condaforge)](https://anaconda.org/conda-forge/optree)):
+
+```bash
+conda install -c conda-forge optree
+```
+
 Install the latest version from GitHub:
 
 ```bash

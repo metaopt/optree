@@ -25,11 +25,11 @@ channels:
   - conda-forge
 
 dependencies:
-  - python = 3.8
+  - python = 3.9
   - pip
 
   # Dependency
-  - typing-extensions
+  - typing-extensions >= 4.0.0
 
   # Build toolchain
   - cmake >= 3.4
@@ -46,4 +46,5 @@ dependencies:
   - sphinxcontrib-bibtex
   - sphinx-autodoc-typehints
   - pyenchant
+  - hunspell-en
   - docutils

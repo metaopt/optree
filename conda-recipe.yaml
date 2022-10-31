@@ -26,17 +26,17 @@ channels:
   - conda-forge
 
 dependencies:
-  - python = 3.8
+  - python = 3.9
   - pip
 
   # Dependency
-  - typing-extensions
+  - typing-extensions >= 4.0.0
 
   # Build toolchain
   - cmake >= 3.4
   - make
   - cxx-compiler
-  - patchelf >= 0.9
+  - patchelf >= 0.14
   - pybind11
 
   # Benchmark
@@ -54,6 +54,7 @@ dependencies:
   - sphinxcontrib-bibtex
   - sphinx-autodoc-typehints
   - pyenchant
+  - hunspell-en
   - docutils
 
   # Testing
@@ -69,6 +70,6 @@ dependencies:
   - doc8 < 1.0.0a0
   - pydocstyle
   - clang-format >= 14
-  - clang-tools # clang-tidy
+  - clang-tools  # clang-tidy
   - cpplint
   - pre-commit

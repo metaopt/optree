@@ -39,7 +39,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Utilities",
 ]
-dependencies = ["typing-extensions"]
+dependencies = ["typing-extensions >= 4.0.0"]
 dynamic = ["version"]
 
 [project.urls]
