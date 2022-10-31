@@ -1,5 +1,6 @@
 import os
 import pathlib
+import platform
 import shutil
 import sys
 import sysconfig
@@ -52,6 +53,12 @@ class cmake_build_ext(build_ext):
             f'-DPYTHON_EXECUTABLE={sys.executable}',
             f'-DPYTHON_INCLUDE_DIR={sysconfig.get_path("platinclude")}',
         ]
+
+        if platform.system() == 'Darwin':
+            # Cross-compile support for macOS - respect ARCHFLAGS if set
+            archs = re.findall(r'-arch (\S+)', os.environ.get('ARCHFLAGS', ''))
+            if archs:
+                cmake_args.append(f'-DCMAKE_OSX_ARCHITECTURES={";".join(archs)}')
 
         try:
             import pybind11
