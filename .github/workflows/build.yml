@@ -117,6 +117,7 @@ jobs:
         uses: pypa/cibuildwheel@v2.11.2
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
+          CIBW_ARCHS_MACOS: x86_64 arm64 universal2
         with:
           package-dir: .
           output-dir: wheelhouse
@@ -168,6 +169,7 @@ jobs:
         uses: pypa/cibuildwheel@v2.11.2
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
+          CIBW_ARCHS_MACOS: x86_64 arm64 universal2
         with:
           package-dir: .
           output-dir: wheelhouse
