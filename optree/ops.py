@@ -17,6 +17,7 @@
 import difflib
 import functools
 import textwrap
+from collections import deque
 from typing import Any, Callable, Optional, cast, overload
 
 import optree._C as _C
@@ -53,6 +54,7 @@ __all__ = [
     'tree_structure',
     'all_leaves',
     'tree_map',
+    'tree_map_',
     'tree_reduce',
     'tree_transpose',
     'tree_replace_nones',
@@ -276,7 +278,7 @@ def tree_map(
 ) -> PyTree[U]:
     """Maps a multi-input function over pytree args to produce a new pytree.
 
-    See also :func:`tree_flatten`, :func:`tree_leaves`, and :func:`tree_unflatten`.
+    See also :func:`tree_map_`, :func:`tree_flatten`, :func:`tree_leaves`, and :func:`tree_unflatten`.
 
     >>> tree_map(lambda x: x + 1, {'x': 7, 'y': (42, 64)})
     {'x': 8, 'y': (43, 65)}
@@ -315,9 +317,48 @@ def tree_map(
         is the tuple of values at corresponding nodes in ``rests``.
     """
     leaves, treespec = tree_flatten(tree, is_leaf, none_is_leaf=none_is_leaf)
-    arglists = [leaves] + [treespec.flatten_up_to(r) for r in rests]
-    results = map(func, *arglists)
-    return treespec.unflatten(results)
+    flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
+    flat_results = map(func, *flat_args)
+    return treespec.unflatten(flat_results)
+
+
+def tree_map_(
+    func: Callable[..., Any],
+    tree: PyTree[T],
+    *rests: PyTree[S],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    none_is_leaf: bool = False,
+) -> PyTree[T]:
+    """Likes :func:`tree_map`, but does an inplace call on each leaf and returns the original tree.
+
+    See also :func:`tree_map`.
+
+    Args:
+        func: A function that takes ``1 + len(rests)`` arguments, to be applied at the corresponding
+            leaves of the pytrees. The return value is ignored.
+        tree: A pytree to be mapped over, with each leaf providing the first positional argument to
+            function ``func``.
+        rests: A tuple of pytrees, each of which has the same structure as ``tree`` or has ``tree``
+            as a prefix.
+        is_leaf: An optionally specified function that will be called at each flattening step. It
+            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
+            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
+            current object.
+        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
+            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
+            in the leaves list and :data:`None` will be remain in the result pytree. (default:
+            :data:`False`)
+
+    Returns:
+        The original ``tree`` with the value at each leaf is given by the side-effect of function
+        ``func(x, *xs)`` (not the return value) where ``x`` is the value at the corresponding leaf
+        in ``tree`` and ``xs`` is the tuple of values at values at corresponding nodes in ``rests``.
+    """
+    leaves, treespec = tree_flatten(tree, is_leaf, none_is_leaf=none_is_leaf)
+    flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
+    flat_results = map(func, *flat_args)
+    deque(flat_results, maxlen=0)  # consume and exhaust the iterable
+    return tree
 
 
 __INITIAL_MISSING: T = object()  # type: ignore[valid-type]
@@ -383,10 +424,10 @@ def tree_reduce(  # type: ignore[misc]
     Returns:
         The result of reducing the leaves of the pytree using ``func``.
     """
+    leaves = tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf)
     if initial is __INITIAL_MISSING:
-        return functools.reduce(func, tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf))
-
-    return functools.reduce(func, tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf), initial)
+        return functools.reduce(func, leaves)
+    return functools.reduce(func, leaves, initial)
 
 
 def tree_transpose(
@@ -680,7 +721,13 @@ def broadcast_prefix(
     def add_leaves(x: T, subtree: PyTree[S]) -> None:
         result.extend([x] * num_leaves(subtree))
 
-    tree_map(add_leaves, prefix_tree, full_tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf)
+    tree_map_(
+        add_leaves,
+        prefix_tree,
+        full_tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+    )
     return result
 
 

@@ -30,3 +30,4 @@ boolean
 arity
 PyTreeTypeVar
 subclassing
+inplace

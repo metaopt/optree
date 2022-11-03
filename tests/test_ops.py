@@ -231,6 +231,68 @@ def test_tree_map_with_is_leaf_none_is_leaf():
     assert out == (((1, [3]), (2, None), (None, 4)), (([3, 4, 5], ({'foo': 'bar'}, 7, [5, 6]))))
 
 
+def test_tree_map_ignore_return():
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+
+    def fn(*xs):
+        leaves.append(xs)
+        return 0
+
+    leaves = []
+    out = optree.tree_map_(fn, x, y)
+    assert out is x
+    assert x == ((1, 2, None), (3, 4, 5))
+    assert leaves == [(1, [3]), (2, None), (3, {'foo': 'bar'}), (4, 7), (5, [5, 6])]
+
+
+def test_tree_map_ignore_return_none_is_leaf():
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+
+    def fn(*xs):
+        leaves.append(xs)
+        return 0
+
+    leaves = []
+    out = optree.tree_map_(fn, x, y, none_is_leaf=True)
+    assert out is x
+    assert x == ((1, 2, None), (3, 4, 5))
+    assert leaves == [(1, [3]), (2, None), (None, 4), (3, {'foo': 'bar'}), (4, 7), (5, [5, 6])]
+
+
+def test_tree_map_inplace():
+    class Counter:
+        def __init__(self, start):
+            self.count = start
+
+        def increment(self, n=1):
+            self.count += n
+            return self.count
+
+        def __int__(self):
+            return self.count
+
+        def __eq__(self, other):
+            return isinstance(other, Counter) and self.count == other.count
+
+        def __repr__(self):
+            return f'Counter({self.count})'
+
+        def __next__(self):
+            return self.increment()
+
+    x = ((Counter(1), Counter(2), None), (Counter(3), Counter(4), Counter(5)))
+    y = ((3, 0, 4), (5, 7, 6))
+
+    def fn_(x, y):
+        x.increment(y)
+
+    out = optree.tree_map_(fn_, x, y)
+    assert out is x
+    assert x == ((Counter(4), Counter(2), None), (Counter(8), Counter(11), Counter(11)))
+
+
 def test_tree_reduce():
     assert optree.tree_reduce(lambda x, y: x + y, {'x': 1, 'y': (2, 3)}) == 6
     assert optree.tree_reduce(lambda x, y: x + y, {'x': 1, 'y': (2, None), 'z': 3}) == 6

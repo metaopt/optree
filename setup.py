@@ -92,8 +92,6 @@ class cmake_build_ext(build_ext):
 
 VERSION_CONTENT = None
 if not version.__release__:
-    import re
-
     VERSION_CONTENT = VERSION_FILE.read_text(encoding='UTF-8')
     VERSION_FILE.write_text(
         data=re.sub(
@@ -103,6 +101,7 @@ if not version.__release__:
         ),
         encoding='UTF-8',
     )
+
 try:
     setup(
         name='optree',
