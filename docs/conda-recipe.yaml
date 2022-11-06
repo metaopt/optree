@@ -32,7 +32,7 @@ dependencies:
   - typing-extensions >= 4.0.0
 
   # Build toolchain
-  - cmake >= 3.4
+  - cmake >= 3.11
   - make
   - cxx-compiler
   - pybind11

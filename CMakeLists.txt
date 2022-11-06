@@ -13,8 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.11)  # for FetchContent
 project(optree LANGUAGES CXX)
+
+include(FetchContent)
+set(PYBIND11_VERSION v2.10.1)
+set(ABSEIL_CPP_VERSION 20220623.1)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -109,6 +113,7 @@ else()
     include_directories(${PYTHON_INCLUDE_DIR})
 endif()
 
+# Include pybind11
 set(PYBIND11_PYTHON_VERSION "${PYTHON_VERSION}")
 
 if(NOT DEFINED PYBIND11_CMAKE_DIR)
@@ -120,15 +125,35 @@ if(NOT DEFINED PYBIND11_CMAKE_DIR)
 endif()
 
 if("${PYBIND11_CMAKE_DIR}" STREQUAL "")
-    add_subdirectory(third_party/pybind11)
-    include_directories(third_party/pybind11/include)
+    FetchContent_Declare(
+        pybind11
+        GIT_REPOSITORY https://github.com/pybind/pybind11.git
+        GIT_TAG ${PYBIND11_VERSION}
+    )
+
+    if(NOT pybind11_POPULATED)
+        FetchContent_Populate(pybind11)
+        add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
+        include_directories(${pybind11_INCLUDE_DIR})
+    endif()
 else()
     message(STATUS "Detected Pybind11 CMake directory: \"${PYBIND11_CMAKE_DIR}\"")
     find_package(pybind11 CONFIG PATHS "${PYBIND11_CMAKE_DIR}")
 endif()
 
+# Include abseil-cpp
 set(ABSL_PROPAGATE_CXX_STD ON)
-add_subdirectory(third_party/abseil-cpp)
+set(ABSL_BUILD_TESTING OFF)
+FetchContent_Declare(
+    abseil
+    GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
+    GIT_TAG ${ABSEIL_CPP_VERSION}
+)
+
+if(NOT abseil_POPULATED)
+    FetchContent_Populate(abseil)
+    add_subdirectory(${abseil_SOURCE_DIR} ${abseil_BINARY_DIR})
+endif()
 
 include_directories("${CMAKE_SOURCE_DIR}")
 add_subdirectory(src)
