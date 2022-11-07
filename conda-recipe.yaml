@@ -43,7 +43,9 @@ dependencies:
   - pytorch::pytorch >= 1.13, < 1.14.0a0
   - pytorch::torchvision
   - pytorch::pytorch-mutex = *=*cpu*
-  - jax >= 0.3, < 0.4.0a0
+  - jax
+  - jaxlib >= 0.3, < 0.4.0a0 =*cpu*
+  - dm-tree
   - pandas
   - tabulate
   - termcolor

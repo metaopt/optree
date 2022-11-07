@@ -28,6 +28,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.utils._pytree as torch_utils_pytree
+import tree as dm_tree  # pylint: disable=unused-import
 from torchvision import models
 
 import optree
@@ -64,7 +65,7 @@ def get_none() -> None:
     return None
 
 
-def tiny_custom_module() -> nn.Module:
+def tiny_mlp() -> nn.Module:
     return nn.Sequential(
         nn.Linear(1, 1, bias=True),
         nn.BatchNorm1d(1, affine=True, track_running_stats=True),
@@ -110,6 +111,7 @@ INIT = """
 import jax
 import optree
 import torch.utils._pytree as torch_utils_pytree
+import tree as dm_tree
 
 def fn1(x):
     return None
@@ -129,6 +131,7 @@ STMTS = OrderedDict(
                     ('OpTree(NoneIsLeaf)', ('optree.tree_leaves(x, none_is_leaf=True)', '')),
                     ('JAX XLA', ('jax.tree_util.tree_leaves(x)', '')),
                     ('PyTorch', ('torch_utils_pytree.tree_flatten(x)[0]', '')),
+                    ('DM-Tree', ('dm_tree.flatten(x)', '')),
                 ]
             ),
         ),
@@ -162,6 +165,13 @@ STMTS = OrderedDict(
                         (
                             'torch_utils_pytree.tree_unflatten(flat, spec)',
                             'flat, spec = torch_utils_pytree.tree_flatten(x)',
+                        ),
+                    ),
+                    (
+                        'DM-Tree',
+                        (
+                            'dm_tree.unflatten_as(spec, flat)',
+                            'flat, spec = dm_tree.flatten(x), x',
                         ),
                     ),
                 ]
@@ -200,6 +210,10 @@ STMTS = OrderedDict(
                             '',
                         ),
                     ),
+                    (
+                        'DM-Tree',
+                        ('dm_tree.unflatten_as(x, dm_tree.flatten(x))', ''),
+                    ),
                 ]
             ),
         ),
@@ -212,6 +226,7 @@ STMTS = OrderedDict(
                     ('OpTree(NoneIsLeaf)', ('optree.tree_map(fn1, x, none_is_leaf=True)', '')),
                     ('JAX XLA', ('jax.tree_util.tree_map(fn1, x)', '')),
                     ('PyTorch', ('torch_utils_pytree.tree_map(fn1, x)', '')),
+                    ('DM-Tree', ('dm_tree.map_structure(fn1, x)', '')),
                 ]
             ),
         ),
@@ -229,6 +244,7 @@ STMTS = OrderedDict(
                         ('optree.tree_map(fn3, x, y, z, none_is_leaf=True)', ''),
                     ),
                     ('JAX XLA', ('jax.tree_util.tree_map(fn3, x, y, z)', '')),
+                    ('DM-Tree', ('dm_tree.map_structure_up_to(x, fn3, x, y, z)', '')),
                 ]
             ),
         ),
@@ -425,7 +441,7 @@ def compare(  # pylint: disable=too-many-locals
         color = colors[lib]
         attr = attrs[lib]
         label = colored(label + ' ' + lib, color=color, attrs=attr)
-        time = colored(f'{times_us[lib]:8.2f}us', attrs=attr)
+        time = colored(f'{times_us[lib]:8.2f}μs', attrs=attr)
         speedup = speedups[lib]
         if speedup != 1.0:
             speedup = ' -- ' + colored(f'x{speedup:.2f}'.ljust(6), color=color, attrs=attr)
@@ -462,11 +478,13 @@ def benchmark(  # pylint: disable=too-many-locals
             'Module',
             'Nodes',
             'Leaves',
-            'OpTree (us)',
-            'JAX XLA (us)',
-            'PyTorch (us)',
+            'OpTree (μs)',
+            'JAX XLA (μs)',
+            'PyTorch (μs)',
+            'DM-Tree (μs)',
             'Speedup (J / O)',
             'Speedup (P / O)',
+            'Speedup (D / O)',
         ]
     )
 
@@ -480,7 +498,7 @@ def benchmark(  # pylint: disable=too-many-locals
     )
     print(
         f'{colored(name, color="blue", attrs=("bold",))}'
-        f'(num_leaves={treespec.num_leaves}, num_nodes={treespec.num_nodes}, treespec={treespec_repr})',
+        f'(num_nodes={treespec.num_nodes}, num_leaves={treespec.num_leaves}, treespec={treespec_repr})',
         flush=True,
     )
     y = optree.tree_map(torch.zeros_like, x)
@@ -498,18 +516,27 @@ def benchmark(  # pylint: disable=too-many-locals
         data = {
             'Subject': subject,
             'Module': name,
-            'Leaves': treespec.num_leaves,
             'Nodes': treespec.num_nodes,
-            'OpTree (us)': next(iter(times_us.values())),
-            'JAX XLA (us)': times_us.get('JAX XLA', pd.NA),
-            'PyTorch (us)': times_us.get('PyTorch', pd.NA),
+            'Leaves': treespec.num_leaves,
+            'OpTree (μs)': next(iter(times_us.values())),
+            'JAX XLA (μs)': times_us.get('JAX XLA', pd.NA),
+            'PyTorch (μs)': times_us.get('PyTorch', pd.NA),
+            'DM-Tree (μs)': times_us.get('DM-Tree', pd.NA),
         }
-        data['Speedup (J / O)'] = data['JAX XLA (us)'] / data['OpTree (us)']
-        data['Speedup (P / O)'] = data['PyTorch (us)'] / data['OpTree (us)']
+        data['Speedup (J / O)'] = data['JAX XLA (μs)'] / data['OpTree (μs)']
+        data['Speedup (P / O)'] = data['PyTorch (μs)'] / data['OpTree (μs)']
+        data['Speedup (D / O)'] = data['DM-Tree (μs)'] / data['OpTree (μs)']
         records = pd.DataFrame.from_records(data, index=[len(df)])
         df = pd.concat([df, records], ignore_index=True)
 
-    print(df.to_markdown(floatfmt='8.2f', index=False))
+    print(
+        df.drop(columns=['Module', 'Nodes', 'Leaves'])
+        .to_markdown(floatfmt='8.2f', index=False)
+        .replace('|  ', '|')
+        .replace('|--', '|')
+        .replace('nan', 'N/A')
+        .replace('N/A    |', 'N/A |')
+    )
     print(flush=True)
     return df
 
@@ -547,34 +574,43 @@ def main() -> None:
             'Module',
             'Nodes',
             'Leaves',
-            'OpTree (us)',
-            'JAX XLA (us)',
-            'PyTorch (us)',
+            'OpTree (μs)',
+            'JAX XLA (μs)',
+            'PyTorch (μs)',
+            'DM-Tree (μs)',
             'Speedup (J / O)',
             'Speedup (P / O)',
+            'Speedup (D / O)',
         ]
     )
     for name, module_factory in (
-        ('TinyCustom', tiny_custom_module),
+        ('TinyMLP', tiny_mlp),
         ('AlexNet', models.alexnet),
         ('ResNet18', models.resnet18),
         ('ResNet34', models.resnet34),
         ('ResNet50', models.resnet50),
         ('ResNet101', models.resnet101),
         ('ResNet152', models.resnet152),
-        ('VisionTransformerH14', models.vit_h_14),
-        ('SwinTransformerB', models.swin_b),
+        ('ViT-H/14', models.vit_h_14),
+        ('Swin-B', models.swin_b),
     ):
         module = module_factory()
         results = benchmark(name, module, number=number, repeat=repeat, unordered=unordered)
         df = pd.concat([df, results], ignore_index=True)
 
-    print('#' * 120)
+    print('#' * 143)
     print()
 
-    for subject, records in df.groupby('Subject'):
+    for subject, records in df.groupby('Subject', sort=False):
         print(f'### {subject} ###')
-        print(records.to_markdown(floatfmt='8.2f', index=False))
+        print(
+            records.drop(columns=['Subject'])
+            .to_markdown(floatfmt='8.2f', index=False)
+            .replace('|  ', '|')
+            .replace('|--', '|')
+            .replace('nan', 'N/A')
+            .replace('N/A    |', 'N/A |')
+        )
         print(flush=True)
 
     df.to_csv('benchmark.csv', index=False)

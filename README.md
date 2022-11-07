@@ -56,7 +56,7 @@ pip3 install git+https://github.com/metaopt/optree.git#egg=optree
 Or, clone this repo and install manually:
 
 ```bash
-git clone --depth=1 --recurse-submodules https://github.com/metaopt/optree.git
+git clone --depth=1 https://github.com/metaopt/optree.git
 cd optree
 pip3 install .
 ```
@@ -83,7 +83,7 @@ Tree flattening is traversing the entire tree in a left-to-right depth-first man
 ([], PyTreeSpec(None))
 ```
 
-This usually implies that the equal pytrees return equal lists of trees and the same tree structure.
+This usually implies that the equal pytrees return equal lists of leaves and the same tree structure.
 See also section [Key Ordering for Dictionaries](#key-ordering-for-dictionaries).
 
 ```python
@@ -298,8 +298,9 @@ We benchmark the performance of:
 compared with the following libraries:
 
 - OpTree ([`@v0.3.0`](https://github.com/metaopt/optree/tree/v0.3.0))
-- JAX XLA ([`jax[cpu] == 0.3.23`](https://pypi.org/project/jax/0.3.23))
+- JAX XLA ([`jax[cpu] == 0.3.24`](https://pypi.org/project/jax/0.3.24))
 - PyTorch ([`torch == 1.13.0`](https://pypi.org/project/torch/1.13.0))
+- DM-Tree ([`dm-tree == 0.1.7`](https://pypi.org/project/dm-tree/0.1.7))
 
 All results are reported on a workstation with an AMD Ryzen 9 5950X CPU @ 4.45GHz in an isolated virtual environment with Python 3.10.4.
 Run with the following command:
@@ -315,7 +316,7 @@ The test inputs are nested containers (i.e., pytrees) extracted from `torch.nn.M
 They are:
 
 ```python
-tiny_custom = nn.Sequential(
+tiny_mlp = nn.Sequential(
     nn.Linear(1, 1, bias=True),
     nn.BatchNorm1d(1, affine=True, track_running_stats=True),
     nn.ReLU(),
@@ -329,88 +330,108 @@ Please refer to [`benchmark.py`](https://github.com/metaopt/optree/blob/HEAD/ben
 
 ### Tree Flatten
 
-| Module               | Nodes | Leaves | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:---------------------|------:|-------:|------------:|-------------:|-------------:|----------------:|----------------:|
-| TinyCustom           |    53 |     16 |       26.23 |        72.65 |       585.64 |            2.77 |           22.33 |
-| AlexNet              |   188 |     32 |       94.66 |       266.28 |      2210.98 |            2.81 |           23.36 |
-| ResNet18             |   698 |    244 |      313.95 |       800.61 |      8413.09 |            2.55 |           26.80 |
-| ResNet34             |  1242 |    436 |      607.69 |      1475.81 |     14854.69 |            2.43 |           24.44 |
-| ResNet50             |  1702 |    640 |      815.27 |      1949.11 |     20424.27 |            2.39 |           25.05 |
-| ResNet101            |  3317 |   1252 |     1679.05 |      3880.55 |     39937.00 |            2.31 |           23.79 |
-| ResNet152            |  4932 |   1864 |     2546.81 |      5876.13 |     60198.69 |            2.31 |           23.64 |
-| VisionTransformerH14 |  3420 |    784 |     1823.95 |      4445.94 |     42621.66 |            2.44 |           23.37 |
-| SwinTransformerB     |  2881 |    706 |     1553.94 |      3958.88 |     36197.56 |            2.55 |           23.29 |
-|                      |       |        |             |              |  **Average** |       **x2.51** |      **x24.01** |
+| Module    | Nodes | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :-------- | ----: | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| TinyMLP   |    53 |       26.40 |        68.19 |       586.87 |        34.14 |            2.58 |           22.23 |            1.29 |
+| AlexNet   |   188 |       84.28 |       259.51 |      2182.07 |       125.12 |            3.08 |           25.89 |            1.48 |
+| ResNet18  |   698 |      288.57 |       807.27 |      7881.69 |       429.39 |            2.80 |           27.31 |            1.49 |
+| ResNet34  |  1242 |      580.75 |      1564.97 |     15082.84 |       819.02 |            2.69 |           25.97 |            1.41 |
+| ResNet50  |  1702 |      791.18 |      2081.17 |     20982.82 |      1104.62 |            2.63 |           26.52 |            1.40 |
+| ResNet101 |  3317 |     1603.93 |      3939.37 |     40382.14 |      2208.63 |            2.46 |           25.18 |            1.38 |
+| ResNet152 |  4932 |     2446.56 |      6267.98 |     56892.36 |      3139.17 |            2.56 |           23.25 |            1.28 |
+| ViT-H/14  |  3420 |     1681.48 |      4488.33 |     41703.16 |      2504.86 |            2.67 |           24.80 |            1.49 |
+| Swin-B    |  2881 |     1565.41 |      4091.10 |     34241.99 |      1936.75 |            2.61 |           21.87 |            1.24 |
+|           |       |             |              |              |  **Average** |        **2.68** |       **24.78** |        **1.38** |
+
+<div align="center">
+  <img src="https://user-images.githubusercontent.com/16078332/200494435-fd5bb385-59f7-4811-b520-98bf5763ccf3.png" width="90%" />
+</div>
 
 ### Tree UnFlatten
 
-| Module               | Nodes | Leaves | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:---------------------|------:|-------:|------------:|-------------:|-------------:|----------------:|----------------:|
-| TinyCustom           |    53 |     16 |       61.01 |       121.27 |       226.04 |            1.99 |            3.70 |
-| AlexNet              |   188 |     32 |      235.37 |       492.55 |       862.87 |            2.09 |            3.67 |
-| ResNet18             |   698 |    244 |      771.62 |      1514.16 |      2981.51 |            1.96 |            3.86 |
-| ResNet34             |  1242 |    436 |     1397.50 |      2768.87 |      5458.85 |            1.98 |            3.91 |
-| ResNet50             |  1702 |    640 |     1884.59 |      3682.84 |      7494.53 |            1.95 |            3.98 |
-| ResNet101            |  3317 |   1252 |     3844.82 |      7237.28 |     14820.25 |            1.88 |            3.85 |
-| ResNet152            |  4932 |   1864 |     5682.82 |     10812.01 |     21647.86 |            1.90 |            3.81 |
-| VisionTransformerH14 |  3420 |    784 |     4328.64 |      8727.60 |     16262.43 |            2.02 |            3.76 |
-| SwinTransformerB     |  2881 |    706 |     3660.17 |      7357.22 |     13516.73 |            2.01 |            3.69 |
-|                      |       |        |             |              |  **Average** |       **x1.98** |       **x3.80** |
+| Module    | Nodes | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :-------- | ----: | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| TinyMLP   |    53 |       59.47 |       163.00 |       257.56 |       967.00 |            2.74 |            4.33 |           16.26 |
+| AlexNet   |   188 |      234.68 |       701.56 |      1011.04 |      4000.43 |            2.99 |            4.31 |           17.05 |
+| ResNet18  |   698 |      758.82 |      2036.76 |      3391.87 |     12060.09 |            2.68 |            4.47 |           15.89 |
+| ResNet34  |  1242 |     1459.17 |      3886.79 |      6519.28 |     21435.14 |            2.66 |            4.47 |           14.69 |
+| ResNet50  |  1702 |     2003.60 |      5137.90 |      8341.17 |     29067.89 |            2.56 |            4.16 |           14.51 |
+| ResNet101 |  3317 |     4005.73 |     10203.31 |     17316.07 |     59531.47 |            2.55 |            4.32 |           14.86 |
+| ResNet152 |  4932 |     5644.08 |     15153.87 |     25438.67 |     88626.45 |            2.68 |            4.51 |           15.70 |
+| ViT-H/14  |  3420 |     4492.64 |     12544.41 |     18091.68 |     67876.19 |            2.79 |            4.03 |           15.11 |
+| Swin-B    |  2881 |     3637.86 |      9973.78 |     15353.31 |     57655.54 |            2.74 |            4.22 |           15.85 |
+|           |       |             |              |              |  **Average** |        **2.71** |        **4.31** |       **15.55** |
+
+<div align="center">
+  <img src="https://user-images.githubusercontent.com/16078332/200494672-baa2c54c-87e1-427d-85a0-a79dd5715106.png" width="90%" />
+</div>
 
 ### Tree Copy
 
-| Module               | Nodes | Leaves | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:---------------------|------:|-------:|------------:|-------------:|-------------:|----------------:|----------------:|
-| TinyCustom           |    53 |     16 |       95.68 |       202.91 |       824.76 |            2.12 |            8.62 |
-| AlexNet              |   188 |     32 |      325.85 |       760.83 |      3163.96 |            2.33 |            9.71 |
-| ResNet18             |   698 |    244 |     1131.25 |      2396.90 |     11425.73 |            2.12 |           10.10 |
-| ResNet34             |  1242 |    436 |     2099.06 |      4321.82 |     20640.78 |            2.06 |            9.83 |
-| ResNet50             |  1702 |    640 |     2828.82 |      5747.07 |     28492.64 |            2.03 |           10.07 |
-| ResNet101            |  3317 |   1252 |     5658.26 |     11466.17 |     56537.20 |            2.03 |            9.99 |
-| ResNet152            |  4932 |   1864 |     8321.20 |     16697.24 |     82391.62 |            2.01 |            9.90 |
-| VisionTransformerH14 |  3420 |    784 |     6385.36 |     13552.72 |     61474.43 |            2.12 |            9.63 |
-| SwinTransformerB     |  2881 |    706 |     5300.50 |     11303.14 |     50689.66 |            2.13 |            9.56 |
-|                      |       |        |             |              |  **Average** |       **x2.11** |       **x9.71** |
+| Module    | Nodes | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :-------- | ----: | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| TinyMLP   |    53 |       90.43 |       234.08 |       871.84 |      1006.30 |            2.59 |            9.64 |           11.13 |
+| AlexNet   |   188 |      324.33 |       931.61 |      3263.23 |      4106.04 |            2.87 |           10.06 |           12.66 |
+| ResNet18  |   698 |     1111.82 |      2840.68 |     11836.55 |     12564.23 |            2.55 |           10.65 |           11.30 |
+| ResNet34  |  1242 |     2029.24 |      5129.39 |     20888.04 |     23559.50 |            2.53 |           10.29 |           11.61 |
+| ResNet50  |  1702 |     2884.39 |      7118.82 |     30239.69 |     29509.25 |            2.47 |           10.48 |           10.23 |
+| ResNet101 |  3317 |     5773.17 |     14396.40 |     60021.18 |     62725.03 |            2.49 |           10.40 |           10.86 |
+| ResNet152 |  4932 |     8552.95 |     21321.48 |     85857.53 |     86037.99 |            2.49 |           10.04 |           10.06 |
+| ViT-H/14  |  3420 |     6116.61 |     16038.69 |     59993.87 |     70215.65 |            2.62 |            9.81 |           11.48 |
+| Swin-B    |  2881 |     5466.03 |     14449.60 |     50528.12 |     60269.63 |            2.64 |            9.24 |           11.03 |
+|           |       |             |              |              |  **Average** |        **2.58** |       **10.07** |       **11.15** |
+
+<div align="center">
+  <img src="https://user-images.githubusercontent.com/16078332/200494749-c34969a4-03d0-4d76-8aae-35e9deff7cfa.png" width="90%" />
+</div>
 
 ### Tree Map
 
-| Module               | Nodes | Leaves | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:---------------------|------:|-------:|------------:|-------------:|-------------:|----------------:|----------------:|
-| TinyCustom           |    53 |     16 |       99.41 |       210.24 |       878.38 |            2.11 |            8.84 |
-| AlexNet              |   188 |     32 |      347.83 |       798.17 |      3226.00 |            2.29 |            9.27 |
-| ResNet18             |   698 |    244 |     1205.82 |      2554.11 |     11848.85 |            2.12 |            9.83 |
-| ResNet34             |  1242 |    436 |     2213.00 |      4553.61 |     21232.94 |            2.06 |            9.59 |
-| ResNet50             |  1702 |    640 |     2974.05 |      6171.12 |     28682.03 |            2.07 |            9.64 |
-| ResNet101            |  3317 |   1252 |     5969.70 |     12273.57 |     57644.18 |            2.06 |            9.66 |
-| ResNet152            |  4932 |   1864 |     8742.73 |     17892.96 |     83210.50 |            2.05 |            9.52 |
-| VisionTransformerH14 |  3420 |    784 |     6541.53 |     13832.67 |     60161.13 |            2.11 |            9.20 |
-| SwinTransformerB     |  2881 |    706 |     5529.90 |     11842.31 |     51890.98 |            2.14 |            9.38 |
-|                      |       |        |             |              |  **Average** |       **x2.11** |       **x9.44** |
+| Module    | Nodes | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :-------- | ----: | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| TinyMLP   |    53 |       98.24 |       255.39 |       868.24 |      1032.07 |            2.60 |            8.84 |           10.51 |
+| AlexNet   |   188 |      337.87 |      1004.53 |      3304.64 |      4099.77 |            2.97 |            9.78 |           12.13 |
+| ResNet18  |   698 |     1171.69 |      3059.72 |     11921.16 |     12727.38 |            2.61 |           10.17 |           10.86 |
+| ResNet34  |  1242 |     2267.61 |      5793.53 |     22222.92 |     22437.44 |            2.55 |            9.80 |            9.89 |
+| ResNet50  |  1702 |     2961.05 |      7792.69 |     30132.32 |     31460.04 |            2.63 |           10.18 |           10.62 |
+| ResNet101 |  3317 |     6101.05 |     14342.22 |     56480.19 |     61830.65 |            2.35 |            9.26 |           10.13 |
+| ResNet152 |  4932 |     8568.48 |     21641.40 |     83021.19 |     87077.66 |            2.53 |            9.69 |           10.16 |
+| ViT-H/14  |  3420 |     6735.93 |     18027.05 |     63986.88 |     75742.33 |            2.68 |            9.50 |           11.24 |
+| Swin-B    |  2881 |     5756.71 |     14528.51 |     51052.90 |     60715.06 |            2.52 |            8.87 |           10.55 |
+|           |       |             |              |              |  **Average** |        **2.61** |        **9.56** |       **10.68** |
+
+<div align="center">
+  <img src="https://user-images.githubusercontent.com/16078332/200494856-9f8481d1-d805-408a-9b4f-9572eb77b6a4.png" width="90%" />
+</div>
 
 ### Tree Map (nargs)
 
-| Module               | Nodes | Leaves | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:---------------------|------:|-------:|------------:|-------------:|-------------:|----------------:|----------------:|
-| TinyCustom           |    53 |     16 |      142.80 |       362.08 |          N/A |            2.54 |             N/A |
-| AlexNet              |   188 |     32 |      490.24 |      1328.78 |          N/A |            2.71 |             N/A |
-| ResNet18             |   698 |    244 |     1700.77 |      4255.26 |          N/A |            2.50 |             N/A |
-| ResNet34             |  1242 |    436 |     3139.45 |      7650.95 |          N/A |            2.44 |             N/A |
-| ResNet50             |  1702 |    640 |     4234.40 |     10229.45 |          N/A |            2.42 |             N/A |
-| ResNet101            |  3317 |   1252 |     8219.68 |     19835.67 |          N/A |            2.41 |             N/A |
-| ResNet152            |  4932 |   1864 |    12406.75 |     29422.20 |          N/A |            2.37 |             N/A |
-| VisionTransformerH14 |  3420 |    784 |     9077.64 |     22913.44 |          N/A |            2.52 |             N/A |
-| SwinTransformerB     |  2881 |    706 |     7958.56 |     19631.91 |          N/A |            2.47 |             N/A |
-|                      |       |        |             |              |  **Average** |       **x2.49** |             N/A |
+| Module    | Nodes | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :-------- | ----: | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| TinyMLP   |    53 |      144.61 |       391.05 |          N/A |      3774.79 |            2.70 |             N/A |           26.10 |
+| AlexNet   |   188 |      480.23 |      1515.41 |          N/A |     15105.87 |            3.16 |             N/A |           31.46 |
+| ResNet18  |   698 |     1690.19 |      4997.44 |          N/A |     52089.06 |            2.96 |             N/A |           30.82 |
+| ResNet34  |  1242 |     3084.36 |      8572.54 |          N/A |     93923.27 |            2.78 |             N/A |           30.45 |
+| ResNet50  |  1702 |     4441.17 |     11962.92 |          N/A |    126937.65 |            2.69 |             N/A |           28.58 |
+| ResNet101 |  3317 |     8155.78 |     22232.67 |          N/A |    251333.88 |            2.73 |             N/A |           30.82 |
+| ResNet152 |  4932 |    12862.88 |     33714.46 |          N/A |    368424.63 |            2.62 |             N/A |           28.64 |
+| ViT-H/14  |  3420 |     9511.10 |     27920.13 |          N/A |    281245.95 |            2.94 |             N/A |           29.57 |
+| Swin-B    |  2881 |     7628.29 |     22421.37 |          N/A |    238211.56 |            2.94 |             N/A |           31.23 |
+|           |       |             |              |              |  **Average** |        **2.83** |             N/A |       **29.74** |
+
+<div align="center">
+  <img src="https://user-images.githubusercontent.com/16078332/200494913-b337517f-3ba7-4c9b-90a9-e9b1f8455be3.png" width="90%" />
+</div>
 
 ```text
-TinyCustom(num_leaves=16, num_nodes=53, treespec=PyTreeSpec([OrderedDict([('tenso...), buffers=OrderedDict([])))])]))
-| Subject          | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:-----------------|------------:|-------------:|-------------:|----------------:|----------------:|
-| Tree Flatten     |       26.23 |        72.65 |       585.64 |            2.77 |           22.33 |
-| Tree UnFlatten   |       61.01 |       121.27 |       226.04 |            1.99 |            3.70 |
-| Tree Copy        |       95.68 |       202.91 |       824.76 |            2.12 |            8.62 |
-| Tree Map         |       99.41 |       210.24 |       878.38 |            2.11 |            8.84 |
-| Tree Map (nargs) |      142.80 |       362.08 |       nan    |            2.54 |          nan    |
+TinyMLP(num_nodes=53, num_leaves=16, treespec=PyTreeSpec([OrderedDict([('tenso...), buffers=OrderedDict([])))])]))
+| Subject          | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :--------------- | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| Tree Flatten     |       26.40 |        68.19 |       586.87 |        34.14 |            2.58 |           22.23 |            1.29 |
+| Tree UnFlatten   |       59.47 |       163.00 |       257.56 |       967.00 |            2.74 |            4.33 |           16.26 |
+| Tree Copy        |       90.43 |       234.08 |       871.84 |      1006.30 |            2.59 |            9.64 |           11.13 |
+| Tree Map         |       98.24 |       255.39 |       868.24 |      1032.07 |            2.60 |            8.84 |           10.51 |
+| Tree Map (nargs) |      144.61 |       391.05 |          N/A |      3774.79 |            2.70 |             N/A |           26.10 |
 
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -421,48 +442,53 @@ TinyCustom(num_leaves=16, num_nodes=53, treespec=PyTreeSpec([OrderedDict([('tens
 ✔ TREEMAP (OpTree vs. PyTorch): optree.tree_map(fn, tree, none_is_leaf=True) == torch_utils_pytree.tree_map(fn, tree)
 
 ### Tree Flatten ###
-✔ OpTree :    26.23us            <=  optree.tree_leaves(x)                      (None is Node)
-~ OpTree :    26.78us -- x1.02   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
-~ OpTree :    26.60us -- x1.01   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:    72.65us -- x2.77   <=  jax.tree_util.tree_leaves(x)
-  PyTorch:   585.64us -- x22.33  <=  torch_utils_pytree.tree_flatten(x)[0]
+~ OpTree :    26.40μs            <=  optree.tree_leaves(x)                      (None is Node)
+✔ OpTree :    25.98μs -- x0.98   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
+~ OpTree :    26.19μs -- x0.99   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:    68.19μs -- x2.58   <=  jax.tree_util.tree_leaves(x)
+  PyTorch:   586.87μs -- x22.23  <=  torch_utils_pytree.tree_flatten(x)[0]
+  DM-Tree:    34.14μs -- x1.29   <=  dm_tree.flatten(x)
 
 ### Tree UnFlatten ###
-✔ OpTree :    61.01us            <=  optree.tree_unflatten(spec, flat)  (None is Node)
-~ OpTree :    61.15us -- x1.00   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
-  JAX XLA:   121.27us -- x1.99   <=  jax.tree_util.tree_unflatten(spec, flat)
-  PyTorch:   226.04us -- x3.70   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+✔ OpTree :    59.47μs            <=  optree.tree_unflatten(spec, flat)  (None is Node)
+~ OpTree :    59.71μs -- x1.00   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
+  JAX XLA:   163.00μs -- x2.74   <=  jax.tree_util.tree_unflatten(spec, flat)
+  PyTorch:   257.56μs -- x4.33   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+  DM-Tree:   967.00μs -- x16.26  <=  dm_tree.unflatten_as(spec, flat)
 
 ### Tree Copy ###
-~ OpTree :    95.68us            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
-✔ OpTree :    94.52us -- x0.99   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
-~ OpTree :    95.03us -- x0.99   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
-  JAX XLA:   202.91us -- x2.12   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
-  PyTorch:   824.76us -- x8.62   <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+✔ OpTree :    90.43μs            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
+~ OpTree :    91.51μs -- x1.01   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
+~ OpTree :    91.34μs -- x1.01   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
+  JAX XLA:   234.08μs -- x2.59   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
+  PyTorch:   871.84μs -- x9.64   <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+  DM-Tree:  1006.30μs -- x11.13  <=  dm_tree.unflatten_as(x, dm_tree.flatten(x))
 
 ### Tree Map ###
-~ OpTree :    99.41us            <=  optree.tree_map(fn1, x)                      (None is Node)
-✔ OpTree :    98.67us -- x0.99   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
-~ OpTree :    99.19us -- x1.00   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:   210.24us -- x2.11   <=  jax.tree_util.tree_map(fn1, x)
-  PyTorch:   878.38us -- x8.84   <=  torch_utils_pytree.tree_map(fn1, x)
+~ OpTree :    98.24μs            <=  optree.tree_map(fn1, x)                      (None is Node)
+✔ OpTree :    97.62μs -- x0.99   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
+~ OpTree :    98.05μs -- x1.00   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:   255.39μs -- x2.60   <=  jax.tree_util.tree_map(fn1, x)
+  PyTorch:   868.24μs -- x8.84   <=  torch_utils_pytree.tree_map(fn1, x)
+  DM-Tree:  1032.07μs -- x10.51  <=  dm_tree.map_structure(fn1, x)
 
 ### Tree Map (nargs) ###
-✔ OpTree :   142.80us            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
-~ OpTree :   147.90us -- x1.04   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
-~ OpTree :   149.76us -- x1.05   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:   362.08us -- x2.54   <=  jax.tree_util.tree_map(fn3, x, y, z)
+~ OpTree :   144.61μs            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
+✔ OpTree :   141.03μs -- x0.98   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
+~ OpTree :   142.79μs -- x0.99   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:   391.05μs -- x2.70   <=  jax.tree_util.tree_map(fn3, x, y, z)
+  DM-Tree:  3774.79μs -- x26.10  <=  dm_tree.map_structure_up_to(x, fn3, x, y, z)
 ```
 
 ```text
-AlexNet(num_leaves=32, num_nodes=188, treespec=PyTreeSpec(OrderedDict([('featur...]), buffers=OrderedDict([])))])))
-| Subject          | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:-----------------|------------:|-------------:|-------------:|----------------:|----------------:|
-| Tree Flatten     |       94.66 |       266.28 |      2210.98 |            2.81 |           23.36 |
-| Tree UnFlatten   |      235.37 |       492.55 |       862.87 |            2.09 |            3.67 |
-| Tree Copy        |      325.85 |       760.83 |      3163.96 |            2.33 |            9.71 |
-| Tree Map         |      347.83 |       798.17 |      3226.00 |            2.29 |            9.27 |
-| Tree Map (nargs) |      490.24 |      1328.78 |       nan    |            2.71 |          nan    |
+AlexNet(num_nodes=188, num_leaves=32, treespec=PyTreeSpec(OrderedDict([('featur...]), buffers=OrderedDict([])))])))
+| Subject          | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :--------------- | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| Tree Flatten     |       84.28 |       259.51 |      2182.07 |       125.12 |            3.08 |           25.89 |            1.48 |
+| Tree UnFlatten   |      234.68 |       701.56 |      1011.04 |      4000.43 |            2.99 |            4.31 |           17.05 |
+| Tree Copy        |      324.33 |       931.61 |      3263.23 |      4106.04 |            2.87 |           10.06 |           12.66 |
+| Tree Map         |      337.87 |      1004.53 |      3304.64 |      4099.77 |            2.97 |            9.78 |           12.13 |
+| Tree Map (nargs) |      480.23 |      1515.41 |          N/A |     15105.87 |            3.16 |             N/A |           31.46 |
 
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -473,48 +499,53 @@ AlexNet(num_leaves=32, num_nodes=188, treespec=PyTreeSpec(OrderedDict([('featur.
 ✔ TREEMAP (OpTree vs. PyTorch): optree.tree_map(fn, tree, none_is_leaf=True) == torch_utils_pytree.tree_map(fn, tree)
 
 ### Tree Flatten ###
-  OpTree :    94.66us            <=  optree.tree_leaves(x)                      (None is Node)
-  OpTree :    95.13us -- x1.00   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
-✔ OpTree :    84.50us -- x0.89   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:   266.28us -- x2.81   <=  jax.tree_util.tree_leaves(x)
-  PyTorch:  2210.98us -- x23.36  <=  torch_utils_pytree.tree_flatten(x)[0]
+✔ OpTree :    84.28μs            <=  optree.tree_leaves(x)                      (None is Node)
+~ OpTree :    84.64μs -- x1.00   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
+~ OpTree :    85.54μs -- x1.01   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:   259.51μs -- x3.08   <=  jax.tree_util.tree_leaves(x)
+  PyTorch:  2182.07μs -- x25.89  <=  torch_utils_pytree.tree_flatten(x)[0]
+  DM-Tree:   125.12μs -- x1.48   <=  dm_tree.flatten(x)
 
 ### Tree UnFlatten ###
-✔ OpTree :   235.37us            <=  optree.tree_unflatten(spec, flat)  (None is Node)
-~ OpTree :   247.28us -- x1.05   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
-  JAX XLA:   492.55us -- x2.09   <=  jax.tree_util.tree_unflatten(spec, flat)
-  PyTorch:   862.87us -- x3.67   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+~ OpTree :   234.68μs            <=  optree.tree_unflatten(spec, flat)  (None is Node)
+✔ OpTree :   234.02μs -- x1.00   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
+  JAX XLA:   701.56μs -- x2.99   <=  jax.tree_util.tree_unflatten(spec, flat)
+  PyTorch:  1011.04μs -- x4.31   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+  DM-Tree:  4000.43μs -- x17.05  <=  dm_tree.unflatten_as(spec, flat)
 
 ### Tree Copy ###
-~ OpTree :   325.85us            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
-  OpTree :   362.23us -- x1.11   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
-✔ OpTree :   323.42us -- x0.99   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
-  JAX XLA:   760.83us -- x2.33   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
-  PyTorch:  3163.96us -- x9.71   <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+~ OpTree :   324.33μs            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
+~ OpTree :   324.09μs -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
+✔ OpTree :   323.18μs -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
+  JAX XLA:   931.61μs -- x2.87   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
+  PyTorch:  3263.23μs -- x10.06  <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+  DM-Tree:  4106.04μs -- x12.66  <=  dm_tree.unflatten_as(x, dm_tree.flatten(x))
 
 ### Tree Map ###
-~ OpTree :   347.83us            <=  optree.tree_map(fn1, x)                      (None is Node)
-~ OpTree :   346.01us -- x0.99   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
-✔ OpTree :   336.37us -- x0.97   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:   798.17us -- x2.29   <=  jax.tree_util.tree_map(fn1, x)
-  PyTorch:  3226.00us -- x9.27   <=  torch_utils_pytree.tree_map(fn1, x)
+✔ OpTree :   337.87μs            <=  optree.tree_map(fn1, x)                      (None is Node)
+~ OpTree :   340.56μs -- x1.01   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
+~ OpTree :   338.36μs -- x1.00   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:  1004.53μs -- x2.97   <=  jax.tree_util.tree_map(fn1, x)
+  PyTorch:  3304.64μs -- x9.78   <=  torch_utils_pytree.tree_map(fn1, x)
+  DM-Tree:  4099.77μs -- x12.13  <=  dm_tree.map_structure(fn1, x)
 
 ### Tree Map (nargs) ###
-~ OpTree :   490.24us            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
-~ OpTree :   496.10us -- x1.01   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
-✔ OpTree :   483.52us -- x0.99   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:  1328.78us -- x2.71   <=  jax.tree_util.tree_map(fn3, x, y, z)
+~ OpTree :   480.23μs            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
+~ OpTree :   481.45μs -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
+✔ OpTree :   479.35μs -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:  1515.41μs -- x3.16   <=  jax.tree_util.tree_map(fn3, x, y, z)
+  DM-Tree: 15105.87μs -- x31.46  <=  dm_tree.map_structure_up_to(x, fn3, x, y, z)
 ```
 
 ```text
-ResNet18(num_leaves=244, num_nodes=698, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
-| Subject          | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:-----------------|------------:|-------------:|-------------:|----------------:|----------------:|
-| Tree Flatten     |      313.95 |       800.61 |      8413.09 |            2.55 |           26.80 |
-| Tree UnFlatten   |      771.62 |      1514.16 |      2981.51 |            1.96 |            3.86 |
-| Tree Copy        |     1131.25 |      2396.90 |     11425.73 |            2.12 |           10.10 |
-| Tree Map         |     1205.82 |      2554.11 |     11848.85 |            2.12 |            9.83 |
-| Tree Map (nargs) |     1700.77 |      4255.26 |       nan    |            2.50 |          nan    |
+ResNet18(num_nodes=698, num_leaves=244, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
+| Subject          | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :--------------- | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| Tree Flatten     |      288.57 |       807.27 |      7881.69 |       429.39 |            2.80 |           27.31 |            1.49 |
+| Tree UnFlatten   |      758.82 |      2036.76 |      3391.87 |     12060.09 |            2.68 |            4.47 |           15.89 |
+| Tree Copy        |     1111.82 |      2840.68 |     11836.55 |     12564.23 |            2.55 |           10.65 |           11.30 |
+| Tree Map         |     1171.69 |      3059.72 |     11921.16 |     12727.38 |            2.61 |           10.17 |           10.86 |
+| Tree Map (nargs) |     1690.19 |      4997.44 |          N/A |     52089.06 |            2.96 |             N/A |           30.82 |
 
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -525,48 +556,53 @@ ResNet18(num_leaves=244, num_nodes=698, treespec=PyTreeSpec(OrderedDict([('conv1
 ✔ TREEMAP (OpTree vs. PyTorch): optree.tree_map(fn, tree, none_is_leaf=True) == torch_utils_pytree.tree_map(fn, tree)
 
 ### Tree Flatten ###
-~ OpTree :   313.95us            <=  optree.tree_leaves(x)                      (None is Node)
-~ OpTree :   319.86us -- x1.02   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
-✔ OpTree :   293.63us -- x0.94   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:   800.61us -- x2.55   <=  jax.tree_util.tree_leaves(x)
-  PyTorch:  8413.09us -- x26.80  <=  torch_utils_pytree.tree_flatten(x)[0]
+✔ OpTree :   288.57μs            <=  optree.tree_leaves(x)                      (None is Node)
+~ OpTree :   294.01μs -- x1.02   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
+~ OpTree :   294.99μs -- x1.02   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:   807.27μs -- x2.80   <=  jax.tree_util.tree_leaves(x)
+  PyTorch:  7881.69μs -- x27.31  <=  torch_utils_pytree.tree_flatten(x)[0]
+  DM-Tree:   429.39μs -- x1.49   <=  dm_tree.flatten(x)
 
 ### Tree UnFlatten ###
-~ OpTree :   771.62us            <=  optree.tree_unflatten(spec, flat)  (None is Node)
-✔ OpTree :   770.51us -- x1.00   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
-  JAX XLA:  1514.16us -- x1.96   <=  jax.tree_util.tree_unflatten(spec, flat)
-  PyTorch:  2981.51us -- x3.86   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+✔ OpTree :   758.82μs            <=  optree.tree_unflatten(spec, flat)  (None is Node)
+~ OpTree :   765.90μs -- x1.01   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
+  JAX XLA:  2036.76μs -- x2.68   <=  jax.tree_util.tree_unflatten(spec, flat)
+  PyTorch:  3391.87μs -- x4.47   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+  DM-Tree: 12060.09μs -- x15.89  <=  dm_tree.unflatten_as(spec, flat)
 
 ### Tree Copy ###
-~ OpTree :  1131.25us            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
-~ OpTree :  1138.35us -- x1.01   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
-✔ OpTree :  1103.02us -- x0.98   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
-  JAX XLA:  2396.90us -- x2.12   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
-  PyTorch: 11425.73us -- x10.10  <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+~ OpTree :  1111.82μs            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
+~ OpTree :  1103.80μs -- x0.99   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
+✔ OpTree :  1100.03μs -- x0.99   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
+  JAX XLA:  2840.68μs -- x2.55   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
+  PyTorch: 11836.55μs -- x10.65  <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+  DM-Tree: 12564.23μs -- x11.30  <=  dm_tree.unflatten_as(x, dm_tree.flatten(x))
 
 ### Tree Map ###
-~ OpTree :  1205.82us            <=  optree.tree_map(fn1, x)                      (None is Node)
-~ OpTree :  1198.64us -- x0.99   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
-✔ OpTree :  1184.54us -- x0.98   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:  2554.11us -- x2.12   <=  jax.tree_util.tree_map(fn1, x)
-  PyTorch: 11848.85us -- x9.83   <=  torch_utils_pytree.tree_map(fn1, x)
+✔ OpTree :  1171.69μs            <=  optree.tree_map(fn1, x)                      (None is Node)
+~ OpTree :  1172.46μs -- x1.00   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
+~ OpTree :  1181.17μs -- x1.01   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:  3059.72μs -- x2.61   <=  jax.tree_util.tree_map(fn1, x)
+  PyTorch: 11921.16μs -- x10.17  <=  torch_utils_pytree.tree_map(fn1, x)
+  DM-Tree: 12727.38μs -- x10.86  <=  dm_tree.map_structure(fn1, x)
 
 ### Tree Map (nargs) ###
-~ OpTree :  1700.77us            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
-~ OpTree :  1699.87us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
-✔ OpTree :  1677.94us -- x0.99   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:  4255.26us -- x2.50   <=  jax.tree_util.tree_map(fn3, x, y, z)
+✔ OpTree :  1690.19μs            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
+~ OpTree :  1760.86μs -- x1.04   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
+~ OpTree :  1761.76μs -- x1.04   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:  4997.44μs -- x2.96   <=  jax.tree_util.tree_map(fn3, x, y, z)
+  DM-Tree: 52089.06μs -- x30.82  <=  dm_tree.map_structure_up_to(x, fn3, x, y, z)
 ```
 
 ```text
-ResNet34(num_leaves=436, num_nodes=1242, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
-| Subject          | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:-----------------|------------:|-------------:|-------------:|----------------:|----------------:|
-| Tree Flatten     |      607.69 |      1475.81 |     14854.69 |            2.43 |           24.44 |
-| Tree UnFlatten   |     1397.50 |      2768.87 |      5458.85 |            1.98 |            3.91 |
-| Tree Copy        |     2099.06 |      4321.82 |     20640.78 |            2.06 |            9.83 |
-| Tree Map         |     2213.00 |      4553.61 |     21232.94 |            2.06 |            9.59 |
-| Tree Map (nargs) |     3139.45 |      7650.95 |       nan    |            2.44 |          nan    |
+ResNet34(num_nodes=1242, num_leaves=436, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
+| Subject          | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :--------------- | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| Tree Flatten     |      580.75 |      1564.97 |     15082.84 |       819.02 |            2.69 |           25.97 |            1.41 |
+| Tree UnFlatten   |     1459.17 |      3886.79 |      6519.28 |     21435.14 |            2.66 |            4.47 |           14.69 |
+| Tree Copy        |     2029.24 |      5129.39 |     20888.04 |     23559.50 |            2.53 |           10.29 |           11.61 |
+| Tree Map         |     2267.61 |      5793.53 |     22222.92 |     22437.44 |            2.55 |            9.80 |            9.89 |
+| Tree Map (nargs) |     3084.36 |      8572.54 |          N/A |     93923.27 |            2.78 |             N/A |           30.45 |
 
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -577,48 +613,53 @@ ResNet34(num_leaves=436, num_nodes=1242, treespec=PyTreeSpec(OrderedDict([('conv
 ✔ TREEMAP (OpTree vs. PyTorch): optree.tree_map(fn, tree, none_is_leaf=True) == torch_utils_pytree.tree_map(fn, tree)
 
 ### Tree Flatten ###
-  OpTree :   607.69us            <=  optree.tree_leaves(x)                      (None is Node)
-  OpTree :   605.88us -- x1.00   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
-✔ OpTree :   541.75us -- x0.89   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:  1475.81us -- x2.43   <=  jax.tree_util.tree_leaves(x)
-  PyTorch: 14854.69us -- x24.44  <=  torch_utils_pytree.tree_flatten(x)[0]
+~ OpTree :   580.75μs            <=  optree.tree_leaves(x)                      (None is Node)
+~ OpTree :   577.02μs -- x0.99   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
+✔ OpTree :   571.14μs -- x0.98   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:  1564.97μs -- x2.69   <=  jax.tree_util.tree_leaves(x)
+  PyTorch: 15082.84μs -- x25.97  <=  torch_utils_pytree.tree_flatten(x)[0]
+  DM-Tree:   819.02μs -- x1.41   <=  dm_tree.flatten(x)
 
 ### Tree UnFlatten ###
-✔ OpTree :  1397.50us            <=  optree.tree_unflatten(spec, flat)  (None is Node)
-~ OpTree :  1409.78us -- x1.01   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
-  JAX XLA:  2768.87us -- x1.98   <=  jax.tree_util.tree_unflatten(spec, flat)
-  PyTorch:  5458.85us -- x3.91   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+✔ OpTree :  1459.17μs            <=  optree.tree_unflatten(spec, flat)  (None is Node)
+~ OpTree :  1465.07μs -- x1.00   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
+  JAX XLA:  3886.79μs -- x2.66   <=  jax.tree_util.tree_unflatten(spec, flat)
+  PyTorch:  6519.28μs -- x4.47   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+  DM-Tree: 21435.14μs -- x14.69  <=  dm_tree.unflatten_as(spec, flat)
 
 ### Tree Copy ###
-~ OpTree :  2099.06us            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
-~ OpTree :  2080.91us -- x0.99   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
-✔ OpTree :  2037.15us -- x0.97   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
-  JAX XLA:  4321.82us -- x2.06   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
-  PyTorch: 20640.78us -- x9.83   <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+~ OpTree :  2029.24μs            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
+✔ OpTree :  2021.45μs -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
+~ OpTree :  2024.29μs -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
+  JAX XLA:  5129.39μs -- x2.53   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
+  PyTorch: 20888.04μs -- x10.29  <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+  DM-Tree: 23559.50μs -- x11.61  <=  dm_tree.unflatten_as(x, dm_tree.flatten(x))
 
 ### Tree Map ###
-~ OpTree :  2213.00us            <=  optree.tree_map(fn1, x)                      (None is Node)
-~ OpTree :  2208.49us -- x1.00   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
-✔ OpTree :  2167.27us -- x0.98   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:  4553.61us -- x2.06   <=  jax.tree_util.tree_map(fn1, x)
-  PyTorch: 21232.94us -- x9.59   <=  torch_utils_pytree.tree_map(fn1, x)
+~ OpTree :  2267.61μs            <=  optree.tree_map(fn1, x)                      (None is Node)
+✔ OpTree :  2257.85μs -- x1.00   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
+~ OpTree :  2268.77μs -- x1.00   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:  5793.53μs -- x2.55   <=  jax.tree_util.tree_map(fn1, x)
+  PyTorch: 22222.92μs -- x9.80   <=  torch_utils_pytree.tree_map(fn1, x)
+  DM-Tree: 22437.44μs -- x9.89   <=  dm_tree.map_structure(fn1, x)
 
 ### Tree Map (nargs) ###
-~ OpTree :  3139.45us            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
-~ OpTree :  3140.90us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
-✔ OpTree :  3118.84us -- x0.99   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:  7650.95us -- x2.44   <=  jax.tree_util.tree_map(fn3, x, y, z)
+~ OpTree :  3084.36μs            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
+~ OpTree :  3080.29μs -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
+✔ OpTree :  3072.45μs -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:  8572.54μs -- x2.78   <=  jax.tree_util.tree_map(fn3, x, y, z)
+  DM-Tree: 93923.27μs -- x30.45  <=  dm_tree.map_structure_up_to(x, fn3, x, y, z)
 ```
 
 ```text
-ResNet50(num_leaves=640, num_nodes=1702, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
-| Subject          | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:-----------------|------------:|-------------:|-------------:|----------------:|----------------:|
-| Tree Flatten     |      815.27 |      1949.11 |     20424.27 |            2.39 |           25.05 |
-| Tree UnFlatten   |     1884.59 |      3682.84 |      7494.53 |            1.95 |            3.98 |
-| Tree Copy        |     2828.82 |      5747.07 |     28492.64 |            2.03 |           10.07 |
-| Tree Map         |     2974.05 |      6171.12 |     28682.03 |            2.07 |            9.64 |
-| Tree Map (nargs) |     4234.40 |     10229.45 |       nan    |            2.42 |          nan    |
+ResNet50(num_nodes=1702, num_leaves=640, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
+| Subject          | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :--------------- | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| Tree Flatten     |      791.18 |      2081.17 |     20982.82 |      1104.62 |            2.63 |           26.52 |            1.40 |
+| Tree UnFlatten   |     2003.60 |      5137.90 |      8341.17 |     29067.89 |            2.56 |            4.16 |           14.51 |
+| Tree Copy        |     2884.39 |      7118.82 |     30239.69 |     29509.25 |            2.47 |           10.48 |           10.23 |
+| Tree Map         |     2961.05 |      7792.69 |     30132.32 |     31460.04 |            2.63 |           10.18 |           10.62 |
+| Tree Map (nargs) |     4441.17 |     11962.92 |          N/A |    126937.65 |            2.69 |             N/A |           28.58 |
 
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -629,48 +670,53 @@ ResNet50(num_leaves=640, num_nodes=1702, treespec=PyTreeSpec(OrderedDict([('conv
 ✔ TREEMAP (OpTree vs. PyTorch): optree.tree_map(fn, tree, none_is_leaf=True) == torch_utils_pytree.tree_map(fn, tree)
 
 ### Tree Flatten ###
-  OpTree :   815.27us            <=  optree.tree_leaves(x)                      (None is Node)
-  OpTree :   826.64us -- x1.01   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
-✔ OpTree :   722.10us -- x0.89   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:  1949.11us -- x2.39   <=  jax.tree_util.tree_leaves(x)
-  PyTorch: 20424.27us -- x25.05  <=  torch_utils_pytree.tree_flatten(x)[0]
+~ OpTree :   791.18μs            <=  optree.tree_leaves(x)                      (None is Node)
+~ OpTree :   791.38μs -- x1.00   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
+✔ OpTree :   779.75μs -- x0.99   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:  2081.17μs -- x2.63   <=  jax.tree_util.tree_leaves(x)
+  PyTorch: 20982.82μs -- x26.52  <=  torch_utils_pytree.tree_flatten(x)[0]
+  DM-Tree:  1104.62μs -- x1.40   <=  dm_tree.flatten(x)
 
 ### Tree UnFlatten ###
-✔ OpTree :  1884.59us            <=  optree.tree_unflatten(spec, flat)  (None is Node)
-~ OpTree :  1887.39us -- x1.00   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
-  JAX XLA:  3682.84us -- x1.95   <=  jax.tree_util.tree_unflatten(spec, flat)
-  PyTorch:  7494.53us -- x3.98   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+~ OpTree :  2003.60μs            <=  optree.tree_unflatten(spec, flat)  (None is Node)
+✔ OpTree :  2000.10μs -- x1.00   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
+  JAX XLA:  5137.90μs -- x2.56   <=  jax.tree_util.tree_unflatten(spec, flat)
+  PyTorch:  8341.17μs -- x4.16   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+  DM-Tree: 29067.89μs -- x14.51  <=  dm_tree.unflatten_as(spec, flat)
 
 ### Tree Copy ###
-~ OpTree :  2828.82us            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
-~ OpTree :  2840.35us -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
-✔ OpTree :  2743.29us -- x0.97   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
-  JAX XLA:  5747.07us -- x2.03   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
-  PyTorch: 28492.64us -- x10.07  <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+~ OpTree :  2884.39μs            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
+~ OpTree :  2879.97μs -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
+✔ OpTree :  2868.84μs -- x0.99   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
+  JAX XLA:  7118.82μs -- x2.47   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
+  PyTorch: 30239.69μs -- x10.48  <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+  DM-Tree: 29509.25μs -- x10.23  <=  dm_tree.unflatten_as(x, dm_tree.flatten(x))
 
 ### Tree Map ###
-~ OpTree :  2974.05us            <=  optree.tree_map(fn1, x)                      (None is Node)
-~ OpTree :  3007.56us -- x1.01   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
-✔ OpTree :  2941.31us -- x0.99   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:  6171.12us -- x2.07   <=  jax.tree_util.tree_map(fn1, x)
-  PyTorch: 28682.03us -- x9.64   <=  torch_utils_pytree.tree_map(fn1, x)
+✔ OpTree :  2961.05μs            <=  optree.tree_map(fn1, x)                      (None is Node)
+~ OpTree :  3079.33μs -- x1.04   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
+~ OpTree :  3116.74μs -- x1.05   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:  7792.69μs -- x2.63   <=  jax.tree_util.tree_map(fn1, x)
+  PyTorch: 30132.32μs -- x10.18  <=  torch_utils_pytree.tree_map(fn1, x)
+  DM-Tree: 31460.04μs -- x10.62  <=  dm_tree.map_structure(fn1, x)
 
 ### Tree Map (nargs) ###
-~ OpTree :  4234.40us            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
-~ OpTree :  4258.74us -- x1.01   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
-✔ OpTree :  4223.89us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
-  JAX XLA: 10229.45us -- x2.42   <=  jax.tree_util.tree_map(fn3, x, y, z)
+~ OpTree :  4441.17μs            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
+✔ OpTree :  4430.87μs -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
+~ OpTree :  4449.43μs -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
+  JAX XLA: 11962.92μs -- x2.69   <=  jax.tree_util.tree_map(fn3, x, y, z)
+  DM-Tree: 126937.65μs -- x28.58  <=  dm_tree.map_structure_up_to(x, fn3, x, y, z)
 ```
 
 ```text
-ResNet101(num_leaves=1252, num_nodes=3317, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
-| Subject          | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:-----------------|------------:|-------------:|-------------:|----------------:|----------------:|
-| Tree Flatten     |     1679.05 |      3880.55 |     39937.00 |            2.31 |           23.79 |
-| Tree UnFlatten   |     3844.82 |      7237.28 |     14820.25 |            1.88 |            3.85 |
-| Tree Copy        |     5658.26 |     11466.17 |     56537.20 |            2.03 |            9.99 |
-| Tree Map         |     5969.70 |     12273.57 |     57644.18 |            2.06 |            9.66 |
-| Tree Map (nargs) |     8219.68 |     19835.67 |       nan    |            2.41 |          nan    |
+ResNet101(num_nodes=3317, num_leaves=1252, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
+| Subject          | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :--------------- | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| Tree Flatten     |     1603.93 |      3939.37 |     40382.14 |      2208.63 |            2.46 |           25.18 |            1.38 |
+| Tree UnFlatten   |     4005.73 |     10203.31 |     17316.07 |     59531.47 |            2.55 |            4.32 |           14.86 |
+| Tree Copy        |     5773.17 |     14396.40 |     60021.18 |     62725.03 |            2.49 |           10.40 |           10.86 |
+| Tree Map         |     6101.05 |     14342.22 |     56480.19 |     61830.65 |            2.35 |            9.26 |           10.13 |
+| Tree Map (nargs) |     8155.78 |     22232.67 |          N/A |    251333.88 |            2.73 |             N/A |           30.82 |
 
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -681,48 +727,53 @@ ResNet101(num_leaves=1252, num_nodes=3317, treespec=PyTreeSpec(OrderedDict([('co
 ✔ TREEMAP (OpTree vs. PyTorch): optree.tree_map(fn, tree, none_is_leaf=True) == torch_utils_pytree.tree_map(fn, tree)
 
 ### Tree Flatten ###
-  OpTree :  1679.05us            <=  optree.tree_leaves(x)                      (None is Node)
-~ OpTree :  1641.53us -- x0.98   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
-✔ OpTree :  1499.52us -- x0.89   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:  3880.55us -- x2.31   <=  jax.tree_util.tree_leaves(x)
-  PyTorch: 39937.00us -- x23.79  <=  torch_utils_pytree.tree_flatten(x)[0]
+~ OpTree :  1603.93μs            <=  optree.tree_leaves(x)                      (None is Node)
+✔ OpTree :  1458.25μs -- x0.91   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
+~ OpTree :  1492.62μs -- x0.93   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:  3939.37μs -- x2.46   <=  jax.tree_util.tree_leaves(x)
+  PyTorch: 40382.14μs -- x25.18  <=  torch_utils_pytree.tree_flatten(x)[0]
+  DM-Tree:  2208.63μs -- x1.38   <=  dm_tree.flatten(x)
 
 ### Tree UnFlatten ###
-~ OpTree :  3844.82us            <=  optree.tree_unflatten(spec, flat)  (None is Node)
-✔ OpTree :  3834.13us -- x1.00   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
-  JAX XLA:  7237.28us -- x1.88   <=  jax.tree_util.tree_unflatten(spec, flat)
-  PyTorch: 14820.25us -- x3.85   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+~ OpTree :  4005.73μs            <=  optree.tree_unflatten(spec, flat)  (None is Node)
+✔ OpTree :  3957.47μs -- x0.99   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
+  JAX XLA: 10203.31μs -- x2.55   <=  jax.tree_util.tree_unflatten(spec, flat)
+  PyTorch: 17316.07μs -- x4.32   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+  DM-Tree: 59531.47μs -- x14.86  <=  dm_tree.unflatten_as(spec, flat)
 
 ### Tree Copy ###
-~ OpTree :  5658.26us            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
-~ OpTree :  5694.40us -- x1.01   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
-✔ OpTree :  5492.35us -- x0.97   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
-  JAX XLA: 11466.17us -- x2.03   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
-  PyTorch: 56537.20us -- x9.99   <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+~ OpTree :  5773.17μs            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
+✔ OpTree :  5741.73μs -- x0.99   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
+~ OpTree :  5759.01μs -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
+  JAX XLA: 14396.40μs -- x2.49   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
+  PyTorch: 60021.18μs -- x10.40  <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+  DM-Tree: 62725.03μs -- x10.86  <=  dm_tree.unflatten_as(x, dm_tree.flatten(x))
 
 ### Tree Map ###
-~ OpTree :  5969.70us            <=  optree.tree_map(fn1, x)                      (None is Node)
-~ OpTree :  5984.09us -- x1.00   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
-✔ OpTree :  5882.16us -- x0.99   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA: 12273.57us -- x2.06   <=  jax.tree_util.tree_map(fn1, x)
-  PyTorch: 57644.18us -- x9.66   <=  torch_utils_pytree.tree_map(fn1, x)
+~ OpTree :  6101.05μs            <=  optree.tree_map(fn1, x)                      (None is Node)
+~ OpTree :  6145.86μs -- x1.01   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
+✔ OpTree :  5709.67μs -- x0.94   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA: 14342.22μs -- x2.35   <=  jax.tree_util.tree_map(fn1, x)
+  PyTorch: 56480.19μs -- x9.26   <=  torch_utils_pytree.tree_map(fn1, x)
+  DM-Tree: 61830.65μs -- x10.13  <=  dm_tree.map_structure(fn1, x)
 
 ### Tree Map (nargs) ###
-~ OpTree :  8219.68us            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
-~ OpTree :  8240.13us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
-✔ OpTree :  8180.94us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
-  JAX XLA: 19835.67us -- x2.41   <=  jax.tree_util.tree_map(fn3, x, y, z)
+~ OpTree :  8155.78μs            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
+~ OpTree :  8144.17μs -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
+✔ OpTree :  8113.58μs -- x0.99   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
+  JAX XLA: 22232.67μs -- x2.73   <=  jax.tree_util.tree_map(fn3, x, y, z)
+  DM-Tree: 251333.88μs -- x30.82  <=  dm_tree.map_structure_up_to(x, fn3, x, y, z)
 ```
 
 ```text
-ResNet152(num_leaves=1864, num_nodes=4932, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
-| Subject          | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:-----------------|------------:|-------------:|-------------:|----------------:|----------------:|
-| Tree Flatten     |     2546.81 |      5876.13 |     60198.69 |            2.31 |           23.64 |
-| Tree UnFlatten   |     5682.82 |     10812.01 |     21647.86 |            1.90 |            3.81 |
-| Tree Copy        |     8321.20 |     16697.24 |     82391.62 |            2.01 |            9.90 |
-| Tree Map         |     8742.73 |     17892.96 |     83210.50 |            2.05 |            9.52 |
-| Tree Map (nargs) |    12406.75 |     29422.20 |       nan    |            2.37 |          nan    |
+ResNet152(num_nodes=4932, num_leaves=1864, treespec=PyTreeSpec(OrderedDict([('conv1'...]), buffers=OrderedDict([])))])))
+| Subject          | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :--------------- | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| Tree Flatten     |     2446.56 |      6267.98 |     56892.36 |      3139.17 |            2.56 |           23.25 |            1.28 |
+| Tree UnFlatten   |     5644.08 |     15153.87 |     25438.67 |     88626.45 |            2.68 |            4.51 |           15.70 |
+| Tree Copy        |     8552.95 |     21321.48 |     85857.53 |     86037.99 |            2.49 |           10.04 |           10.06 |
+| Tree Map         |     8568.48 |     21641.40 |     83021.19 |     87077.66 |            2.53 |            9.69 |           10.16 |
+| Tree Map (nargs) |    12862.88 |     33714.46 |          N/A |    368424.63 |            2.62 |             N/A |           28.64 |
 
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -733,48 +784,53 @@ ResNet152(num_leaves=1864, num_nodes=4932, treespec=PyTreeSpec(OrderedDict([('co
 ✔ TREEMAP (OpTree vs. PyTorch): optree.tree_map(fn, tree, none_is_leaf=True) == torch_utils_pytree.tree_map(fn, tree)
 
 ### Tree Flatten ###
-  OpTree :  2546.81us            <=  optree.tree_leaves(x)                      (None is Node)
-  OpTree :  2547.52us -- x1.00   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
-✔ OpTree :  2278.54us -- x0.89   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:  5876.13us -- x2.31   <=  jax.tree_util.tree_leaves(x)
-  PyTorch: 60198.69us -- x23.64  <=  torch_utils_pytree.tree_flatten(x)[0]
+~ OpTree :  2446.56μs            <=  optree.tree_leaves(x)                      (None is Node)
+~ OpTree :  2455.99μs -- x1.00   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
+✔ OpTree :  2429.96μs -- x0.99   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:  6267.98μs -- x2.56   <=  jax.tree_util.tree_leaves(x)
+  PyTorch: 56892.36μs -- x23.25  <=  torch_utils_pytree.tree_flatten(x)[0]
+  DM-Tree:  3139.17μs -- x1.28   <=  dm_tree.flatten(x)
 
 ### Tree UnFlatten ###
-✔ OpTree :  5682.82us            <=  optree.tree_unflatten(spec, flat)  (None is Node)
-~ OpTree :  5730.33us -- x1.01   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
-  JAX XLA: 10812.01us -- x1.90   <=  jax.tree_util.tree_unflatten(spec, flat)
-  PyTorch: 21647.86us -- x3.81   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+✔ OpTree :  5644.08μs            <=  optree.tree_unflatten(spec, flat)  (None is Node)
+~ OpTree :  5723.38μs -- x1.01   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
+  JAX XLA: 15153.87μs -- x2.68   <=  jax.tree_util.tree_unflatten(spec, flat)
+  PyTorch: 25438.67μs -- x4.51   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+  DM-Tree: 88626.45μs -- x15.70  <=  dm_tree.unflatten_as(spec, flat)
 
 ### Tree Copy ###
-~ OpTree :  8321.20us            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
-~ OpTree :  8318.23us -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
-✔ OpTree :  7986.33us -- x0.96   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
-  JAX XLA: 16697.24us -- x2.01   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
-  PyTorch: 82391.62us -- x9.90   <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+~ OpTree :  8552.95μs            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
+~ OpTree :  8531.50μs -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
+✔ OpTree :  8528.88μs -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
+  JAX XLA: 21321.48μs -- x2.49   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
+  PyTorch: 85857.53μs -- x10.04  <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+  DM-Tree: 86037.99μs -- x10.06  <=  dm_tree.unflatten_as(x, dm_tree.flatten(x))
 
 ### Tree Map ###
-~ OpTree :  8742.73us            <=  optree.tree_map(fn1, x)                      (None is Node)
-~ OpTree :  8725.09us -- x1.00   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
-✔ OpTree :  8586.67us -- x0.98   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA: 17892.96us -- x2.05   <=  jax.tree_util.tree_map(fn1, x)
-  PyTorch: 83210.50us -- x9.52   <=  torch_utils_pytree.tree_map(fn1, x)
+~ OpTree :  8568.48μs            <=  optree.tree_map(fn1, x)                      (None is Node)
+~ OpTree :  8569.48μs -- x1.00   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
+✔ OpTree :  8542.91μs -- x1.00   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA: 21641.40μs -- x2.53   <=  jax.tree_util.tree_map(fn1, x)
+  PyTorch: 83021.19μs -- x9.69   <=  torch_utils_pytree.tree_map(fn1, x)
+  DM-Tree: 87077.66μs -- x10.16  <=  dm_tree.map_structure(fn1, x)
 
 ### Tree Map (nargs) ###
-~ OpTree : 12406.75us            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
-~ OpTree : 12372.89us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
-✔ OpTree : 12194.97us -- x0.98   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
-  JAX XLA: 29422.20us -- x2.37   <=  jax.tree_util.tree_map(fn3, x, y, z)
+~ OpTree : 12862.88μs            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
+✔ OpTree : 12806.09μs -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
+~ OpTree : 12909.94μs -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
+  JAX XLA: 33714.46μs -- x2.62   <=  jax.tree_util.tree_map(fn3, x, y, z)
+  DM-Tree: 368424.63μs -- x28.64  <=  dm_tree.map_structure_up_to(x, fn3, x, y, z)
 ```
 
 ```text
-VisionTransformerH14(num_leaves=784, num_nodes=3420, treespec=PyTreeSpec(OrderedDict([('conv_p...]), buffers=OrderedDict([])))])))
-| Subject          | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:-----------------|------------:|-------------:|-------------:|----------------:|----------------:|
-| Tree Flatten     |     1823.95 |      4445.94 |     42621.66 |            2.44 |           23.37 |
-| Tree UnFlatten   |     4328.64 |      8727.60 |     16262.43 |            2.02 |            3.76 |
-| Tree Copy        |     6385.36 |     13552.72 |     61474.43 |            2.12 |            9.63 |
-| Tree Map         |     6541.53 |     13832.67 |     60161.13 |            2.11 |            9.20 |
-| Tree Map (nargs) |     9077.64 |     22913.44 |       nan    |            2.52 |          nan    |
+ViT-H/14(num_nodes=3420, num_leaves=784, treespec=PyTreeSpec(OrderedDict([('conv_p...]), buffers=OrderedDict([])))])))
+| Subject          | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :--------------- | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| Tree Flatten     |     1681.48 |      4488.33 |     41703.16 |      2504.86 |            2.67 |           24.80 |            1.49 |
+| Tree UnFlatten   |     4492.64 |     12544.41 |     18091.68 |     67876.19 |            2.79 |            4.03 |           15.11 |
+| Tree Copy        |     6116.61 |     16038.69 |     59993.87 |     70215.65 |            2.62 |            9.81 |           11.48 |
+| Tree Map         |     6735.93 |     18027.05 |     63986.88 |     75742.33 |            2.68 |            9.50 |           11.24 |
+| Tree Map (nargs) |     9511.10 |     27920.13 |          N/A |    281245.95 |            2.94 |             N/A |           29.57 |
 
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -785,48 +841,53 @@ VisionTransformerH14(num_leaves=784, num_nodes=3420, treespec=PyTreeSpec(Ordered
 ✔ TREEMAP (OpTree vs. PyTorch): optree.tree_map(fn, tree, none_is_leaf=True) == torch_utils_pytree.tree_map(fn, tree)
 
 ### Tree Flatten ###
-~ OpTree :  1823.95us            <=  optree.tree_leaves(x)                      (None is Node)
-~ OpTree :  1835.76us -- x1.01   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
-✔ OpTree :  1708.92us -- x0.94   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:  4445.94us -- x2.44   <=  jax.tree_util.tree_leaves(x)
-  PyTorch: 42621.66us -- x23.37  <=  torch_utils_pytree.tree_flatten(x)[0]
+✔ OpTree :  1681.48μs            <=  optree.tree_leaves(x)                      (None is Node)
+~ OpTree :  1702.21μs -- x1.01   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
+~ OpTree :  1694.58μs -- x1.01   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:  4488.33μs -- x2.67   <=  jax.tree_util.tree_leaves(x)
+  PyTorch: 41703.16μs -- x24.80  <=  torch_utils_pytree.tree_flatten(x)[0]
+  DM-Tree:  2504.86μs -- x1.49   <=  dm_tree.flatten(x)
 
 ### Tree UnFlatten ###
-✔ OpTree :  4328.64us            <=  optree.tree_unflatten(spec, flat)  (None is Node)
-~ OpTree :  4390.96us -- x1.01   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
-  JAX XLA:  8727.60us -- x2.02   <=  jax.tree_util.tree_unflatten(spec, flat)
-  PyTorch: 16262.43us -- x3.76   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+✔ OpTree :  4492.64μs            <=  optree.tree_unflatten(spec, flat)  (None is Node)
+~ OpTree :  4535.79μs -- x1.01   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
+  JAX XLA: 12544.41μs -- x2.79   <=  jax.tree_util.tree_unflatten(spec, flat)
+  PyTorch: 18091.68μs -- x4.03   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+  DM-Tree: 67876.19μs -- x15.11  <=  dm_tree.unflatten_as(spec, flat)
 
 ### Tree Copy ###
-~ OpTree :  6385.36us            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
-~ OpTree :  6284.22us -- x0.98   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
-✔ OpTree :  6176.32us -- x0.97   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
-  JAX XLA: 13552.72us -- x2.12   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
-  PyTorch: 61474.43us -- x9.63   <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+~ OpTree :  6116.61μs            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
+✔ OpTree :  6075.72μs -- x0.99   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
+~ OpTree :  6104.80μs -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
+  JAX XLA: 16038.69μs -- x2.62   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
+  PyTorch: 59993.87μs -- x9.81   <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+  DM-Tree: 70215.65μs -- x11.48  <=  dm_tree.unflatten_as(x, dm_tree.flatten(x))
 
 ### Tree Map ###
-~ OpTree :  6541.53us            <=  optree.tree_map(fn1, x)                      (None is Node)
-✔ OpTree :  6305.01us -- x0.96   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
-~ OpTree :  6387.82us -- x0.98   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA: 13832.67us -- x2.11   <=  jax.tree_util.tree_map(fn1, x)
-  PyTorch: 60161.13us -- x9.20   <=  torch_utils_pytree.tree_map(fn1, x)
+~ OpTree :  6735.93μs            <=  optree.tree_map(fn1, x)                      (None is Node)
+✔ OpTree :  6679.19μs -- x0.99   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
+~ OpTree :  6726.99μs -- x1.00   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA: 18027.05μs -- x2.68   <=  jax.tree_util.tree_map(fn1, x)
+  PyTorch: 63986.88μs -- x9.50   <=  torch_utils_pytree.tree_map(fn1, x)
+  DM-Tree: 75742.33μs -- x11.24  <=  dm_tree.map_structure(fn1, x)
 
 ### Tree Map (nargs) ###
-✔ OpTree :  9077.64us            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
-~ OpTree :  9088.96us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
-~ OpTree :  9092.49us -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
-  JAX XLA: 22913.44us -- x2.52   <=  jax.tree_util.tree_map(fn3, x, y, z)
+~ OpTree :  9511.10μs            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
+✔ OpTree :  9503.85μs -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
+~ OpTree :  9550.25μs -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
+  JAX XLA: 27920.13μs -- x2.94   <=  jax.tree_util.tree_map(fn3, x, y, z)
+  DM-Tree: 281245.95μs -- x29.57  <=  dm_tree.map_structure_up_to(x, fn3, x, y, z)
 ```
 
 ```text
-SwinTransformerB(num_leaves=706, num_nodes=2881, treespec=PyTreeSpec(OrderedDict([('featur...]), buffers=OrderedDict([])))])))
-| Subject          | OpTree (us) | JAX XLA (us) | PyTorch (us) | Speedup (J / O) | Speedup (P / O) |
-|:-----------------|------------:|-------------:|-------------:|----------------:|----------------:|
-| Tree Flatten     |     1553.94 |      3958.88 |     36197.56 |            2.55 |           23.29 |
-| Tree UnFlatten   |     3660.17 |      7357.22 |     13516.73 |            2.01 |            3.69 |
-| Tree Copy        |     5300.50 |     11303.14 |     50689.66 |            2.13 |            9.56 |
-| Tree Map         |     5529.90 |     11842.31 |     51890.98 |            2.14 |            9.38 |
-| Tree Map (nargs) |     7958.56 |     19631.91 |       nan    |            2.47 |          nan    |
+Swin-B(num_nodes=2881, num_leaves=706, treespec=PyTreeSpec(OrderedDict([('featur...]), buffers=OrderedDict([])))])))
+| Subject          | OpTree (μs) | JAX XLA (μs) | PyTorch (μs) | DM-Tree (μs) | Speedup (J / O) | Speedup (P / O) | Speedup (D / O) |
+| :--------------- | ----------: | -----------: | -----------: | -----------: | --------------: | --------------: | --------------: |
+| Tree Flatten     |     1565.41 |      4091.10 |     34241.99 |      1936.75 |            2.61 |           21.87 |            1.24 |
+| Tree UnFlatten   |     3637.86 |      9973.78 |     15353.31 |     57655.54 |            2.74 |            4.22 |           15.85 |
+| Tree Copy        |     5466.03 |     14449.60 |     50528.12 |     60269.63 |            2.64 |            9.24 |           11.03 |
+| Tree Map         |     5756.71 |     14528.51 |     51052.90 |     60715.06 |            2.52 |            8.87 |           10.55 |
+| Tree Map (nargs) |     7628.29 |     22421.37 |          N/A |    238211.56 |            2.94 |             N/A |           31.23 |
 
 ### Check ###
 ✔ COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree
@@ -837,37 +898,42 @@ SwinTransformerB(num_leaves=706, num_nodes=2881, treespec=PyTreeSpec(OrderedDict
 ✔ TREEMAP (OpTree vs. PyTorch): optree.tree_map(fn, tree, none_is_leaf=True) == torch_utils_pytree.tree_map(fn, tree)
 
 ### Tree Flatten ###
-~ OpTree :  1553.94us            <=  optree.tree_leaves(x)                      (None is Node)
-~ OpTree :  1555.72us -- x1.00   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
-✔ OpTree :  1456.35us -- x0.94   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA:  3958.88us -- x2.55   <=  jax.tree_util.tree_leaves(x)
-  PyTorch: 36197.56us -- x23.29  <=  torch_utils_pytree.tree_flatten(x)[0]
+~ OpTree :  1565.41μs            <=  optree.tree_leaves(x)                      (None is Node)
+~ OpTree :  1565.91μs -- x1.00   <=  optree.tree_leaves(x, none_is_leaf=False)  (None is Node)
+✔ OpTree :  1550.64μs -- x0.99   <=  optree.tree_leaves(x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA:  4091.10μs -- x2.61   <=  jax.tree_util.tree_leaves(x)
+  PyTorch: 34241.99μs -- x21.87  <=  torch_utils_pytree.tree_flatten(x)[0]
+  DM-Tree:  1936.75μs -- x1.24   <=  dm_tree.flatten(x)
 
 ### Tree UnFlatten ###
-~ OpTree :  3660.17us            <=  optree.tree_unflatten(spec, flat)  (None is Node)
-✔ OpTree :  3629.90us -- x0.99   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
-  JAX XLA:  7357.22us -- x2.01   <=  jax.tree_util.tree_unflatten(spec, flat)
-  PyTorch: 13516.73us -- x3.69   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+~ OpTree :  3637.86μs            <=  optree.tree_unflatten(spec, flat)  (None is Node)
+✔ OpTree :  3596.18μs -- x0.99   <=  optree.tree_unflatten(spec, flat)  (None is Leaf)
+  JAX XLA:  9973.78μs -- x2.74   <=  jax.tree_util.tree_unflatten(spec, flat)
+  PyTorch: 15353.31μs -- x4.22   <=  torch_utils_pytree.tree_unflatten(flat, spec)
+  DM-Tree: 57655.54μs -- x15.85  <=  dm_tree.unflatten_as(spec, flat)
 
 ### Tree Copy ###
-~ OpTree :  5300.50us            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
-~ OpTree :  5291.56us -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
-✔ OpTree :  5224.23us -- x0.99   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
-  JAX XLA: 11303.14us -- x2.13   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
-  PyTorch: 50689.66us -- x9.56   <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+✔ OpTree :  5466.03μs            <=  optree.tree_unflatten(*optree.tree_flatten(x)[::-1])                      (None is Node)
+~ OpTree :  5467.68μs -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])  (None is Node)
+~ OpTree :  5469.55μs -- x1.00   <=  optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])   (None is Leaf)
+  JAX XLA: 14449.60μs -- x2.64   <=  jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])
+  PyTorch: 50528.12μs -- x9.24   <=  torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))
+  DM-Tree: 60269.63μs -- x11.03  <=  dm_tree.unflatten_as(x, dm_tree.flatten(x))
 
 ### Tree Map ###
-~ OpTree :  5529.90us            <=  optree.tree_map(fn1, x)                      (None is Node)
-~ OpTree :  5500.23us -- x0.99   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
-✔ OpTree :  5423.18us -- x0.98   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
-  JAX XLA: 11842.31us -- x2.14   <=  jax.tree_util.tree_map(fn1, x)
-  PyTorch: 51890.98us -- x9.38   <=  torch_utils_pytree.tree_map(fn1, x)
+~ OpTree :  5756.71μs            <=  optree.tree_map(fn1, x)                      (None is Node)
+~ OpTree :  5712.77μs -- x0.99   <=  optree.tree_map(fn1, x, none_is_leaf=False)  (None is Node)
+✔ OpTree :  5706.22μs -- x0.99   <=  optree.tree_map(fn1, x, none_is_leaf=True)   (None is Leaf)
+  JAX XLA: 14528.51μs -- x2.52   <=  jax.tree_util.tree_map(fn1, x)
+  PyTorch: 51052.90μs -- x8.87   <=  torch_utils_pytree.tree_map(fn1, x)
+  DM-Tree: 60715.06μs -- x10.55  <=  dm_tree.map_structure(fn1, x)
 
 ### Tree Map (nargs) ###
-~ OpTree :  7958.56us            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
-~ OpTree :  7905.76us -- x0.99   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
-✔ OpTree :  7894.04us -- x0.99   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
-  JAX XLA: 19631.91us -- x2.47   <=  jax.tree_util.tree_map(fn3, x, y, z)
+~ OpTree :  7628.29μs            <=  optree.tree_map(fn3, x, y, z)                      (None is Node)
+~ OpTree :  7622.97μs -- x1.00   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=False)  (None is Node)
+✔ OpTree :  7548.69μs -- x0.99   <=  optree.tree_map(fn3, x, y, z, none_is_leaf=True)   (None is Leaf)
+  JAX XLA: 22421.37μs -- x2.94   <=  jax.tree_util.tree_map(fn3, x, y, z)
+  DM-Tree: 238211.56μs -- x31.23  <=  dm_tree.map_structure_up_to(x, fn3, x, y, z)
 ```
 
 --------------------------------------------------------------------------------
