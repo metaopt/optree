@@ -6,7 +6,7 @@ pytest-xdist
 isort
 black >= 22.6.0
 pylint
-mypy
+mypy >= 0.990
 flake8
 flake8-bugbear
 # https://github.com/PyCQA/doc8/issues/112

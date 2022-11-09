@@ -69,7 +69,7 @@ dependencies:
   - isort
   - conda-forge::black >= 22.6.0
   - pylint
-  - mypy
+  - mypy >= 0.990
   - flake8
   - flake8-bugbear
   - doc8 < 1.0.0a0
