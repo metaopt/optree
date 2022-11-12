@@ -170,7 +170,7 @@ Users can also extend the pytree registry by decorating the custom class and def
 ...         return [self[key] for key in reversed_keys], reversed_keys
 ...
 ...     @classmethod
-...     def tree_unflatten(metadata, children):
+...     def tree_unflatten(cls, metadata, children):
 ...         return MyDict(zip(metadata, children))
 
 >>> optree.tree_flatten(MyDict(b=2, a=1, c=3))

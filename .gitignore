@@ -1,5 +1,6 @@
 ##### Project Specific #####
 *.csv
+third-party/
 
 ##### Python.gitignore #####
 # Byte-compiled / optimized / DLL files

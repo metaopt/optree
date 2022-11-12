@@ -110,7 +110,7 @@ if("${PYTHON_INCLUDE_DIR}" STREQUAL "")
     message(FATAL_ERROR "Python include directory not found")
 else()
     message(STATUS "Detected Python include directory: \"${PYTHON_INCLUDE_DIR}\"")
-    include_directories(${PYTHON_INCLUDE_DIR})
+    include_directories("${PYTHON_INCLUDE_DIR}")
 endif()
 
 # Include pybind11
@@ -128,13 +128,13 @@ if("${PYBIND11_CMAKE_DIR}" STREQUAL "")
     FetchContent_Declare(
         pybind11
         GIT_REPOSITORY https://github.com/pybind/pybind11.git
-        GIT_TAG ${PYBIND11_VERSION}
+        SOURCE_DIR "${CMAKE_SOURCE_DIR}/third-party/pybind11"
+        GIT_TAG "${PYBIND11_VERSION}"
     )
-
+    FetchContent_GetProperties(pybind11)
     if(NOT pybind11_POPULATED)
-        FetchContent_Populate(pybind11)
-        add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
-        include_directories(${pybind11_INCLUDE_DIR})
+        message(STATUS "Populating Git repository pybind11@${PYBIND11_VERSION} to third-party/pybind11...")
+        FetchContent_MakeAvailable(pybind11)
     endif()
 else()
     message(STATUS "Detected Pybind11 CMake directory: \"${PYBIND11_CMAKE_DIR}\"")
@@ -145,14 +145,15 @@ endif()
 set(ABSL_PROPAGATE_CXX_STD ON)
 set(ABSL_BUILD_TESTING OFF)
 FetchContent_Declare(
-    abseil
+    abseilcpp
     GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
-    GIT_TAG ${ABSEIL_CPP_VERSION}
+    SOURCE_DIR "${CMAKE_SOURCE_DIR}/third-party/abseil-cpp"
+    GIT_TAG "${ABSEIL_CPP_VERSION}"
 )
-
-if(NOT abseil_POPULATED)
-    FetchContent_Populate(abseil)
-    add_subdirectory(${abseil_SOURCE_DIR} ${abseil_BINARY_DIR})
+FetchContent_GetProperties(abseilcpp)
+if(NOT abseilcpp_POPULATED)
+    message(STATUS "Populating Git repository abseil-cpp@${ABSEIL_CPP_VERSION} to third-party/abseil-cpp...")
+    FetchContent_MakeAvailable(abseilcpp)
 endif()
 
 include_directories("${CMAKE_SOURCE_DIR}")
