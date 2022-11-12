@@ -28,6 +28,7 @@ limitations under the License.
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -63,6 +64,26 @@ class PyTreeSpec {
                      absl::InlinedVector<py::object, 2> &leaves,  // NOLINT
                      const std::optional<py::function> &leaf_predicate = std::nullopt,
                      const bool &none_is_leaf = false);
+
+    // Flattens a PyTree into a list of leaves with a list of paths and a PyTreeSpec.
+    // Returns references to the flattened objects, which might be temporary objects in the case of
+    // custom PyType handlers.
+    static std::tuple<std::vector<py::object>, std::vector<py::object>, std::unique_ptr<PyTreeSpec>>
+    FlattenWithPath(const py::handle &tree,
+                    const std::optional<py::function> &leaf_predicate = std::nullopt,
+                    const bool &none_is_leaf = false);
+
+    // Recursive helper used to implement FlattenWithPath().
+    void FlattenIntoWithPath(const py::handle &handle,
+                             std::vector<py::object> &leaves,  // NOLINT
+                             std::vector<py::object> &paths,   // NOLINT
+                             const std::optional<py::function> &leaf_predicate = std::nullopt,
+                             const bool &none_is_leaf = false);
+    void FlattenIntoWithPath(const py::handle &handle,
+                             absl::InlinedVector<py::object, 2> &leaves,  // NOLINT
+                             absl::InlinedVector<py::object, 2> &paths,   // NOLINT
+                             const std::optional<py::function> &leaf_predicate = std::nullopt,
+                             const bool &none_is_leaf = false);
 
     // Flattens a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure
     // of 'x'. For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeSpec [(*,
@@ -146,6 +167,13 @@ class PyTreeSpec {
         // For a Custom type, contains the auxiliary data returned by the `to_iterable` function.
         py::object node_data;
 
+        // The tuple of path entries.
+        // This is optional, if not specified, `range(arity)` is used.
+        // For a sequence, contains the index of the element.
+        // For a mapping, contains the key of the element.
+        // For a Custom type, contains the path entries returned by the `to_iterable` function.
+        py::object node_entries;
+
         // Custom type registration. Must be null for non-custom types.
         const PyTreeTypeRegistry::Registration *custom = nullptr;
 
@@ -175,6 +203,14 @@ class PyTreeSpec {
     void FlattenIntoImpl(const py::handle &handle,
                          Span &leaves,  // NOLINT
                          const std::optional<py::function> &leaf_predicate);
+
+    template <bool NoneIsLeaf, typename Span, typename Stack>
+    void FlattenIntoWithPathImpl(const py::handle &handle,
+                                 Span &leaves,  // NOLINT
+                                 Span &paths,   // NOLINT
+                                 Stack &stack,  // NOLINT
+                                 const ssize_t &depth,
+                                 const std::optional<py::function> &leaf_predicate);
 
     py::list FlattenUpToImpl(const py::handle &full_tree) const;
 

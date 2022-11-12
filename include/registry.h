@@ -52,7 +52,7 @@ class PyTreeTypeRegistry {
         // The following values are populated for custom types.
         // The Python type object, used to identify the type.
         py::object type;
-        // A function with signature: object -> (iterable, metadata)
+        // A function with signature: object -> (iterable, metadata, entries)
         py::function to_iterable;
         // A function with signature: (metadata, iterable) -> object
         py::function from_iterable;

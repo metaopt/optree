@@ -86,8 +86,8 @@ void PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 py::tuple tuple = py::reinterpret_borrow<py::tuple>(handle);
                 node.arity = GET_SIZE<py::tuple>(tuple);
                 node.node_data = py::reinterpret_borrow<py::object>(tuple.get_type());
-                for (const py::handle& entry : tuple) {
-                    recurse(entry);
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    recurse(GET_ITEM_HANDLE<py::tuple>(tuple, i));
                 }
                 break;
             }
@@ -104,9 +104,10 @@ void PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
 
             case PyTreeKind::Custom: {
                 py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(handle));
-                if (GET_SIZE<py::tuple>(out) != 2) [[unlikely]] {
+                const size_t num_out = GET_SIZE<py::tuple>(out);
+                if (num_out != 2 && num_out != 3) [[unlikely]] {  // NOLINT
                     throw std::runtime_error(
-                        "PyTree custom to_iterable function should return a pair.");
+                        "PyTree custom to_iterable function should return a pair or a triple.");
                 }
                 node.arity = 0;
                 node.node_data = GET_ITEM_BORROW<py::tuple>(out, 1);
@@ -114,6 +115,20 @@ void PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                      py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, 0))) {
                     ++node.arity;
                     recurse(child);
+                }
+                if (num_out == 3) [[likely]] {  // NOLINT
+                    py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, 2);
+                    if (!node_entries.is_none()) [[likely]] {  // NOLINT
+                        node.node_entries = py::cast<py::tuple>(std::move(node_entries));
+                        const ssize_t num_entries = GET_SIZE<py::tuple>(node.node_entries);
+                        if (num_entries != node.arity) [[unlikely]] {
+                            throw std::runtime_error(absl::StrFormat(
+                                "PyTree custom to_iterable function returned inconsistent number "
+                                "of children (%ld) and number of entries (%ld).",
+                                node.arity,
+                                num_entries));
+                        }
+                    }
                 }
                 break;
             }
@@ -160,6 +175,192 @@ void PyTreeSpec::FlattenInto(const py::handle& handle,
     return std::make_pair(std::move(leaves), std::move(treespec));
 }
 
+template <bool NoneIsLeaf, typename Span, typename Stack>
+void PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
+                                         Span& leaves,
+                                         Span& paths,
+                                         Stack& stack,
+                                         const ssize_t& depth,
+                                         const std::optional<py::function>& leaf_predicate) {
+    Node node;
+    ssize_t start_num_nodes = traversal.size();
+    ssize_t start_num_leaves = leaves.size();
+    if (leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) [[unlikely]] {
+        leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
+    } else [[likely]] {  // NOLINT
+        node.kind = GetKind<NoneIsLeaf>(handle, &node.custom);
+        auto recurse = [this, &leaf_predicate, &leaves, &paths, &stack, &depth](py::handle child,
+                                                                                py::handle entry) {
+            stack.emplace_back(entry);
+            FlattenIntoWithPathImpl<NoneIsLeaf>(
+                child, leaves, paths, stack, depth + 1, leaf_predicate);
+            stack.pop_back();
+        };
+        switch (node.kind) {
+            case PyTreeKind::None:
+                if (!NoneIsLeaf) break;
+            case PyTreeKind::Leaf: {
+                py::tuple path = py::tuple{depth};
+                for (ssize_t d = 0; d < depth; ++d) {
+                    SET_ITEM<py::tuple>(path, d, stack[d]);
+                }
+                leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
+                paths.emplace_back(std::move(path));
+                break;
+            }
+
+            case PyTreeKind::Tuple: {
+                node.arity = GET_SIZE<py::tuple>(handle);
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    recurse(GET_ITEM_HANDLE<py::tuple>(handle, i), py::int_(i));
+                }
+                break;
+            }
+
+            case PyTreeKind::List: {
+                node.arity = GET_SIZE<py::list>(handle);
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    recurse(GET_ITEM_HANDLE<py::list>(handle, i), py::int_(i));
+                }
+                break;
+            }
+
+            case PyTreeKind::Dict:
+            case PyTreeKind::OrderedDict:
+            case PyTreeKind::DefaultDict: {
+                py::dict dict = py::reinterpret_borrow<py::dict>(handle);
+                py::list keys;
+                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
+                    keys = DictKeys(dict);
+                } else [[likely]] {  // NOLINT
+                    keys = SortedDictKeys(dict);
+                }
+                for (const py::handle& key : keys) {
+                    recurse(dict[key], key);
+                }
+                node.arity = GET_SIZE<py::dict>(dict);
+                if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
+                    node.node_data =
+                        py::make_tuple(py::getattr(handle, "default_factory"), std::move(keys));
+                } else [[likely]] {  // NOLINT
+                    node.node_data = std::move(keys);
+                }
+                break;
+            }
+
+            case PyTreeKind::NamedTuple: {
+                py::tuple tuple = py::reinterpret_borrow<py::tuple>(handle);
+                node.arity = GET_SIZE<py::tuple>(tuple);
+                node.node_data = py::reinterpret_borrow<py::object>(tuple.get_type());
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    recurse(GET_ITEM_HANDLE<py::tuple>(tuple, i), py::int_(i));
+                }
+                break;
+            }
+
+            case PyTreeKind::Deque: {
+                py::list list = handle.cast<py::list>();
+                node.arity = GET_SIZE<py::list>(list);
+                node.node_data = py::getattr(handle, "maxlen");
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    recurse(GET_ITEM_HANDLE<py::list>(list, i), py::int_(i));
+                }
+                break;
+            }
+
+            case PyTreeKind::Custom: {
+                py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(handle));
+                const size_t num_out = GET_SIZE<py::tuple>(out);
+                if (num_out != 2 && num_out != 3) [[unlikely]] {
+                    throw std::runtime_error(
+                        "PyTree custom to_iterable function should return a pair or a triple.");
+                }
+                node.arity = 0;
+                node.node_data = GET_ITEM_BORROW<py::tuple>(out, 1);
+                py::object node_entries;
+                if (num_out == 3) [[likely]] {  // NOLINT
+                    node_entries = GET_ITEM_BORROW<py::tuple>(out, 2);
+                } else [[unlikely]] {  // NOLINT
+                    node_entries = py::none();
+                }
+                if (node_entries.is_none()) [[unlikely]] {  // NOLINT
+                    for (const py::handle& child :
+                         py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, 0))) {
+                        recurse(child, py::int_(node.arity++));
+                    }
+                } else [[likely]] {  // NOLINT
+                    node.node_entries = py::cast<py::tuple>(std::move(node_entries));
+                    node.arity = GET_SIZE<py::tuple>(node.node_entries);
+                    ssize_t num_children = 0;
+                    for (const py::handle& child :
+                         py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, 0))) {
+                        if (num_children >= node.arity) [[unlikely]] {
+                            throw std::runtime_error(
+                                "PyTree custom to_iterable function returned too many children "
+                                "than number of entries.");
+                        }
+                        recurse(child,
+                                GET_ITEM_BORROW<py::tuple>(node.node_entries, num_children++));
+                    }
+                    if (num_children != node.arity) [[unlikely]] {
+                        throw std::runtime_error(absl::StrFormat(
+                            "PyTree custom to_iterable function returned inconsistent "
+                            "number "
+                            "of children (%ld) and number of entries (%ld).",
+                            num_children,
+                            node.arity));
+                    }
+                }
+                break;
+            }
+
+            default:
+                throw std::logic_error("Unreachable code.");
+        }
+    }
+    node.num_nodes = traversal.size() - start_num_nodes + 1;
+    node.num_leaves = leaves.size() - start_num_leaves;
+    traversal.emplace_back(std::move(node));
+}
+
+void PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
+                                     absl::InlinedVector<py::object, 2>& leaves,
+                                     absl::InlinedVector<py::object, 2>& paths,
+                                     const std::optional<py::function>& leaf_predicate,
+                                     const bool& none_is_leaf) {
+    absl::InlinedVector<py::handle, 2> stack;
+    if (none_is_leaf) [[unlikely]] {
+        FlattenIntoWithPathImpl<NONE_IS_LEAF>(handle, leaves, paths, stack, 0, leaf_predicate);
+    } else [[likely]] {  // NOLINT
+        FlattenIntoWithPathImpl<NONE_IS_NODE>(handle, leaves, paths, stack, 0, leaf_predicate);
+    }
+}
+
+void PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
+                                     std::vector<py::object>& leaves,
+                                     std::vector<py::object>& paths,
+                                     const std::optional<py::function>& leaf_predicate,
+                                     const bool& none_is_leaf) {
+    std::vector<py::handle> stack;
+    if (none_is_leaf) [[unlikely]] {
+        FlattenIntoWithPathImpl<NONE_IS_LEAF>(handle, leaves, paths, stack, 0, leaf_predicate);
+    } else [[likely]] {  // NOLINT
+        FlattenIntoWithPathImpl<NONE_IS_NODE>(handle, leaves, paths, stack, 0, leaf_predicate);
+    }
+}
+
+/*static*/ std::tuple<std::vector<py::object>, std::vector<py::object>, std::unique_ptr<PyTreeSpec>>
+PyTreeSpec::FlattenWithPath(const py::handle& tree,
+                            const std::optional<py::function>& leaf_predicate,
+                            const bool& none_is_leaf) {
+    std::vector<py::object> leaves;
+    std::vector<py::object> paths;
+    auto treespec = std::make_unique<PyTreeSpec>();
+    treespec->none_is_leaf = none_is_leaf;
+    treespec->FlattenIntoWithPath(tree, leaves, paths, leaf_predicate, none_is_leaf);
+    return std::make_tuple(std::move(paths), std::move(leaves), std::move(treespec));
+}
+
 py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
     const ssize_t num_leaves = PyTreeSpec::num_leaves();
 
@@ -201,8 +402,8 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                                         node.arity,
                                         py::repr(object)));
                 }
-                for (const py::handle& entry : tuple) {
-                    agenda.emplace_back(py::reinterpret_borrow<py::object>(entry));
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    agenda.emplace_back(GET_ITEM_BORROW<py::tuple>(tuple, i));
                 }
                 break;
             }
@@ -217,8 +418,8 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                                         node.arity,
                                         py::repr(object)));
                 }
-                for (const py::handle& entry : list) {
-                    agenda.emplace_back(py::reinterpret_borrow<py::object>(entry));
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    agenda.emplace_back(GET_ITEM_BORROW<py::list>(list, i));
                 }
                 break;
             }
@@ -265,8 +466,8 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                                         py::repr(node.node_data),
                                         py::repr(object)));
                 }
-                for (const py::handle& entry : tuple) {
-                    agenda.emplace_back(py::reinterpret_borrow<py::object>(entry));
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    agenda.emplace_back(GET_ITEM_BORROW<py::tuple>(tuple, i));
                 }
                 break;
             }
@@ -307,8 +508,8 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                                         node.arity,
                                         py::repr(object)));
                 }
-                for (const py::handle& entry : list) {
-                    agenda.emplace_back(py::reinterpret_borrow<py::object>(entry));
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    agenda.emplace_back(GET_ITEM_BORROW<py::list>(list, i));
                 }
                 break;
             }
@@ -327,9 +528,10 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                                         py::repr(object)));
                 }
                 py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(object));
-                if (GET_SIZE<py::tuple>(out) != 2) [[unlikely]] {
+                const size_t num_out = GET_SIZE<py::tuple>(out);
+                if (num_out != 2 && num_out != 3) [[unlikely]] {
                     throw std::runtime_error(
-                        "PyTree custom to_iterable function should return a pair.");
+                        "PyTree custom to_iterable function should return a pair or a triple.");
                 }
                 if (node.node_data.not_equal(GET_ITEM_BORROW<py::tuple>(out, 1))) [[unlikely]] {
                     throw std::invalid_argument(
@@ -339,10 +541,10 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                                         py::repr(object)));
                 }
                 ssize_t arity = 0;
-                for (const py::handle& entry :
+                for (const py::handle& child :
                      py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, 0))) {
                     ++arity;
-                    agenda.emplace_back(py::reinterpret_borrow<py::object>(entry));
+                    agenda.emplace_back(py::reinterpret_borrow<py::object>(child));
                 }
                 if (arity != node.arity) [[unlikely]] {
                     throw std::invalid_argument(

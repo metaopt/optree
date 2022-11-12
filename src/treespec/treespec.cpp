@@ -58,7 +58,7 @@ bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
 bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == other); }
 
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
-    if (inner_treespec.none_is_leaf != none_is_leaf) {
+    if (inner_treespec.none_is_leaf != none_is_leaf) [[unlikely]] {  // NOLINT
         throw std::invalid_argument("PyTreeSpecs must have the same none_is_leaf value.");
     }
     auto outer_treespec = std::make_unique<PyTreeSpec>();
@@ -225,7 +225,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
         }
 
         case PyTreeKind::Custom: {
-            py::tuple tuple(node.arity);
+            py::tuple tuple{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
                 SET_ITEM<py::tuple>(tuple, i, std::move(children[i]));
             }
@@ -416,6 +416,7 @@ py::object PyTreeSpec::ToPicklable() const {
                             py::make_tuple(static_cast<ssize_t>(node.kind),
                                            node.arity,
                                            node.node_data ? node.node_data : py::none(),
+                                           node.node_entries ? node.node_entries : py::none(),
                                            node.custom != nullptr ? node.custom->type : py::none(),
                                            node.num_leaves,
                                            node.num_nodes));
@@ -434,7 +435,7 @@ py::object PyTreeSpec::ToPicklable() const {
     py::tuple node_states = py::reinterpret_borrow<py::tuple>(state[0]);
     for (const auto& item : node_states) {
         auto t = item.cast<py::tuple>();
-        if (t.size() != 6) [[unlikely]] {
+        if (t.size() != 7) [[unlikely]] {
             throw std::runtime_error("Malformed pickled PyTreeSpec.");
         }
         Node& node = treespec.traversal.emplace_back();
@@ -460,25 +461,28 @@ py::object PyTreeSpec::ToPicklable() const {
                 break;
         }
         if (node.kind == PyTreeKind::Custom) [[unlikely]] {  // NOLINT
-            if (t[3].is_none()) [[unlikely]] {
+            if (!t[3].is_none()) [[unlikely]] {
+                node.node_entries = t[3].cast<py::tuple>();
+            }
+            if (t[4].is_none()) [[unlikely]] {
                 node.custom = nullptr;
             } else [[likely]] {  // NOLINT
                 if (none_is_leaf) [[unlikely]] {
-                    node.custom = PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(t[3]);
+                    node.custom = PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(t[4]);
                 } else [[likely]] {  // NOLINT
-                    node.custom = PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(t[3]);
+                    node.custom = PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(t[4]);
                 }
             }
             if (node.custom == nullptr) [[unlikely]] {
                 throw std::runtime_error(absl::StrCat("Unknown custom type in pickled PyTreeSpec: ",
-                                                      static_cast<std::string>(py::repr(t[3])),
+                                                      static_cast<std::string>(py::repr(t[4])),
                                                       "."));
             }
-        } else if (!t[3].is_none()) [[unlikely]] {
+        } else if (!t[3].is_none() || !t[4].is_none()) [[unlikely]] {
             throw std::runtime_error("Malformed pickled PyTreeSpec.");
         }
-        node.num_leaves = t[4].cast<ssize_t>();
-        node.num_nodes = t[5].cast<ssize_t>();
+        node.num_leaves = t[5].cast<ssize_t>();
+        node.num_nodes = t[6].cast<ssize_t>();
     }
     return treespec;
 }

@@ -14,6 +14,8 @@
 # ==============================================================================
 """OpTree: Optimized PyTree Utilities."""
 
+# pylint: disable=too-many-lines
+
 import difflib
 import functools
 import textwrap
@@ -49,12 +51,16 @@ __all__ = [
     'NONE_IS_NODE',
     'NONE_IS_LEAF',
     'tree_flatten',
+    'tree_flatten_with_path',
     'tree_unflatten',
     'tree_leaves',
     'tree_structure',
+    'tree_paths',
     'all_leaves',
     'tree_map',
     'tree_map_',
+    'tree_map_with_path',
+    'tree_map_with_path_',
     'tree_reduce',
     'tree_transpose',
     'tree_replace_nones',
@@ -82,6 +88,8 @@ def tree_flatten(
 ) -> Tuple[List[T], PyTreeSpec]:
     """Flattens a pytree.
 
+    See also :func:`tree_flatten_with_path`.
+
     The flattening order (i.e., the order of elements in the output list) is deterministic,
     corresponding to a left-to-right depth-first tree traversal.
 
@@ -102,7 +110,10 @@ def tree_flatten(
     if you want to keep the keys in the insertion order.
 
     >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
+    >>> tree_flatten(tree)
     ([2, 3, 4, 1, 5], PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)])))
+    >>> tree_flatten(tree, none_is_leaf=True)
+    ([2, 3, 4, 1, None, 5], PyTreeSpec(NoneIsLeaf, OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)])))
 
     Args:
         tree: A pytree to flatten.
@@ -115,10 +126,79 @@ def tree_flatten(
             in the leaves list. (default: :data:`False`)
 
     Returns:
-        A pair where the first element is a list of leaf values and the second element is a treespec
-        representing the structure of the pytree.
+        A pair ``(leaves, treespec)`` where the first element is a list of leaf values and the
+        second element is a treespec representing the structure of the pytree.
     """
     return _C.flatten(tree, is_leaf, none_is_leaf)
+
+
+def tree_flatten_with_path(
+    tree: PyTree[T],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    *,
+    none_is_leaf: bool = False,
+) -> Tuple[List[Tuple[Any, ...]], List[T], PyTreeSpec]:
+    """Flattens a pytree and additionally records the paths.
+
+    See also :func:`tree_flatten` and :func:`tree_paths`.
+
+    The flattening order (i.e., the order of elements in the output list) is deterministic,
+    corresponding to a left-to-right depth-first tree traversal.
+
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> tree_flatten_with_path(tree)
+    (
+        [('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('d',)],
+        [1, 2, 3, 4, 5],
+        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
+    )
+    >>> tree_flatten_with_path(tree, none_is_leaf=True)
+    (
+        [('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('c',), ('d',)],
+        [1, 2, 3, 4, None, 5],
+        PyTreeSpec(NoneIsLeaf, {'a': *, 'b': (*, [*, *]), 'c': *, 'd': *})
+    )
+    >>> tree_flatten_with_path(1)
+    ([()], [1], PyTreeSpec(*))
+    >>> tree_flatten_with_path(None)
+    ([], [], PyTreeSpec(None))
+    >>> tree_flatten_with_path(None, none_is_leaf=True)
+    ([()], [None], PyTreeSpec(NoneIsLeaf, *))
+
+    For unordered dictionaries, :class:`dict` and :class:`collections.defaultdict`, the order is
+    dependent on the **sorted** keys in the dictionary. Please use :class:`collections.OrderedDict`
+    if you want to keep the keys in the insertion order.
+
+    >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
+    >>> tree_flatten_with_path(tree)
+    (
+        [('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('d',)],
+        [2, 3, 4, 1, 5],
+        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)]))
+    )
+    >>> tree_flatten_with_path(tree, none_is_leaf=True)
+    (
+        [('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('c',), ('d',)],
+        [2, 3, 4, 1, None, 5],
+        PyTreeSpec(NoneIsLeaf, OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]))
+    )
+
+    Args:
+        tree: A pytree to flatten.
+        is_leaf: An optionally specified function that will be called at each flattening step. It
+            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
+            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
+            current object.
+        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
+            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
+            in the leaves list. (default: :data:`False`)
+
+    Returns:
+        A triple ``(paths, leaves, treespec)``. The first element is a list of the paths to the leaf
+        values, while each path is a tuple of the index or keys. The second element is a list of
+        leaf values and the last element is a treespec representing the structure of the pytree.
+    """
+    return _C.flatten_with_path(tree, is_leaf, none_is_leaf)
 
 
 def tree_unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
@@ -155,7 +235,7 @@ def tree_leaves(
     >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
     >>> tree_leaves(tree)
     [1, 2, 3, 4, 5]
-    >>> tree_leaves(tree)
+    >>> tree_leaves(tree, none_is_leaf=True)
     [1, 2, 3, 4, None, 5]
     >>> tree_leaves(1)
     [1]
@@ -218,6 +298,44 @@ def tree_structure(
     return _C.flatten(tree, is_leaf, none_is_leaf)[1]
 
 
+def tree_paths(
+    tree: PyTree[T],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    *,
+    none_is_leaf: bool = False,
+) -> List[Tuple[Any, ...]]:
+    """Gets the path entries to the leaves of a pytree.
+
+    See also :func:`tree_flatten` and :func:`tree_flatten_with_path`.
+
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> tree_paths(tree)
+    [('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('d',)]
+    >>> tree_paths(tree, none_is_leaf=True)
+    [('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('c',), ('d',)]
+    >>> tree_paths(1)
+    [()]
+    >>> tree_paths(None)
+    []
+    >>> tree_paths(None, none_is_leaf=True)
+    [()]
+
+    Args:
+        tree: A pytree to flatten.
+        is_leaf: An optionally specified function that will be called at each flattening step. It
+            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
+            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
+            current object.
+        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
+            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
+            in the leaves list. (default: :data:`False`)
+
+    Returns:
+        A list of the paths to the leaf values, while each path is a tuple of the index or keys.
+    """
+    return _C.flatten_with_path(tree, is_leaf, none_is_leaf)[0]
+
+
 def all_leaves(
     iterable: Iterable[T],
     is_leaf: Optional[Callable[[T], bool]] = None,
@@ -278,7 +396,7 @@ def tree_map(
 ) -> PyTree[U]:
     """Maps a multi-input function over pytree args to produce a new pytree.
 
-    See also :func:`tree_map_`, :func:`tree_flatten`, :func:`tree_leaves`, and :func:`tree_unflatten`.
+    See also :func:`tree_map_`, :func:`tree_map_with_path`, and :func:`tree_map_with_path_`.
 
     >>> tree_map(lambda x: x + 1, {'x': 7, 'y': (42, 64)})
     {'x': 8, 'y': (43, 65)}
@@ -331,7 +449,7 @@ def tree_map_(
 ) -> PyTree[T]:
     """Likes :func:`tree_map`, but does an inplace call on each leaf and returns the original tree.
 
-    See also :func:`tree_map`.
+    See also :func:`tree_map`, :func:`tree_map_with_path`, and :func:`tree_map_with_path_`.
 
     Args:
         func: A function that takes ``1 + len(rests)`` arguments, to be applied at the corresponding
@@ -357,6 +475,93 @@ def tree_map_(
     leaves, treespec = tree_flatten(tree, is_leaf, none_is_leaf=none_is_leaf)
     flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
     flat_results = map(func, *flat_args)
+    deque(flat_results, maxlen=0)  # consume and exhaust the iterable
+    return tree
+
+
+def tree_map_with_path(
+    func: Callable[..., U],
+    tree: PyTree[T],
+    *rests: PyTree[S],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    none_is_leaf: bool = False,
+) -> PyTree[U]:
+    """Maps a multi-input function over pytree args to produce a new pytree.
+
+    See also :func:`tree_map`, :func:`tree_map_`, and :func:`tree_map_with_path_`.
+
+    >>> tree_map_with_path(lambda p, x: (len(p), x), {'x': 7, 'y': (42, 64)})
+    {'x': (1, 7), 'y': ((2, 42), (2, 64))}
+    >>> tree_map_with_path(lambda p, x: x + len(p), {'x': 7, 'y': (42, 64), 'z': None})
+    {'x': 8, 'y': (44, 66), 'z': None}
+    >>> tree_map_with_path(lambda p, x: p, {'x': 7, 'y': (42, 64), 'z': {1.5: None}})
+    {'x': ('x',), 'y': (('y', 0), ('y', 1)), 'z': {1.5: None}}
+    >>> tree_map_with_path(lambda p, x: p, {'x': 7, 'y': (42, 64), 'z': {1.5: None}}, none_is_leaf=True)
+    {'x': ('x',), 'y': (('y', 0), ('y', 1)), 'z': {1.5: ('z', 1.5)}}
+
+    Args:
+        func: A function that takes ``2 + len(rests)`` arguments, to be applied at the corresponding
+            leaves of the pytrees with extra paths.
+        tree: A pytree to be mapped over, with each leaf providing the second positional argument
+            and the corresponding path providing the first positional argument to function ``func``.
+        rests: A tuple of pytrees, each of which has the same structure as ``tree`` or has ``tree``
+            as a prefix.
+        is_leaf: An optionally specified function that will be called at each flattening step. It
+            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
+            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
+            current object.
+        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
+            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
+            in the leaves list and :data:`None` will be remain in the result pytree. (default:
+            :data:`False`)
+
+    Returns:
+        A new pytree with the same structure as ``tree`` but with the value at each leaf given by
+        ``func(p, x, *xs)`` where ``(p, x)`` are the path and value at the corresponding leaf in
+        ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
+    """
+    paths, leaves, treespec = tree_flatten_with_path(tree, is_leaf, none_is_leaf=none_is_leaf)
+    flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
+    flat_results = map(func, paths, *flat_args)
+    return treespec.unflatten(flat_results)
+
+
+def tree_map_with_path_(
+    func: Callable[..., Any],
+    tree: PyTree[T],
+    *rests: PyTree[S],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    none_is_leaf: bool = False,
+) -> PyTree[T]:
+    """Likes :func:`tree_map_with_path_`, but does an inplace call on each leaf and returns the original tree.
+
+    See also :func:`tree_map`, :func:`tree_map_`, and :func:`tree_map_with_path`.
+
+    Args:
+        func: A function that takes ``2 + len(rests)`` arguments, to be applied at the corresponding
+            leaves of the pytrees with extra paths.
+        tree: A pytree to be mapped over, with each leaf providing the second positional argument
+            and the corresponding path providing the first positional argument to function ``func``.
+        rests: A tuple of pytrees, each of which has the same structure as ``tree`` or has ``tree``
+            as a prefix.
+        is_leaf: An optionally specified function that will be called at each flattening step. It
+            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
+            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
+            current object.
+        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
+            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
+            in the leaves list and :data:`None` will be remain in the result pytree. (default:
+            :data:`False`)
+
+    Returns:
+        The original ``tree`` with the value at each leaf is given by the side-effect of function
+        ``func(p, x, *xs)`` (not the return value) where ``(p, x)`` are the path and value at the
+        corresponding leaf in ``tree`` and ``xs`` is the tuple of values at values at corresponding
+        nodes in ``rests``.
+    """
+    paths, leaves, treespec = tree_flatten_with_path(tree, is_leaf, none_is_leaf=none_is_leaf)
+    flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
+    flat_results = map(func, paths, *flat_args)
     deque(flat_results, maxlen=0)  # consume and exhaust the iterable
     return tree
 
@@ -733,21 +938,31 @@ def broadcast_prefix(
 
 def flatten_one_level(
     tree: PyTree[T], *, none_is_leaf: bool = False
-) -> Tuple[Children[T], MetaData]:
+) -> Tuple[Children[T], MetaData, Tuple[Any, ...]]:
     """Flattens the pytree one level, returning a tuple of children and auxiliary data."""
     if tree is None:
         if none_is_leaf:  # type: ignore[unreachable]
             raise ValueError('Cannot flatten None')
-        return (), None
+        return (), None, ()
 
     node_type = type(tree)
     handler = register_pytree_node.get(node_type)  # type: ignore[attr-defined]
     if handler:
-        children, metadata = handler.to_iter(tree)
-        return list(children), metadata
+        flattened = handler.to_iterable(tree)
+        if len(flattened) == 2:
+            flattened = (*flattened, None)
+        elif len(flattened) != 3:
+            raise ValueError('PyTree to_iterables must return a 2- or 3-tuple.')
+        children, metadata, entries = flattened
+        children = list(children)
+        if entries is None:
+            entries = tuple(range(len(children)))
+        else:
+            entries = tuple(entries)
+        return children, metadata, entries
 
     if is_namedtuple(tree):
-        return list(cast(NamedTuple, tree)), node_type
+        return list(cast(NamedTuple, tree)), node_type, tuple(range(len(cast(NamedTuple, tree))))
 
     raise ValueError(f'Cannot tree-flatten type: {node_type}.')
 
@@ -801,8 +1016,8 @@ def _prefix_error(
     # Or they may disagree if their roots have different numbers of children (note that because both
     # prefix_tree and full_tree have the same type at this point, and because prefix_tree is not a
     # leaf, each can be flattened once):
-    prefix_tree_children, prefix_tree_meta = flatten_one_level(prefix_tree)
-    full_tree_children, full_tree_meta = flatten_one_level(full_tree)
+    prefix_tree_children, prefix_tree_meta, _ = flatten_one_level(prefix_tree)
+    full_tree_children, full_tree_meta, _ = flatten_one_level(full_tree)
     if len(prefix_tree_children) != len(full_tree_children):
         yield lambda name: ValueError(
             f'pytree structure error: different numbers of pytree children at key path\n'

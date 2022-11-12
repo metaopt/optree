@@ -16,10 +16,10 @@
 # pylint: disable=all
 # isort: off
 
-from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Sequence, Tuple, Type
+from typing import TYPE_CHECKING, Any, Callable, Iterable, List, Optional, Sequence, Tuple, Type
 
 if TYPE_CHECKING:
-    from optree.typing import MetaData, Children, CustomTreeNode, PyTree, T, U
+    from optree.typing import Children, CustomTreeNode, MetaData, PyTree, T, U
 
 version: int
 
@@ -28,6 +28,11 @@ def flatten(
     leaf_predicate: Optional[Callable[[T], bool]] = None,
     node_is_leaf: bool = False,
 ) -> Tuple[List[T], 'PyTreeSpec']: ...
+def flatten_with_path(
+    tree: PyTree[T],
+    leaf_predicate: Optional[Callable[[T], bool]] = None,
+    node_is_leaf: bool = False,
+) -> Tuple[List[Tuple[Any, ...]], List[T], 'PyTreeSpec']: ...
 def all_leaves(iterable: Iterable[T], node_is_leaf: bool = False) -> bool: ...
 def leaf(node_is_leaf: bool = False) -> 'PyTreeSpec': ...
 def none(node_is_leaf: bool = False) -> 'PyTreeSpec': ...

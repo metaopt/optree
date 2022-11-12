@@ -43,6 +43,12 @@ void BuildModule(py::module& mod) {  // NOLINT
             py::arg("tree"),
             py::arg("leaf_predicate") = std::nullopt,
             py::arg("none_is_leaf") = false);
+    mod.def("flatten_with_path",
+            &PyTreeSpec::FlattenWithPath,
+            "Flattens a pytree and additionally records the paths.",
+            py::arg("tree"),
+            py::arg("leaf_predicate") = std::nullopt,
+            py::arg("none_is_leaf") = false);
     mod.def("all_leaves",
             &PyTreeSpec::AllLeaves,
             "Tests whether all elements in the given iterable are all leaves.",
