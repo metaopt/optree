@@ -1,6 +1,6 @@
 # OpTree
 
-![Python 3.6+](https://img.shields.io/badge/Python-3.6%2B-brightgreen)
+![Python 3.7+](https://img.shields.io/badge/Python-3.7%2B-brightgreen)
 [![PyPI](https://img.shields.io/pypi/v/optree?logo=pypi)](https://pypi.org/project/optree)
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/metaopt/optree/Build?label=build&logo=github)
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/metaopt/optree/Tests?label=tests&logo=github)
@@ -61,7 +61,7 @@ cd optree
 pip3 install .
 ```
 
-Compiling from the source requires Python 3.6+, a compiler (`gcc` / `clang` / `icc` / `cl.exe`) supports C++20 and a `cmake` installation.
+Compiling from the source requires Python 3.7+, a compiler (`gcc` / `clang` / `icc` / `cl.exe`) supports C++20 and a `cmake` installation.
 
 --------------------------------------------------------------------------------
 

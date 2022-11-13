@@ -22,6 +22,7 @@ from typing import (
     DefaultDict,
     Deque,
     Dict,
+    ForwardRef,
     Generic,
     Hashable,
     Iterable,
@@ -45,13 +46,6 @@ try:
     from typing_extensions import NamedTuple  # Generic NamedTuple: Python 3.11+
 except ImportError:
     from typing import NamedTuple  # type: ignore[assignment]
-
-
-try:
-    # Python 3.6
-    from typing import _ForwardRef as ForwardRef  # type: ignore[attr-defined]
-except ImportError:
-    from typing import ForwardRef
 
 
 __all__ = [
@@ -167,7 +161,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
             return param  # PyTree[PyTree[T]] -> PyTree[T]
 
         if name is not None:
-            recurse_ref = name
+            recurse_ref = ForwardRef(name)
         elif isinstance(param, TypeVar):
             recurse_ref = ForwardRef(f'{cls.__name__}[{param.__name__}]')
         elif isinstance(param, type):
