@@ -128,8 +128,10 @@ if("${PYBIND11_CMAKE_DIR}" STREQUAL "")
     FetchContent_Declare(
         pybind11
         GIT_REPOSITORY https://github.com/pybind/pybind11.git
-        SOURCE_DIR "${CMAKE_SOURCE_DIR}/third-party/pybind11"
         GIT_TAG "${PYBIND11_VERSION}"
+        GIT_SHALLOW TRUE
+        SOURCE_DIR "${CMAKE_SOURCE_DIR}/third-party/pybind11"
+        STAMP_DIR "${CMAKE_SOURCE_DIR}/third-party/.cmake-stamp/pybind11"
     )
     FetchContent_GetProperties(pybind11)
     if(NOT pybind11_POPULATED)
@@ -147,8 +149,10 @@ set(ABSL_BUILD_TESTING OFF)
 FetchContent_Declare(
     abseilcpp
     GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
-    SOURCE_DIR "${CMAKE_SOURCE_DIR}/third-party/abseil-cpp"
     GIT_TAG "${ABSEIL_CPP_VERSION}"
+    GIT_SHALLOW TRUE
+    SOURCE_DIR "${CMAKE_SOURCE_DIR}/third-party/abseil-cpp"
+    STAMP_DIR "${CMAKE_SOURCE_DIR}/third-party/.cmake-stamp/abseil-cpp"
 )
 FetchContent_GetProperties(abseilcpp)
 if(NOT abseilcpp_POPULATED)
