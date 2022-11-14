@@ -535,7 +535,7 @@ def benchmark(  # pylint: disable=too-many-locals
         .replace('|  ', '|')
         .replace('|--', '|')
         .replace('nan', 'N/A')
-        .replace('N/A    |', 'N/A |')
+        .replace('N/A    |', '   N/A |')
     )
     print(flush=True)
     return df
