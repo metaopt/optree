@@ -15,6 +15,7 @@
 """OpTree: Optimized PyTree Utilities."""
 
 from optree.ops import (
+    MAX_RECURSION_DEPTH,
     NONE_IS_LEAF,
     NONE_IS_NODE,
     all_leaves,
@@ -60,6 +61,7 @@ __all__ = [
     'PyTreeTypeVar',
     'CustomTreeNode',
     # Tree operations
+    'MAX_RECURSION_DEPTH',
     'NONE_IS_NODE',
     'NONE_IS_LEAF',
     'tree_flatten',

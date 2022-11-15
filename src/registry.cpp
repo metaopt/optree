@@ -80,47 +80,92 @@ template <bool NoneIsLeaf>
     return SingletonHelper<NoneIsLeaf>::get();
 }
 
-/*static*/ void PyTreeTypeRegistry::Register(const py::object& type,
+/*static*/ void PyTreeTypeRegistry::Register(const py::object& cls,
                                              const py::function& to_iterable,
-                                             const py::function& from_iterable) {
+                                             const py::function& from_iterable,
+                                             const std::string& regnamespace) {
     {
         PyTreeTypeRegistry* registry = Singleton<NONE_IS_NODE>();
         auto registration = std::make_unique<Registration>();
         registration->kind = PyTreeKind::Custom;
-        registration->type = type;
-        registration->to_iterable = std::move(to_iterable);
-        registration->from_iterable = std::move(from_iterable);
-        if (!registry->registrations.emplace(type, std::move(registration)).second) [[unlikely]] {
-            throw std::invalid_argument(absl::StrFormat(
-                "Duplicate custom PyTree type registration for %s.", py::repr(type)));
+        registration->type = cls;
+        registration->to_iterable = to_iterable;
+        registration->from_iterable = from_iterable;
+        if (regnamespace.empty()) [[unlikely]] {  // NOLINT
+            if (!registry->registrations.emplace(cls, std::move(registration)).second)
+                [[unlikely]] {
+                throw std::invalid_argument(
+                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
+                                    py::repr(cls)));
+            }
+        } else [[likely]] {  // NOLINT
+            if (registry->registrations.find(cls) != registry->registrations.end()) [[unlikely]] {
+                throw std::invalid_argument(
+                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
+                                    py::repr(cls)));
+            }
+            if (!registry->namespaced_registrations
+                     .emplace(std::make_pair(regnamespace, cls), std::move(registration))
+                     .second) [[unlikely]] {
+                throw std::invalid_argument(
+                    absl::StrFormat("PyTree type %s is already registered in namespace %s.",
+                                    py::repr(cls),
+                                    py::repr(py::str(regnamespace))));
+            }
         }
     }
     {
         PyTreeTypeRegistry* registry = Singleton<NONE_IS_LEAF>();
         auto registration = std::make_unique<Registration>();
         registration->kind = PyTreeKind::Custom;
-        registration->type = type;
-        registration->to_iterable = std::move(to_iterable);
-        registration->from_iterable = std::move(from_iterable);
-        if (!registry->registrations.emplace(type, std::move(registration)).second) [[unlikely]] {
-            throw std::invalid_argument(absl::StrFormat(
-                "Duplicate custom PyTree type registration for %s.", py::repr(type)));
+        registration->type = cls;
+        registration->to_iterable = to_iterable;
+        registration->from_iterable = from_iterable;
+        if (regnamespace.empty()) [[unlikely]] {  // NOLINT
+            if (!registry->registrations.emplace(cls, std::move(registration)).second)
+                [[unlikely]] {
+                throw std::invalid_argument(
+                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
+                                    py::repr(cls)));
+            }
+        } else [[likely]] {  // NOLINT
+            if (registry->registrations.find(cls) != registry->registrations.end()) [[unlikely]] {
+                throw std::invalid_argument(
+                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
+                                    py::repr(cls)));
+            }
+            if (!registry->namespaced_registrations
+                     .emplace(std::make_pair(regnamespace, cls), std::move(registration))
+                     .second) [[unlikely]] {
+                throw std::invalid_argument(
+                    absl::StrFormat("PyTree type %s is already registered in namespace %s.",
+                                    py::repr(cls),
+                                    py::repr(py::str(regnamespace))));
+            }
         }
     }
 }
 
 template <bool NoneIsLeaf>
 /*static*/ const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup(
-    const py::handle& type) {
+    const py::handle& type, const std::string& regnamespace) {
     PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
     auto it = registry->registrations.find(type);
-    return it == registry->registrations.end() ? nullptr : it->second.get();
+    if (it != registry->registrations.end()) [[likely]] {
+        return it->second.get();
+    }
+    if (regnamespace.empty()) [[likely]] {
+        return nullptr;
+    } else [[unlikely]] {  // NOLINT
+        auto it = registry->namespaced_registrations.find(std::make_pair(regnamespace, type));
+        return it != registry->namespaced_registrations.end() ? it->second.get() : nullptr;
+    }
 }
 
 template const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(
-    const py::handle& type);
+    const py::handle&, const std::string&);
 template const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(
-    const py::handle& type);
+    const py::handle&, const std::string&);
 
 size_t PyTreeTypeRegistry::TypeHash::operator()(const py::object& t) const {
     return absl::HashOf(t.ptr());
@@ -134,6 +179,26 @@ bool PyTreeTypeRegistry::TypeEq::operator()(const py::object& a, const py::objec
 }
 bool PyTreeTypeRegistry::TypeEq::operator()(const py::object& a, const py::handle& b) const {
     return a.ptr() == b.ptr();
+}
+
+size_t PyTreeTypeRegistry::NamedTypeHash::operator()(
+    const std::pair<std::string, py::object>& p) const {
+    return absl::HashOf(std::make_pair(p.first, p.second.ptr()));
+}
+size_t PyTreeTypeRegistry::NamedTypeHash::operator()(
+    const std::pair<std::string, py::handle>& p) const {
+    return absl::HashOf(std::make_pair(p.first, p.second.ptr()));
+}
+
+bool PyTreeTypeRegistry::NamedTypeEq::operator()(
+    const std::pair<std::string, py::object>& a,
+    const std::pair<std::string, py::object>& b) const {
+    return a.first == b.first && a.second.ptr() == b.second.ptr();
+}
+bool PyTreeTypeRegistry::NamedTypeEq::operator()(
+    const std::pair<std::string, py::object>& a,
+    const std::pair<std::string, py::handle>& b) const {
+    return a.first == b.first && a.second.ptr() == b.second.ptr();
 }
 
 }  // namespace optree

@@ -13,6 +13,7 @@ Unflattened
 unflatten
 unflattens
 unflattened
+unflattening
 args
 kwargs
 functools
@@ -31,3 +32,5 @@ arity
 PyTreeTypeVar
 subclassing
 inplace
+namespace
+namespaces

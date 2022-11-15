@@ -37,6 +37,9 @@ limitations under the License.
 
 namespace optree {
 
+// The maximum depth of a pytree.
+constexpr ssize_t MAX_RECURSION_DEPTH = 10000;
+
 // A PyTreeSpec describes the tree structure of a PyTree. A PyTree is a tree of Python values, where
 // the interior nodes are tuples, lists, dictionaries, or user-defined containers, and the leaves
 // are other objects.
@@ -53,17 +56,20 @@ class PyTreeSpec {
     static std::pair<std::vector<py::object>, std::unique_ptr<PyTreeSpec>> Flatten(
         const py::handle &tree,
         const std::optional<py::function> &leaf_predicate = std::nullopt,
-        const bool &none_is_leaf = false);
+        const bool &none_is_leaf = false,
+        const std::string &regnamespace = "");
 
     // Recursive helper used to implement Flatten().
-    void FlattenInto(const py::handle &handle,
+    bool FlattenInto(const py::handle &handle,
                      std::vector<py::object> &leaves,  // NOLINT
-                     const std::optional<py::function> &leaf_predicate = std::nullopt,
-                     const bool &none_is_leaf = false);
-    void FlattenInto(const py::handle &handle,
+                     const std::optional<py::function> &leaf_predicate,
+                     const bool &none_is_leaf,
+                     const std::string &regnamespace);
+    bool FlattenInto(const py::handle &handle,
                      absl::InlinedVector<py::object, 2> &leaves,  // NOLINT
-                     const std::optional<py::function> &leaf_predicate = std::nullopt,
-                     const bool &none_is_leaf = false);
+                     const std::optional<py::function> &leaf_predicate,
+                     const bool &none_is_leaf,
+                     const std::string &regnamespace);
 
     // Flattens a PyTree into a list of leaves with a list of paths and a PyTreeSpec.
     // Returns references to the flattened objects, which might be temporary objects in the case of
@@ -71,19 +77,22 @@ class PyTreeSpec {
     static std::tuple<std::vector<py::object>, std::vector<py::object>, std::unique_ptr<PyTreeSpec>>
     FlattenWithPath(const py::handle &tree,
                     const std::optional<py::function> &leaf_predicate = std::nullopt,
-                    const bool &none_is_leaf = false);
+                    const bool &none_is_leaf = false,
+                    const std::string &regnamespace = "");
 
     // Recursive helper used to implement FlattenWithPath().
-    void FlattenIntoWithPath(const py::handle &handle,
+    bool FlattenIntoWithPath(const py::handle &handle,
                              std::vector<py::object> &leaves,  // NOLINT
                              std::vector<py::object> &paths,   // NOLINT
-                             const std::optional<py::function> &leaf_predicate = std::nullopt,
-                             const bool &none_is_leaf = false);
-    void FlattenIntoWithPath(const py::handle &handle,
+                             const std::optional<py::function> &leaf_predicate,
+                             const bool &none_is_leaf,
+                             const std::string &regnamespace);
+    bool FlattenIntoWithPath(const py::handle &handle,
                              absl::InlinedVector<py::object, 2> &leaves,  // NOLINT
                              absl::InlinedVector<py::object, 2> &paths,   // NOLINT
-                             const std::optional<py::function> &leaf_predicate = std::nullopt,
-                             const bool &none_is_leaf = false);
+                             const std::optional<py::function> &leaf_predicate,
+                             const bool &none_is_leaf,
+                             const std::string &regnamespace);
 
     // Flattens a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure
     // of 'x'. For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeSpec [(*,
@@ -91,7 +100,9 @@ class PyTreeSpec {
     py::list FlattenUpTo(const py::handle &full_tree) const;
 
     // Tests whether the given list is a flat list of leaves.
-    static bool AllLeaves(const py::iterable &iterable, const bool &none_is_leaf = false);
+    static bool AllLeaves(const py::iterable &iterable,
+                          const bool &none_is_leaf = false,
+                          const std::string &regnamespace = "");
 
     // Returns an unflattened PyTree given an iterable of leaves and a PyTreeSpec.
     py::object Unflatten(const py::iterable &leaves) const;
@@ -123,6 +134,8 @@ class PyTreeSpec {
     ssize_t num_nodes() const;
 
     bool get_none_is_leaf() const;
+
+    std::string get_registry_namespace() const;
 
     bool operator==(const PyTreeSpec &other) const;
     bool operator!=(const PyTreeSpec &other) const;
@@ -191,31 +204,38 @@ class PyTreeSpec {
     // Whether to treat `None` as a leaf. If false, `None` is a non-leaf node with arity 0.
     bool none_is_leaf;
 
+    // The registry namespace used to resolve the custom pytree node types
+    std::string registry_namespace = "";
+
     // Helper that manufactures an instance of a node given its children.
     static py::object MakeNode(const Node &node, const absl::Span<py::object> &children);
 
     // Computes the node kind of a given Python object.
     template <bool NoneIsLeaf>
     static PyTreeKind GetKind(const py::handle &handle,
-                              PyTreeTypeRegistry::Registration const **custom);
+                              PyTreeTypeRegistry::Registration const **custom,
+                              const std::string &regnamespace);
 
     template <bool NoneIsLeaf, typename Span>
-    void FlattenIntoImpl(const py::handle &handle,
+    bool FlattenIntoImpl(const py::handle &handle,
                          Span &leaves,  // NOLINT
-                         const std::optional<py::function> &leaf_predicate);
+                         const ssize_t &depth,
+                         const std::optional<py::function> &leaf_predicate,
+                         const std::string &regnamespace);
 
     template <bool NoneIsLeaf, typename Span, typename Stack>
-    void FlattenIntoWithPathImpl(const py::handle &handle,
+    bool FlattenIntoWithPathImpl(const py::handle &handle,
                                  Span &leaves,  // NOLINT
                                  Span &paths,   // NOLINT
                                  Stack &stack,  // NOLINT
                                  const ssize_t &depth,
-                                 const std::optional<py::function> &leaf_predicate);
+                                 const std::optional<py::function> &leaf_predicate,
+                                 const std::string &regnamespace);
 
     py::list FlattenUpToImpl(const py::handle &full_tree) const;
 
     template <bool NoneIsLeaf>
-    static bool AllLeavesImpl(const py::iterable &iterable);
+    static bool AllLeavesImpl(const py::iterable &iterable, const std::string &regnamespace);
 
     template <typename Span>
     py::object UnflattenImpl(const Span &leaves) const;

@@ -58,11 +58,16 @@ class Vector3D:
 
 
 optree.register_pytree_node(
-    Vector3D, lambda o: ((o.x, o.y), o.z), lambda z, xy: Vector3D(xy[0], xy[1], z)
+    Vector3D,
+    lambda o: ((o.x, o.y), o.z),
+    lambda z, xy: Vector3D(xy[0], xy[1], z),
+    namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
 )
 
 
-@optree.register_pytree_node_class
+@optree.register_pytree_node_class(
+    namespace=optree.registry.__GLOBAL_NAMESPACE  # pylint: disable=protected-access
+)
 class Vector2D:
     def __init__(self, x, y):
         self.x = x
@@ -82,7 +87,9 @@ class Vector2D:
         return isinstance(other, Vector2D) and (self.x, self.y) == (other.x, other.y)
 
 
-@optree.register_pytree_node_class
+@optree.register_pytree_node_class(
+    namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
+)
 class FlatCache:
     def __init__(self, structured, *, leaves=None, treespec=None):
         if treespec is None:
@@ -116,7 +123,9 @@ class FlatCache:
         return cls(structured=None, leaves=children, treespec=metadata)
 
 
-@optree.register_pytree_node_class
+@optree.register_pytree_node_class(
+    namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
+)
 class MyDict(UserDict):
     def tree_flatten(self):
         reversed_keys = sorted(self.keys(), reverse=True)
@@ -128,6 +137,14 @@ class MyDict(UserDict):
 
     def __repr__(self):
         return f'{self.__class__.__name__}({super().__repr__()})'
+
+
+@optree.register_pytree_node_class('namespace')
+class MyDictSubClass(MyDict):
+    pass
+
+
+NAMESPACED_TREE = MyDictSubClass([('baz', 101), ('foo', MyDictSubClass(a=1, b=2, c=None))])
 
 
 # pylint: disable=line-too-long
@@ -151,6 +168,7 @@ TREES = (
     OrderedDict([('foo', 34), ('baz', 101), ('something', deque([None, 2, 3], maxlen=2))]),
     defaultdict(dict, [('foo', 34), ('baz', 101), ('something', -42)]),
     MyDict([('baz', 101), ('foo', MyDict(a=1, b=2, c=None))]),
+    NAMESPACED_TREE,
     CustomNamedTupleSubclass(foo='hello', bar=3.5),
     FlatCache(None),
     FlatCache(1),
@@ -178,6 +196,7 @@ TREE_PATHS_NONE_IS_NODE = [
     [('foo',), ('baz',), ('something', 0), ('something', 1)],
     [('baz',), ('foo',), ('something',)],
     [('foo', 'b'), ('foo', 'a'), ('baz',)],
+    [()],
     [(0,), (1,)],
     [],
     [(0,)],
@@ -204,6 +223,7 @@ TREE_PATHS_NONE_IS_LEAF = [
     [('foo',), ('baz',), ('something', 0), ('something', 1)],
     [('baz',), ('foo',), ('something',)],
     [('foo', 'c'), ('foo', 'b'), ('foo', 'a'), ('baz',)],
+    [()],
     [(0,), (1,)],
     [],
     [(0,)],
@@ -236,6 +256,7 @@ TREE_STRINGS_NONE_IS_NODE = (
     "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', deque([*, *], maxlen=2))]))",
     "PyTreeSpec(defaultdict(<class 'dict'>, {'baz': *, 'foo': *, 'something': *}))",
     "PyTreeSpec(CustomTreeNode(MyDict[['foo', 'baz']], [CustomTreeNode(MyDict[['c', 'b', 'a']], [None, *, *]), *]))",
+    'PyTreeSpec(*)',
     'PyTreeSpec(CustomNamedTupleSubclass(foo=*, bar=*))',
     'PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec(None)], []))',
     'PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec(*)], [*]))',
@@ -262,6 +283,7 @@ TREE_STRINGS_NONE_IS_LEAF = (
     "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', deque([*, *], maxlen=2))]), NoneIsLeaf)",
     "PyTreeSpec(defaultdict(<class 'dict'>, {'baz': *, 'foo': *, 'something': *}), NoneIsLeaf)",
     "PyTreeSpec(CustomTreeNode(MyDict[['foo', 'baz']], [CustomTreeNode(MyDict[['c', 'b', 'a']], [*, *, *]), *]), NoneIsLeaf)",
+    'PyTreeSpec(*, NoneIsLeaf)',
     'PyTreeSpec(CustomNamedTupleSubclass(foo=*, bar=*), NoneIsLeaf)',
     'PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec(None)], []), NoneIsLeaf)',
     'PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec(*)], [*]), NoneIsLeaf)',
