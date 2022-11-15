@@ -58,7 +58,7 @@ class PyTreeSpec:
     def __hash__(self) -> int: ...
 
 def register_node(
-    type: Type[CustomTreeNode[T]],
+    cls: Type[CustomTreeNode[T]],
     to_iterable: Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]],
     from_iterable: Callable[[MetaData, Children[T]], CustomTreeNode[T]],
 ) -> None: ...

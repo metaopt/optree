@@ -113,7 +113,7 @@ class FlatCache:
     def tree_unflatten(cls, metadata, children):
         if not optree.all_leaves(children):
             children, metadata = optree.tree_flatten(optree.tree_unflatten(metadata, children))
-        return FlatCache(structured=None, leaves=children, treespec=metadata)
+        return cls(structured=None, leaves=children, treespec=metadata)
 
 
 @optree.register_pytree_node_class
@@ -124,7 +124,7 @@ class MyDict(UserDict):
 
     @classmethod
     def tree_unflatten(cls, metadata, children):
-        return MyDict(zip(metadata, children))
+        return cls(zip(metadata, children))
 
     def __repr__(self):
         return f'{self.__class__.__name__}({super().__repr__()})'
@@ -243,29 +243,29 @@ TREE_STRINGS_NONE_IS_NODE = (
 )
 
 TREE_STRINGS_NONE_IS_LEAF = (
-    'PyTreeSpec(NoneIsLeaf, *)',
-    'PyTreeSpec(NoneIsLeaf, *)',
-    'PyTreeSpec(NoneIsLeaf, (*,))',
-    'PyTreeSpec(NoneIsLeaf, (*, *))',
-    'PyTreeSpec(NoneIsLeaf, ())',
-    'PyTreeSpec(NoneIsLeaf, [()])',
-    'PyTreeSpec(NoneIsLeaf, (*, *))',
-    'PyTreeSpec(NoneIsLeaf, ((*, *), [*, (*, *, *)]))',
-    'PyTreeSpec(NoneIsLeaf, [*])',
-    "PyTreeSpec(NoneIsLeaf, [*, CustomTuple(foo=(*, CustomTuple(foo=*, bar=*)), bar={'baz': *})])",
-    "PyTreeSpec(NoneIsLeaf, [CustomTreeNode(Vector3D[[4, 'foo']], [*, *])])",
-    'PyTreeSpec(NoneIsLeaf, CustomTreeNode(Vector2D[None], [*, *]))',
-    "PyTreeSpec(NoneIsLeaf, {'a': *, 'b': *})",
-    "PyTreeSpec(NoneIsLeaf, OrderedDict([('foo', *), ('baz', *), ('something', *)]))",
-    "PyTreeSpec(NoneIsLeaf, OrderedDict([('foo', *), ('baz', *), ('something', deque([*, *, *]))]))",
-    "PyTreeSpec(NoneIsLeaf, OrderedDict([('foo', *), ('baz', *), ('something', deque([*, *], maxlen=2))]))",
-    "PyTreeSpec(NoneIsLeaf, OrderedDict([('foo', *), ('baz', *), ('something', deque([*, *], maxlen=2))]))",
-    "PyTreeSpec(NoneIsLeaf, defaultdict(<class 'dict'>, {'baz': *, 'foo': *, 'something': *}))",
-    "PyTreeSpec(NoneIsLeaf, CustomTreeNode(MyDict[['foo', 'baz']], [CustomTreeNode(MyDict[['c', 'b', 'a']], [*, *, *]), *]))",
-    'PyTreeSpec(NoneIsLeaf, CustomNamedTupleSubclass(foo=*, bar=*))',
-    'PyTreeSpec(NoneIsLeaf, CustomTreeNode(FlatCache[PyTreeSpec(None)], []))',
-    'PyTreeSpec(NoneIsLeaf, CustomTreeNode(FlatCache[PyTreeSpec(*)], [*]))',
-    "PyTreeSpec(NoneIsLeaf, CustomTreeNode(FlatCache[PyTreeSpec({'a': [*, *]})], [*, *]))",
+    'PyTreeSpec(*, NoneIsLeaf)',
+    'PyTreeSpec(*, NoneIsLeaf)',
+    'PyTreeSpec((*,), NoneIsLeaf)',
+    'PyTreeSpec((*, *), NoneIsLeaf)',
+    'PyTreeSpec((), NoneIsLeaf)',
+    'PyTreeSpec([()], NoneIsLeaf)',
+    'PyTreeSpec((*, *), NoneIsLeaf)',
+    'PyTreeSpec(((*, *), [*, (*, *, *)]), NoneIsLeaf)',
+    'PyTreeSpec([*], NoneIsLeaf)',
+    "PyTreeSpec([*, CustomTuple(foo=(*, CustomTuple(foo=*, bar=*)), bar={'baz': *})], NoneIsLeaf)",
+    "PyTreeSpec([CustomTreeNode(Vector3D[[4, 'foo']], [*, *])], NoneIsLeaf)",
+    'PyTreeSpec(CustomTreeNode(Vector2D[None], [*, *]), NoneIsLeaf)',
+    "PyTreeSpec({'a': *, 'b': *}, NoneIsLeaf)",
+    "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', *)]), NoneIsLeaf)",
+    "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', deque([*, *, *]))]), NoneIsLeaf)",
+    "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', deque([*, *], maxlen=2))]), NoneIsLeaf)",
+    "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', deque([*, *], maxlen=2))]), NoneIsLeaf)",
+    "PyTreeSpec(defaultdict(<class 'dict'>, {'baz': *, 'foo': *, 'something': *}), NoneIsLeaf)",
+    "PyTreeSpec(CustomTreeNode(MyDict[['foo', 'baz']], [CustomTreeNode(MyDict[['c', 'b', 'a']], [*, *, *]), *]), NoneIsLeaf)",
+    'PyTreeSpec(CustomNamedTupleSubclass(foo=*, bar=*), NoneIsLeaf)',
+    'PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec(None)], []), NoneIsLeaf)',
+    'PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec(*)], [*]), NoneIsLeaf)',
+    "PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec({'a': [*, *]})], [*, *]), NoneIsLeaf)",
 )
 
 TREE_STRINGS = {

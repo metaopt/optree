@@ -404,7 +404,7 @@ std::string PyTreeSpec::ToString() const {
     if (agenda.size() != 1) [[unlikely]] {
         throw std::logic_error("PyTreeSpec traversal did not yield a singleton.");
     }
-    return absl::StrCat("PyTreeSpec(", (none_is_leaf ? "NoneIsLeaf, " : ""), agenda.back(), ")");
+    return absl::StrCat("PyTreeSpec(", agenda.back(), (none_is_leaf ? ", NoneIsLeaf" : ""), ")");
 }
 
 py::object PyTreeSpec::ToPicklable() const {

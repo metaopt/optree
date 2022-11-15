@@ -216,13 +216,13 @@ While flattening a tree, it will remain in the tree structure definitions rather
 >>> optree.tree_flatten(tree)
 ([1, 2, 3, 4, 5], PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *}))
 >>> optree.tree_flatten(tree, none_is_leaf=True)
-([1, 2, 3, 4, None, 5], PyTreeSpec(NoneIsLeaf, {'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}))
+([1, 2, 3, 4, None, 5], PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf))
 >>> optree.tree_flatten(1)
 ([1], PyTreeSpec(*))
 >>> optree.tree_flatten(None)
 ([], PyTreeSpec(None))
 >>> optree.tree_flatten(None, none_is_leaf=True)
-([None], PyTreeSpec(NoneIsLeaf, *))
+([None], PyTreeSpec(*, NoneIsLeaf))
 ```
 
 OpTree provides a keyword argument `none_is_leaf` to determine whether to consider the `None` object as a leaf, like other opaque objects.

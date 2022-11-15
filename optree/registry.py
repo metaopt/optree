@@ -22,7 +22,7 @@ from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tu
 import optree._C as _C
 from optree.typing import KT, VT, Children, CustomTreeNode, DefaultDict, MetaData
 from optree.typing import OrderedDict as GenericOrderedDict
-from optree.typing import PyTree, PyTreeSpec, T
+from optree.typing import PyTree, T
 from optree.utils import safe_zip, unzip2
 
 
@@ -46,15 +46,15 @@ PyTreeNodeRegistryEntry = NamedTuple(
 
 
 def register_pytree_node(
-    type: Type[CustomTreeNode[T]],  # pylint: disable=redefined-builtin
+    cls: Type[CustomTreeNode[T]],
     flatten_func: Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]],
     unflatten_func: Callable[[MetaData, Children[T]], CustomTreeNode[T]],
 ) -> Type[CustomTreeNode[T]]:
     """Extends the set of types that are considered internal nodes in pytrees.
 
     Args:
-        type: A Python type to treat as an internal pytree node.
-        flatten_func: A function to be used during flattening, taking a value of type ``type`` and
+        cls: A Python type to treat as an internal pytree node.
+        flatten_func: A function to be used during flattening, taking an instance of ``cls`` and
             returning a triple or optionally a pair, with (1) an iterable for the children to be
             flattened recursively, and (2) some hashable auxiliary data to be stored in the treespec
             and to be passed to the ``unflatten_func``, and (3) (optional) an iterable for the tree
@@ -62,12 +62,12 @@ def register_pytree_node(
             :data:`None`, then `range(len(children))` will be used.
         unflatten_func: A function taking two arguments: the auxiliary data that was returned by
             ``flatten_func`` and stored in the treespec, and the unflattened children. The function
-            should return an instance of ``type``.
+            should return an instance of ``cls``.
     """
-    _C.register_node(type, flatten_func, unflatten_func)
-    CustomTreeNode.register(type)  # pylint: disable=no-member
-    _nodetype_registry[type] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
-    return type
+    _C.register_node(cls, flatten_func, unflatten_func)
+    CustomTreeNode.register(cls)  # pylint: disable=no-member
+    _nodetype_registry[cls] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
+    return cls
 
 
 def register_pytree_node_class(cls: Type[CustomTreeNode[T]]) -> Type[CustomTreeNode[T]]:
@@ -347,11 +347,11 @@ _keypath_registry: Dict[Type[CustomTreeNode], KeyPathHandler] = {}
 
 
 def register_keypaths(
-    type: Type[CustomTreeNode[T]],  # pylint: disable=redefined-builtin
+    cls: Type[CustomTreeNode[T]],
     handler: KeyPathHandler,
 ) -> KeyPathHandler:
     """Registers a key path handler for a custom pytree node type."""
-    _keypath_registry[type] = handler
+    _keypath_registry[cls] = handler
     return handler
 
 

@@ -97,13 +97,13 @@ def tree_flatten(
     >>> tree_flatten(tree)
     ([1, 2, 3, 4, 5], PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *}))
     >>> tree_flatten(tree, none_is_leaf=True)
-    ([1, 2, 3, 4, None, 5], PyTreeSpec(NoneIsLeaf, {'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}))
+    ([1, 2, 3, 4, None, 5], PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf))
     >>> tree_flatten(1)
     ([1], PyTreeSpec(*))
     >>> tree_flatten(None)
     ([], PyTreeSpec(None))
     >>> tree_flatten(None, none_is_leaf=True)
-    ([None], PyTreeSpec(NoneIsLeaf, *))
+    ([None], PyTreeSpec(*, NoneIsLeaf))
 
     For unordered dictionaries, :class:`dict` and :class:`collections.defaultdict`, the order is
     dependent on the **sorted** keys in the dictionary. Please use :class:`collections.OrderedDict`
@@ -113,7 +113,7 @@ def tree_flatten(
     >>> tree_flatten(tree)
     ([2, 3, 4, 1, 5], PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)])))
     >>> tree_flatten(tree, none_is_leaf=True)
-    ([2, 3, 4, 1, None, 5], PyTreeSpec(NoneIsLeaf, OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)])))
+    ([2, 3, 4, 1, None, 5], PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf))
 
     Args:
         tree: A pytree to flatten.
@@ -156,14 +156,14 @@ def tree_flatten_with_path(
     (
         [('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('c',), ('d',)],
         [1, 2, 3, 4, None, 5],
-        PyTreeSpec(NoneIsLeaf, {'a': *, 'b': (*, [*, *]), 'c': *, 'd': *})
+        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf)
     )
     >>> tree_flatten_with_path(1)
     ([()], [1], PyTreeSpec(*))
     >>> tree_flatten_with_path(None)
     ([], [], PyTreeSpec(None))
     >>> tree_flatten_with_path(None, none_is_leaf=True)
-    ([()], [None], PyTreeSpec(NoneIsLeaf, *))
+    ([()], [None], PyTreeSpec(*, NoneIsLeaf))
 
     For unordered dictionaries, :class:`dict` and :class:`collections.defaultdict`, the order is
     dependent on the **sorted** keys in the dictionary. Please use :class:`collections.OrderedDict`
@@ -180,7 +180,7 @@ def tree_flatten_with_path(
     (
         [('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('c',), ('d',)],
         [2, 3, 4, 1, None, 5],
-        PyTreeSpec(NoneIsLeaf, OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]))
+        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf)
     )
 
     Args:
@@ -274,13 +274,13 @@ def tree_structure(
     >>> tree_structure(tree)
     PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
     >>> tree_structure(tree, none_is_leaf=True)
-    PyTreeSpec(NoneIsLeaf, {'a': *, 'b': (*, [*, *]), 'c': *, 'd': *})
+    PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf)
     >>> tree_structure(1)
     PyTreeSpec(*)
     >>> tree_structure(None)
     PyTreeSpec(None)
     >>> tree_structure(None, none_is_leaf=True)
-    PyTreeSpec(NoneIsLeaf, *)
+    PyTreeSpec(*, NoneIsLeaf)
 
     Args:
         tree: A pytree to flatten.
@@ -831,7 +831,7 @@ def treespec_leaf(*, none_is_leaf: bool = False) -> PyTreeSpec:
     >>> treespec_leaf()
     PyTreeSpec(*)
     >>> treespec_leaf(none_is_leaf=True)
-    PyTreeSpec(NoneIsLeaf, *)
+    PyTreeSpec(*, NoneIsLeaf)
     >>> treespec_leaf(none_is_leaf=False) == treespec_leaf(none_is_leaf=True)
     False
     >>> treespec_leaf() == tree_structure(1)
@@ -862,7 +862,7 @@ def treespec_none(*, none_is_leaf: bool = False) -> PyTreeSpec:
     >>> treespec_none()
     PyTreeSpec(None)
     >>> treespec_none(none_is_leaf=True)
-    PyTreeSpec(NoneIsLeaf, *)
+    PyTreeSpec(*, NoneIsLeaf)
     >>> treespec_none(none_is_leaf=False) == treespec_none(none_is_leaf=True)
     False
     >>> treespec_none() == tree_structure(None)

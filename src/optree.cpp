@@ -33,7 +33,7 @@ void BuildModule(py::module& mod) {  // NOLINT
             &PyTreeTypeRegistry::Register,
             "Register a Python type. Extends the set of types that are considered internal nodes "
             "in pytrees.",
-            py::arg("type"),
+            py::arg("cls"),
             py::arg("to_iterable"),
             py::arg("from_iterable"));
 
