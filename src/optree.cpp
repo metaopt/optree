@@ -33,13 +33,19 @@ void BuildModule(py::module& mod) {  // NOLINT
             &PyTreeTypeRegistry::Register,
             "Register a Python type. Extends the set of types that are considered internal nodes "
             "in pytrees.",
-            py::arg("type"),
+            py::arg("cls"),
             py::arg("to_iterable"),
             py::arg("from_iterable"));
 
     mod.def("flatten",
             &PyTreeSpec::Flatten,
             "Flattens a pytree.",
+            py::arg("tree"),
+            py::arg("leaf_predicate") = std::nullopt,
+            py::arg("none_is_leaf") = false);
+    mod.def("flatten_with_path",
+            &PyTreeSpec::FlattenWithPath,
+            "Flattens a pytree and additionally records the paths.",
             py::arg("tree"),
             py::arg("leaf_predicate") = std::nullopt,
             py::arg("none_is_leaf") = false);

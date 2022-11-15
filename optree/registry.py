@@ -22,7 +22,7 @@ from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tu
 import optree._C as _C
 from optree.typing import KT, VT, Children, CustomTreeNode, DefaultDict, MetaData
 from optree.typing import OrderedDict as GenericOrderedDict
-from optree.typing import PyTree, PyTreeSpec, T
+from optree.typing import PyTree, T
 from optree.utils import safe_zip, unzip2
 
 
@@ -39,33 +39,35 @@ __all__ = [
 PyTreeNodeRegistryEntry = NamedTuple(
     'PyTreeNodeRegistryEntry',
     [
-        ('to_iter', Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]]),
-        ('from_iter', Callable[[MetaData, Children[T]], CustomTreeNode[T]]),
+        ('to_iterable', Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]]),
+        ('from_iterable', Callable[[MetaData, Children[T]], CustomTreeNode[T]]),
     ],
 )
 
 
 def register_pytree_node(
-    type: Type[CustomTreeNode[T]],  # pylint: disable=redefined-builtin
+    cls: Type[CustomTreeNode[T]],
     flatten_func: Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]],
     unflatten_func: Callable[[MetaData, Children[T]], CustomTreeNode[T]],
 ) -> Type[CustomTreeNode[T]]:
     """Extends the set of types that are considered internal nodes in pytrees.
 
     Args:
-        type: A Python type to treat as an internal pytree node.
-        flatten_func: A function to be used during flattening, taking a value of type ``type`` and
-            returning a pair, with (1) an iterable for the children to be flattened recursively, and
-            (2) some hashable auxiliary data to be stored in the treespec and to be passed to the
-            ``unflatten_func``.
+        cls: A Python type to treat as an internal pytree node.
+        flatten_func: A function to be used during flattening, taking an instance of ``cls`` and
+            returning a triple or optionally a pair, with (1) an iterable for the children to be
+            flattened recursively, and (2) some hashable auxiliary data to be stored in the treespec
+            and to be passed to the ``unflatten_func``, and (3) (optional) an iterable for the tree
+            path entries to the corresponding children. If the entries are not provided or given by
+            :data:`None`, then `range(len(children))` will be used.
         unflatten_func: A function taking two arguments: the auxiliary data that was returned by
             ``flatten_func`` and stored in the treespec, and the unflattened children. The function
-            should return an instance of ``type``.
+            should return an instance of ``cls``.
     """
-    _C.register_node(type, flatten_func, unflatten_func)
-    CustomTreeNode.register(type)  # pylint: disable=no-member
-    _nodetype_registry[type] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
-    return type
+    _C.register_node(cls, flatten_func, unflatten_func)
+    CustomTreeNode.register(cls)  # pylint: disable=no-member
+    _nodetype_registry[cls] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
+    return cls
 
 
 def register_pytree_node_class(cls: Type[CustomTreeNode[T]]) -> Type[CustomTreeNode[T]]:
@@ -125,23 +127,27 @@ def _sorted_keys(dct: Dict[KT, VT]) -> Iterable[KT]:  # pragma: no cover
             return dct  # fallback to insertion order
 
 
-def _dict_flatten(dct: Dict[KT, VT]) -> Tuple[Tuple[VT, ...], Tuple[KT, ...]]:  # pragma: no cover
+def _dict_flatten(
+    dct: Dict[KT, VT]
+) -> Tuple[Tuple[VT, ...], Tuple[KT, ...], Tuple[KT, ...]]:  # pragma: no cover
     keys, values = unzip2(_sorted_items(dct.items()))
-    return values, keys
+    return values, keys, keys
 
 
 def _ordereddict_flatten(
     dct: GenericOrderedDict[KT, VT]
-) -> Tuple[Tuple[VT, ...], Tuple[KT, ...]]:  # pragma: no cover
+) -> Tuple[Tuple[VT, ...], Tuple[KT, ...], Tuple[KT, ...]]:  # pragma: no cover
     keys, values = unzip2(dct.items())
-    return values, keys
+    return values, keys, keys
 
 
 def _defaultdict_flatten(
     dct: DefaultDict[KT, VT]
-) -> Tuple[Tuple[VT, ...], Tuple[Optional[Callable[[], VT]], Tuple[KT, ...]]]:  # pragma: no cover
-    values, keys = _dict_flatten(dct)
-    return values, (dct.default_factory, keys)
+) -> Tuple[
+    Tuple[VT, ...], Tuple[Optional[Callable[[], VT]], Tuple[KT, ...]], Tuple[KT, ...]
+]:  # pragma: no cover
+    values, keys, entries = _dict_flatten(dct)
+    return values, (dct.default_factory, keys), entries
 
 
 # pylint: disable=all
@@ -341,11 +347,11 @@ _keypath_registry: Dict[Type[CustomTreeNode], KeyPathHandler] = {}
 
 
 def register_keypaths(
-    type: Type[CustomTreeNode[T]],  # pylint: disable=redefined-builtin
+    cls: Type[CustomTreeNode[T]],
     handler: KeyPathHandler,
 ) -> KeyPathHandler:
     """Registers a key path handler for a custom pytree node type."""
-    _keypath_registry[type] = handler
+    _keypath_registry[cls] = handler
     return handler
 
 

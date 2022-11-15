@@ -22,6 +22,7 @@ from typing import (
     DefaultDict,
     Deque,
     Dict,
+    ForwardRef,
     Generic,
     Hashable,
     Iterable,
@@ -45,13 +46,6 @@ try:
     from typing_extensions import NamedTuple  # Generic NamedTuple: Python 3.11+
 except ImportError:
     from typing import NamedTuple  # type: ignore[assignment]
-
-
-try:
-    # Python 3.6
-    from typing import _ForwardRef as ForwardRef  # type: ignore[attr-defined]
-except ImportError:
-    from typing import ForwardRef
 
 
 __all__ = [
@@ -98,7 +92,14 @@ MetaData = Optional[_MetaData]
 class CustomTreeNode(Protocol[T]):
     """The abstract base class for custom pytree nodes."""
 
-    def tree_flatten(self) -> Tuple[Children[T], MetaData]:
+    def tree_flatten(
+        self,
+    ) -> Union[
+        # Use `range(num_children)` as path entries
+        Tuple[Children[T], MetaData],
+        # With optionally implemented path entries
+        Tuple[Children[T], MetaData, Optional[Iterable[Any]]],
+    ]:
         """Flattens the custom pytree node into children and auxiliary data."""
 
     @classmethod
@@ -144,7 +145,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
 
     @_tp_cache
     def __class_getitem__(cls, item: Union[T, Tuple[T], Tuple[T, Optional[str]]]) -> TypeAlias:
-        """Instantiate a PyTree type with the given type."""
+        """Instantiates a PyTree type with the given type."""
         if not isinstance(item, tuple):
             item = (item, None)
         if len(item) != 2:
@@ -167,7 +168,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
             return param  # PyTree[PyTree[T]] -> PyTree[T]
 
         if name is not None:
-            recurse_ref = name
+            recurse_ref = ForwardRef(name)
         elif isinstance(param, TypeVar):
             recurse_ref = ForwardRef(f'{cls.__name__}[{param.__name__}]')
         elif isinstance(param, type):
@@ -226,7 +227,7 @@ class PyTreeTypeVar:
 
     @_tp_cache
     def __new__(cls, name: str, param: Type) -> TypeAlias:
-        """Instantiate a PyTree type variable with the given name and parameter."""
+        """Instantiates a PyTree type variable with the given name and parameter."""
         if not isinstance(name, str):
             raise TypeError(f'{cls.__name__} only supports a string of type name. Got {name!r}.')
         return PyTree[param, name]  # type: ignore[misc,valid-type]
@@ -245,5 +246,5 @@ class PyTreeTypeVar:
 
 
 def is_namedtuple(obj: object) -> bool:
-    """Return whether the object is a namedtuple."""
+    """Returns whether the object is a namedtuple."""
     return isinstance(obj, tuple) and hasattr(obj, '_fields')

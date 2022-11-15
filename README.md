@@ -1,6 +1,6 @@
 # OpTree
 
-![Python 3.6+](https://img.shields.io/badge/Python-3.6%2B-brightgreen)
+![Python 3.7+](https://img.shields.io/badge/Python-3.7%2B-brightgreen)
 [![PyPI](https://img.shields.io/pypi/v/optree?logo=pypi)](https://pypi.org/project/optree)
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/metaopt/optree/Build?label=build&logo=github)
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/metaopt/optree/Tests?label=tests&logo=github)
@@ -61,7 +61,7 @@ cd optree
 pip3 install .
 ```
 
-Compiling from the source requires Python 3.6+, a compiler (`gcc` / `clang` / `icc` / `cl.exe`) supports C++20 and a `cmake` installation.
+Compiling from the source requires Python 3.7+, a compiler (`gcc` / `clang` / `icc` / `cl.exe`) supports C++20 and a `cmake` installation.
 
 --------------------------------------------------------------------------------
 
@@ -122,17 +122,19 @@ The `NoneType` is a special case discussed in section [`None` is non-leaf Node v
 
 A container-like Python type can be registered in the container registry with a pair of functions that specify:
 
-- `flatten_func(container) -> (children, metadata)`: convert an instance of the container type to a `(children, metadata)` pair, where `children` is an iterable of subtrees.
+- `flatten_func(container) -> (children, metadata, entries)`: convert an instance of the container type to a `(children, metadata, entries)` triple, where `children` is an iterable of subtrees and `entries` is an iterable of path entries of the container (e.g., indices or keys).
 - `unflatten_func(metadata, children) -> container`: convert such a pair back to an instance of the container type.
 
 The `metadata` is some necessary data apart from the children to reconstruct the container, e.g., the keys of the dictionary (the children are values).
+
+The `entries` can be omitted (only returns a pair) or is optional to implement (returns `None`). If so, use `range(len(children))` (i.e., flat indices) as path entries of the current node. The function signature can be `flatten_func(container) -> (children, metadata)` or `flatten_func(container) -> (children, metadata, None)`.
 
 ```python
 >>> import torch
 
 >>> optree.register_pytree_node(
 ...     torch.Tensor,
-...     flatten_func=lambda tensor: (
+...     flatten_func=lambda tensor: (  # -> (children, metadata)
 ...         (tensor.cpu().numpy(),),
 ...         dict(dtype=tensor.dtype, device=tensor.device, requires_grad=tensor.requires_grad),
 ...     ),
@@ -154,6 +156,9 @@ The `metadata` is some necessary data apart from the children to reconstruct the
     })
 )
 
+>>> optree.tree_paths(tree)  # entries are not defined and use `range(len(children))`
+[('bias', 0), ('weight', 0)]
+
 >>> optree.tree_unflatten(treespec, leaves)
 {'bias': tensor([0., 0.]), 'weight': tensor([[1., 1.]], device='cuda:0')}
 ```
@@ -165,16 +170,24 @@ Users can also extend the pytree registry by decorating the custom class and def
 ...
 ... @optree.register_pytree_node_class
 ... class MyDict(UserDict):
-...     def tree_flatten(self):
+...     def tree_flatten(self):  # -> (children, metadata, entries)
 ...         reversed_keys = sorted(self.keys(), reverse=True)
-...         return [self[key] for key in reversed_keys], reversed_keys
+...         return (
+...             [self[key] for key in reversed_keys],  # children
+...             reversed_keys,  # metadata
+...             reversed_keys,  # entries
+...         )
 ...
 ...     @classmethod
 ...     def tree_unflatten(cls, metadata, children):
 ...         return MyDict(zip(metadata, children))
 
->>> optree.tree_flatten(MyDict(b=2, a=1, c=3))
-([3, 2, 1], PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [*, *, *])))
+>>> optree.tree_flatten_with_path(MyDict(b=4, a=(2, 3), c=MyDict({'d': 5, 'f': 6})))
+(
+    [('c', 'f'), ('c', 'd'), ('b',), ('a', 0), ('a', 1)],
+    [6, 5, 4, 2, 3],
+    PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyDict[['f', 'd']], [*, *]), *, (*, *)]))
+)
 ```
 
 #### Limitations of the PyTree Type Registry
@@ -195,7 +208,7 @@ It may also serve as a sentinel value.
 In addition, if a function has returned without any return value, it also implicitly returns the `None` object.
 
 By default, the `None` object is considered a non-leaf node in the tree with arity 0, i.e., _**a non-leaf node that has no children**_.
-This is slightly different than the definition of a non-leaf node as discussed above.
+This is like the behavior of an empty tuple.
 While flattening a tree, it will remain in the tree structure definitions rather than in the leaves list.
 
 ```python
@@ -203,13 +216,13 @@ While flattening a tree, it will remain in the tree structure definitions rather
 >>> optree.tree_flatten(tree)
 ([1, 2, 3, 4, 5], PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *}))
 >>> optree.tree_flatten(tree, none_is_leaf=True)
-([1, 2, 3, 4, None, 5], PyTreeSpec(NoneIsLeaf, {'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}))
+([1, 2, 3, 4, None, 5], PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf))
 >>> optree.tree_flatten(1)
 ([1], PyTreeSpec(*))
 >>> optree.tree_flatten(None)
 ([], PyTreeSpec(None))
 >>> optree.tree_flatten(None, none_is_leaf=True)
-([None], PyTreeSpec(NoneIsLeaf, *))
+([None], PyTreeSpec(*, NoneIsLeaf))
 ```
 
 OpTree provides a keyword argument `none_is_leaf` to determine whether to consider the `None` object as a leaf, like other opaque objects.
