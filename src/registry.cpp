@@ -88,9 +88,9 @@ template <bool NoneIsLeaf>
         PyTreeTypeRegistry* registry = Singleton<NONE_IS_NODE>();
         auto registration = std::make_unique<Registration>();
         registration->kind = PyTreeKind::Custom;
-        registration->type = cls;
-        registration->to_iterable = to_iterable;
-        registration->from_iterable = from_iterable;
+        registration->type = py::reinterpret_borrow<py::object>(cls);
+        registration->to_iterable = py::reinterpret_borrow<py::function>(to_iterable);
+        registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
         if (regnamespace.empty()) [[unlikely]] {  // NOLINT
             if (!registry->registrations.emplace(cls, std::move(registration)).second)
                 [[unlikely]] {
@@ -118,9 +118,9 @@ template <bool NoneIsLeaf>
         PyTreeTypeRegistry* registry = Singleton<NONE_IS_LEAF>();
         auto registration = std::make_unique<Registration>();
         registration->kind = PyTreeKind::Custom;
-        registration->type = cls;
-        registration->to_iterable = to_iterable;
-        registration->from_iterable = from_iterable;
+        registration->type = py::reinterpret_borrow<py::object>(cls);
+        registration->to_iterable = py::reinterpret_borrow<py::function>(to_iterable);
+        registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
         if (regnamespace.empty()) [[unlikely]] {  // NOLINT
             if (!registry->registrations.emplace(cls, std::move(registration)).second)
                 [[unlikely]] {
@@ -144,6 +144,9 @@ template <bool NoneIsLeaf>
             }
         }
     }
+    cls.inc_ref();
+    to_iterable.inc_ref();
+    from_iterable.inc_ref();
 }
 
 template <bool NoneIsLeaf>
