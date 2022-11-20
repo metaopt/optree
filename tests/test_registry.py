@@ -15,7 +15,7 @@
 
 # pylint: disable=missing-function-docstring,invalid-name
 
-from collections import UserList
+from collections import UserDict, UserList
 
 import pytest
 
@@ -228,3 +228,37 @@ def test_pytree_node_registry_get():
     assert handler is None
     handler = optree.register_pytree_node.get(MyList, namespace='mylist')
     assert handler is not None
+
+
+def test_pytree_node_registry_with_init_subclass():
+    @optree.register_pytree_node_class(namespace='mydict')
+    class MyDict(UserDict):
+        def __init_subclass__(cls):
+            super().__init_subclass__()
+            optree.register_pytree_node_class(cls, namespace='mydict')
+
+        def tree_flatten(self):
+            reversed_keys = sorted(self.keys(), reverse=True)
+            return [self[key] for key in reversed_keys], reversed_keys, reversed_keys
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            return cls(zip(metadata, children))
+
+    class MyAnotherDict(MyDict):
+        pass
+
+    tree = MyDict(b=4, a=(2, 3), c=MyAnotherDict({'d': 5, 'f': 6}))
+    paths, leaves, treespec = optree.tree_flatten_with_path(tree, namespace='mydict')
+    assert paths == [('c', 'f'), ('c', 'd'), ('b',), ('a', 0), ('a', 1)]
+    assert leaves == [6, 5, 4, 2, 3]
+    assert (
+        str(treespec)
+        == "PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyAnotherDict[['f', 'd']], [*, *]), *, (*, *)]), namespace='mydict')"
+    )
+    leaves, treespec = optree.tree_flatten(tree, namespace='mydict')
+    assert leaves == [6, 5, 4, 2, 3]
+    assert (
+        str(treespec)
+        == "PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyAnotherDict[['f', 'd']], [*, *]), *, (*, *)]), namespace='mydict')"
+    )

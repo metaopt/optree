@@ -140,11 +140,11 @@ class MyDict(UserDict):
 
 
 @optree.register_pytree_node_class('namespace')
-class MyDictSubClass(MyDict):
+class MyAnotherDict(MyDict):
     pass
 
 
-NAMESPACED_TREE = MyDictSubClass([('baz', 101), ('foo', MyDictSubClass(a=1, b=2, c=None))])
+NAMESPACED_TREE = MyAnotherDict([('baz', 101), ('foo', MyAnotherDict(a=1, b=2, c=None))])
 
 
 # pylint: disable=line-too-long

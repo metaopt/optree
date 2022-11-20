@@ -25,7 +25,7 @@ import pytest
 import optree
 
 # pylint: disable-next=wrong-import-order
-from helpers import LEAVES, TREE_PATHS, TREES, CustomTuple, FlatCache, MyDictSubClass, parametrize
+from helpers import LEAVES, TREE_PATHS, TREES, CustomTuple, FlatCache, MyAnotherDict, parametrize
 
 
 def dummy_func(*args, **kwargs):  # pylint: disable=unused-argument
@@ -508,54 +508,54 @@ def test_transpose_with_custom_object():
 
 
 def test_transpose_with_custom_namespace():
-    outer_treespec = optree.tree_structure(MyDictSubClass({'a': 1, 'b': 2}), namespace='namespace')
+    outer_treespec = optree.tree_structure(MyAnotherDict({'a': 1, 'b': 2}), namespace='namespace')
     inner_treespec = optree.tree_structure(
-        MyDictSubClass({'c': 1, 'd': 2, 'e': 3}), namespace='namespace'
+        MyAnotherDict({'c': 1, 'd': 2, 'e': 3}), namespace='namespace'
     )
-    nested = MyDictSubClass(
+    nested = MyAnotherDict(
         {
-            'a': MyDictSubClass({'c': 1, 'd': 2, 'e': 3}),
-            'b': MyDictSubClass({'c': 4, 'd': 5, 'e': 6}),
+            'a': MyAnotherDict({'c': 1, 'd': 2, 'e': 3}),
+            'b': MyAnotherDict({'c': 4, 'd': 5, 'e': 6}),
         }
     )
     actual = optree.tree_transpose(outer_treespec, inner_treespec, nested)
-    assert actual == MyDictSubClass(
+    assert actual == MyAnotherDict(
         {
-            'c': MyDictSubClass({'a': 1, 'b': 4}),
-            'd': MyDictSubClass({'a': 2, 'b': 5}),
-            'e': MyDictSubClass({'a': 3, 'b': 6}),
+            'c': MyAnotherDict({'a': 1, 'b': 4}),
+            'd': MyAnotherDict({'a': 2, 'b': 5}),
+            'e': MyAnotherDict({'a': 3, 'b': 6}),
         }
     )
 
 
 def test_transpose_mismatch_namespace():
     @optree.register_pytree_node_class(namespace='subnamespace')
-    class MyDictSubSubClass(MyDictSubClass):
+    class MyExtraDict(MyAnotherDict):
         pass
 
-    outer_treespec = optree.tree_structure(MyDictSubClass({'a': 1, 'b': 2}), namespace='namespace')
+    outer_treespec = optree.tree_structure(MyAnotherDict({'a': 1, 'b': 2}), namespace='namespace')
     inner_treespec = optree.tree_structure(
-        MyDictSubSubClass({'c': 1, 'd': 2, 'e': 3}), namespace='subnamespace'
+        MyExtraDict({'c': 1, 'd': 2, 'e': 3}), namespace='subnamespace'
     )
-    nested = MyDictSubClass(
+    nested = MyAnotherDict(
         {
-            'a': MyDictSubSubClass({'c': 1, 'd': 2, 'e': 3}),
-            'b': MyDictSubSubClass({'c': 4, 'd': 5, 'e': 6}),
+            'a': MyExtraDict({'c': 1, 'd': 2, 'e': 3}),
+            'b': MyExtraDict({'c': 4, 'd': 5, 'e': 6}),
         }
     )
     with pytest.raises(ValueError, match='Tree structures must have the same namespace.'):
         optree.tree_transpose(outer_treespec, inner_treespec, nested)
 
-    optree.register_pytree_node_class(MyDictSubSubClass, namespace='namespace')
+    optree.register_pytree_node_class(MyExtraDict, namespace='namespace')
     inner_treespec = optree.tree_structure(
-        MyDictSubSubClass({'c': 1, 'd': 2, 'e': 3}), namespace='namespace'
+        MyExtraDict({'c': 1, 'd': 2, 'e': 3}), namespace='namespace'
     )
     actual = optree.tree_transpose(outer_treespec, inner_treespec, nested)
-    assert actual == MyDictSubSubClass(
+    assert actual == MyExtraDict(
         {
-            'c': MyDictSubClass({'a': 1, 'b': 4}),
-            'd': MyDictSubClass({'a': 2, 'b': 5}),
-            'e': MyDictSubClass({'a': 3, 'b': 6}),
+            'c': MyAnotherDict({'a': 1, 'b': 4}),
+            'd': MyAnotherDict({'a': 2, 'b': 5}),
+            'e': MyAnotherDict({'a': 3, 'b': 6}),
         }
     )
 

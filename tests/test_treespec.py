@@ -62,7 +62,7 @@ def test_with_namespace():
         assert leaves == [tree]
         assert str(treespec) == ('PyTreeSpec(*, NoneIsLeaf)')
 
-    expected_string = "PyTreeSpec(CustomTreeNode(MyDictSubClass[['foo', 'baz']], [CustomTreeNode(MyDictSubClass[['c', 'b', 'a']], [None, *, *]), *]), namespace='namespace')"
+    expected_string = "PyTreeSpec(CustomTreeNode(MyAnotherDict[['foo', 'baz']], [CustomTreeNode(MyAnotherDict[['c', 'b', 'a']], [None, *, *]), *]), namespace='namespace')"
     leaves, treespec = optree.tree_flatten(tree, none_is_leaf=False, namespace='namespace')
     assert leaves == [2, 1, 101]
     assert str(treespec) == expected_string
@@ -73,7 +73,7 @@ def test_with_namespace():
     assert leaves == [2, 1, 101]
     assert str(treespec) == expected_string
 
-    expected_string = "PyTreeSpec(CustomTreeNode(MyDictSubClass[['foo', 'baz']], [CustomTreeNode(MyDictSubClass[['c', 'b', 'a']], [*, *, *]), *]), NoneIsLeaf, namespace='namespace')"
+    expected_string = "PyTreeSpec(CustomTreeNode(MyAnotherDict[['foo', 'baz']], [CustomTreeNode(MyAnotherDict[['c', 'b', 'a']], [*, *, *]), *]), NoneIsLeaf, namespace='namespace')"
     leaves, treespec = optree.tree_flatten(tree, none_is_leaf=True, namespace='namespace')
     assert leaves == [None, 2, 1, 101]
     assert str(treespec) == expected_string
