@@ -20,7 +20,7 @@ Optimized PyTree Utilities.
   - [Tree Nodes and Leaves](#tree-nodes-and-leaves)
     - [Built-in PyTree Node Types](#built-in-pytree-node-types)
     - [Registering a Custom Container-like Type as Non-leaf Nodes](#registering-a-custom-container-like-type-as-non-leaf-nodes)
-    - [Limitations of the PyTree Type Registry](#limitations-of-the-pytree-type-registry)
+    - [Notes about the PyTree Type Registry](#notes-about-the-pytree-type-registry)
   - [`None` is non-leaf Node vs. `None` is Leaf](#none-is-non-leaf-node-vs-none-is-leaf)
   - [Key Ordering for Dictionaries](#key-ordering-for-dictionaries)
 - [Benchmark](#benchmark)
@@ -130,15 +130,28 @@ The `metadata` is some necessary data apart from the children to reconstruct the
 The `entries` can be omitted (only returns a pair) or is optional to implement (returns `None`). If so, use `range(len(children))` (i.e., flat indices) as path entries of the current node. The function signature can be `flatten_func(container) -> (children, metadata)` or `flatten_func(container) -> (children, metadata, None)`.
 
 ```python
->>> import torch
+# Registry a Python type with lambda functions
+>>> register_pytree_node(
+...     set,
+...     # (set) -> (children, metadata, None)
+...     lambda s: (sorted(s), None, None),
+...     # (metadata, children) -> (set)
+...     lambda _, children: set(children),
+...     namespace='set',
+... )
 
->>> optree.register_pytree_node(
+# Register a Python type into a namespace
+>>> import torch
+>>> register_pytree_node(
 ...     torch.Tensor,
-...     flatten_func=lambda tensor: (  # -> (children, metadata)
+...     # (tensor) -> (children, metadata)
+...     flatten_func=lambda tensor: (
 ...         (tensor.cpu().numpy(),),
 ...         dict(dtype=tensor.dtype, device=tensor.device, requires_grad=tensor.requires_grad),
 ...     ),
+...     # (metadata, children) -> tensor
 ...     unflatten_func=lambda metadata, children: torch.tensor(children[0], **metadata),
+...     namespace='torch2numpy',
 ... )
 <class 'torch.Tensor'>
 
@@ -146,19 +159,29 @@ The `entries` can be omitted (only returns a pair) or is optional to implement (
 >>> tree
 {'weight': tensor([[1., 1.]], device='cuda:0'), 'bias': tensor([0., 0.])}
 
->>> leaves, treespec = optree.tree_flatten(tree)
+# Flatten without specifying the namespace
+>>> tree_flatten(tree)  # `torch.Tensor`s are leaf nodes
+([tensor([0., 0.]), tensor([[1., 1.]], device='cuda:0')], PyTreeSpec({'bias': *, 'weight': *}))
+
+# Flatten with the namespace
+>>> leaves, treespec = optree.tree_flatten(tree, namespace='torch2numpy')
 >>> leaves, treespec
 (
     [array([0., 0.], dtype=float32), array([[1., 1.]], dtype=float32)],
-    PyTreeSpec({
-        'bias': CustomTreeNode(Tensor[{'dtype': torch.float32, 'device': device(type='cpu'), 'requires_grad': False}], [*]),
-        'weight': CustomTreeNode(Tensor[{'dtype': torch.float32, 'device': device(type='cuda', index=0), 'requires_grad': False}], [*])
-    })
+    PyTreeSpec(
+        {
+            'bias': CustomTreeNode(Tensor[{'dtype': torch.float32, 'device': device(type='cpu'), 'requires_grad': False}], [*]),
+            'weight': CustomTreeNode(Tensor[{'dtype': torch.float32, 'device': device(type='cuda', index=0), 'requires_grad': False}], [*])
+        },
+        namespace='torch2numpy'
+    )
 )
 
->>> optree.tree_paths(tree)  # entries are not defined and use `range(len(children))`
+# `entries` are not defined and use `range(len(children))`
+>>> optree.tree_paths(tree, namespace='torch2numpy')
 [('bias', 0), ('weight', 0)]
 
+# Unflatten back to a copy of the original object
 >>> optree.tree_unflatten(treespec, leaves)
 {'bias': tensor([0., 0.]), 'weight': tensor([[1., 1.]], device='cuda:0')}
 ```
@@ -168,7 +191,7 @@ Users can also extend the pytree registry by decorating the custom class and def
 ```python
 >>> from collections import UserDict
 ...
-... @optree.register_pytree_node_class
+... @optree.register_pytree_node_class(namespace='mydict')
 ... class MyDict(UserDict):
 ...     def tree_flatten(self):  # -> (children, metadata, entries)
 ...         reversed_keys = sorted(self.keys(), reverse=True)
@@ -180,24 +203,83 @@ Users can also extend the pytree registry by decorating the custom class and def
 ...
 ...     @classmethod
 ...     def tree_unflatten(cls, metadata, children):
-...         return MyDict(zip(metadata, children))
+...         return cls(zip(metadata, children))
 
->>> optree.tree_flatten_with_path(MyDict(b=4, a=(2, 3), c=MyDict({'d': 5, 'f': 6})))
+>>> tree = MyDict(b=4, a=(2, 3), c=MyDict({'d': 5, 'f': 6}))
+
+# Flatten without specifying the namespace
+>>> optree.tree_flatten_with_path(tree)  # `MyDict`s are leaf nodes
+(
+    [()],
+    [MyDict(b=4, a=(2, 3), c=MyDict({'d': 5, 'f': 6}))],
+    PyTreeSpec(*)
+)
+
+# Flatten with the namespace
+>>> optree.tree_flatten_with_path(tree, namespace='mydict')
 (
     [('c', 'f'), ('c', 'd'), ('b',), ('a', 0), ('a', 1)],
     [6, 5, 4, 2, 3],
-    PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyDict[['f', 'd']], [*, *]), *, (*, *)]))
+    PyTreeSpec(
+        CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyDict[['f', 'd']], [*, *]), *, (*, *)]),
+        namespace='mydict'
+    )
 )
 ```
 
-#### Limitations of the PyTree Type Registry
+#### Notes about the PyTree Type Registry
 
-There are several limitations of the pytree type registry:
+There are several key attributes of the pytree type registry:
 
-1. **The type registry is per-interpreter-dependent.** This means registering a custom type in the registry affects all modules that use OpTree. The type registry does not support per-module isolation such as namespaces.
-2. **The elements in the type registry are immutable.** Users either cannot register the same type twice (i.e., update the type registry). Nor cannot remove a type from the type registry.
+1. **The type registry is per-interpreter-dependent.** This means registering a custom type in the registry affects all modules that use OpTree.
+
+    ```diff
+    - !!! WARNING !!!
+      For safety reasons, a `namespace` must be specified while registering a custom type. It is
+      used to isolate the behavior of flattening and unflattening a pytree node type. This is to
+      prevent accidental collisions between different libraries that may register the same type.
+    ```
+
+2. **The elements in the type registry are immutable.** Users either cannot register the same type twice in the same namespace (i.e., update the type registry). Nor cannot remove a type from the type registry. To update the behavior of an already registered type, simply register it again with another `namespace`.
+
 3. **Users cannot modify the behavior of already registered built-in types** listed [Built-in PyTree Node Types](#built-in-pytree-node-types), such as key order sorting for `dict` and `collections.defaultdict`.
-4. **Inherited subclasses are not implicitly registered.** The registration lookup uses `type(obj) is registered_type` rather than `isinstance(obj, registered_type)`. Users need to register the subclasses explicitly.
+
+4. **Inherited subclasses are not implicitly registered.** The registration lookup uses `type(obj) is registered_type` rather than `isinstance(obj, registered_type)`. Users need to register the subclasses explicitly. To register all subclasses, it is easy to implement with [`metaclass`](https://docs.python.org/3/reference/datamodel.html#metaclasses) or [`__init_subclass__`](https://docs.python.org/3/reference/datamodel.html#customizing-class-creation), for example:
+
+    ```python
+    from collections import UserDict
+
+    @optree.register_pytree_node_class(namespace='mydict')
+    class MyDict(UserDict):
+        def __init_subclass__(cls):  # define this in the base class
+            super().__init_subclass__()
+            # Register a subclass to namespace 'mydict'
+            optree.register_pytree_node_class(cls, namespace='mydict')
+
+        def tree_flatten(self):  # -> (children, metadata, entries)
+            reversed_keys = sorted(self.keys(), reverse=True)
+            return (
+                [self[key] for key in reversed_keys],  # children
+                reversed_keys,  # metadata
+                reversed_keys,  # entries
+            )
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            return cls(zip(metadata, children))
+
+    # Subclasses will be automatically registered in namespace 'mydict'
+    class MyAnotherDict(MyDict):
+        pass
+
+    tree = MyDict(b=4, a=(2, 3), c=MyAnotherDict({'d': 5, 'f': 6}))
+    optree.tree_flatten_with_path(tree, namespace='mydict')
+    # (
+    #     [('c', 'f'), ('c', 'd'), ('b',), ('a', 0), ('a', 1)],
+    #     [6, 5, 4, 2, 3],
+    #     PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyAnotherDict[['f', 'd']], [*, *]), *, (*, *)]), namespace='mydict')
+    # )
+    ```
 
 ### `None` is non-leaf Node vs. `None` is Leaf
 

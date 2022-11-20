@@ -78,9 +78,9 @@ def register_pytree_node(
 
     .. warning::
 
-        For safety reasons, a ``namespace`` must be specified. This namespace is used to isolate the
-        behavior of flattening and unflattening a pytree node type. This is to prevent accidental
-        collisions between different libraries that may register the same type.
+        For safety reasons, a ``namespace`` must be specified while registering a custom type. It is
+        used to isolate the behavior of flattening and unflattening a pytree node type. This is to
+        prevent accidental collisions between different libraries that may register the same type.
 
     Args:
         cls: A Python type to treat as an internal pytree node.
@@ -225,9 +225,9 @@ def register_pytree_node_class(
 
     .. warning::
 
-        For safety reasons, a ``namespace`` must be specified. This namespace is used to isolate the
-        behavior of flattening and unflattening a pytree node type. This is to prevent accidental
-        collisions between different libraries that may register the same type.
+        For safety reasons, a ``namespace`` must be specified while registering a custom type. It is
+        used to isolate the behavior of flattening and unflattening a pytree node type. This is to
+        prevent accidental collisions between different libraries that may register the same type.
 
     This function is a thin wrapper around :func:`register_pytree_node`, and provides a
     class-oriented interface::
