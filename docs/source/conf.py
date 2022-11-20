@@ -70,7 +70,6 @@ extensions = [
     'sphinx.ext.extlinks',
     'sphinx_copybutton',
     'sphinx_rtd_theme',
-    'sphinxcontrib.bibtex',
     'sphinx_autodoc_typehints',
 ]
 
@@ -117,10 +116,6 @@ autodoc_default_options = {
 }
 autoclass_content = 'both'
 
-# -- Options for bibtex -----------------------------------------------------
-
-bibtex_bibfiles = ['references.bib']
-
 # -- Options for myst -------------------------------------------------------
 
 nb_execution_mode = 'force'
@@ -145,15 +140,6 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 html_css_files = ['style.css']
 # html_logo = '_static/images/logo.png'
-
-
-def setup(app):
-    app.add_js_file('https://cdn.jsdelivr.net/npm/vega@5.20.2')
-    app.add_js_file('https://cdn.jsdelivr.net/npm/vega-lite@5.1.0')
-    app.add_js_file('https://cdn.jsdelivr.net/npm/vega-embed@6.17.0')
-
-    app.add_css_file('css/style.css')
-
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.

@@ -10,6 +10,7 @@ COMMIT_HASH    = $(shell git log -1 --format=%h)
 PATH           := $(HOME)/go/bin:$(PATH)
 PYTHON         ?= $(shell command -v python3 || command -v python)
 CLANG_FORMAT   ?= $(shell command -v clang-format-14 || command -v clang-format)
+PYTESTOPTS     ?=
 
 .PHONY: default
 default: install
@@ -68,8 +69,6 @@ docs-install:
 	$(call check_pip_install,sphinx-autoapi)
 	$(call check_pip_install,sphinx-autobuild)
 	$(call check_pip_install,sphinx-copybutton)
-	$(call check_pip_install,sphinxcontrib-katex)
-	$(call check_pip_install,sphinxcontrib-bibtex)
 	$(call check_pip_install,sphinx-autodoc-typehints)
 	$(call check_pip_install,myst_nb)
 	$(call check_pip_install_extra,sphinxcontrib.spelling,sphinxcontrib.spelling pyenchant)
@@ -103,7 +102,7 @@ pytest: pytest-install
 	cd tests && \
 	$(PYTHON) -m pytest --verbose --color=yes --durations=0 \
 		--cov="$(PROJECT_NAME)" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
-		.
+		$(PYTESTOPTS) .
 
 test: pytest
 

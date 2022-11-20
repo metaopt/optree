@@ -38,13 +38,13 @@ dependencies:
   - pybind11
 
   # Documentation
-  - sphinx
+  - sphinx >= 5.2.1
   - sphinx_rtd_theme
   - sphinx-autobuild
   - sphinx-copybutton
   - sphinxcontrib-spelling
   - sphinxcontrib-bibtex
-  - sphinx-autodoc-typehints
+  - sphinx-autodoc-typehints >= 1.19.2
   - pyenchant
   - hunspell-en
   - docutils

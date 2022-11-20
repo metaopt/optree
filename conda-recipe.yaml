@@ -36,7 +36,6 @@ dependencies:
   - cmake >= 3.11
   - make
   - cxx-compiler
-  - patchelf >= 0.14
   - pybind11
 
   # Benchmark
@@ -51,13 +50,13 @@ dependencies:
   - termcolor
 
   # Documentation
-  - sphinx
+  - sphinx >= 5.2.1
   - sphinx_rtd_theme
   - sphinx-autobuild
   - sphinx-copybutton
   - sphinxcontrib-spelling
   - sphinxcontrib-bibtex
-  - sphinx-autodoc-typehints
+  - sphinx-autodoc-typehints >= 1.19.2
   - pyenchant
   - hunspell-en
   - docutils

@@ -24,7 +24,7 @@ set(
     utils.cpp
 )
 
-pybind11_add_module(_C THIN_LTO "${optree_csrc}")
+pybind11_add_module(_C MODULE THIN_LTO "${optree_csrc}")
 
 target_link_libraries(
     _C
