@@ -49,14 +49,13 @@ from optree.registry import (
     register_pytree_node,
     register_pytree_node_class,
 )
-from optree.typing import CustomTreeNode, PyTree, PyTreeDef, PyTreeSpec, PyTreeTypeVar
+from optree.typing import CustomTreeNode, PyTree, PyTreeSpec, PyTreeTypeVar
 from optree.version import __version__
 
 
 __all__ = [
     # Typing
     'PyTreeSpec',
-    'PyTreeDef',
     'PyTree',
     'PyTreeTypeVar',
     'CustomTreeNode',
