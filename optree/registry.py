@@ -18,6 +18,7 @@ import functools
 import inspect
 from collections import OrderedDict, defaultdict, deque
 from operator import methodcaller
+from threading import Lock
 from typing import (
     Any,
     Callable,
@@ -59,6 +60,7 @@ PyTreeNodeRegistryEntry = NamedTuple(
 
 
 __GLOBAL_NAMESPACE: str = object()  # type: ignore[assignment]
+__REGISTRY_LOCK: Lock = Lock()
 
 
 def register_pytree_node(
@@ -176,14 +178,18 @@ def register_pytree_node(
         raise TypeError(f'The namespace must be a string, got {namespace}.')
     if namespace == '':
         raise ValueError('The namespace cannot be an empty string.')
+
+    registration_key: Union[Type, Tuple[str, Type]]
     if namespace is __GLOBAL_NAMESPACE:
-        _C.register_node(cls, flatten_func, unflatten_func, '')
-        CustomTreeNode.register(cls)  # pylint: disable=no-member
-        _nodetype_registry[cls] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
+        registration_key = cls
+        namespace = ''
     else:
+        registration_key = (namespace, cls)
+
+    with __REGISTRY_LOCK:
         _C.register_node(cls, flatten_func, unflatten_func, namespace)
         CustomTreeNode.register(cls)  # pylint: disable=no-member
-        _nodetype_registry[(namespace, cls)] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
+        _nodetype_registry[registration_key] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
     return cls
 
 
