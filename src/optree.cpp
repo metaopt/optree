@@ -87,7 +87,7 @@ void BuildModule(py::module& mod) {  // NOLINT
             "None is contained in the treespec rather than in the leaves list.")
         .def_property_readonly(
             "namespace",
-            &PyTreeSpec::get_registry_namespace,
+            &PyTreeSpec::get_namespace,
             "The registry namespace used to resolve the custom pytree node types.")
         .def("unflatten",
              static_cast<py::object (PyTreeSpec::*)(const py::iterable&) const>(

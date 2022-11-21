@@ -27,14 +27,14 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
     absl::InlinedVector<py::object, 4> agenda;
     auto it = leaves.begin();
     ssize_t leaf_count = 0;
-    for (const Node& node : traversal) {
+    for (const Node& node : m_traversal) {
         if ((ssize_t)agenda.size() < node.arity) [[unlikely]] {
             throw std::logic_error("Too few elements for PyTreeSpec node.");
         }
         switch (node.kind) {
             case PyTreeKind::None:
             case PyTreeKind::Leaf: {
-                if (node.kind == PyTreeKind::Leaf || none_is_leaf) [[likely]] {  // NOLINT
+                if (node.kind == PyTreeKind::Leaf || m_none_is_leaf) [[likely]] {  // NOLINT
                     if (it == leaves.end()) [[unlikely]] {
                         throw std::invalid_argument(
                             absl::StrFormat("Too few leaves for PyTreeSpec; expected %ld, got %ld.",
@@ -56,7 +56,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
             case PyTreeKind::DefaultDict:
             case PyTreeKind::Deque:
             case PyTreeKind::Custom: {
-                const ssize_t size = agenda.size();
+                const ssize_t size = (ssize_t)agenda.size();
                 absl::Span<py::object> span;
                 if (node.arity > 0) [[likely]] {
                     span = absl::Span<py::object>(&agenda[size - node.arity], node.arity);
@@ -82,9 +82,5 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
 }
 
 py::object PyTreeSpec::Unflatten(const py::iterable& leaves) const { return UnflattenImpl(leaves); }
-
-py::object PyTreeSpec::Unflatten(const absl::Span<const py::object>& leaves) const {
-    return UnflattenImpl(leaves);
-}
 
 }  // namespace optree

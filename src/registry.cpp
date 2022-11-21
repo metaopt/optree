@@ -32,7 +32,7 @@ template <>
             auto registration = std::make_unique<Registration>();
             registration->kind = kind;
             registration->type = type;
-            CHECK(registry.registrations.emplace(type, std::move(registration)).second);
+            CHECK(registry.m_registrations.emplace(type, std::move(registration)).second);
         };
         add_builtin_type(Py_TYPE(Py_None), PyTreeKind::None);
         add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
@@ -59,7 +59,7 @@ template <>
             auto registration = std::make_unique<Registration>();
             registration->kind = kind;
             registration->type = type;
-            CHECK(registry.registrations.emplace(type, std::move(registration)).second);
+            CHECK(registry.m_registrations.emplace(type, std::move(registration)).second);
         };
         add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
         add_builtin_type(&PyList_Type, PyTreeKind::List);
@@ -83,7 +83,7 @@ template <bool NoneIsLeaf>
 /*static*/ void PyTreeTypeRegistry::Register(const py::object& cls,
                                              const py::function& to_iterable,
                                              const py::function& from_iterable,
-                                             const std::string& regnamespace) {
+                                             const std::string& registry_namespace) {
     {
         PyTreeTypeRegistry* registry = Singleton<NONE_IS_NODE>();
         auto registration = std::make_unique<Registration>();
@@ -91,26 +91,27 @@ template <bool NoneIsLeaf>
         registration->type = py::reinterpret_borrow<py::object>(cls);
         registration->to_iterable = py::reinterpret_borrow<py::function>(to_iterable);
         registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
-        if (regnamespace.empty()) [[unlikely]] {  // NOLINT
-            if (!registry->registrations.emplace(cls, std::move(registration)).second)
+        if (registry_namespace.empty()) [[unlikely]] {  // NOLINT
+            if (!registry->m_registrations.emplace(cls, std::move(registration)).second)
                 [[unlikely]] {
                 throw std::invalid_argument(
                     absl::StrFormat("PyTree type %s is already registered in the global namespace.",
                                     py::repr(cls)));
             }
         } else [[likely]] {  // NOLINT
-            if (registry->registrations.find(cls) != registry->registrations.end()) [[unlikely]] {
+            if (registry->m_registrations.find(cls) != registry->m_registrations.end())
+                [[unlikely]] {
                 throw std::invalid_argument(
                     absl::StrFormat("PyTree type %s is already registered in the global namespace.",
                                     py::repr(cls)));
             }
-            if (!registry->namespaced_registrations
-                     .emplace(std::make_pair(regnamespace, cls), std::move(registration))
+            if (!registry->m_named_registrations
+                     .emplace(std::make_pair(registry_namespace, cls), std::move(registration))
                      .second) [[unlikely]] {
                 throw std::invalid_argument(
                     absl::StrFormat("PyTree type %s is already registered in namespace %s.",
                                     py::repr(cls),
-                                    py::repr(py::str(regnamespace))));
+                                    py::repr(py::str(registry_namespace))));
             }
         }
     }
@@ -121,26 +122,27 @@ template <bool NoneIsLeaf>
         registration->type = py::reinterpret_borrow<py::object>(cls);
         registration->to_iterable = py::reinterpret_borrow<py::function>(to_iterable);
         registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
-        if (regnamespace.empty()) [[unlikely]] {  // NOLINT
-            if (!registry->registrations.emplace(cls, std::move(registration)).second)
+        if (registry_namespace.empty()) [[unlikely]] {  // NOLINT
+            if (!registry->m_registrations.emplace(cls, std::move(registration)).second)
                 [[unlikely]] {
                 throw std::invalid_argument(
                     absl::StrFormat("PyTree type %s is already registered in the global namespace.",
                                     py::repr(cls)));
             }
         } else [[likely]] {  // NOLINT
-            if (registry->registrations.find(cls) != registry->registrations.end()) [[unlikely]] {
+            if (registry->m_registrations.find(cls) != registry->m_registrations.end())
+                [[unlikely]] {
                 throw std::invalid_argument(
                     absl::StrFormat("PyTree type %s is already registered in the global namespace.",
                                     py::repr(cls)));
             }
-            if (!registry->namespaced_registrations
-                     .emplace(std::make_pair(regnamespace, cls), std::move(registration))
+            if (!registry->m_named_registrations
+                     .emplace(std::make_pair(registry_namespace, cls), std::move(registration))
                      .second) [[unlikely]] {
                 throw std::invalid_argument(
                     absl::StrFormat("PyTree type %s is already registered in namespace %s.",
                                     py::repr(cls),
-                                    py::repr(py::str(regnamespace))));
+                                    py::repr(py::str(registry_namespace))));
             }
         }
     }
@@ -151,17 +153,17 @@ template <bool NoneIsLeaf>
 
 template <bool NoneIsLeaf>
 /*static*/ const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup(
-    const py::handle& type, const std::string& regnamespace) {
+    const py::handle& type, const std::string& registry_namespace) {
     PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
-    auto it = registry->registrations.find(type);
-    if (it != registry->registrations.end()) [[likely]] {
+    auto it = registry->m_registrations.find(type);
+    if (it != registry->m_registrations.end()) [[likely]] {
         return it->second.get();
     }
-    if (regnamespace.empty()) [[likely]] {
+    if (registry_namespace.empty()) [[likely]] {
         return nullptr;
     } else [[unlikely]] {  // NOLINT
-        auto it = registry->namespaced_registrations.find(std::make_pair(regnamespace, type));
-        return it != registry->namespaced_registrations.end() ? it->second.get() : nullptr;
+        auto it = registry->m_named_registrations.find(std::make_pair(registry_namespace, type));
+        return it != registry->m_named_registrations.end() ? it->second.get() : nullptr;
     }
 }
 

@@ -33,6 +33,7 @@ limitations under the License.
 namespace optree {
 
 enum class PyTreeKind {
+    Custom,       // A custom type
     Leaf,         // An opaque leaf node
     None,         // None
     Tuple,        // A tuple
@@ -42,7 +43,6 @@ enum class PyTreeKind {
     OrderedDict,  // A collections.OrderedDict
     DefaultDict,  // A collections.defaultdict
     Deque,        // A collections.deque
-    Custom,       // A custom type
 };
 
 // Registry of custom node types.
@@ -65,11 +65,12 @@ class PyTreeTypeRegistry {
     static void Register(const py::object &cls,
                          const py::function &to_iterable,
                          const py::function &from_iterable,
-                         const std::string &regnamespace = "");
+                         const std::string &registry_namespace = "");
 
     // Finds the custom type registration for `type`. Returns nullptr if none exists.
     template <bool NoneIsLeaf>
-    static const Registration *Lookup(const py::handle &type, const std::string &regnamespace);
+    static const Registration *Lookup(const py::handle &type,
+                                      const std::string &registry_namespace);
 
  private:
     template <bool NoneIsLeaf>
@@ -108,12 +109,13 @@ class PyTreeTypeRegistry {
                         const std::pair<std::string, py::handle> &b) const;
     };
 
-    absl::flat_hash_map<py::object, std::unique_ptr<Registration>, TypeHash, TypeEq> registrations;
+    absl::flat_hash_map<py::object, std::unique_ptr<Registration>, TypeHash, TypeEq>
+        m_registrations;
     absl::flat_hash_map<std::pair<std::string, py::object>,
                         std::unique_ptr<Registration>,
                         NamedTypeHash,
                         NamedTypeEq>
-        namespaced_registrations;
+        m_named_registrations;
 };
 
 }  // namespace optree
