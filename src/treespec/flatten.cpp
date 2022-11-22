@@ -48,13 +48,13 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 child, leaves, depth + 1, leaf_predicate, registry_namespace);
         };
         switch (node.kind) {
-            case PyTreeKind::None:
+            case PyTreeKind::NONE:
                 if (!NoneIsLeaf) break;
-            case PyTreeKind::Leaf:
+            case PyTreeKind::LEAF:
                 leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
                 break;
 
-            case PyTreeKind::Tuple: {
+            case PyTreeKind::TUPLE: {
                 node.arity = GET_SIZE<py::tuple>(handle);
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::tuple>(handle, i));
@@ -62,7 +62,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 break;
             }
 
-            case PyTreeKind::List: {
+            case PyTreeKind::LIST: {
                 node.arity = GET_SIZE<py::list>(handle);
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::list>(handle, i));
@@ -70,12 +70,12 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 break;
             }
 
-            case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DICT:
+            case PyTreeKind::ORDERED_DICT:
+            case PyTreeKind::DEFAULT_DICT: {
                 py::dict dict = py::reinterpret_borrow<py::dict>(handle);
                 py::list keys;
-                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
+                if (node.kind == PyTreeKind::ORDERED_DICT) [[unlikely]] {
                     keys = DictKeys(dict);
                 } else [[likely]] {  // NOLINT
                     keys = SortedDictKeys(dict);
@@ -84,7 +84,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                     recurse(dict[key]);
                 }
                 node.arity = GET_SIZE<py::dict>(dict);
-                if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
+                if (node.kind == PyTreeKind::DEFAULT_DICT) [[unlikely]] {
                     node.node_data =
                         py::make_tuple(py::getattr(handle, "default_factory"), std::move(keys));
                 } else [[likely]] {  // NOLINT
@@ -93,7 +93,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 break;
             }
 
-            case PyTreeKind::NamedTuple: {
+            case PyTreeKind::NAMED_TUPLE: {
                 py::tuple tuple = py::reinterpret_borrow<py::tuple>(handle);
                 node.arity = GET_SIZE<py::tuple>(tuple);
                 node.node_data = py::reinterpret_borrow<py::object>(tuple.get_type());
@@ -103,7 +103,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 break;
             }
 
-            case PyTreeKind::Deque: {
+            case PyTreeKind::DEQUE: {
                 py::list list = handle.cast<py::list>();
                 node.arity = GET_SIZE<py::list>(list);
                 node.node_data = py::getattr(handle, "maxlen");
@@ -113,7 +113,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 break;
             }
 
-            case PyTreeKind::Custom: {
+            case PyTreeKind::CUSTOM: {
                 found_custom = true;
                 py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(handle));
                 const size_t num_out = GET_SIZE<py::tuple>(out);
@@ -218,9 +218,9 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             stack.pop_back();
         };
         switch (node.kind) {
-            case PyTreeKind::None:
+            case PyTreeKind::NONE:
                 if (!NoneIsLeaf) break;
-            case PyTreeKind::Leaf: {
+            case PyTreeKind::LEAF: {
                 py::tuple path = py::tuple{depth};
                 for (ssize_t d = 0; d < depth; ++d) {
                     SET_ITEM<py::tuple>(path, d, stack[d]);
@@ -230,7 +230,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 break;
             }
 
-            case PyTreeKind::Tuple: {
+            case PyTreeKind::TUPLE: {
                 node.arity = GET_SIZE<py::tuple>(handle);
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::tuple>(handle, i), py::int_(i));
@@ -238,7 +238,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 break;
             }
 
-            case PyTreeKind::List: {
+            case PyTreeKind::LIST: {
                 node.arity = GET_SIZE<py::list>(handle);
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::list>(handle, i), py::int_(i));
@@ -246,12 +246,12 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 break;
             }
 
-            case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DICT:
+            case PyTreeKind::ORDERED_DICT:
+            case PyTreeKind::DEFAULT_DICT: {
                 py::dict dict = py::reinterpret_borrow<py::dict>(handle);
                 py::list keys;
-                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
+                if (node.kind == PyTreeKind::ORDERED_DICT) [[unlikely]] {
                     keys = DictKeys(dict);
                 } else [[likely]] {  // NOLINT
                     keys = SortedDictKeys(dict);
@@ -260,7 +260,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                     recurse(dict[key], key);
                 }
                 node.arity = GET_SIZE<py::dict>(dict);
-                if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
+                if (node.kind == PyTreeKind::DEFAULT_DICT) [[unlikely]] {
                     node.node_data =
                         py::make_tuple(py::getattr(handle, "default_factory"), std::move(keys));
                 } else [[likely]] {  // NOLINT
@@ -269,7 +269,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 break;
             }
 
-            case PyTreeKind::NamedTuple: {
+            case PyTreeKind::NAMED_TUPLE: {
                 py::tuple tuple = py::reinterpret_borrow<py::tuple>(handle);
                 node.arity = GET_SIZE<py::tuple>(tuple);
                 node.node_data = py::reinterpret_borrow<py::object>(tuple.get_type());
@@ -279,7 +279,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 break;
             }
 
-            case PyTreeKind::Deque: {
+            case PyTreeKind::DEQUE: {
                 py::list list = handle.cast<py::list>();
                 node.arity = GET_SIZE<py::list>(list);
                 node.node_data = py::getattr(handle, "maxlen");
@@ -289,7 +289,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 break;
             }
 
-            case PyTreeKind::Custom: {
+            case PyTreeKind::CUSTOM: {
                 found_custom = true;
                 py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(handle));
                 const size_t num_out = GET_SIZE<py::tuple>(out);
@@ -398,10 +398,10 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
         ++it;
 
         switch (node.kind) {
-            case PyTreeKind::None:
+            case PyTreeKind::NONE:
                 break;
 
-            case PyTreeKind::Leaf:
+            case PyTreeKind::LEAF:
                 if (leaf < 0) [[unlikely]] {
                     throw std::logic_error("Leaf count mismatch.");
                 }
@@ -409,7 +409,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 --leaf;
                 break;
 
-            case PyTreeKind::Tuple: {
+            case PyTreeKind::TUPLE: {
                 AssertExact<py::tuple>(object);
                 py::tuple tuple = py::reinterpret_borrow<py::tuple>(object);
                 if ((ssize_t)GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
@@ -425,7 +425,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 break;
             }
 
-            case PyTreeKind::List: {
+            case PyTreeKind::LIST: {
                 AssertExact<py::list>(object);
                 py::list list = py::reinterpret_borrow<py::list>(object);
                 if ((ssize_t)GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
@@ -441,16 +441,16 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 break;
             }
 
-            case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict: {
-                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
+            case PyTreeKind::DICT:
+            case PyTreeKind::ORDERED_DICT: {
+                if (node.kind == PyTreeKind::ORDERED_DICT) [[unlikely]] {
                     AssertExactOrderedDict(object);
                 } else [[likely]] {  // NOLINT
                     AssertExact<py::dict>(object);
                 }
                 py::dict dict = py::reinterpret_borrow<py::dict>(object);
                 py::list keys;
-                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
+                if (node.kind == PyTreeKind::ORDERED_DICT) [[unlikely]] {
                     keys = DictKeys(dict);
                 } else [[likely]] {  // NOLINT
                     keys = SortedDictKeys(dict);
@@ -467,7 +467,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 break;
             }
 
-            case PyTreeKind::NamedTuple: {
+            case PyTreeKind::NAMED_TUPLE: {
                 AssertExactNamedTuple(object);
                 py::tuple tuple = py::reinterpret_borrow<py::tuple>(object);
                 if ((ssize_t)GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
@@ -489,7 +489,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 break;
             }
 
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DEFAULT_DICT: {
                 AssertExactDefaultDict(object);
                 py::dict dict = py::reinterpret_borrow<py::dict>(object);
                 py::list keys = SortedDictKeys(dict);
@@ -515,7 +515,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 break;
             }
 
-            case PyTreeKind::Deque: {
+            case PyTreeKind::DEQUE: {
                 AssertExactDeque(object);
                 py::list list = py::cast<py::list>(object);
                 if ((ssize_t)GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
@@ -531,7 +531,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 break;
             }
 
-            case PyTreeKind::Custom: {
+            case PyTreeKind::CUSTOM: {
                 const PyTreeTypeRegistry::Registration* registration;
                 if (m_none_is_leaf) [[unlikely]] {
                     registration =
@@ -595,7 +595,7 @@ template <bool NoneIsLeaf>
                                           const std::string& registry_namespace) {
     const PyTreeTypeRegistry::Registration* custom;
     for (const py::handle& h : iterable) {
-        if (GetKind<NoneIsLeaf>(h, &custom, registry_namespace) != PyTreeKind::Leaf) [[unlikely]] {
+        if (GetKind<NoneIsLeaf>(h, &custom, registry_namespace) != PyTreeKind::LEAF) [[unlikely]] {
             return false;
         }
     }

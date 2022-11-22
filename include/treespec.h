@@ -154,7 +154,7 @@ class PyTreeSpec {
 
  private:
     struct Node {
-        PyTreeKind kind = PyTreeKind::Leaf;
+        PyTreeKind kind = PyTreeKind::LEAF;
 
         // Arity for non-Leaf types.
         ssize_t arity = 0;

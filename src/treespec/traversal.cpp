@@ -31,7 +31,7 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
     const bool f_leaf_identity = f_leaf.is_none();
     for (const Node& node : m_traversal) {
         switch (node.kind) {
-            case PyTreeKind::Leaf: {
+            case PyTreeKind::LEAF: {
                 if (it == leaves.end()) [[unlikely]] {
                     throw std::invalid_argument("Too few leaves for PyTreeSpec");
                 }
@@ -42,15 +42,15 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
                 break;
             }
 
-            case PyTreeKind::None:
-            case PyTreeKind::Tuple:
-            case PyTreeKind::NamedTuple:
-            case PyTreeKind::List:
-            case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict:
-            case PyTreeKind::Deque:
-            case PyTreeKind::Custom: {
+            case PyTreeKind::NONE:
+            case PyTreeKind::TUPLE:
+            case PyTreeKind::NAMED_TUPLE:
+            case PyTreeKind::LIST:
+            case PyTreeKind::DICT:
+            case PyTreeKind::ORDERED_DICT:
+            case PyTreeKind::DEFAULT_DICT:
+            case PyTreeKind::DEQUE:
+            case PyTreeKind::CUSTOM: {
                 if ((ssize_t)agenda.size() < node.arity) [[unlikely]] {
                     throw std::logic_error("Too few elements for custom type.");
                 }

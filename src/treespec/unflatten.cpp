@@ -32,9 +32,9 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
             throw std::logic_error("Too few elements for PyTreeSpec node.");
         }
         switch (node.kind) {
-            case PyTreeKind::None:
-            case PyTreeKind::Leaf: {
-                if (node.kind == PyTreeKind::Leaf || m_none_is_leaf) [[likely]] {  // NOLINT
+            case PyTreeKind::NONE:
+            case PyTreeKind::LEAF: {
+                if (node.kind == PyTreeKind::LEAF || m_none_is_leaf) [[likely]] {  // NOLINT
                     if (it == leaves.end()) [[unlikely]] {
                         throw std::invalid_argument(
                             absl::StrFormat("Too few leaves for PyTreeSpec; expected %ld, got %ld.",
@@ -48,14 +48,14 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
                 }
             }
 
-            case PyTreeKind::Tuple:
-            case PyTreeKind::NamedTuple:
-            case PyTreeKind::List:
-            case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict:
-            case PyTreeKind::Deque:
-            case PyTreeKind::Custom: {
+            case PyTreeKind::TUPLE:
+            case PyTreeKind::NAMED_TUPLE:
+            case PyTreeKind::LIST:
+            case PyTreeKind::DICT:
+            case PyTreeKind::ORDERED_DICT:
+            case PyTreeKind::DEFAULT_DICT:
+            case PyTreeKind::DEQUE:
+            case PyTreeKind::CUSTOM: {
                 const ssize_t size = (ssize_t)agenda.size();
                 absl::Span<py::object> span;
                 if (node.arity > 0) [[likely]] {
