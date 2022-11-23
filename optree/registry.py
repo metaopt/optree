@@ -15,9 +15,23 @@
 """OpTree: Optimized PyTree Utilities."""
 
 import functools
+import inspect
 from collections import OrderedDict, defaultdict, deque
 from operator import methodcaller
-from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type
+from threading import Lock
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+    overload,
+)
 
 import optree._C as _C
 from optree.typing import KT, VT, Children, CustomTreeNode, DefaultDict, MetaData
@@ -45,12 +59,28 @@ PyTreeNodeRegistryEntry = NamedTuple(
 )
 
 
+__GLOBAL_NAMESPACE: str = object()  # type: ignore[assignment]
+__REGISTRY_LOCK: Lock = Lock()
+
+
 def register_pytree_node(
     cls: Type[CustomTreeNode[T]],
     flatten_func: Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]],
     unflatten_func: Callable[[MetaData, Children[T]], CustomTreeNode[T]],
+    namespace: str,
 ) -> Type[CustomTreeNode[T]]:
     """Extends the set of types that are considered internal nodes in pytrees.
+
+    The ``namespace`` argument is used to avoid collisions that occur when different libraries
+    register the same Python type with different behaviors. It is recommended to add a unique prefix
+    to the namespace to avoid conflicts with other libraries. Namespaces can also be used to specify
+    the same class in different namespaces for different use cases.
+
+    .. warning::
+
+        For safety reasons, a ``namespace`` must be specified while registering a custom type. It is
+        used to isolate the behavior of flattening and unflattening a pytree node type. This is to
+        prevent accidental collisions between different libraries that may register the same type.
 
     Args:
         cls: A Python type to treat as an internal pytree node.
@@ -63,20 +93,146 @@ def register_pytree_node(
         unflatten_func: A function taking two arguments: the auxiliary data that was returned by
             ``flatten_func`` and stored in the treespec, and the unflattened children. The function
             should return an instance of ``cls``.
+        namespace: A non-empty string that uniquely identifies the namespace of the type registry.
+            This is used to isolate the registry from other modules that might register a different
+            custom behavior for the same type.
+
+    Example::
+
+        >>> # Registry a Python type with lambda functions
+        >>> register_pytree_node(
+        ...     set,
+        ...     lambda s: (sorted(s), None, None),
+        ...     lambda _, children: set(children),
+        ...     namespace='set',
+        ... )
+
+        >>> # Register a Python type into a namespace
+        >>> import torch
+        >>> register_pytree_node(
+        ...     torch.Tensor,
+        ...     flatten_func=lambda tensor: (
+        ...         (tensor.cpu().numpy(),),
+        ...         dict(dtype=tensor.dtype, device=tensor.device, requires_grad=tensor.requires_grad),
+        ...     ),
+        ...     unflatten_func=lambda metadata, children: torch.tensor(children[0], **metadata),
+        ...     namespace='torch2numpy',
+        ... )
+        <class 'torch.Tensor'>
+
+        >>> tree = {'weight': torch.ones(size=(1, 2)).cuda(), 'bias': torch.zeros(size=(2,))}
+        >>> tree
+        {'weight': tensor([[1., 1.]], device='cuda:0'), 'bias': tensor([0., 0.])}
+
+        >>> # Flatten without specifying the namespace
+        >>> tree_flatten(tree)  # `torch.Tensor`s are leaf nodes
+        ([tensor([0., 0.]), tensor([[1., 1.]], device='cuda:0')], PyTreeSpec({'bias': *, 'weight': *}))
+
+        >>> # Flatten with the namespace
+        >>> optree.tree_flatten(tree, namespace='torch2numpy')
+        (
+            [array([0., 0.], dtype=float32), array([[1., 1.]], dtype=float32)],
+            PyTreeSpec(
+                {
+                    'bias': CustomTreeNode(Tensor[{'dtype': torch.float32, 'device': device(type='cpu'), 'requires_grad': False}], [*]),
+                    'weight': CustomTreeNode(Tensor[{'dtype': torch.float32, 'device': device(type='cuda', index=0), 'requires_grad': False}], [*])
+                },
+                namespace='torch2numpy'
+            )
+        )
+
+        >>> # Register the same type with a different namespace for different behaviors
+        >>> def tensor2flatparam(tensor):
+        ...     return [torch.nn.Parameter(tensor.reshape(-1))], tensor.shape, None
+        ...
+        ... def flatparam2tensor(metadata, children):
+        ...     return children[0].reshape(metadata)
+        ...
+        ... register_pytree_node(
+        ...     torch.Tensor,
+        ...     flatten_func=tensor2flatparam,
+        ...     unflatten_func=flatparam2tensor,
+        ...     namespace='tensor2flatparam',
+        ... )
+        <class 'torch.Tensor'>
+
+        >>> # Flatten with the new namespace
+        >>> optree.tree_flatten(tree, namespace='tensor2flatparam')
+        (
+            [
+                Parameter containing: tensor([0., 0.], requires_grad=True),
+                Parameter containing: tensor([1., 1.], device='cuda:0', requires_grad=True)
+            ],
+            PyTreeSpec(
+                {
+                    'bias': CustomTreeNode(Tensor[torch.Size([2])], [*]),
+                    'weight': CustomTreeNode(Tensor[torch.Size([1, 2])], [*])
+                },
+                namespace='tensor2flatparam'
+            )
+        )
     """
-    _C.register_node(cls, flatten_func, unflatten_func)
-    CustomTreeNode.register(cls)  # pylint: disable=no-member
-    _nodetype_registry[cls] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
+    if not inspect.isclass(cls):
+        raise TypeError(f'Expected a class, got {cls}.')
+    if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
+        raise TypeError(f'The namespace must be a string, got {namespace}.')
+    if namespace == '':
+        raise ValueError('The namespace cannot be an empty string.')
+
+    registration_key: Union[Type, Tuple[str, Type]]
+    if namespace is __GLOBAL_NAMESPACE:
+        registration_key = cls
+        namespace = ''
+    else:
+        registration_key = (namespace, cls)
+
+    with __REGISTRY_LOCK:
+        _C.register_node(cls, flatten_func, unflatten_func, namespace)
+        CustomTreeNode.register(cls)  # pylint: disable=no-member
+        _nodetype_registry[registration_key] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
     return cls
 
 
-def register_pytree_node_class(cls: Type[CustomTreeNode[T]]) -> Type[CustomTreeNode[T]]:
+@overload
+def register_pytree_node_class(
+    cls: Optional[str] = None,
+    *,
+    namespace: Optional[str] = None,
+) -> Callable[[Type[CustomTreeNode[T]]], Type[CustomTreeNode[T]]]:  # pragma: no cover
+    ...
+
+
+@overload
+def register_pytree_node_class(
+    cls: Type[CustomTreeNode[T]],
+    *,
+    namespace: str,
+) -> Type[CustomTreeNode[T]]:  # pragma: no cover
+    ...
+
+
+def register_pytree_node_class(
+    cls: Optional[Union[Type[CustomTreeNode[T]], str]] = None,
+    *,
+    namespace: Optional[str] = None,
+) -> Union[Type[CustomTreeNode[T]], Callable[[Type[CustomTreeNode[T]]], Type[CustomTreeNode[T]]]]:
     """Extends the set of types that are considered internal nodes in pytrees.
+
+    The ``namespace`` argument is used to avoid collisions that occur when different libraries
+    register the same Python type with different behaviors. It is recommended to add a unique prefix
+    to the namespace to avoid conflicts with other libraries. Namespaces can also be used to specify
+    the same class in different namespaces for different use cases.
+
+    .. warning::
+
+        For safety reasons, a ``namespace`` must be specified while registering a custom type. It is
+        used to isolate the behavior of flattening and unflattening a pytree node type. This is to
+        prevent accidental collisions between different libraries that may register the same type.
 
     This function is a thin wrapper around :func:`register_pytree_node`, and provides a
     class-oriented interface::
 
-        @register_pytree_node_class
+        @register_pytree_node_class(namespace='foo')
         class Special:
             def __init__(self, x, y):
                 self.x = x
@@ -88,8 +244,39 @@ def register_pytree_node_class(cls: Type[CustomTreeNode[T]]) -> Type[CustomTreeN
             @classmethod
             def tree_unflatten(cls, metadata, children):
                 return cls(*children)
+
+        @register_pytree_node_class('mylist')
+        class MyList(UserList):
+            def __init__(self, x, y):
+                self.x = x
+                self.y = y
+
+            def tree_flatten(self):
+                return self.data, None, None
+
+            @classmethod
+            def tree_unflatten(cls, metadata, children):
+                return cls(*children)
     """
-    register_pytree_node(cls, methodcaller('tree_flatten'), cls.tree_unflatten)
+    if cls is __GLOBAL_NAMESPACE or isinstance(cls, str):
+        if namespace is not None:
+            raise ValueError('Cannot specify `namespace` when the first argument is a string.')
+        if cls == '':
+            raise ValueError('The namespace cannot be an empty string.')
+        return functools.partial(register_pytree_node_class, namespace=cls)  # type: ignore[return-value]
+
+    if namespace is None:
+        raise ValueError('Must specify `namespace` when the first argument is a class.')
+    if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
+        raise TypeError(f'The namespace must be a string, got {namespace}')
+    if namespace == '':
+        raise ValueError('The namespace cannot be an empty string.')
+
+    if cls is None:
+        return functools.partial(register_pytree_node_class, namespace=namespace)  # type: ignore[return-value]
+    if not inspect.isclass(cls):
+        raise TypeError(f'Expected a class, got {cls}.')
+    register_pytree_node(cls, methodcaller('tree_flatten'), cls.tree_unflatten, namespace)
     return cls
 
 
@@ -151,7 +338,7 @@ def _defaultdict_flatten(
 
 
 # pylint: disable=all
-_nodetype_registry: Dict[Type, PyTreeNodeRegistryEntry] = {
+_nodetype_registry: Dict[Union[Type, Tuple[str, Type]], PyTreeNodeRegistryEntry] = {
     type(None): PyTreeNodeRegistryEntry(
         lambda n: ((), None),
         lambda _, n: None,  # type: ignore[arg-type,return-value]
@@ -184,8 +371,17 @@ _nodetype_registry: Dict[Type, PyTreeNodeRegistryEntry] = {
 # pylint: enable=all
 
 
-# pylint: disable-next=line-too-long
-register_pytree_node.get: Callable[[Type[CustomTreeNode[T]]], PyTreeNodeRegistryEntry] = _nodetype_registry.get  # type: ignore[attr-defined,misc]
+def _pytree_node_registry_get(
+    type: Type, *, namespace: str = __GLOBAL_NAMESPACE
+) -> Optional[PyTreeNodeRegistryEntry]:
+    entry: Optional[PyTreeNodeRegistryEntry] = _nodetype_registry.get(type)
+    if entry is not None or namespace is __GLOBAL_NAMESPACE or namespace == '':
+        return entry
+    return _nodetype_registry.get((namespace, type))
+
+
+register_pytree_node.get = _pytree_node_registry_get  # type: ignore[attr-defined]
+del _pytree_node_registry_get
 
 
 class _HashablePartialShim:
@@ -210,7 +406,7 @@ class _HashablePartialShim:
         return self.partial_func == other
 
 
-@register_pytree_node_class
+@register_pytree_node_class(namespace=__GLOBAL_NAMESPACE)
 class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-few-public-methods
     """A version of :func:`functools.partial` that works in pytrees.
 

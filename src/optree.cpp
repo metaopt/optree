@@ -28,6 +28,7 @@ namespace optree {
 
 void BuildModule(py::module& mod) {  // NOLINT
     mod.doc() = "Optimized PyTree Utilities.";
+    mod.attr("MAX_RECURSION_DEPTH") = MAX_RECURSION_DEPTH;
 
     mod.def("register_node",
             &PyTreeTypeRegistry::Register,
@@ -35,25 +36,29 @@ void BuildModule(py::module& mod) {  // NOLINT
             "in pytrees.",
             py::arg("cls"),
             py::arg("to_iterable"),
-            py::arg("from_iterable"));
+            py::arg("from_iterable"),
+            py::arg("namespace") = "");
 
     mod.def("flatten",
             &PyTreeSpec::Flatten,
             "Flattens a pytree.",
             py::arg("tree"),
             py::arg("leaf_predicate") = std::nullopt,
-            py::arg("none_is_leaf") = false);
+            py::arg("none_is_leaf") = false,
+            py::arg("namespace") = "");
     mod.def("flatten_with_path",
             &PyTreeSpec::FlattenWithPath,
             "Flattens a pytree and additionally records the paths.",
             py::arg("tree"),
             py::arg("leaf_predicate") = std::nullopt,
-            py::arg("none_is_leaf") = false);
+            py::arg("none_is_leaf") = false,
+            py::arg("namespace") = "");
     mod.def("all_leaves",
             &PyTreeSpec::AllLeaves,
             "Tests whether all elements in the given iterable are all leaves.",
             py::arg("iterable"),
-            py::arg("none_is_leaf") = false);
+            py::arg("none_is_leaf") = false,
+            py::arg("namespace") = "");
     mod.def("leaf",
             &PyTreeSpec::Leaf,
             "Makes a treespec representing a leaf node.",
@@ -80,6 +85,10 @@ void BuildModule(py::module& mod) {  // NOLINT
             &PyTreeSpec::get_none_is_leaf,
             "Whether to treat None as a leaf. If false, None is a non-leaf node with arity 0. Thus "
             "None is contained in the treespec rather than in the leaves list.")
+        .def_property_readonly(
+            "namespace",
+            &PyTreeSpec::get_namespace,
+            "The registry namespace used to resolve the custom pytree node types.")
         .def("unflatten",
              static_cast<py::object (PyTreeSpec::*)(const py::iterable&) const>(
                  &PyTreeSpec::Unflatten),

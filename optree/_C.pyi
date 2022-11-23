@@ -21,19 +21,25 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, List, Optional, Seque
 if TYPE_CHECKING:
     from optree.typing import Children, CustomTreeNode, MetaData, PyTree, T, U
 
-version: int
+MAX_RECURSION_DEPTH: int
 
 def flatten(
     tree: PyTree[T],
     leaf_predicate: Optional[Callable[[T], bool]] = None,
     node_is_leaf: bool = False,
+    namespace: str = '',
 ) -> Tuple[List[T], 'PyTreeSpec']: ...
 def flatten_with_path(
     tree: PyTree[T],
     leaf_predicate: Optional[Callable[[T], bool]] = None,
     node_is_leaf: bool = False,
+    namespace: str = '',
 ) -> Tuple[List[Tuple[Any, ...]], List[T], 'PyTreeSpec']: ...
-def all_leaves(iterable: Iterable[T], node_is_leaf: bool = False) -> bool: ...
+def all_leaves(
+    iterable: Iterable[T],
+    node_is_leaf: bool = False,
+    namespace: str = '',
+) -> bool: ...
 def leaf(node_is_leaf: bool = False) -> 'PyTreeSpec': ...
 def none(node_is_leaf: bool = False) -> 'PyTreeSpec': ...
 def tuple(treespecs: Sequence['PyTreeSpec'], node_is_leaf: bool = False) -> 'PyTreeSpec': ...
@@ -42,6 +48,7 @@ class PyTreeSpec:
     num_nodes: int
     num_leaves: int
     none_is_leaf: bool
+    namespace: str
     def unflatten(self, leaves: Iterable[T]) -> PyTree[T]: ...
     def flatten_up_to(self, full_tree: PyTree[T]) -> List[PyTree[T]]: ...
     def compose(self, inner_treespec: 'PyTreeSpec') -> 'PyTreeSpec': ...
@@ -61,4 +68,5 @@ def register_node(
     cls: Type[CustomTreeNode[T]],
     to_iterable: Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]],
     from_iterable: Callable[[MetaData, Children[T]], CustomTreeNode[T]],
+    namespace: str,
 ) -> None: ...

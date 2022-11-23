@@ -25,22 +25,24 @@ limitations under the License.
 #include <pybind11/pybind11.h>
 
 #include <memory>
+#include <string>
+#include <utility>
 
 #include "include/utils.h"
 
 namespace optree {
 
 enum class PyTreeKind {
-    Leaf,         // An opaque leaf node
-    None,         // None
-    Tuple,        // A tuple
-    List,         // A list
-    Dict,         // A dict
-    NamedTuple,   // A collections.namedtuple
-    OrderedDict,  // A collections.OrderedDict
-    DefaultDict,  // A collections.defaultdict
-    Deque,        // A collections.deque
-    Custom,       // A custom type
+    CUSTOM = 0,    // A custom type
+    LEAF,          // An opaque leaf node
+    NONE,          // None
+    TUPLE,         // A tuple
+    LIST,          // A list
+    DICT,          // A dict
+    NAMED_TUPLE,   // A collections.namedtuple
+    ORDERED_DICT,  // A collections.OrderedDict
+    DEFAULT_DICT,  // A collections.defaultdict
+    DEQUE,         // A collections.deque
 };
 
 // Registry of custom node types.
@@ -58,15 +60,17 @@ class PyTreeTypeRegistry {
         py::function from_iterable;
     };
 
-    // Registers a new custom type. Objects of `type` will be treated as container node types in
+    // Registers a new custom type. Objects of `cls` will be treated as container node types in
     // PyTrees.
-    static void Register(const py::object &type,
+    static void Register(const py::object &cls,
                          const py::function &to_iterable,
-                         const py::function &from_iterable);
+                         const py::function &from_iterable,
+                         const std::string &registry_namespace = "");
 
     // Finds the custom type registration for `type`. Returns nullptr if none exists.
     template <bool NoneIsLeaf>
-    static const Registration *Lookup(const py::handle &type);
+    static const Registration *Lookup(const py::handle &type,
+                                      const std::string &registry_namespace);
 
  private:
     template <bool NoneIsLeaf>
@@ -90,7 +94,28 @@ class PyTreeTypeRegistry {
         bool operator()(const py::object &a, const py::handle &b) const;
     };
 
-    absl::flat_hash_map<py::object, std::unique_ptr<Registration>, TypeHash, TypeEq> registrations;
+    class NamedTypeHash {
+     public:
+        using is_transparent = void;
+        size_t operator()(const std::pair<std::string, py::object> &p) const;
+        size_t operator()(const std::pair<std::string, py::handle> &p) const;
+    };
+    class NamedTypeEq {
+     public:
+        using is_transparent = void;
+        bool operator()(const std::pair<std::string, py::object> &a,
+                        const std::pair<std::string, py::object> &b) const;
+        bool operator()(const std::pair<std::string, py::object> &a,
+                        const std::pair<std::string, py::handle> &b) const;
+    };
+
+    absl::flat_hash_map<py::object, std::unique_ptr<Registration>, TypeHash, TypeEq>
+        m_registrations;
+    absl::flat_hash_map<std::pair<std::string, py::object>,
+                        std::unique_ptr<Registration>,
+                        NamedTypeHash,
+                        NamedTypeEq>
+        m_named_registrations;
 };
 
 }  // namespace optree

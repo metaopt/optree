@@ -32,18 +32,18 @@ template <>
             auto registration = std::make_unique<Registration>();
             registration->kind = kind;
             registration->type = type;
-            CHECK(registry.registrations.emplace(type, std::move(registration)).second);
+            CHECK(registry.m_registrations.emplace(type, std::move(registration)).second);
         };
-        add_builtin_type(Py_TYPE(Py_None), PyTreeKind::None);
-        add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
-        add_builtin_type(&PyList_Type, PyTreeKind::List);
-        add_builtin_type(&PyDict_Type, PyTreeKind::Dict);
+        add_builtin_type(Py_TYPE(Py_None), PyTreeKind::NONE);
+        add_builtin_type(&PyTuple_Type, PyTreeKind::TUPLE);
+        add_builtin_type(&PyList_Type, PyTreeKind::LIST);
+        add_builtin_type(&PyDict_Type, PyTreeKind::DICT);
         add_builtin_type(reinterpret_cast<PyTypeObject*>(PyOrderedDictTypeObject.ptr()),
-                         PyTreeKind::OrderedDict);
+                         PyTreeKind::ORDERED_DICT);
         add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDefaultDictTypeObject.ptr()),
-                         PyTreeKind::DefaultDict);
+                         PyTreeKind::DEFAULT_DICT);
         add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDequeTypeObject.ptr()),
-                         PyTreeKind::Deque);
+                         PyTreeKind::DEQUE);
         return registry;
     }());
     return &registry;
@@ -59,17 +59,17 @@ template <>
             auto registration = std::make_unique<Registration>();
             registration->kind = kind;
             registration->type = type;
-            CHECK(registry.registrations.emplace(type, std::move(registration)).second);
+            CHECK(registry.m_registrations.emplace(type, std::move(registration)).second);
         };
-        add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
-        add_builtin_type(&PyList_Type, PyTreeKind::List);
-        add_builtin_type(&PyDict_Type, PyTreeKind::Dict);
+        add_builtin_type(&PyTuple_Type, PyTreeKind::TUPLE);
+        add_builtin_type(&PyList_Type, PyTreeKind::LIST);
+        add_builtin_type(&PyDict_Type, PyTreeKind::DICT);
         add_builtin_type(reinterpret_cast<PyTypeObject*>(PyOrderedDictTypeObject.ptr()),
-                         PyTreeKind::OrderedDict);
+                         PyTreeKind::ORDERED_DICT);
         add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDefaultDictTypeObject.ptr()),
-                         PyTreeKind::DefaultDict);
+                         PyTreeKind::DEFAULT_DICT);
         add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDequeTypeObject.ptr()),
-                         PyTreeKind::Deque);
+                         PyTreeKind::DEQUE);
         return registry;
     }());
     return &registry;
@@ -80,47 +80,97 @@ template <bool NoneIsLeaf>
     return SingletonHelper<NoneIsLeaf>::get();
 }
 
-/*static*/ void PyTreeTypeRegistry::Register(const py::object& type,
+/*static*/ void PyTreeTypeRegistry::Register(const py::object& cls,
                                              const py::function& to_iterable,
-                                             const py::function& from_iterable) {
+                                             const py::function& from_iterable,
+                                             const std::string& registry_namespace) {
     {
         PyTreeTypeRegistry* registry = Singleton<NONE_IS_NODE>();
         auto registration = std::make_unique<Registration>();
-        registration->kind = PyTreeKind::Custom;
-        registration->type = type;
-        registration->to_iterable = std::move(to_iterable);
-        registration->from_iterable = std::move(from_iterable);
-        if (!registry->registrations.emplace(type, std::move(registration)).second) [[unlikely]] {
-            throw std::invalid_argument(absl::StrFormat(
-                "Duplicate custom PyTree type registration for %s.", py::repr(type)));
+        registration->kind = PyTreeKind::CUSTOM;
+        registration->type = py::reinterpret_borrow<py::object>(cls);
+        registration->to_iterable = py::reinterpret_borrow<py::function>(to_iterable);
+        registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
+        if (registry_namespace.empty()) [[unlikely]] {  // NOLINT
+            if (!registry->m_registrations.emplace(cls, std::move(registration)).second)
+                [[unlikely]] {
+                throw std::invalid_argument(
+                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
+                                    py::repr(cls)));
+            }
+        } else [[likely]] {  // NOLINT
+            if (registry->m_registrations.find(cls) != registry->m_registrations.end())
+                [[unlikely]] {
+                throw std::invalid_argument(
+                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
+                                    py::repr(cls)));
+            }
+            if (!registry->m_named_registrations
+                     .emplace(std::make_pair(registry_namespace, cls), std::move(registration))
+                     .second) [[unlikely]] {
+                throw std::invalid_argument(
+                    absl::StrFormat("PyTree type %s is already registered in namespace %s.",
+                                    py::repr(cls),
+                                    py::repr(py::str(registry_namespace))));
+            }
         }
     }
     {
         PyTreeTypeRegistry* registry = Singleton<NONE_IS_LEAF>();
         auto registration = std::make_unique<Registration>();
-        registration->kind = PyTreeKind::Custom;
-        registration->type = type;
-        registration->to_iterable = std::move(to_iterable);
-        registration->from_iterable = std::move(from_iterable);
-        if (!registry->registrations.emplace(type, std::move(registration)).second) [[unlikely]] {
-            throw std::invalid_argument(absl::StrFormat(
-                "Duplicate custom PyTree type registration for %s.", py::repr(type)));
+        registration->kind = PyTreeKind::CUSTOM;
+        registration->type = py::reinterpret_borrow<py::object>(cls);
+        registration->to_iterable = py::reinterpret_borrow<py::function>(to_iterable);
+        registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
+        if (registry_namespace.empty()) [[unlikely]] {  // NOLINT
+            if (!registry->m_registrations.emplace(cls, std::move(registration)).second)
+                [[unlikely]] {
+                throw std::invalid_argument(
+                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
+                                    py::repr(cls)));
+            }
+        } else [[likely]] {  // NOLINT
+            if (registry->m_registrations.find(cls) != registry->m_registrations.end())
+                [[unlikely]] {
+                throw std::invalid_argument(
+                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
+                                    py::repr(cls)));
+            }
+            if (!registry->m_named_registrations
+                     .emplace(std::make_pair(registry_namespace, cls), std::move(registration))
+                     .second) [[unlikely]] {
+                throw std::invalid_argument(
+                    absl::StrFormat("PyTree type %s is already registered in namespace %s.",
+                                    py::repr(cls),
+                                    py::repr(py::str(registry_namespace))));
+            }
         }
     }
+    cls.inc_ref();
+    to_iterable.inc_ref();
+    from_iterable.inc_ref();
 }
 
 template <bool NoneIsLeaf>
 /*static*/ const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup(
-    const py::handle& type) {
+    const py::handle& type, const std::string& registry_namespace) {
     PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
-    auto it = registry->registrations.find(type);
-    return it == registry->registrations.end() ? nullptr : it->second.get();
+    auto it = registry->m_registrations.find(type);
+    if (it != registry->m_registrations.end()) [[likely]] {
+        return it->second.get();
+    }
+    if (registry_namespace.empty()) [[likely]] {
+        return nullptr;
+    } else [[unlikely]] {  // NOLINT
+        auto it = registry->m_named_registrations.find(std::make_pair(registry_namespace, type));
+        return it != registry->m_named_registrations.end() ? it->second.get() : nullptr;
+    }
 }
 
 template const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(
-    const py::handle& type);
+    const py::handle&, const std::string&);
 template const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(
-    const py::handle& type);
+    const py::handle&, const std::string&);
 
 size_t PyTreeTypeRegistry::TypeHash::operator()(const py::object& t) const {
     return absl::HashOf(t.ptr());
@@ -134,6 +184,26 @@ bool PyTreeTypeRegistry::TypeEq::operator()(const py::object& a, const py::objec
 }
 bool PyTreeTypeRegistry::TypeEq::operator()(const py::object& a, const py::handle& b) const {
     return a.ptr() == b.ptr();
+}
+
+size_t PyTreeTypeRegistry::NamedTypeHash::operator()(
+    const std::pair<std::string, py::object>& p) const {
+    return absl::HashOf(std::make_pair(p.first, p.second.ptr()));
+}
+size_t PyTreeTypeRegistry::NamedTypeHash::operator()(
+    const std::pair<std::string, py::handle>& p) const {
+    return absl::HashOf(std::make_pair(p.first, p.second.ptr()));
+}
+
+bool PyTreeTypeRegistry::NamedTypeEq::operator()(
+    const std::pair<std::string, py::object>& a,
+    const std::pair<std::string, py::object>& b) const {
+    return a.first == b.first && a.second.ptr() == b.second.ptr();
+}
+bool PyTreeTypeRegistry::NamedTypeEq::operator()(
+    const std::pair<std::string, py::object>& a,
+    const std::pair<std::string, py::handle>& b) const {
+    return a.first == b.first && a.second.ptr() == b.second.ptr();
 }
 
 }  // namespace optree
