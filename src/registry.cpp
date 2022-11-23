@@ -34,16 +34,16 @@ template <>
             registration->type = type;
             CHECK(registry.m_registrations.emplace(type, std::move(registration)).second);
         };
-        add_builtin_type(Py_TYPE(Py_None), PyTreeKind::NONE);
-        add_builtin_type(&PyTuple_Type, PyTreeKind::TUPLE);
-        add_builtin_type(&PyList_Type, PyTreeKind::LIST);
-        add_builtin_type(&PyDict_Type, PyTreeKind::DICT);
+        add_builtin_type(Py_TYPE(Py_None), PyTreeKind::None);
+        add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
+        add_builtin_type(&PyList_Type, PyTreeKind::List);
+        add_builtin_type(&PyDict_Type, PyTreeKind::Dict);
         add_builtin_type(reinterpret_cast<PyTypeObject*>(PyOrderedDictTypeObject.ptr()),
-                         PyTreeKind::ORDERED_DICT);
+                         PyTreeKind::OrderedDict);
         add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDefaultDictTypeObject.ptr()),
-                         PyTreeKind::DEFAULT_DICT);
+                         PyTreeKind::DefaultDict);
         add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDequeTypeObject.ptr()),
-                         PyTreeKind::DEQUE);
+                         PyTreeKind::Deque);
         return registry;
     }());
     return &registry;
@@ -61,15 +61,15 @@ template <>
             registration->type = type;
             CHECK(registry.m_registrations.emplace(type, std::move(registration)).second);
         };
-        add_builtin_type(&PyTuple_Type, PyTreeKind::TUPLE);
-        add_builtin_type(&PyList_Type, PyTreeKind::LIST);
-        add_builtin_type(&PyDict_Type, PyTreeKind::DICT);
+        add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
+        add_builtin_type(&PyList_Type, PyTreeKind::List);
+        add_builtin_type(&PyDict_Type, PyTreeKind::Dict);
         add_builtin_type(reinterpret_cast<PyTypeObject*>(PyOrderedDictTypeObject.ptr()),
-                         PyTreeKind::ORDERED_DICT);
+                         PyTreeKind::OrderedDict);
         add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDefaultDictTypeObject.ptr()),
-                         PyTreeKind::DEFAULT_DICT);
+                         PyTreeKind::DefaultDict);
         add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDequeTypeObject.ptr()),
-                         PyTreeKind::DEQUE);
+                         PyTreeKind::Deque);
         return registry;
     }());
     return &registry;
@@ -87,7 +87,7 @@ template <bool NoneIsLeaf>
     {
         PyTreeTypeRegistry* registry = Singleton<NONE_IS_NODE>();
         auto registration = std::make_unique<Registration>();
-        registration->kind = PyTreeKind::CUSTOM;
+        registration->kind = PyTreeKind::Custom;
         registration->type = py::reinterpret_borrow<py::object>(cls);
         registration->to_iterable = py::reinterpret_borrow<py::function>(to_iterable);
         registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
@@ -118,7 +118,7 @@ template <bool NoneIsLeaf>
     {
         PyTreeTypeRegistry* registry = Singleton<NONE_IS_LEAF>();
         auto registration = std::make_unique<Registration>();
-        registration->kind = PyTreeKind::CUSTOM;
+        registration->kind = PyTreeKind::Custom;
         registration->type = py::reinterpret_borrow<py::object>(cls);
         registration->to_iterable = py::reinterpret_borrow<py::function>(to_iterable);
         registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
