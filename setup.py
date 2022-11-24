@@ -91,18 +91,22 @@ class cmake_build_ext(build_ext):
 
 
 VERSION_CONTENT = None
-if not version.__release__:
-    VERSION_CONTENT = VERSION_FILE.read_text(encoding='UTF-8')
-    VERSION_FILE.write_text(
-        data=re.sub(
-            r"""__version__\s*=\s*('[^']+'|"[^"]+")""",
-            f"__version__ = '{version.__version__}'",
-            string=VERSION_CONTENT,
-        ),
-        encoding='UTF-8',
-    )
 
 try:
+    if not version.__release__:
+        try:
+            VERSION_CONTENT = VERSION_FILE.read_text(encoding='UTF-8')
+            VERSION_FILE.write_text(
+                data=re.sub(
+                    r"""__version__\s*=\s*('[^']+'|"[^"]+")""",
+                    r"__version__ = '{}'".format(version.__version__),
+                    string=VERSION_CONTENT,
+                ),
+                encoding='UTF-8',
+            )
+        except OSError:
+            VERSION_CONTENT = None
+
     setup(
         name='optree',
         version=version.__version__,
