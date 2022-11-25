@@ -53,7 +53,7 @@ using ssize_t = py::ssize_t;
 
 inline py::module_* ImportCollections() {
     static auto collectionsUptr = std::make_unique<py::module_>(
-        py::reinterpret_borrow<py::module_>(py::module_::import("collections")));
+        py::reinterpret_borrow<py::module_>(py::module_::import("collections").release()));
     return collectionsUptr.get();
 }
 
