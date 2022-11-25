@@ -46,19 +46,34 @@ namespace py = pybind11;
 using size_t = py::size_t;
 using ssize_t = py::ssize_t;
 
-#ifdef _WIN32  // Windows
-const py::object& ImportOrderedDict();
-const py::object& ImportDefaultDict();
-const py::object& ImportDeque();
-#define PyOrderedDictTypeObject ImportOrderedDict()
-#define PyDefaultDictTypeObject ImportDefaultDict()
-#define PyDequeTypeObject ImportDeque()
-#else  // UNIX
-static const py::module_ PyCollectionsModule = py::module_::import("collections");
-static const py::object PyOrderedDictTypeObject = py::getattr(PyCollectionsModule, "OrderedDict");
-static const py::object PyDefaultDictTypeObject = py::getattr(PyCollectionsModule, "defaultdict");
-static const py::object PyDequeTypeObject = py::getattr(PyCollectionsModule, "deque");
-#endif
+#define PyCollectionsModule (*ImportCollections())
+#define PyOrderedDictTypeObject (*ImportOrderedDict())
+#define PyDefaultDictTypeObject (*ImportDefaultDict())
+#define PyDequeTypeObject (*ImportDeque())
+
+inline py::module_* ImportCollections() {
+    static auto collectionsUptr = std::make_unique<py::module_>(
+        py::reinterpret_borrow<py::module_>(py::module_::import("collections")));
+    return collectionsUptr.get();
+}
+
+inline py::object* ImportOrderedDict() {
+    static auto OrderedDictUptr = std::make_unique<py::object>(
+        py::reinterpret_borrow<py::object>(py::getattr(PyCollectionsModule, "OrderedDict")));
+    return OrderedDictUptr.get();
+}
+
+inline py::object* ImportDefaultDict() {
+    static auto defaultdictUptr = std::make_unique<py::object>(
+        py::reinterpret_borrow<py::object>(py::getattr(PyCollectionsModule, "defaultdict")));
+    return defaultdictUptr.get();
+}
+
+inline py::object* ImportDeque() {
+    static auto dequeUptr = std::make_unique<py::object>(
+        py::reinterpret_borrow<py::object>(py::getattr(PyCollectionsModule, "deque")));
+    return dequeUptr.get();
+}
 
 template <typename T>
 inline std::vector<T> reserved_vector(const size_t& size) {
