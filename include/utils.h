@@ -46,33 +46,34 @@ namespace py = pybind11;
 using size_t = py::size_t;
 using ssize_t = py::ssize_t;
 
-#define PyCollectionsModule (*ImportCollections())
-#define PyOrderedDictTypeObject (*ImportOrderedDict())
-#define PyDefaultDictTypeObject (*ImportDefaultDict())
-#define PyDequeTypeObject (*ImportDeque())
+#define PyCollectionsModule (ImportCollections())
+#define PyOrderedDictTypeObject (ImportOrderedDict())
+#define PyDefaultDictTypeObject (ImportDefaultDict())
+#define PyDequeTypeObject (ImportDeque())
 
-inline py::module_* ImportCollections() {
-    static auto collectionsUptr = std::make_unique<py::module_>(
-        py::reinterpret_borrow<py::module_>(py::module_::import("collections").release()));
-    return collectionsUptr.get();
+inline const py::module_& ImportCollections() {
+    // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
+    // garbage collection
+    static const py::module_* ptr = new py::module_{py::module_::import("collections")};
+    return *ptr;
 }
-
-inline py::object* ImportOrderedDict() {
-    static auto OrderedDictUptr = std::make_unique<py::object>(
-        py::reinterpret_borrow<py::object>(py::getattr(PyCollectionsModule, "OrderedDict")));
-    return OrderedDictUptr.get();
+inline const py::object& ImportOrderedDict() {
+    // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
+    // garbage collection
+    static const py::object* ptr = new py::object{py::getattr(PyCollectionsModule, "OrderedDict")};
+    return *ptr;
 }
-
-inline py::object* ImportDefaultDict() {
-    static auto defaultdictUptr = std::make_unique<py::object>(
-        py::reinterpret_borrow<py::object>(py::getattr(PyCollectionsModule, "defaultdict")));
-    return defaultdictUptr.get();
+inline const py::object& ImportDefaultDict() {
+    // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
+    // garbage collection
+    static const py::object* ptr = new py::object{py::getattr(PyCollectionsModule, "defaultdict")};
+    return *ptr;
 }
-
-inline py::object* ImportDeque() {
-    static auto dequeUptr = std::make_unique<py::object>(
-        py::reinterpret_borrow<py::object>(py::getattr(PyCollectionsModule, "deque")));
-    return dequeUptr.get();
+inline const py::object& ImportDeque() {
+    // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
+    // garbage collection
+    static const py::object* ptr = new py::object{py::getattr(PyCollectionsModule, "deque")};
+    return *ptr;
 }
 
 template <typename T>
