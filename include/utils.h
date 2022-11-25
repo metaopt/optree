@@ -161,8 +161,8 @@ inline ssize_t GET_SIZE<py::dict>(const py::handle& sized) {
 }
 #else
 template <>
-inline size_t GET_SIZE<py::dict>(const py::handle& dict) {
-    return PyDict_Size(dict.ptr());
+inline ssize_t GET_SIZE<py::dict>(const py::handle& sized) {
+    return PyDict_Size(sized.ptr());
 }
 #endif
 
