@@ -99,7 +99,7 @@ addlicense-install: go-install
 # Tests
 
 pytest: pytest-install
-	cd tests && \
+	cd tests && $(PYTHON) -c 'import $(PROJECT_NAME)' && \
 	$(PYTHON) -m pytest --verbose --color=yes --durations=0 \
 		--cov="$(PROJECT_NAME)" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
 		$(PYTESTOPTS) .
