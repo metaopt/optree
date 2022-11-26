@@ -31,7 +31,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)  # -fPIC
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)  # -fvisibility=hidden
 
 if(MSVC)
-    string(APPEND CMAKE_CXX_FLAGS " /Wall")
+    string(APPEND CMAKE_CXX_FLAGS " /Wall /Zc:preprocessor")
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " /Zi")
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " /O2 /Ob2")
 else()
@@ -39,6 +39,8 @@ else()
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " -g -Og")
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " -O3")
 endif()
+string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_PATH_SIZE)
+add_definitions("-DSOURCE_PATH_SIZE=${SOURCE_PATH_SIZE}")
 
 function(system)
     set(options STRIP)
@@ -135,6 +137,7 @@ if("${PYBIND11_CMAKE_DIR}" STREQUAL "")
         STAMP_DIR "${CMAKE_SOURCE_DIR}/third-party/.cmake/pybind11/stamp"
     )
     FetchContent_GetProperties(pybind11)
+
     if(NOT pybind11_POPULATED)
         message(STATUS "Populating Git repository pybind11@${PYBIND11_VERSION} to third-party/pybind11...")
         FetchContent_MakeAvailable(pybind11)
@@ -157,6 +160,7 @@ FetchContent_Declare(
     STAMP_DIR "${CMAKE_SOURCE_DIR}/third-party/.cmake/abseil-cpp/stamp"
 )
 FetchContent_GetProperties(abseilcpp)
+
 if(NOT abseilcpp_POPULATED)
     message(STATUS "Populating Git repository abseil-cpp@${ABSEIL_CPP_VERSION} to third-party/abseil-cpp...")
     FetchContent_MakeAvailable(abseilcpp)

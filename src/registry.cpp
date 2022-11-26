@@ -22,9 +22,9 @@ limitations under the License.
 
 namespace optree {
 
-template <>
-/*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::SingletonHelper<NONE_IS_NODE>::get() {
-    static PyTreeTypeRegistry registry([]() {
+template <bool NoneIsLeaf>
+/*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::SingletonHelper<NoneIsLeaf>::get() {
+    static PyTreeTypeRegistry registry{[]() {
         PyTreeTypeRegistry registry;
 
         auto add_builtin_type = [&](PyTypeObject* type_obj, PyTreeKind kind) {
@@ -32,9 +32,13 @@ template <>
             auto registration = std::make_unique<Registration>();
             registration->kind = kind;
             registration->type = type;
-            CHECK(registry.m_registrations.emplace(type, std::move(registration)).second);
+            EXPECT(registry.m_registrations.emplace(type, std::move(registration)).second,
+                   absl::StrFormat("PyTree type %s is already registered in the global namespace.",
+                                   py::repr(type)));
         };
-        add_builtin_type(Py_TYPE(Py_None), PyTreeKind::None);
+        if (!NoneIsLeaf) [[likely]] {
+            add_builtin_type(Py_TYPE(Py_None), PyTreeKind::None);
+        }
         add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
         add_builtin_type(&PyList_Type, PyTreeKind::List);
         add_builtin_type(&PyDict_Type, PyTreeKind::Dict);
@@ -45,33 +49,7 @@ template <>
         add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDequeTypeObject.ptr()),
                          PyTreeKind::Deque);
         return registry;
-    }());
-    return &registry;
-}
-
-template <>
-/*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::SingletonHelper<NONE_IS_LEAF>::get() {
-    static PyTreeTypeRegistry registry([]() {
-        PyTreeTypeRegistry registry;
-
-        auto add_builtin_type = [&](PyTypeObject* type_obj, PyTreeKind kind) {
-            auto type = py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(type_obj));
-            auto registration = std::make_unique<Registration>();
-            registration->kind = kind;
-            registration->type = type;
-            CHECK(registry.m_registrations.emplace(type, std::move(registration)).second);
-        };
-        add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
-        add_builtin_type(&PyList_Type, PyTreeKind::List);
-        add_builtin_type(&PyDict_Type, PyTreeKind::Dict);
-        add_builtin_type(reinterpret_cast<PyTypeObject*>(PyOrderedDictTypeObject.ptr()),
-                         PyTreeKind::OrderedDict);
-        add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDefaultDictTypeObject.ptr()),
-                         PyTreeKind::DefaultDict);
-        add_builtin_type(reinterpret_cast<PyTypeObject*>(PyDequeTypeObject.ptr()),
-                         PyTreeKind::Deque);
-        return registry;
-    }());
+    }()};
     return &registry;
 }
 
@@ -80,72 +58,44 @@ template <bool NoneIsLeaf>
     return SingletonHelper<NoneIsLeaf>::get();
 }
 
+template <bool NoneIsLeaf>
+/*static*/ void PyTreeTypeRegistry::RegisterImpl(const py::object& cls,
+                                                 const py::function& to_iterable,
+                                                 const py::function& from_iterable,
+                                                 const std::string& registry_namespace) {
+    PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
+    auto registration = std::make_unique<Registration>();
+    registration->kind = PyTreeKind::Custom;
+    registration->type = py::reinterpret_borrow<py::object>(cls);
+    registration->to_iterable = py::reinterpret_borrow<py::function>(to_iterable);
+    registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
+    if (registry_namespace.empty()) [[unlikely]] {  // NOLINT
+        if (!registry->m_registrations.emplace(cls, std::move(registration)).second) [[unlikely]] {
+            throw std::invalid_argument(absl::StrFormat(
+                "PyTree type %s is already registered in the global namespace.", py::repr(cls)));
+        }
+    } else [[likely]] {  // NOLINT
+        if (registry->m_registrations.find(cls) != registry->m_registrations.end()) [[unlikely]] {
+            throw std::invalid_argument(absl::StrFormat(
+                "PyTree type %s is already registered in the global namespace.", py::repr(cls)));
+        }
+        if (!registry->m_named_registrations
+                 .emplace(std::make_pair(registry_namespace, cls), std::move(registration))
+                 .second) [[unlikely]] {
+            throw std::invalid_argument(
+                absl::StrFormat("PyTree type %s is already registered in namespace %s.",
+                                py::repr(cls),
+                                py::repr(py::str(registry_namespace))));
+        }
+    }
+}
+
 /*static*/ void PyTreeTypeRegistry::Register(const py::object& cls,
                                              const py::function& to_iterable,
                                              const py::function& from_iterable,
                                              const std::string& registry_namespace) {
-    {
-        PyTreeTypeRegistry* registry = Singleton<NONE_IS_NODE>();
-        auto registration = std::make_unique<Registration>();
-        registration->kind = PyTreeKind::Custom;
-        registration->type = py::reinterpret_borrow<py::object>(cls);
-        registration->to_iterable = py::reinterpret_borrow<py::function>(to_iterable);
-        registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
-        if (registry_namespace.empty()) [[unlikely]] {  // NOLINT
-            if (!registry->m_registrations.emplace(cls, std::move(registration)).second)
-                [[unlikely]] {
-                throw std::invalid_argument(
-                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
-                                    py::repr(cls)));
-            }
-        } else [[likely]] {  // NOLINT
-            if (registry->m_registrations.find(cls) != registry->m_registrations.end())
-                [[unlikely]] {
-                throw std::invalid_argument(
-                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
-                                    py::repr(cls)));
-            }
-            if (!registry->m_named_registrations
-                     .emplace(std::make_pair(registry_namespace, cls), std::move(registration))
-                     .second) [[unlikely]] {
-                throw std::invalid_argument(
-                    absl::StrFormat("PyTree type %s is already registered in namespace %s.",
-                                    py::repr(cls),
-                                    py::repr(py::str(registry_namespace))));
-            }
-        }
-    }
-    {
-        PyTreeTypeRegistry* registry = Singleton<NONE_IS_LEAF>();
-        auto registration = std::make_unique<Registration>();
-        registration->kind = PyTreeKind::Custom;
-        registration->type = py::reinterpret_borrow<py::object>(cls);
-        registration->to_iterable = py::reinterpret_borrow<py::function>(to_iterable);
-        registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
-        if (registry_namespace.empty()) [[unlikely]] {  // NOLINT
-            if (!registry->m_registrations.emplace(cls, std::move(registration)).second)
-                [[unlikely]] {
-                throw std::invalid_argument(
-                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
-                                    py::repr(cls)));
-            }
-        } else [[likely]] {  // NOLINT
-            if (registry->m_registrations.find(cls) != registry->m_registrations.end())
-                [[unlikely]] {
-                throw std::invalid_argument(
-                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
-                                    py::repr(cls)));
-            }
-            if (!registry->m_named_registrations
-                     .emplace(std::make_pair(registry_namespace, cls), std::move(registration))
-                     .second) [[unlikely]] {
-                throw std::invalid_argument(
-                    absl::StrFormat("PyTree type %s is already registered in namespace %s.",
-                                    py::repr(cls),
-                                    py::repr(py::str(registry_namespace))));
-            }
-        }
-    }
+    RegisterImpl<NONE_IS_NODE>(cls, to_iterable, from_iterable, registry_namespace);
+    RegisterImpl<NONE_IS_LEAF>(cls, to_iterable, from_iterable, registry_namespace);
     cls.inc_ref();
     to_iterable.inc_ref();
     from_iterable.inc_ref();

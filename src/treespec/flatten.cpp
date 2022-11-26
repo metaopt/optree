@@ -146,7 +146,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             }
 
             default:
-                throw std::logic_error("Unreachable code.");
+                INTERNAL_ERROR();
         }
     }
     node.num_nodes = (ssize_t)m_traversal.size() - start_num_nodes + 1;
@@ -326,9 +326,8 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                     }
                     if (num_children != node.arity) [[unlikely]] {
                         throw std::runtime_error(absl::StrFormat(
-                            "PyTree custom to_iterable function returned inconsistent "
-                            "number "
-                            "of children (%ld) and number of entries (%ld).",
+                            "PyTree custom to_iterable function returned inconsistent number of "
+                            "children (%ld) and number of entries (%ld).",
                             num_children,
                             node.arity));
                     }
@@ -337,7 +336,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             }
 
             default:
-                throw std::logic_error("Unreachable code.");
+                INTERNAL_ERROR();
         }
     }
     node.num_nodes = (ssize_t)m_traversal.size() - start_num_nodes + 1;
@@ -402,9 +401,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 break;
 
             case PyTreeKind::Leaf:
-                if (leaf < 0) [[unlikely]] {
-                    throw std::logic_error("Leaf count mismatch.");
-                }
+                EXPECT_GE(leaf, 0, "Leaf count mismatch.");
                 leaves[leaf] = py::reinterpret_borrow<py::object>(object);
                 --leaf;
                 break;
@@ -412,7 +409,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
             case PyTreeKind::Tuple: {
                 AssertExact<py::tuple>(object);
                 py::tuple tuple = py::reinterpret_borrow<py::tuple>(object);
-                if ((ssize_t)GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
+                if (GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
                     throw std::invalid_argument(
                         absl::StrFormat("Tuple arity mismatch: %ld != %ld; tuple: %s.",
                                         GET_SIZE<py::tuple>(tuple),
@@ -428,7 +425,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
             case PyTreeKind::List: {
                 AssertExact<py::list>(object);
                 py::list list = py::reinterpret_borrow<py::list>(object);
-                if ((ssize_t)GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
+                if (GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
                     throw std::invalid_argument(
                         absl::StrFormat("List arity mismatch: %ld != %ld; list: %s.",
                                         GET_SIZE<py::list>(list),
@@ -470,7 +467,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
             case PyTreeKind::NamedTuple: {
                 AssertExactNamedTuple(object);
                 py::tuple tuple = py::reinterpret_borrow<py::tuple>(object);
-                if ((ssize_t)GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
+                if (GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
                     throw std::invalid_argument(
                         absl::StrFormat("Named tuple arity mismatch: %ld != %ld; tuple: %s.",
                                         GET_SIZE<py::tuple>(tuple),
@@ -497,11 +494,10 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 py::object expected_default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
                 py::list expected_keys = GET_ITEM_BORROW<py::tuple>(node.node_data, 1);
                 if (default_factory.not_equal(expected_default_factory)) [[unlikely]] {
-                    throw std::invalid_argument(
-                        absl::StrFormat("Defaultdict factory mismatch; expected factory: "
-                                        "%s; defaultdict: %s.",
-                                        py::repr(expected_default_factory),
-                                        py::repr(object)));
+                    throw std::invalid_argument(absl::StrFormat(
+                        "Defaultdict factory mismatch; expected factory: %s; defaultdict: %s.",
+                        py::repr(expected_default_factory),
+                        py::repr(object)));
                 }
                 if (keys.not_equal(expected_keys)) [[unlikely]] {
                     throw std::invalid_argument(absl::StrFormat(
@@ -518,7 +514,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
             case PyTreeKind::Deque: {
                 AssertExactDeque(object);
                 py::list list = py::cast<py::list>(object);
-                if ((ssize_t)GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
+                if (GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
                     throw std::invalid_argument(
                         absl::StrFormat("Deque arity mismatch: %ld != %ld; deque: %s.",
                                         GET_SIZE<py::list>(list),
@@ -576,7 +572,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
             }
 
             default:
-                throw std::logic_error("Unreachable code.");
+                INTERNAL_ERROR();
         }
     }
     if (it != m_traversal.rend() || leaf != -1) [[unlikely]] {
