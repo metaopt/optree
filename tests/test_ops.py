@@ -52,7 +52,6 @@ def never(o):  # pylint: disable=unused-argument
     return False
 
 
-@pytest.mark.skipif(platform.system() == 'Windows', reason='Stack may overflow on Windows.')
 def test_max_depth():
     l = [1]
     for _ in range(optree.MAX_RECURSION_DEPTH - 1):
