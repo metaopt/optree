@@ -19,6 +19,7 @@ project(optree LANGUAGES CXX)
 include(FetchContent)
 set(PYBIND11_VERSION v2.10.1)
 set(ABSEIL_CPP_VERSION 20220623.1)
+set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/third-party")
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -31,16 +32,27 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)  # -fPIC
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)  # -fvisibility=hidden
 
 if(MSVC)
-    string(APPEND CMAKE_CXX_FLAGS " /Wall /Zc:preprocessor")
+    string(
+        APPEND CMAKE_CXX_FLAGS
+        " /Zc:preprocessor"
+        " /Wall"
+        " /WX /wd4365 /wd4514 /wd4710 /wd4711 /wd4820 /wd4868 /wd5045"
+        " /experimental:external /external:anglebrackets /external:W0"
+    )
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " /Zi")
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " /O2 /Ob2")
 else()
-    string(APPEND CMAKE_CXX_FLAGS " -Wall")
+    string(
+        APPEND CMAKE_CXX_FLAGS
+        " -Wall -Wextra"
+        " -Werror -Wno-attributes"
+    )
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " -g -Og")
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " -O3")
 endif()
-string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_PATH_SIZE)
-add_definitions("-DSOURCE_PATH_SIZE=${SOURCE_PATH_SIZE}")
+
+string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_PATH_PREFIX_SIZE)
+add_definitions("-DSOURCE_PATH_PREFIX_SIZE=${SOURCE_PATH_PREFIX_SIZE}")
 
 function(system)
     set(options STRIP)
@@ -132,9 +144,9 @@ if("${PYBIND11_CMAKE_DIR}" STREQUAL "")
         GIT_REPOSITORY https://github.com/pybind/pybind11.git
         GIT_TAG "${PYBIND11_VERSION}"
         GIT_SHALLOW TRUE
-        SOURCE_DIR "${CMAKE_SOURCE_DIR}/third-party/pybind11"
-        BINARY_DIR "${CMAKE_SOURCE_DIR}/third-party/.cmake/pybind11/build"
-        STAMP_DIR "${CMAKE_SOURCE_DIR}/third-party/.cmake/pybind11/stamp"
+        SOURCE_DIR "${THIRD_PARTY_DIR}/pybind11"
+        BINARY_DIR "${THIRD_PARTY_DIR}/.cmake/pybind11/build"
+        STAMP_DIR "${THIRD_PARTY_DIR}/.cmake/pybind11/stamp"
     )
     FetchContent_GetProperties(pybind11)
 
@@ -155,9 +167,9 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
     GIT_TAG "${ABSEIL_CPP_VERSION}"
     GIT_SHALLOW TRUE
-    SOURCE_DIR "${CMAKE_SOURCE_DIR}/third-party/abseil-cpp"
-    BINARY_DIR "${CMAKE_SOURCE_DIR}/third-party/.cmake/abseil-cpp/build"
-    STAMP_DIR "${CMAKE_SOURCE_DIR}/third-party/.cmake/abseil-cpp/stamp"
+    SOURCE_DIR "${THIRD_PARTY_DIR}/abseil-cpp"
+    BINARY_DIR "${THIRD_PARTY_DIR}/.cmake/abseil-cpp/build"
+    STAMP_DIR "${THIRD_PARTY_DIR}/.cmake/abseil-cpp/stamp"
 )
 FetchContent_GetProperties(abseilcpp)
 

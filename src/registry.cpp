@@ -24,7 +24,7 @@ namespace optree {
 
 template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::SingletonHelper<NoneIsLeaf>::get() {
-    static PyTreeTypeRegistry registry{[]() {
+    static PyTreeTypeRegistry singleton{[]() {
         PyTreeTypeRegistry registry;
 
         auto add_builtin_type = [&](PyTypeObject* type_obj, PyTreeKind kind) {
@@ -36,9 +36,7 @@ template <bool NoneIsLeaf>
                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
                                    py::repr(type)));
         };
-        if (!NoneIsLeaf) [[likely]] {
-            add_builtin_type(Py_TYPE(Py_None), PyTreeKind::None);
-        }
+        if (!NoneIsLeaf) add_builtin_type(Py_TYPE(Py_None), PyTreeKind::None);
         add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
         add_builtin_type(&PyList_Type, PyTreeKind::List);
         add_builtin_type(&PyDict_Type, PyTreeKind::Dict);
@@ -50,7 +48,7 @@ template <bool NoneIsLeaf>
                          PyTreeKind::Deque);
         return registry;
     }()};
-    return &registry;
+    return &singleton;
 }
 
 template <bool NoneIsLeaf>
@@ -112,8 +110,9 @@ template <bool NoneIsLeaf>
     if (registry_namespace.empty()) [[likely]] {
         return nullptr;
     } else [[unlikely]] {  // NOLINT
-        auto it = registry->m_named_registrations.find(std::make_pair(registry_namespace, type));
-        return it != registry->m_named_registrations.end() ? it->second.get() : nullptr;
+        auto named_it =
+            registry->m_named_registrations.find(std::make_pair(registry_namespace, type));
+        return named_it != registry->m_named_registrations.end() ? named_it->second.get() : nullptr;
     }
 }
 

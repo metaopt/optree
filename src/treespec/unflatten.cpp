@@ -28,7 +28,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
     auto it = leaves.begin();
     ssize_t leaf_count = 0;
     for (const Node& node : m_traversal) {
-        EXPECT_GE(agenda.size(), node.arity, "Too few elements for PyTreeSpec node.");
+        EXPECT_GE((ssize_t)agenda.size(), node.arity, "Too few elements for PyTreeSpec node.");
 
         switch (node.kind) {
             case PyTreeKind::None:
@@ -45,6 +45,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
                     ++leaf_count;
                     break;
                 }
+                [[fallthrough]];
             }
 
             case PyTreeKind::Tuple:

@@ -32,11 +32,11 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#ifndef SOURCE_PATH_SIZE
-#define SOURCE_PATH_SIZE 0
+#ifndef SOURCE_PATH_PREFIX_SIZE
+#define SOURCE_PATH_PREFIX_SIZE 0
 #endif
 #ifndef __FILENAME__
-#define __FILENAME__ (&(__FILE__[SOURCE_PATH_SIZE]))
+#define __FILENAME__ (&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
 #endif
 
 #define VFUNC2(__0, __1, NAME, ...) NAME

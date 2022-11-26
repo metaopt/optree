@@ -50,6 +50,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
         switch (node.kind) {
             case PyTreeKind::None:
                 if (!NoneIsLeaf) break;
+                [[fallthrough]];
             case PyTreeKind::Leaf:
                 leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
                 break;
@@ -220,6 +221,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
         switch (node.kind) {
             case PyTreeKind::None:
                 if (!NoneIsLeaf) break;
+                [[fallthrough]];
             case PyTreeKind::Leaf: {
                 py::tuple path = py::tuple{depth};
                 for (ssize_t d = 0; d < depth; ++d) {
