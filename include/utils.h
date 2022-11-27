@@ -32,12 +32,43 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#define CHECK(condition)                                                              \
-    if (!(condition)) [[likely]]                                                      \
-    throw std::runtime_error(std::string(#condition) + " failed at " __FILE__ + ':' + \
-                             std::to_string(__LINE__))
+#ifndef SOURCE_PATH_PREFIX_SIZE
+#define SOURCE_PATH_PREFIX_SIZE 0
+#endif
+#ifndef __FILENAME__
+#define __FILENAME__ (&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
+#endif
 
-#define DCHECK(condition) CHECK(condition)
+#define VFUNC2(__0, __1, NAME, ...) NAME
+#define VFUNC3(__0, __1, __2, NAME, ...) NAME
+
+#define INTERNAL_ERROR1(message) \
+    throw std::logic_error(absl::StrFormat("%s (at file %s:%lu)", message, __FILENAME__, __LINE__))
+#define INTERNAL_ERROR0() INTERNAL_ERROR1("Unreachable code.")
+#define INTERNAL_ERROR(...) /* NOLINTNEXTLINE[whitespace/parens] */ \
+    VFUNC2(__0 __VA_OPT__(, ) __VA_ARGS__, INTERNAL_ERROR1, INTERNAL_ERROR0)(__VA_ARGS__)
+
+#define EXPECT2(condition, message)  \
+    if (!(condition)) [[unlikely]] { \
+        INTERNAL_ERROR1(message);    \
+    }
+#define EXPECT0() INTERNAL_ERROR0()
+#define EXPECT1(condition) EXPECT2(condition, "`" #condition "` failed.")
+#define EXPECT(...) /* NOLINTNEXTLINE[whitespace/parens] */ \
+    VFUNC3(__0 __VA_OPT__(, ) __VA_ARGS__, EXPECT2, EXPECT1, EXPECT0)(__VA_ARGS__)
+
+#define EXPECT_EQ(a, b, ...) \
+    EXPECT((a) == (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+#define EXPECT_NE(a, b, ...) \
+    EXPECT((a) != (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+#define EXPECT_LT(a, b, ...) \
+    EXPECT((a) < (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+#define EXPECT_LE(a, b, ...) \
+    EXPECT((a) <= (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+#define EXPECT_GT(a, b, ...) \
+    EXPECT((a) > (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+#define EXPECT_GE(a, b, ...) \
+    EXPECT((a) >= (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
 
 #define NONE_IS_LEAF true
 #define NONE_IS_NODE false
@@ -306,7 +337,7 @@ inline void SET_ITEM<py::list>(const py::handle& container,
 template <typename PyType>
 inline void AssertExact(const py::handle& object) {
     if (!py::isinstance<PyType>(object)) [[unlikely]] {
-        throw std::runtime_error(absl::StrFormat(
+        throw std::invalid_argument(absl::StrFormat(
             "Expected an instance of %s, got %s.", typeid(PyType).name(), py::repr(object)));
     }
 }

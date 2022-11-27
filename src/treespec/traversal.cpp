@@ -33,7 +33,7 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
         switch (node.kind) {
             case PyTreeKind::Leaf: {
                 if (it == leaves.end()) [[unlikely]] {
-                    throw std::invalid_argument("Too few leaves for PyTreeSpec");
+                    throw std::invalid_argument("Too few leaves for PyTreeSpec.");
                 }
 
                 py::object leaf = py::reinterpret_borrow<py::object>(*it);
@@ -51,27 +51,25 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
             case PyTreeKind::DefaultDict:
             case PyTreeKind::Deque:
             case PyTreeKind::Custom: {
-                if ((ssize_t)agenda.size() < node.arity) [[unlikely]] {
-                    throw std::logic_error("Too few elements for custom type.");
-                }
+                EXPECT_GE((ssize_t)agenda.size(), node.arity, "Too few elements for custom type.");
                 py::tuple tuple{node.arity};
                 for (ssize_t i = node.arity - 1; i >= 0; --i) {
                     SET_ITEM<py::tuple>(tuple, i, agenda.back());
                     agenda.pop_back();
                 }
                 agenda.emplace_back(f_node(tuple, node.node_data ? node.node_data : py::none()));
+                break;
             }
 
             default:
-                throw std::logic_error("Unreachable code.");
+                INTERNAL_ERROR();
         }
     }
     if (it != leaves.end()) [[unlikely]] {
         throw std::invalid_argument("Too many leaves for PyTreeSpec.");
     }
-    if (agenda.size() != 1) [[unlikely]] {
-        throw std::logic_error("PyTreeSpec traversal did not yield a singleton.");
-    }
+
+    EXPECT_EQ(agenda.size(), 1, "PyTreeSpec traversal did not yield a singleton.");
     return std::move(agenda.back());
 }
 

@@ -131,6 +131,8 @@ The `metadata` is some necessary data apart from the children to reconstruct the
 
 The `entries` can be omitted (only returns a pair) or is optional to implement (returns `None`). If so, use `range(len(children))` (i.e., flat indices) as path entries of the current node. The function signature can be `flatten_func(container) -> (children, metadata)` or `flatten_func(container) -> (children, metadata, None)`.
 
+The following examples show how to register custom types and utilize them for `tree_flatten` and `tree_map`. Please refer to section [Notes about the PyTree Type Registry](#notes-about-the-pytree-type-registry) for more information.
+
 ```python
 # Registry a Python type with lambda functions
 register_pytree_node(
@@ -290,6 +292,111 @@ There are several key attributes of the pytree type registry:
             namespace='mydict'
         )
     )
+    ```
+
+5. **Be careful about the potential infinite recursion of the custom flatten function.** The returned `children` from the custom flatten function are considered subtrees. They will be further flattened recursively. The `children` can have the same type as the current node. Users must design their termination condition carefully.
+
+    ```python
+    import numpy as np
+    import torch
+
+    optree.register_pytree_node(
+        np.ndarray,
+        # Children are nest lists of Python objects
+        lambda array: (np.atleast_1d(array).tolist(), array.ndim == 0),
+        lambda scalar, rows: np.asarray(rows) if not scalar else np.asarray(rows[0]),
+        namespace='numpy1',
+    )
+
+    optree.register_pytree_node(
+        np.ndarray,
+        # Children are Python objects
+        lambda array: (
+            list(array.ravel()),  # list(NDArray[T]) -> List[T]
+            dict(shape=array.shape, dtype=array.dtype)
+        ),
+        lambda metadata, children: np.asarray(children, dtype=metadata['dtype']).reshape(metadata['shape']),
+        namespace='numpy2',
+    )
+
+    optree.register_pytree_node(
+        np.ndarray,
+        # Returns a list of `np.ndarray`s without termination condition
+        lambda array: ([array.ravel()], array.dtype),
+        lambda shape, children: children[0].reshape(shape),
+        namespace='numpy3',
+    )
+
+    optree.register_pytree_node(
+        torch.Tensor,
+        # Children are nest lists of Python objects
+        lambda tensor: (torch.atleast_1d(tensor).tolist(), tensor.ndim == 0),
+        lambda scalar, rows: torch.tensor(rows) if not scalar else torch.tensor(rows[0])),
+        namespace='torch1',
+    )
+
+    optree.register_pytree_node(
+        torch.Tensor,
+        # Returns a list of `torch.Tensor`s without termination condition
+        lambda tensor: (
+            list(tensor.view(-1)),  # list(NDTensor[T]) -> List[0DTensor[T]] (STILL TENSORS!)
+            tensor.shape
+        ),
+        lambda shape, children: torch.stack(children).reshape(shape),
+        namespace='torch2',
+    )
+    ```
+
+    ```python
+    >>> optree.tree_flatten(np.arange(9).reshape(3, 3), namespace='numpy1')
+    (
+        [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        PyTreeSpec(
+            CustomTreeNode(ndarray[False], [[*, *, *], [*, *, *], [*, *, *]]),
+            namespace='numpy1'
+        )
+    )
+    # Implicitly casts `float`s to `np.float64`
+    >>> optree.tree_map(lambda x: x + 1.5, np.arange(9).reshape(3, 3), namespace='numpy1')
+    array([[1.5, 2.5, 3.5],
+           [4.5, 5.5, 6.5],
+           [7.5, 8.5, 9.5]])
+
+    >>> optree.tree_flatten(np.arange(9).reshape(3, 3), namespace='numpy2')
+    (
+        [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        PyTreeSpec(
+            CustomTreeNode(ndarray[{'shape': (3, 3), 'dtype': dtype('int64')}], [*, *, *, *, *, *, *, *, *]),
+            namespace='numpy2'
+        )
+    )
+    # Explicitly casts `float`s to `np.int64`
+    >>> optree.tree_map(lambda x: x + 1.5, np.arange(9).reshape(3, 3), namespace='numpy2')
+    array([[1, 2, 3],
+           [4, 5, 6],
+           [7, 8, 9]])
+
+    # Children are also `np.ndarray`s, recurse without termination condition.
+    >>> optree.tree_flatten(np.arange(9).reshape(3, 3), namespace='numpy3')
+    RecursionError: maximum recursion depth exceeded during flattening the tree
+
+    >>> optree.tree_flatten(torch.arange(9).reshape(3, 3), namespace='torch1')
+    (
+        [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        PyTreeSpec(
+            CustomTreeNode(Tensor[False], [[*, *, *], [*, *, *], [*, *, *]]),
+            namespace='torch1'
+        )
+    )
+    # Implicitly casts `float`s to `torch.float32`
+    >>> optree.tree_map(lambda x: x + 1.5, torch.arange(9).reshape(3, 3), namespace='torch1')
+    tensor([[1.5000, 2.5000, 3.5000],
+            [4.5000, 5.5000, 6.5000],
+            [7.5000, 8.5000, 9.5000]])
+
+    # Children are also `torch.Tensor`s, recurse without termination condition.
+    >>> optree.tree_flatten(torch.arange(9).reshape(3, 3), namespace='torch2')
+    RecursionError: maximum recursion depth exceeded during flattening the tree
     ```
 
 ### `None` is Non-leaf Node vs. `None` is Leaf

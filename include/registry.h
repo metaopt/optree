@@ -92,6 +92,12 @@ class PyTreeTypeRegistry {
     template <bool NoneIsLeaf>
     static PyTreeTypeRegistry *Singleton();
 
+    template <bool NoneIsLeaf>
+    static void RegisterImpl(const py::object &cls,
+                             const py::function &to_iterable,
+                             const py::function &from_iterable,
+                             const std::string &registry_namespace);
+
     class TypeHash {
      public:
         using is_transparent = void;
