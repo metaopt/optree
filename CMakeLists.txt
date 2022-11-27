@@ -35,20 +35,29 @@ if(MSVC)
     string(
         APPEND CMAKE_CXX_FLAGS
         " /Zc:preprocessor"
-        " /Wall"
-        " /WX /wd4365 /wd4514 /wd4710 /wd4711 /wd4820 /wd4868 /wd5045"
+        " /Wall /wd4365 /wd4514 /wd4710 /wd4711 /wd4820 /wd4868 /wd5045"
         " /experimental:external /external:anglebrackets /external:W0"
     )
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " /Zi")
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " /O2 /Ob2")
 else()
-    string(
-        APPEND CMAKE_CXX_FLAGS
-        " -Wall -Wextra"
-        " -Werror -Wno-error=attributes -Wno-error=redundant-move"
-    )
+    string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra")
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " -g -Og")
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " -O3")
+endif()
+
+if(NOT DEFINED OPTREE_CXX_WERROR AND NOT "$ENV{OPTREE_CXX_WERROR}" STREQUAL "")
+    set(OPTREE_CXX_WERROR "$ENV{OPTREE_CXX_WERROR}")
+endif()
+
+if(OPTREE_CXX_WERROR)
+    message(WARNING "Treats all compiler warnings as errors. Set `OPTREE_CXX_WERROR=OFF` to disable this.")
+
+    if(MSVC)
+        string(APPEND CMAKE_CXX_FLAGS " /WX")
+    else()
+        string(APPEND CMAKE_CXX_FLAGS " -Werror -Wno-error=attributes -Wno-error=redundant-move")
+    endif()
 endif()
 
 string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_PATH_PREFIX_SIZE)

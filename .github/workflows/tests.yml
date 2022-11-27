@@ -26,6 +26,9 @@ concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  OPTREE_CXX_WERROR: "ON"
+
 jobs:
   test-py37:
     name: Test for Python ${{ matrix.python-version }} on ${{ matrix.os }}

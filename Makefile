@@ -11,6 +11,7 @@ PATH           := $(HOME)/go/bin:$(PATH)
 PYTHON         ?= $(shell command -v python3 || command -v python)
 CLANG_FORMAT   ?= $(shell command -v clang-format-14 || command -v clang-format)
 PYTESTOPTS     ?=
+OPTREE_CXX_WERROR ?= ON
 
 .PHONY: default
 default: install
@@ -22,7 +23,7 @@ install-editable:
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install --upgrade setuptools wheel
 	$(PYTHON) -m pip install pybind11
-	$(PYTHON) -m pip install -vvv --no-build-isolation --editable .
+	OPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" $(PYTHON) -m pip install -vvv --no-build-isolation --editable .
 
 install-e: install-editable  # alias
 
