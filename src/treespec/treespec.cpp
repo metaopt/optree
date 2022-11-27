@@ -205,7 +205,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
             if (node.kind == PyTreeKind::NamedTuple) [[unlikely]] {
                 return node.node_data(*tuple);
             }
-            return tuple;
+            return std::move(tuple);
         }
 
         case PyTreeKind::List:
@@ -217,7 +217,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
             if (node.kind == PyTreeKind::Deque) [[unlikely]] {
                 return PyDequeTypeObject(list, py::arg("maxlen") = node.node_data);
             }
-            return list;
+            return std::move(list);
         }
 
         case PyTreeKind::Dict: {
@@ -226,7 +226,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
             for (ssize_t i = 0; i < node.arity; ++i) {
                 dict[GET_ITEM_HANDLE<py::list>(keys, i)] = std::move(children[i]);
             }
-            return dict;
+            return std::move(dict);
         }
 
         case PyTreeKind::OrderedDict: {

@@ -45,7 +45,7 @@ else()
     string(
         APPEND CMAKE_CXX_FLAGS
         " -Wall -Wextra"
-        " -Werror -Wno-attributes"
+        " -Werror -Wno-error=attributes -Wno-error=redundant-move"
     )
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " -g -Og")
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " -O3")
