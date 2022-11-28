@@ -19,7 +19,6 @@ limitations under the License.
 // code and the idiomatic way to emit Python exceptions.
 
 #include "include/treespec.h"
-#include "include/utils.h"
 
 namespace optree {
 

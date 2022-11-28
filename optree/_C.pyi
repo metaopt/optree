@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, List, Optional, Seque
 if TYPE_CHECKING:
     from optree.typing import Children, CustomTreeNode, MetaData, PyTree, T, U
 
+class InternalError(RuntimeError): ...
+
 MAX_RECURSION_DEPTH: int
 
 def flatten(

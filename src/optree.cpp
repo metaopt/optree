@@ -21,6 +21,7 @@ limitations under the License.
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include "include/exceptions.h"
 #include "include/registry.h"
 #include "include/treespec.h"
 
@@ -28,6 +29,7 @@ namespace optree {
 
 void BuildModule(py::module& mod) {  // NOLINT
     mod.doc() = "Optimized PyTree Utilities.";
+    py::register_local_exception<InternalError>(mod, "InternalError", PyExc_RuntimeError);
     mod.attr("MAX_RECURSION_DEPTH") = MAX_RECURSION_DEPTH;
 
     mod.def("register_node",
@@ -106,8 +108,8 @@ void BuildModule(py::module& mod) {  // NOLINT
             "Composes two treespecs. Constructs the inner treespec as a subtree at each leaf node.")
         .def("walk",
              &PyTreeSpec::Walk,
-             "Walks over the pytree structure, calling ``f_node(node, node_data)`` at nodes, and "
-             "``f_leaf(leaf)`` at leaves.",
+             "Walks over the pytree structure, calling ``f_node(children, node_data)`` at nodes, "
+             "and ``f_leaf(leaf)`` at leaves.",
              py::arg("f_node"),
              py::arg("f_leaf"),
              py::arg("leaves"))

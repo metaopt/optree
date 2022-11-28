@@ -32,6 +32,7 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
+#include "include/exceptions.h"
 #include "include/registry.h"
 #include "include/utils.h"
 
@@ -116,7 +117,7 @@ class PyTreeSpec {
     std::vector<std::unique_ptr<PyTreeSpec>> Children() const;
 
     // Maps a function over a PyTree structure, applying f_leaf to each leaf, and
-    // f_node(node, node_data) to each container node.
+    // f_node(children, node_data) to each container node.
     py::object Walk(const py::function &f_node,
                     const py::handle &f_leaf,
                     const py::iterable &leaves) const;

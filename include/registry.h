@@ -28,6 +28,7 @@ limitations under the License.
 #include <string>
 #include <utility>
 
+#include "include/exceptions.h"
 #include "include/utils.h"
 
 namespace optree {

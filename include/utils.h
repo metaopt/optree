@@ -32,50 +32,8 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#ifndef SOURCE_PATH_PREFIX_SIZE
-#define SOURCE_PATH_PREFIX_SIZE 0
-#endif
-#ifndef FILE_RELPATH
-#define FILE_RELPATH (&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
-#endif
-
-#define VFUNC2(__0, __1, NAME, ...) NAME
-#define VFUNC3(__0, __1, __2, NAME, ...) NAME
-
-#define INTERNAL_ERROR1(message) \
-    throw std::logic_error(      \
-        absl::StrFormat("%s (internal error at file %s:%lu)", message, FILE_RELPATH, __LINE__))
-#define INTERNAL_ERROR0() INTERNAL_ERROR1("Unreachable code.")
-#define INTERNAL_ERROR(...) /* NOLINTNEXTLINE[whitespace/parens] */ \
-    VFUNC2(__0 __VA_OPT__(, ) __VA_ARGS__, INTERNAL_ERROR1, INTERNAL_ERROR0)(__VA_ARGS__)
-
-#define EXPECT2(condition, message) \
-    if (!(condition)) [[unlikely]]  \
-    INTERNAL_ERROR1(message)
-#define EXPECT0() INTERNAL_ERROR0()
-#define EXPECT1(condition) EXPECT2(condition, "`" #condition "` failed.")
-#define EXPECT(...) /* NOLINTNEXTLINE[whitespace/parens] */ \
-    VFUNC3(__0 __VA_OPT__(, ) __VA_ARGS__, EXPECT2, EXPECT1, EXPECT0)(__VA_ARGS__)
-
-#define EXPECT_TRUE(condition, ...) \
-    EXPECT(condition __VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
-#define EXPECT_FALSE(condition, ...) \
-    EXPECT(!(condition)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
-#define EXPECT_EQ(a, b, ...) \
-    EXPECT((a) == (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
-#define EXPECT_NE(a, b, ...) \
-    EXPECT((a) != (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
-#define EXPECT_LT(a, b, ...) \
-    EXPECT((a) < (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
-#define EXPECT_LE(a, b, ...) \
-    EXPECT((a) <= (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
-#define EXPECT_GT(a, b, ...) \
-    EXPECT((a) > (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
-#define EXPECT_GE(a, b, ...) \
-    EXPECT((a) >= (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
-
-#define NONE_IS_LEAF true
-#define NONE_IS_NODE false
+constexpr bool NONE_IS_LEAF = true;
+constexpr bool NONE_IS_NODE = false;
 
 namespace py = pybind11;
 using size_t = py::size_t;
@@ -86,10 +44,10 @@ using ssize_t = py::ssize_t;
 #define PyDefaultDictTypeObject (ImportDefaultDict())
 #define PyDequeTypeObject (ImportDeque())
 
-inline const py::module_& ImportCollections() {
+inline const py::module& ImportCollections() {
     // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
     // garbage collection
-    static const py::module_* ptr = new py::module_{py::module_::import("collections")};
+    static const py::module* ptr = new py::module{py::module::import("collections")};
     return *ptr;
 }
 inline const py::object& ImportOrderedDict() {

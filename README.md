@@ -312,7 +312,7 @@ There are several key attributes of the pytree type registry:
         np.ndarray,
         # Children are Python objects
         lambda array: (
-            list(array.ravel()),  # list(NDArray[T]) -> List[T]
+            list(array.ravel()),  # list(1DArray[T]) -> List[T]
             dict(shape=array.shape, dtype=array.dtype)
         ),
         lambda metadata, children: np.asarray(children, dtype=metadata['dtype']).reshape(metadata['shape']),
@@ -339,7 +339,7 @@ There are several key attributes of the pytree type registry:
         torch.Tensor,
         # Returns a list of `torch.Tensor`s without termination condition
         lambda tensor: (
-            list(tensor.view(-1)),  # list(NDTensor[T]) -> List[0DTensor[T]] (STILL TENSORS!)
+            list(tensor.view(-1)),  # list(1DTensor[T]) -> List[0DTensor[T]] (STILL TENSORS!)
             tensor.shape
         ),
         lambda shape, children: torch.stack(children).reshape(shape),
