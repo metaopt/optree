@@ -130,6 +130,7 @@ void BuildModule(py::module& mod) {  // NOLINT
             "__hash__",
             [](const PyTreeSpec& t) { return absl::HashOf(t); },
             "Returns the hash of the treespec.")
+        .def("__len__", &PyTreeSpec::num_leaves, "Number of leaves in the tree.")
         .def(py::pickle([](const PyTreeSpec& t) { return t.ToPicklable(); },
                         [](const py::object& o) { return PyTreeSpec::FromPicklable(o); }),
              "Serialization support for PyTreeSpec.");

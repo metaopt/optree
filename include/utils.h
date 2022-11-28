@@ -35,28 +35,32 @@ limitations under the License.
 #ifndef SOURCE_PATH_PREFIX_SIZE
 #define SOURCE_PATH_PREFIX_SIZE 0
 #endif
-#ifndef __FILENAME__
-#define __FILENAME__ (&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
+#ifndef FILE_RELPATH
+#define FILE_RELPATH (&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
 #endif
 
 #define VFUNC2(__0, __1, NAME, ...) NAME
 #define VFUNC3(__0, __1, __2, NAME, ...) NAME
 
 #define INTERNAL_ERROR1(message) \
-    throw std::logic_error(absl::StrFormat("%s (at file %s:%lu)", message, __FILENAME__, __LINE__))
+    throw std::logic_error(      \
+        absl::StrFormat("%s (internal error at file %s:%lu)", message, FILE_RELPATH, __LINE__))
 #define INTERNAL_ERROR0() INTERNAL_ERROR1("Unreachable code.")
 #define INTERNAL_ERROR(...) /* NOLINTNEXTLINE[whitespace/parens] */ \
     VFUNC2(__0 __VA_OPT__(, ) __VA_ARGS__, INTERNAL_ERROR1, INTERNAL_ERROR0)(__VA_ARGS__)
 
-#define EXPECT2(condition, message)  \
-    if (!(condition)) [[unlikely]] { \
-        INTERNAL_ERROR1(message);    \
-    }
+#define EXPECT2(condition, message) \
+    if (!(condition)) [[unlikely]]  \
+    INTERNAL_ERROR1(message)
 #define EXPECT0() INTERNAL_ERROR0()
 #define EXPECT1(condition) EXPECT2(condition, "`" #condition "` failed.")
 #define EXPECT(...) /* NOLINTNEXTLINE[whitespace/parens] */ \
     VFUNC3(__0 __VA_OPT__(, ) __VA_ARGS__, EXPECT2, EXPECT1, EXPECT0)(__VA_ARGS__)
 
+#define EXPECT_TRUE(condition, ...) \
+    EXPECT(condition __VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+#define EXPECT_FALSE(condition, ...) \
+    EXPECT(!(condition)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
 #define EXPECT_EQ(a, b, ...) \
     EXPECT((a) == (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
 #define EXPECT_NE(a, b, ...) \
@@ -159,7 +163,7 @@ inline py::list SortedDictKeys(const py::dict& dict) {
 
 template <typename Sized = py::object>
 inline ssize_t GetSize(const py::handle& sized) {
-    return (ssize_t)py::len(sized);
+    return py::ssize_t_cast(py::len(sized));
 }
 template <>
 inline ssize_t GetSize<py::tuple>(const py::handle& sized) {
@@ -176,7 +180,7 @@ inline ssize_t GetSize<py::dict>(const py::handle& sized) {
 
 template <typename Sized = py::object>
 inline ssize_t GET_SIZE(const py::handle& sized) {
-    return (ssize_t)py::len(sized);
+    return py::ssize_t_cast(py::len(sized));
 }
 template <>
 inline ssize_t GET_SIZE<py::tuple>(const py::handle& sized) {

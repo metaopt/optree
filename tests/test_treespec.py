@@ -24,6 +24,30 @@ import optree
 from helpers import NAMESPACED_TREE, TREE_STRINGS, TREES, parametrize
 
 
+def test_treespec_equal_hash():
+    for i, tree1 in enumerate(TREES):
+        treespec1 = optree.tree_structure(tree1)
+        treespec1_none_is_leaf = optree.tree_structure(tree1, none_is_leaf=True)
+        assert treespec1 != treespec1_none_is_leaf
+        assert hash(treespec1) != hash(treespec1_none_is_leaf)
+        for j, tree2 in enumerate(TREES):
+            treespec2 = optree.tree_structure(tree2)
+            treespec2_none_is_leaf = optree.tree_structure(tree2, none_is_leaf=True)
+            if i == j:
+                assert treespec1 == treespec2
+                assert treespec1_none_is_leaf == treespec2_none_is_leaf
+            if treespec1 == treespec2:
+                assert hash(treespec1) == hash(treespec2)
+            else:
+                assert hash(treespec1) != hash(treespec2)
+            if treespec1_none_is_leaf == treespec2_none_is_leaf:
+                assert hash(treespec1_none_is_leaf) == hash(treespec2_none_is_leaf)
+            else:
+                assert hash(treespec1_none_is_leaf) != hash(treespec2_none_is_leaf)
+            assert hash(treespec1) != hash(treespec2_none_is_leaf)
+            assert hash(treespec1_none_is_leaf) != hash(treespec2)
+
+
 @parametrize(
     data=list(
         itertools.chain(
@@ -106,6 +130,60 @@ def test_treespec_with_empty_list_string_representation():
 
 def test_treespec_with_empty_dict_string_representation():
     assert str(optree.tree_structure({})) == r'PyTreeSpec({})'
+
+
+@parametrize(
+    tree=TREES,
+    inner_tree=[
+        None,
+        '*',
+        (),
+        (None,),
+        ('*',),
+        ['*', '*', '*'],
+        ['*', '*', None],
+        {'a': '*', 'b': None},
+        {'a': '*', 'b': ('*', '*')},
+    ],
+    none_is_leaf=[False, True],
+)
+def test_treespec_compose_children(tree, inner_tree, none_is_leaf):
+    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf)
+    inner_treespec = optree.tree_structure(inner_tree, none_is_leaf=none_is_leaf)
+    expected_treespec = optree.tree_structure(
+        optree.tree_map(lambda _: inner_tree, tree, none_is_leaf=none_is_leaf),
+        none_is_leaf=none_is_leaf,
+    )
+    composed_treespec = treespec.compose(inner_treespec)
+    expected_leaves = treespec.num_leaves * inner_treespec.num_leaves
+    assert composed_treespec.num_leaves == treespec.num_leaves * inner_treespec.num_leaves
+    expected_nodes = (treespec.num_nodes - treespec.num_leaves) + (
+        inner_treespec.num_nodes * treespec.num_leaves
+    )
+    assert composed_treespec.num_nodes == expected_nodes
+    leaves = [1] * expected_leaves
+    composed = optree.tree_unflatten(composed_treespec, leaves)
+    assert leaves == optree.tree_leaves(composed, none_is_leaf=none_is_leaf)
+    try:
+        assert composed_treespec == expected_treespec
+    except AssertionError:
+        if 'FlatCache' not in str(expected_treespec):
+            raise
+    try:
+        stack = [(composed_treespec.children(), expected_treespec.children())]
+        while stack:
+            composed_children, expected_children = stack.pop()
+            for composed_child, expected_child in zip(composed_children, expected_children):
+                assert composed_child == expected_child
+                stack.append((composed_child.children(), expected_child.children()))
+    except AssertionError:
+        if 'FlatCache' not in str(expected_treespec):
+            raise
+    try:
+        assert composed_treespec == optree.tree_structure(composed, none_is_leaf=none_is_leaf)
+    except AssertionError:
+        if 'FlatCache' not in str(expected_treespec):
+            raise
 
 
 def test_treespec_children():

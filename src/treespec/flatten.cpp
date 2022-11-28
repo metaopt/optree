@@ -36,7 +36,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
 
     bool found_custom{false};
     Node node;
-    ssize_t start_num_nodes = (ssize_t)m_traversal.size();
+    ssize_t start_num_nodes = py::ssize_t_cast(m_traversal.size());
     ssize_t start_num_leaves = leaves.size();
     if (leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) [[unlikely]] {
         leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
@@ -150,7 +150,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 INTERNAL_ERROR();
         }
     }
-    node.num_nodes = (ssize_t)m_traversal.size() - start_num_nodes + 1;
+    node.num_nodes = py::ssize_t_cast(m_traversal.size()) - start_num_nodes + 1;
     node.num_leaves = leaves.size() - start_num_leaves;
     m_traversal.emplace_back(std::move(node));
     return found_custom;
@@ -199,7 +199,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
 
     bool found_custom{false};
     Node node;
-    ssize_t start_num_nodes = (ssize_t)m_traversal.size();
+    ssize_t start_num_nodes = py::ssize_t_cast(m_traversal.size());
     ssize_t start_num_leaves = leaves.size();
     if (leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) [[unlikely]] {
         leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
@@ -341,7 +341,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 INTERNAL_ERROR();
         }
     }
-    node.num_nodes = (ssize_t)m_traversal.size() - start_num_nodes + 1;
+    node.num_nodes = py::ssize_t_cast(m_traversal.size()) - start_num_nodes + 1;
     node.num_leaves = leaves.size() - start_num_leaves;
     m_traversal.emplace_back(std::move(node));
     return found_custom;
@@ -375,7 +375,7 @@ PyTreeSpec::FlattenWithPath(const py::handle& tree,
     if (treespec->FlattenIntoWithPath(
             tree, leaves, paths, leaf_predicate, none_is_leaf, registry_namespace)) [[unlikely]] {
         treespec->m_namespace = registry_namespace;
-    };
+    }
     return std::make_tuple(std::move(paths), std::move(leaves), std::move(treespec));
 }
 

@@ -432,39 +432,8 @@ def test_tree_reduce():
     )
 
 
-@parametrize(
-    tree=TREES,
-    inner_tree=[
-        None,
-        ['*', '*', '*'],
-        ['*', '*', None],
-        {'a': '*', 'b': None},
-        {'a': '*', 'b': ('*', '*')},
-    ],
-    none_is_leaf=[False, True],
-)
-def test_compose(tree, inner_tree, none_is_leaf):
-    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf)
-    inner_treespec = optree.tree_structure(inner_tree, none_is_leaf=none_is_leaf)
-    composed_treespec = treespec.compose(inner_treespec)
-    expected_leaves = treespec.num_leaves * inner_treespec.num_leaves
-    assert composed_treespec.num_leaves == treespec.num_leaves * inner_treespec.num_leaves
-    expected_nodes = (treespec.num_nodes - treespec.num_leaves) + (
-        inner_treespec.num_nodes * treespec.num_leaves
-    )
-    assert composed_treespec.num_nodes == expected_nodes
-    leaves = [1] * expected_leaves
-    composed = optree.tree_unflatten(composed_treespec, leaves)
-    assert leaves == optree.tree_leaves(composed, none_is_leaf=none_is_leaf)
-    try:
-        assert composed_treespec == optree.tree_structure(composed, none_is_leaf=none_is_leaf)
-    except AssertionError as ex:
-        if 'CustomTreeNode(' not in str(ex):
-            raise
-
-
 @parametrize(tree=TREES)
-def test_transpose(tree):
+def test_tree_transpose(tree):
     outer_treespec = optree.tree_structure(tree)
     inner_treespec = optree.tree_structure([1, 1, 1])
     nested = optree.tree_map(lambda x: [x, x, x], tree)
@@ -480,7 +449,7 @@ def test_transpose(tree):
     assert actual == [tree, tree, tree]
 
 
-def test_transpose_mismatch_outer():
+def test_tree_transpose_mismatch_outer():
     tree = {'a': [1, 2], 'b': [3, 4]}
     outer_treespec = optree.tree_structure({'a': 1, 'b': 2, 'c': 3})
     inner_treespec = optree.tree_structure([1, 2])
@@ -488,7 +457,7 @@ def test_transpose_mismatch_outer():
         optree.tree_transpose(outer_treespec, inner_treespec, tree)
 
 
-def test_transpose_mismatch_inner():
+def test_tree_transpose_mismatch_inner():
     tree = {'a': [1, 2], 'b': [3, 4]}
     outer_treespec = optree.tree_structure({'a': 1, 'b': 2})
     inner_treespec = optree.tree_structure([1, 2, 3])
@@ -496,7 +465,7 @@ def test_transpose_mismatch_inner():
         optree.tree_transpose(outer_treespec, inner_treespec, tree)
 
 
-def test_transpose_with_custom_object():
+def test_tree_transpose_with_custom_object():
     outer_treespec = optree.tree_structure(FlatCache({'a': 1, 'b': 2}))
     inner_treespec = optree.tree_structure([1, 2])
     expected = [FlatCache({'a': 3, 'b': 5}), FlatCache({'a': 4, 'b': 6})]
@@ -506,7 +475,7 @@ def test_transpose_with_custom_object():
     assert actual == expected
 
 
-def test_transpose_with_custom_namespace():
+def test_tree_transpose_with_custom_namespace():
     outer_treespec = optree.tree_structure(MyAnotherDict({'a': 1, 'b': 2}), namespace='namespace')
     inner_treespec = optree.tree_structure(
         MyAnotherDict({'c': 1, 'd': 2, 'e': 3}), namespace='namespace'
@@ -527,7 +496,7 @@ def test_transpose_with_custom_namespace():
     )
 
 
-def test_transpose_mismatch_namespace():
+def test_tree_transpose_mismatch_namespace():
     @optree.register_pytree_node_class(namespace='subnamespace')
     class MyExtraDict(MyAnotherDict):
         pass

@@ -132,17 +132,63 @@ class PyTreeSpec {
     bool operator==(const PyTreeSpec &other) const;
     bool operator!=(const PyTreeSpec &other) const;
 
-    size_t Hash() const;
-
     template <typename H>
     friend H AbslHashValue(H h, const Node &n) {
-        h = H::combine(std::move(h), n.kind, n.arity, n.custom);
+        ssize_t data_hash{0};
+        switch (n.kind) {
+            case PyTreeKind::Custom:
+                // We don't hash node_data custom node types since they may not hashable.
+                break;
+            case PyTreeKind::Leaf:
+            case PyTreeKind::None:
+            case PyTreeKind::Tuple:
+            case PyTreeKind::List:
+            case PyTreeKind::NamedTuple:
+            case PyTreeKind::Deque:
+                data_hash = py::hash(n.node_data ? n.node_data : py::none());
+                break;
+            case PyTreeKind::Dict:
+            case PyTreeKind::OrderedDict:
+            case PyTreeKind::DefaultDict: {
+                py::list keys;
+                if (n.kind == PyTreeKind::DefaultDict) [[unlikely]] {  // NOLINT
+                    EXPECT_EQ(
+                        GET_SIZE<py::tuple>(n.node_data), 2, "Number of auxiliary data mismatch.");
+                    py::object default_factory = GET_ITEM_BORROW<py::tuple>(n.node_data, 0);
+                    keys = py::reinterpret_borrow<py::list>(
+                        GET_ITEM_BORROW<py::tuple>(n.node_data, 1));
+                    EXPECT_EQ(GET_SIZE<py::list>(keys),
+                              n.arity,
+                              "Number of keys and entries does not match.");
+                    data_hash = py::hash(default_factory);
+                } else [[likely]] {  // NOLINT
+                    EXPECT_EQ(GET_SIZE<py::list>(n.node_data),
+                              n.arity,
+                              "Number of keys and entries does not match.");
+                    keys = py::reinterpret_borrow<py::list>(n.node_data);
+                }
+                for (const py::handle &&key : keys) {
+                    data_hash = py::ssize_t_cast(absl::HashOf(data_hash, py::hash(key)));
+                }
+                break;
+            }
+            default:
+                INTERNAL_ERROR();
+        }
+
+        h = H::combine(std::move(h),
+                       n.kind,
+                       n.arity,
+                       n.custom,
+                       n.num_leaves,
+                       n.num_nodes,
+                       std::move(data_hash));
         return h;
     }
 
     template <typename H>
     friend H AbslHashValue(H h, const PyTreeSpec &t) {
-        h = H::combine(std::move(h), t.m_traversal);
+        h = H::combine(std::move(h), t.m_traversal, t.m_none_is_leaf, t.m_namespace);
         return h;
     }
 

@@ -51,7 +51,9 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
             case PyTreeKind::DefaultDict:
             case PyTreeKind::Deque:
             case PyTreeKind::Custom: {
-                EXPECT_GE((ssize_t)agenda.size(), node.arity, "Too few elements for custom type.");
+                EXPECT_GE(py::ssize_t_cast(agenda.size()),
+                          node.arity,
+                          "Too few elements for custom type.");
                 py::tuple tuple{node.arity};
                 for (ssize_t i = node.arity - 1; i >= 0; --i) {
                     SET_ITEM<py::tuple>(tuple, i, agenda.back());
