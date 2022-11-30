@@ -50,6 +50,7 @@ except ImportError:
 
 __all__ = [
     'PyTreeSpec',
+    'PyTreeDef',
     'PyTree',
     'PyTreeTypeVar',
     'CustomTreeNode',
@@ -74,6 +75,7 @@ __all__ = [
 
 
 PyTreeSpec = _C.PyTreeSpec
+PyTreeDef = PyTreeSpec  # alias
 
 T = TypeVar('T')
 S = TypeVar('S')
