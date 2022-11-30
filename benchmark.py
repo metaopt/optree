@@ -15,7 +15,7 @@
 # limitations under the License.
 # ==============================================================================
 
-# pylint: disable=missing-function-docstring,invalid-name
+# pylint: disable=missing-module-docstring,missing-function-docstring,invalid-name
 
 import argparse
 import sys

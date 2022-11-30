@@ -67,7 +67,7 @@ dependencies:
   - pytest-xdist
   - isort
   - conda-forge::black >= 22.6.0
-  - pylint
+  - pylint >= 2.15.0
   - mypy >= 0.990
   - flake8
   - flake8-bugbear

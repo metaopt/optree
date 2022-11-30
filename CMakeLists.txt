@@ -35,8 +35,8 @@ if(MSVC)
     string(
         APPEND CMAKE_CXX_FLAGS
         " /Zc:preprocessor"
-        " /Wall /wd4365 /wd4514 /wd4710 /wd4711 /wd4820 /wd4868 /wd5045"
         " /experimental:external /external:anglebrackets /external:W0"
+        " /Wall /wd4365 /wd4514 /wd4710 /wd4711 /wd4820 /wd4868 /wd5045"
     )
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " /Zi")
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " /O2 /Ob2")
