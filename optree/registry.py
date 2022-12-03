@@ -50,13 +50,9 @@ __all__ = [
 ]
 
 
-PyTreeNodeRegistryEntry = NamedTuple(
-    'PyTreeNodeRegistryEntry',
-    [
-        ('to_iterable', Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]]),
-        ('from_iterable', Callable[[MetaData, Children[T]], CustomTreeNode[T]]),
-    ],
-)
+class PyTreeNodeRegistryEntry(NamedTuple):
+    to_iterable: Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]]
+    from_iterable: Callable[[MetaData, Children[T]], CustomTreeNode[T]]
 
 
 __GLOBAL_NAMESPACE: str = object()  # type: ignore[assignment]

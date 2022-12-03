@@ -16,7 +16,6 @@
 
 # mypy: no-warn-unused-ignores
 
-import sys
 from typing import (
     Any,
     DefaultDict,
@@ -196,8 +195,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
 
     def __init_subclass__(cls, *args, **kwargs):
         """Prohibit subclassing."""
-        if sys.version_info >= (3, 7):
-            raise TypeError('Cannot subclass special typing classes.')
+        raise TypeError('Cannot subclass special typing classes.')
 
     def __copy__(self):
         """Immutable copy."""
