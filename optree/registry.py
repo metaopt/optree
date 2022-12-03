@@ -185,7 +185,7 @@ def register_pytree_node(
     with __REGISTRY_LOCK:
         _C.register_node(cls, flatten_func, unflatten_func, namespace)
         CustomTreeNode.register(cls)  # pylint: disable=no-member
-        _nodetype_registry[registration_key] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
+        _nodetype_registry[registration_key] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)  # type: ignore[arg-type]
     return cls
 
 
