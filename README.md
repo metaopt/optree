@@ -135,7 +135,7 @@ The following examples show how to register custom types and utilize them for `t
 
 ```python
 # Registry a Python type with lambda functions
-register_pytree_node(
+optree.register_pytree_node(
     set,
     # (set) -> (children, metadata, None)
     lambda s: (sorted(s), None, None),
@@ -147,7 +147,7 @@ register_pytree_node(
 # Register a Python type into a namespace
 import torch
 
-register_pytree_node(
+optree.register_pytree_node(
     torch.Tensor,
     # (tensor) -> (children, metadata)
     flatten_func=lambda tensor: (

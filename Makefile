@@ -164,6 +164,7 @@ format: py-format-install clang-format-install addlicense-install
 
 clean-py:
 	find . -type f -name  '*.py[co]' -delete
+	find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
 	find . -depth -type d -name ".mypy_cache" -exec rm -r "{}" +
 	find . -depth -type d -name ".pytest_cache" -exec rm -r "{}" +
 
