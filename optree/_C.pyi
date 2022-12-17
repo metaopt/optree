@@ -14,7 +14,6 @@
 # ==============================================================================
 
 # pylint: disable=all
-# isort: off
 
 from typing import TYPE_CHECKING, Any, Callable, Iterable, List, Optional, Sequence, Tuple, Type
 

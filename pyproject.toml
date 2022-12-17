@@ -49,7 +49,7 @@ Documentation = "https://optree.readthedocs.io"
 
 [project.optional-dependencies]
 lint = [
-    "isort",
+    "isort >= 5.11.0",
     "black >= 22.6.0",
     "pylint[spelling] >= 2.15.0",
     "mypy >= 0.990",
