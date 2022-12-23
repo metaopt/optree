@@ -45,7 +45,7 @@ pylint-install:
 
 flake8-install:
 	$(call check_pip_install,flake8)
-	$(call check_pip_install_extra,bugbear,flake8_bugbear)
+	$(call check_pip_install_extra,flake8-bugbear,flake8-bugbear)
 
 py-format-install:
 	$(call check_pip_install,isort)
@@ -71,13 +71,12 @@ docs-install:
 	$(call check_pip_install,sphinx-autobuild)
 	$(call check_pip_install,sphinx-copybutton)
 	$(call check_pip_install,sphinx-autodoc-typehints)
-	$(call check_pip_install,myst_nb)
 	$(call check_pip_install_extra,sphinxcontrib.spelling,sphinxcontrib.spelling pyenchant)
 
 pytest-install:
 	$(call check_pip_install,pytest)
-	$(call check_pip_install,pytest_cov)
-	$(call check_pip_install,pytest_xdist)
+	$(call check_pip_install,pytest-cov)
+	$(call check_pip_install,pytest-xdist)
 
 cpplint-install:
 	$(call check_pip_install,cpplint)
@@ -136,7 +135,7 @@ clang-format: clang-format-install
 # Documentation
 
 addlicense: addlicense-install
-	addlicense -c $(COPYRIGHT) -l apache -y 2022 -check $(SOURCE_FOLDERS)
+	addlicense -c $(COPYRIGHT) -ignore tests/coverage.xml -l apache -y 2022 -check $(SOURCE_FOLDERS)
 
 docstyle: docs-install
 	make -C docs clean
@@ -154,19 +153,21 @@ clean-docs:
 
 # Utility functions
 
-lint: flake8 py-format mypy pylint clang-format cpplint docstyle spelling
+lint: flake8 py-format mypy pylint clang-format cpplint addlicense docstyle spelling
 
 format: py-format-install clang-format-install addlicense-install
 	$(PYTHON) -m isort --project $(PROJECT_NAME) $(PYTHON_FILES)
 	$(PYTHON) -m black $(PYTHON_FILES)
 	$(CLANG_FORMAT) -style=file -i $(CXX_FILES)
-	addlicense -c $(COPYRIGHT) -l apache -y 2022 $(SOURCE_FOLDERS)
+	addlicense -c $(COPYRIGHT) -ignore tests/coverage.xml -l apache -y 2022 $(SOURCE_FOLDERS)
 
 clean-py:
 	find . -type f -name  '*.py[co]' -delete
 	find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
 	find . -depth -type d -name ".mypy_cache" -exec rm -r "{}" +
 	find . -depth -type d -name ".pytest_cache" -exec rm -r "{}" +
+	rm tests/.coverage
+	rm tests/coverage.xml
 
 clean-build:
 	rm -rf build/ dist/
