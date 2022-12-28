@@ -65,7 +65,7 @@ def register_pytree_node(
     unflatten_func: Callable[[MetaData, Children[T]], CustomTreeNode[T]],
     namespace: str,
 ) -> Type[CustomTreeNode[T]]:
-    """Extends the set of types that are considered internal nodes in pytrees.
+    """Extend the set of types that are considered internal nodes in pytrees.
 
     The ``namespace`` argument is used to avoid collisions that occur when different libraries
     register the same Python type with different behaviors. It is recommended to add a unique prefix
@@ -212,7 +212,7 @@ def register_pytree_node_class(
     *,
     namespace: Optional[str] = None,
 ) -> Union[Type[CustomTreeNode[T]], Callable[[Type[CustomTreeNode[T]]], Type[CustomTreeNode[T]]]]:
-    """Extends the set of types that are considered internal nodes in pytrees.
+    """Extend the set of types that are considered internal nodes in pytrees.
 
     The ``namespace`` argument is used to avoid collisions that occur when different libraries
     register the same Python type with different behaviors. It is recommended to add a unique prefix
@@ -456,7 +456,7 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
     keywords: Dict[str, Any]
 
     def __new__(cls, func: Callable[..., Any], *args, **keywords) -> 'Partial':
-        """Creates a new :class:`Partial` instance."""
+        """Create a new :class:`Partial` instance."""
         # In Python 3.10+, if func is itself a functools.partial instance, functools.partial.__new__
         # would merge the arguments of this Partial instance with the arguments of the func. We box
         # func in a class that does not (yet) have a `func` attribute to defeat this optimization,
@@ -474,7 +474,7 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
         return super().__new__(cls, func, *args, **keywords)
 
     def tree_flatten(self) -> Tuple[Tuple[Tuple[Any, ...], Dict[str, Any]], Callable[..., Any]]:
-        """Flattens the :class:`Partial` instance to children and auxiliary data."""
+        """Flatten the :class:`Partial` instance to children and auxiliary data."""
         return (self.args, self.keywords), self.func
 
     @classmethod
@@ -483,7 +483,7 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
         func: Callable[..., Any],
         args: Tuple[Tuple[Any, ...], Dict[str, Any]],
     ) -> 'Partial':
-        """Unflattens the children and auxiliary data into a :class:`Partial` instance."""
+        """Unflatten the children and auxiliary data into a :class:`Partial` instance."""
         return cls(func, *args[0], **args[1])
 
 
@@ -542,7 +542,7 @@ def register_keypaths(
     cls: Type[CustomTreeNode[T]],
     handler: KeyPathHandler,
 ) -> KeyPathHandler:
-    """Registers a key path handler for a custom pytree node type."""
+    """Register a key path handler for a custom pytree node type."""
     _keypath_registry[cls] = handler
     return handler
 

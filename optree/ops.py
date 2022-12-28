@@ -88,7 +88,7 @@ def tree_flatten(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> Tuple[List[T], PyTreeSpec]:
-    """Flattens a pytree.
+    """Flatten a pytree.
 
     See also :func:`tree_flatten_with_path`.
 
@@ -143,7 +143,7 @@ def tree_flatten_with_path(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> Tuple[List[Tuple[Any, ...]], List[T], PyTreeSpec]:
-    """Flattens a pytree and additionally records the paths.
+    """Flatten a pytree and additionally record the paths.
 
     See also :func:`tree_flatten` and :func:`tree_paths`.
 
@@ -209,7 +209,7 @@ def tree_flatten_with_path(
 
 
 def tree_unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
-    """Reconstructs a pytree from the treespec and the leaves.
+    """Reconstruct a pytree from the treespec and the leaves.
 
     The inverse of :func:`tree_flatten`.
 
@@ -236,7 +236,7 @@ def tree_leaves(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> List[T]:
-    """Gets the leaves of a pytree.
+    """Get the leaves of a pytree.
 
     See also :func:`tree_flatten`.
 
@@ -277,7 +277,7 @@ def tree_structure(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Gets the treespec for a pytree.
+    """Get the treespec for a pytree.
 
     See also :func:`tree_flatten`.
 
@@ -318,7 +318,7 @@ def tree_paths(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> List[Tuple[Any, ...]]:
-    """Gets the path entries to the leaves of a pytree.
+    """Get the path entries to the leaves of a pytree.
 
     See also :func:`tree_flatten` and :func:`tree_flatten_with_path`.
 
@@ -359,7 +359,7 @@ def all_leaves(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> bool:
-    """Tests whether all elements in the given iterable are all leaves.
+    """Test whether all elements in the given iterable are all leaves.
 
     See also :func:`tree_flatten` and :func:`tree_leaves`.
 
@@ -415,7 +415,7 @@ def tree_map(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTree[U]:
-    """Maps a multi-input function over pytree args to produce a new pytree.
+    """Map a multi-input function over pytree args to produce a new pytree.
 
     See also :func:`tree_map_`, :func:`tree_map_with_path`, and :func:`tree_map_with_path_`.
 
@@ -471,7 +471,7 @@ def tree_map_(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTree[T]:
-    """Likes :func:`tree_map`, but does an inplace call on each leaf and returns the original tree.
+    """Like :func:`tree_map`, but do an inplace call on each leaf and return the original tree.
 
     See also :func:`tree_map`, :func:`tree_map_with_path`, and :func:`tree_map_with_path_`.
 
@@ -513,7 +513,7 @@ def tree_map_with_path(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTree[U]:
-    """Maps a multi-input function over pytree args to produce a new pytree.
+    """Map a multi-input function over pytree args to produce a new pytree.
 
     See also :func:`tree_map`, :func:`tree_map_`, and :func:`tree_map_with_path_`.
 
@@ -568,7 +568,7 @@ def tree_map_with_path_(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTree[T]:
-    """Likes :func:`tree_map_with_path_`, but does an inplace call on each leaf and returns the original tree.
+    """Like :func:`tree_map_with_path_`, but do an inplace call on each leaf and return the original tree.
 
     See also :func:`tree_map`, :func:`tree_map_`, and :func:`tree_map_with_path`.
 
@@ -645,7 +645,7 @@ def tree_reduce(  # type: ignore[misc]
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> T:
-    """Traversals through a pytree and reduces the leaves.
+    """Traversal through a pytree and reduce the leaves.
 
     See also :func:`tree_leaves`.
 
@@ -687,7 +687,7 @@ def tree_transpose(
     inner_treespec: PyTreeSpec,
     tree: PyTree[T],
 ) -> PyTree[PyTree[T]]:
-    """Transforms a tree having tree structure (outer, inner) into one having structure (inner, outer).
+    """Transform a tree having tree structure (outer, inner) into one having structure (inner, outer).
 
     See also :func:`tree_flatten` and :func:`tree_unflatten`.
 
@@ -752,7 +752,7 @@ def tree_transpose(
 
 
 def tree_replace_nones(sentinel: Any, tree: Optional[PyTree[T]], namespace: str = '') -> PyTree[T]:
-    """Replaces :data:`None` in ``tree`` with ``sentinel``.
+    """Replace :data:`None` in ``tree`` with ``sentinel``.
 
     See also :func:`tree_flatten` and :func:`tree_map`.
 
@@ -778,7 +778,7 @@ def tree_all(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> bool:
-    """Tests whether all leaves in ``tree`` are true (or if ``tree`` is empty).
+    """Test whether all leaves in ``tree`` are true (or if ``tree`` is empty).
 
     See also :func:`tree_leaves` and :func:`tree_any`.
 
@@ -821,7 +821,7 @@ def tree_any(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> bool:
-    """Tests whether all leaves in ``tree`` are true (or :data:`False` if ``tree`` is empty).
+    """Test whether all leaves in ``tree`` are true (or :data:`False` if ``tree`` is empty).
 
     See also :func:`tree_leaves` and :func:`tree_all`.
 
@@ -858,12 +858,12 @@ def tree_any(
 
 
 def treespec_children(treespec: PyTreeSpec) -> List[PyTreeSpec]:
-    """Returns a list of treespecs for the children of a treespec."""
+    """Return a list of treespecs for the children of a treespec."""
     return treespec.children()
 
 
 def treespec_is_leaf(treespec: PyTreeSpec) -> bool:
-    """Returns whether the treespec is a leaf.
+    """Return whether the treespec is a leaf.
 
     This function does not check whether the treespec set ``none_is_leaf``.
 
@@ -880,7 +880,7 @@ def treespec_is_leaf(treespec: PyTreeSpec) -> bool:
 
 
 def treespec_is_strict_leaf(treespec: PyTreeSpec) -> bool:
-    """Returns whether the treespec is a strict leaf.
+    """Return whether the treespec is a strict leaf.
 
     >>> treespec_is_strict_leaf(tree_structure(1))
     True
@@ -895,7 +895,7 @@ def treespec_is_strict_leaf(treespec: PyTreeSpec) -> bool:
 
 
 def treespec_leaf(*, none_is_leaf: bool = False) -> PyTreeSpec:
-    """Makes a treespec representing a leaf node.
+    """Make a treespec representing a leaf node.
 
     See also :func:`tree_structure`, :func:`treespec_none`, and `func`:`treespec_tuple`.
 
@@ -926,7 +926,7 @@ def treespec_leaf(*, none_is_leaf: bool = False) -> PyTreeSpec:
 
 
 def treespec_none(*, none_is_leaf: bool = False) -> PyTreeSpec:
-    """Makes a treespec representing a :data:`None` node.
+    """Make a treespec representing a :data:`None` node.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and `func`:`treespec_tuple`.
 
@@ -961,7 +961,7 @@ def treespec_none(*, none_is_leaf: bool = False) -> PyTreeSpec:
 def treespec_tuple(
     treespecs: Iterable[PyTreeSpec] = (), *, none_is_leaf: bool = False
 ) -> PyTreeSpec:
-    """Makes a tuple treespec from a list of child treespecs.
+    """Make a tuple treespec from a list of child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and `func`:`treespec_none`.
 
@@ -987,7 +987,7 @@ def broadcast_prefix(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> List[T]:
-    """Returns a list of broadcasted leaves in ``prefix_tree`` to match the number of leaves in ``full_tree``."""
+    """Return a list of broadcasted leaves in ``prefix_tree`` to match the number of leaves in ``full_tree``."""
     # If prefix_tree is not a tree prefix of full_tree, this code can raise a ValueError;
     # use prefix_errors to find disagreements and raise more precise error messages.
     result: List[T] = []
@@ -1015,7 +1015,7 @@ def flatten_one_level(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> Tuple[Children[T], MetaData, Tuple[Any, ...]]:
-    """Flattens the pytree one level, returning a tuple of children, auxiliary data, and path entries."""
+    """Flatten the pytree one level, returning a tuple of children, auxiliary data, and path entries."""
     if tree is None:
         if none_is_leaf:  # type: ignore[unreachable]
             raise ValueError('Cannot flatten leaf-type: `None`')
@@ -1051,7 +1051,7 @@ def prefix_errors(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> List[Callable[[str], ValueError]]:
-    """Returns a list of errors that would be raised by :func:`broadcast_prefix`."""
+    """Return a list of errors that would be raised by :func:`broadcast_prefix`."""
     return list(
         _prefix_error(
             KeyPath(),

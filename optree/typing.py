@@ -99,11 +99,11 @@ class CustomTreeNode(Protocol[T]):
         # With optionally implemented path entries
         Tuple[Children[T], MetaData, Optional[Iterable[Any]]],
     ]:
-        """Flattens the custom pytree node into children and auxiliary data."""
+        """Flatten the custom pytree node into children and auxiliary data."""
 
     @classmethod
     def tree_unflatten(cls, metadata: MetaData, children: Children[T]) -> 'CustomTreeNode[T]':
-        """Unflattens the children and auxiliary data into the custom pytree node."""
+        """Unflatten the children and auxiliary data into the custom pytree node."""
 
 
 _GenericAlias = type(Union[int, str])
@@ -144,7 +144,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
 
     @_tp_cache
     def __class_getitem__(cls, item: Union[T, Tuple[T], Tuple[T, Optional[str]]]) -> TypeAlias:
-        """Instantiates a PyTree type with the given type."""
+        """Instantiate a PyTree type with the given type."""
         if not isinstance(item, tuple):
             item = (item, None)
         if len(item) != 2:
@@ -225,7 +225,7 @@ class PyTreeTypeVar:
 
     @_tp_cache
     def __new__(cls, name: str, param: Type) -> TypeAlias:
-        """Instantiates a PyTree type variable with the given name and parameter."""
+        """Instantiate a PyTree type variable with the given name and parameter."""
         if not isinstance(name, str):
             raise TypeError(f'{cls.__name__} only supports a string of type name. Got {name!r}.')
         return PyTree[param, name]  # type: ignore[misc,valid-type]
@@ -244,5 +244,5 @@ class PyTreeTypeVar:
 
 
 def is_namedtuple(obj: object) -> bool:
-    """Returns whether the object is a namedtuple."""
+    """Return whether the object is a namedtuple."""
     return isinstance(obj, tuple) and hasattr(obj, '_fields')
