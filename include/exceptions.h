@@ -1,5 +1,5 @@
 /*
-Copyright 2022 MetaOPT Team. All Rights Reserved.
+Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,7 +42,12 @@ class InternalError : public std::logic_error {
  public:
     explicit InternalError(const std::string& msg) : std::logic_error(msg) {}
     InternalError(const std::string& msg, const std::string& file, const size_t& lineno)
-        : InternalError(absl::StrFormat("%s (at file %s:%lu)", msg, file, lineno)) {}
+        : InternalError(absl::StrFormat(
+              "%s (at file %s:%lu)\n\n%s",
+              msg,
+              file,
+              lineno,
+              "Please file a bug report at https://github.com/metaopt/optree/issues.")) {}
 };
 
 }  // namespace optree
