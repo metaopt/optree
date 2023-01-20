@@ -64,13 +64,6 @@ from optree.version import __version__
 
 
 __all__ = [
-    # Typing
-    'PyTreeSpec',
-    'PyTreeDef',
-    'PyTree',
-    'PyTreeTypeVar',
-    'CustomTreeNode',
-    'is_namedtuple',
     # Tree operations
     'MAX_RECURSION_DEPTH',
     'NONE_IS_NODE',
@@ -92,13 +85,13 @@ __all__ = [
     'tree_all',
     'tree_any',
     'broadcast_prefix',
+    'prefix_errors',
     'treespec_children',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',
     'treespec_leaf',
     'treespec_none',
     'treespec_tuple',
-    'prefix_errors',
     # Registry
     'register_pytree_node',
     'register_pytree_node_class',
@@ -106,4 +99,18 @@ __all__ = [
     'register_keypaths',
     'AttributeKeyPathEntry',
     'GetitemKeyPathEntry',
+    # Typing
+    'PyTreeSpec',
+    'PyTreeDef',
+    'PyTree',
+    'PyTreeTypeVar',
+    'CustomTreeNode',
+    'is_namedtuple',
 ]
+
+MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH
+"""Maximum recursion depth for pytree traversal."""
+NONE_IS_NODE: bool = NONE_IS_NODE  # literal constant
+"""Literal constant that treats :data:`None` as a pytree non-leaf node."""
+NONE_IS_LEAF: bool = NONE_IS_LEAF  # literal constant
+"""Literal constant that treats :data:`None` as a pytree leaf node."""

@@ -448,7 +448,7 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
             [4., 5.]], device='cuda:0')
 
     Passing zero arguments to :class:`Partial` effectively wraps the original function, making it a
-    valid argument in JAX transformed functions:
+    valid argument in tree-map functions:
 
     >>> call_func_on_cuda(Partial(torch.add), torch.tensor(1), torch.tensor(2))
     tensor(3, device='cuda:0')

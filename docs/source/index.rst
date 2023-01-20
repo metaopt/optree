@@ -1,13 +1,19 @@
 :github_url: https://github.com/metaopt/optree/tree/HEAD/docs
 
 OpTree: Optimized PyTree Utilities
-----------------------------------
+==================================
 
-.. automodule:: optree
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. toctree::
+    :maxdepth: 2
 
+    ops.rst
+
+.. toctree::
+    :maxdepth: 1
+
+    registry.rst
+    typing.rst
+    api.rst
 
 License
 -------

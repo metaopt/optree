@@ -16,6 +16,10 @@ unflattened
 unflattening
 args
 kwargs
+kwds
+param
+params
+cls
 functools
 namedtuple
 namedtuples

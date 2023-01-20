@@ -37,7 +37,7 @@ p.caption {
 }
 
 .wy-nav-content {
-    max-width: 1200px !important;
+    max-width: none;
 }
 
 .wy-nav-content-wrap,

@@ -78,8 +78,11 @@ __all__ = [
 ]
 
 MAX_RECURSION_DEPTH: int = _C.MAX_RECURSION_DEPTH
+"""Maximum recursion depth for pytree traversal."""
 NONE_IS_NODE: bool = False  # literal constant
+"""Literal constant that treats :data:`None` as a pytree non-leaf node."""
 NONE_IS_LEAF: bool = True  # literal constant
+"""Literal constant that treats :data:`None` as a pytree leaf node."""
 
 
 def tree_flatten(
