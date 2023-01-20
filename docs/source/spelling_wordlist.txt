@@ -28,6 +28,7 @@ subclasscheck
 Iterable
 iterable
 boolean
+bool
 arity
 PyTreeTypeVar
 subclassing

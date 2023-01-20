@@ -1,4 +1,4 @@
-# Copyright 2022 MetaOPT Team. All Rights Reserved.
+# Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,6 +67,7 @@ __all__ = [
     'tree_replace_nones',
     'tree_all',
     'tree_any',
+    'broadcast_prefix',
     'treespec_children',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',
@@ -118,16 +119,16 @@ def tree_flatten(
     ([2, 3, 4, 1, None, 5], PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf))
 
     Args:
-        tree: A pytree to flatten.
-        is_leaf: An optionally specified function that will be called at each flattening step. It
-            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
-            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
-            current object.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
-            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
-            in the leaves list. (default: :data:`False`)
-        namespace: The registry namespace used for custom pytree node types. (default: :const:`''`,
-            i.e., the global namespace)
+        tree (pytree): A pytree to flatten.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
 
     Returns:
         A pair ``(leaves, treespec)`` where the first element is a list of leaf values and the
@@ -189,16 +190,16 @@ def tree_flatten_with_path(
     )
 
     Args:
-        tree: A pytree to flatten.
-        is_leaf: An optionally specified function that will be called at each flattening step. It
-            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
-            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
-            current object.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
-            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
-            in the leaves list. (default: :data:`False`)
-        namespace: The registry namespace used for custom pytree node types. (default: :const:`''`,
-            i.e., the global namespace)
+        tree (pytree): A pytree to flatten.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
 
     Returns:
         A triple ``(paths, leaves, treespec)``. The first element is a list of the paths to the leaf
@@ -218,9 +219,9 @@ def tree_unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
     True
 
     Args:
-        treespec: The treespec to reconstruct.
-        leaves: The list of leaves to use for reconstruction. The list must match the number of
-            leaves of the treespec.
+        treespec (PyTreeSpec): The treespec to reconstruct.
+        leaves (iterable): The list of leaves to use for reconstruction. The list must match the
+            number of leaves of the treespec.
 
     Returns:
         The reconstructed pytree, containing the ``leaves`` placed in the structure described by
@@ -253,16 +254,16 @@ def tree_leaves(
     [None]
 
     Args:
-        tree: A pytree to flatten.
-        is_leaf: An optionally specified function that will be called at each flattening step. It
-            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
-            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
-            current object.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
-            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
-            in the leaves list. (default: :data:`False`)
-        namespace: The registry namespace used for custom pytree node types. (default: :const:`''`,
-            i.e., the global namespace)
+        tree (pytree): A pytree to flatten.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
 
     Returns:
         A list of leaf values.
@@ -294,16 +295,16 @@ def tree_structure(
     PyTreeSpec(*, NoneIsLeaf)
 
     Args:
-        tree: A pytree to flatten.
-        is_leaf: An optionally specified function that will be called at each flattening step. It
-            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
-            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
-            current object.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
-            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
-            in the leaves list. (default: :data:`False`)
-        namespace: The registry namespace used for custom pytree node types. (default: :const:`''`,
-            i.e., the global namespace)
+        tree (pytree): A pytree to flatten.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
 
     Returns:
         A treespec object representing the structure of the pytree.
@@ -335,16 +336,16 @@ def tree_paths(
     [()]
 
     Args:
-        tree: A pytree to flatten.
-        is_leaf: An optionally specified function that will be called at each flattening step. It
-            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
-            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
-            current object.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
-            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
-            in the leaves list. (default: :data:`False`)
-        namespace: The registry namespace used for custom pytree node types. (default: :const:`''`,
-            i.e., the global namespace)
+        tree (pytree): A pytree to flatten.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
 
     Returns:
         A list of the paths to the leaf values, while each path is a tuple of the index or keys.
@@ -387,12 +388,12 @@ def all_leaves(
     of leaves.
 
     Args:
-        iterable: A iterable of leaves.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
-            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
-            a leaf. (default: :data:`False`)
-        namespace: The registry namespace used for custom pytree node types. (default: :const:`''`,
-            i.e., the global namespace)
+        iterable (iterable): A iterable of leaves.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than a leaf. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
 
     Returns:
         A boolean indicating if all elements in the input iterable are leaves.
@@ -435,22 +436,22 @@ def tree_map(
     [[5, 7, 9], [6, 1, 2]]
 
     Args:
-        func: A function that takes ``1 + len(rests)`` arguments, to be applied at the corresponding
-            leaves of the pytrees.
-        tree: A pytree to be mapped over, with each leaf providing the first positional argument to
-            function ``func``.
-        rests: A tuple of pytrees, each of which has the same structure as ``tree`` or has ``tree``
-            as a prefix.
-        is_leaf: An optionally specified function that will be called at each flattening step. It
-            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
-            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
-            current object.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
-            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
-            in the leaves list and :data:`None` will be remain in the result pytree. (default:
-            :data:`False`)
-        namespace: The registry namespace used for custom pytree node types. (default: :const:`''`,
-            i.e., the global namespace)
+        func (callable): A function that takes ``1 + len(rests)`` arguments, to be applied at the
+            corresponding leaves of the pytrees.
+        tree (pytree): A pytree to be mapped over, with each leaf providing the first positional
+            argument to function ``func``.
+        rests (tuple of pytrees): A tuple of pytrees, each of which has the same structure as
+            ``tree`` or has ``tree`` as a prefix.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
 
     Returns:
         A new pytree with the same structure as ``tree`` but with the value at each leaf given by
@@ -476,22 +477,22 @@ def tree_map_(
     See also :func:`tree_map`, :func:`tree_map_with_path`, and :func:`tree_map_with_path_`.
 
     Args:
-        func: A function that takes ``1 + len(rests)`` arguments, to be applied at the corresponding
-            leaves of the pytrees. The return value is ignored.
-        tree: A pytree to be mapped over, with each leaf providing the first positional argument to
-            function ``func``.
-        rests: A tuple of pytrees, each of which has the same structure as ``tree`` or has ``tree``
-            as a prefix.
-        is_leaf: An optionally specified function that will be called at each flattening step. It
-            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
-            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
-            current object.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
-            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
-            in the leaves list and :data:`None` will be remain in the result pytree. (default:
-            :data:`False`)
-        namespace: The registry namespace used for custom pytree node types. (default: :const:`''`,
-            i.e., the global namespace)
+        func (callable): A function that takes ``1 + len(rests)`` arguments, to be applied at the
+            corresponding leaves of the pytrees.
+        tree (pytree): A pytree to be mapped over, with each leaf providing the first positional
+            argument to function ``func``.
+        rests (tuple of pytrees): A tuple of pytrees, each of which has the same structure as
+            ``tree`` or has ``tree`` as a prefix.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
 
     Returns:
         The original ``tree`` with the value at each leaf is given by the side-effect of function
@@ -527,22 +528,23 @@ def tree_map_with_path(
     {'x': ('x',), 'y': (('y', 0), ('y', 1)), 'z': {1.5: ('z', 1.5)}}
 
     Args:
-        func: A function that takes ``2 + len(rests)`` arguments, to be applied at the corresponding
-            leaves of the pytrees with extra paths.
-        tree: A pytree to be mapped over, with each leaf providing the second positional argument
-            and the corresponding path providing the first positional argument to function ``func``.
-        rests: A tuple of pytrees, each of which has the same structure as ``tree`` or has ``tree``
-            as a prefix.
-        is_leaf: An optionally specified function that will be called at each flattening step. It
-            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
-            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
-            current object.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
-            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
-            in the leaves list and :data:`None` will be remain in the result pytree. (default:
-            :data:`False`)
-        namespace: The registry namespace used for custom pytree node types. (default: :const:`''`,
-            i.e., the global namespace)
+        func (callable): A function that takes ``2 + len(rests)`` arguments, to be applied at the
+            corresponding leaves of the pytrees with extra paths.
+        tree (pytree): A pytree to be mapped over, with each leaf providing the second positional
+            argument and the corresponding path providing the first positional argument to function
+            ``func``.
+        rests (tuple of pytrees): A tuple of pytrees, each of which has the same structure as
+            ``tree`` or has ``tree`` as a prefix.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
 
     Returns:
         A new pytree with the same structure as ``tree`` but with the value at each leaf given by
@@ -568,27 +570,28 @@ def tree_map_with_path_(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTree[T]:
-    """Like :func:`tree_map_with_path_`, but do an inplace call on each leaf and return the original tree.
+    """Like :func:`tree_map_with_path`, but do an inplace call on each leaf and return the original tree.
 
     See also :func:`tree_map`, :func:`tree_map_`, and :func:`tree_map_with_path`.
 
     Args:
-        func: A function that takes ``2 + len(rests)`` arguments, to be applied at the corresponding
-            leaves of the pytrees with extra paths.
-        tree: A pytree to be mapped over, with each leaf providing the second positional argument
-            and the corresponding path providing the first positional argument to function ``func``.
-        rests: A tuple of pytrees, each of which has the same structure as ``tree`` or has ``tree``
-            as a prefix.
-        is_leaf: An optionally specified function that will be called at each flattening step. It
-            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
-            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
-            current object.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
-            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
-            in the leaves list and :data:`None` will be remain in the result pytree. (default:
-            :data:`False`)
-        namespace: The registry namespace used for custom pytree node types. (default: :const:`''`,
-            i.e., the global namespace)
+        func (callable): A function that takes ``2 + len(rests)`` arguments, to be applied at the
+            corresponding leaves of the pytrees with extra paths.
+        tree (pytree): A pytree to be mapped over, with each leaf providing the second positional
+            argument and the corresponding path providing the first positional argument to function
+            ``func``.
+        rests (tuple of pytrees): A tuple of pytrees, each of which has the same structure as
+            ``tree`` or has ``tree`` as a prefix.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
 
     Returns:
         The original ``tree`` with the value at each leaf is given by the side-effect of function
@@ -659,19 +662,20 @@ def tree_reduce(  # type: ignore[misc]
     None
 
     Args:
-        func: A function that takes two arguments and returns a value of the same type.
-        tree: A pytree to be traversed.
-        initial: An initial value to be used for the reduction. If not provided, the first leaf
-            value is used as the initial value.
-        is_leaf: An optionally specified function that will be called at each flattening step. It
-            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
-            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
-            current object.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
-            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
-            in the leaves list. (default: :data:`False`)
-        namespace: The registry namespace used for custom pytree node types. (default: :const:`''`,
-            i.e., the global namespace)
+        func (callable): A function that takes two arguments and returns a value of the same type.
+        tree (pytree): A pytree to be traversed.
+        initial (object, optional): An initial value to be used for the reduction. If not provided,
+            the first leaf value is used as the initial value.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
 
     Returns:
         The result of reducing the leaves of the pytree using ``func``.
@@ -710,9 +714,9 @@ def tree_transpose(
     ({'a': 1, 'b': 3, 'c': (5, 7)}, {'a': 2, 'b': 4, 'c': (6, 8)})
 
     Args:
-        outer_treespec: A treespec object representing the outer structure of the pytree.
-        inner_treespec: A treespec object representing the inner structure of the pytree.
-        tree: A pytree to be transposed.
+        outer_treespec (PyTreeSpec): A treespec object representing the outer structure of the pytree.
+        inner_treespec (PyTreeSpec): A treespec object representing the inner structure of the pytree.
+        tree (pytree): A pytree to be transposed.
 
     Returns:
         A new pytree with the same structure as ``inner_treespec`` but with the value at each leaf
@@ -760,6 +764,15 @@ def tree_replace_nones(sentinel: Any, tree: Optional[PyTree[T]], namespace: str 
     {'a': 1, 'b': 0, 'c': (2, 0)}
     >>> tree_replace_nones(0, None)
     0
+
+    Args:
+        sentinel (object): The value to replace :data:`None` with.
+        tree (pytree): A pytree to be transformed.
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        A new pytree with the same structure as ``tree`` but with :data:`None` replaced.
     """
     if tree is None:
         return sentinel
@@ -796,16 +809,17 @@ def tree_all(
     False
 
     Args:
-        tree: A pytree to be traversed.
-        is_leaf: An optionally specified function that will be called at each flattening step. It
-            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
-            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
-            current object.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
-            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
-            in the leaves list. (default: :data:`False`)
-        namespace: The registry namespace used for custom pytree node types. (default: :const:`''`,
-            i.e., the global namespace)
+        tree (pytree): A pytree to be traversed.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
 
     Returns:
         :data:`True` if all leaves in ``tree`` are true, or if ``tree`` is empty.
@@ -839,16 +853,17 @@ def tree_any(
     False
 
     Args:
-        tree: A pytree to be traversed.
-        is_leaf: An optionally specified function that will be called at each flattening step. It
-            should return a boolean, with :data:`True` stopping the traversal and the whole subtree
-            being treated as a leaf, and :data:`False` indicating the flattening should traverse the
-            current object.
-        none_is_leaf: Whether to treat :data:`None` as a leaf. If :data:`False`, :data:`None` is a
-            non-leaf node with arity 0. Thus :data:`None` is contained in the treespec rather than
-            in the leaves list. (default: :data:`False`)
-        namespace: The registry namespace used for custom pytree node types. (default: :const:`''`,
-            i.e., the global namespace)
+        tree (pytree): A pytree to be traversed.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
 
     Returns:
         :data:`True` if any leaves in ``tree`` are true, otherwise, :data:`False`. If ``tree`` is
@@ -987,7 +1002,41 @@ def broadcast_prefix(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> List[T]:
-    """Return a list of broadcasted leaves in ``prefix_tree`` to match the number of leaves in ``full_tree``."""
+    """Return a list of broadcasted leaves in ``prefix_tree`` to match the number of leaves in ``full_tree``.
+
+    If a ``prefix_tree`` is a prefix of a ``full_tree``, this means the ``full_tree`` can be
+    constructed by replacing the leaves of ``prefix_tree`` with appropriate **subtrees**.
+
+    This function returns a list of leaves with the same size as ``full_tree``. The leaves are
+    replicated from ``prefix_tree``. The number of replicas is determined by the corresponding
+    subtree in ``full_tree``.
+
+    >>> broadcast_prefix(1, [1, 2, 3])
+    [1, 1, 1]
+    >>> broadcast_prefix([1, 2, 3], [1, 2, 3])
+    [1, 2, 3]
+    >>> broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
+    ValueError: List arity mismatch: 4 != 3; list: [1, 2, 3, 4].
+    >>> broadcast_prefix([1, 2, 3], [1, 2, (3, 4)])
+    [1, 2, 3, 3]
+
+    Args:
+        prefix_tree (pytree): A pytree with the same structure as a prefix of ``full_tree``.
+        full_tree (pytree): A pytree with the same structure as a suffix of ``prefix_tree``.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        A list of leaves in ``prefix_tree`` broadcasted to match the number of leaves in ``full_tree``.
+    """
     # If prefix_tree is not a tree prefix of full_tree, this code can raise a ValueError;
     # use prefix_errors to find disagreements and raise more precise error messages.
     result: List[T] = []

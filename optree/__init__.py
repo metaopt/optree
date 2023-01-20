@@ -1,4 +1,4 @@
-# Copyright 2022 MetaOPT Team. All Rights Reserved.
+# Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,11 +14,13 @@
 # ==============================================================================
 """OpTree: Optimized PyTree Utilities."""
 
+from optree import typing
 from optree.ops import (
     MAX_RECURSION_DEPTH,
     NONE_IS_LEAF,
     NONE_IS_NODE,
     all_leaves,
+    broadcast_prefix,
     prefix_errors,
     tree_all,
     tree_any,
@@ -50,7 +52,14 @@ from optree.registry import (
     register_pytree_node,
     register_pytree_node_class,
 )
-from optree.typing import CustomTreeNode, PyTree, PyTreeDef, PyTreeSpec, PyTreeTypeVar
+from optree.typing import (
+    CustomTreeNode,
+    PyTree,
+    PyTreeDef,
+    PyTreeSpec,
+    PyTreeTypeVar,
+    is_namedtuple,
+)
 from optree.version import __version__
 
 
@@ -61,6 +70,7 @@ __all__ = [
     'PyTree',
     'PyTreeTypeVar',
     'CustomTreeNode',
+    'is_namedtuple',
     # Tree operations
     'MAX_RECURSION_DEPTH',
     'NONE_IS_NODE',
@@ -81,6 +91,7 @@ __all__ = [
     'tree_replace_nones',
     'tree_all',
     'tree_any',
+    'broadcast_prefix',
     'treespec_children',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',

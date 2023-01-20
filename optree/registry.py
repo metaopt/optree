@@ -1,4 +1,4 @@
-# Copyright 2022 MetaOPT Team. All Rights Reserved.
+# Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -73,25 +73,27 @@ def register_pytree_node(
     the same class in different namespaces for different use cases.
 
     .. warning::
-
         For safety reasons, a ``namespace`` must be specified while registering a custom type. It is
         used to isolate the behavior of flattening and unflattening a pytree node type. This is to
         prevent accidental collisions between different libraries that may register the same type.
 
     Args:
-        cls: A Python type to treat as an internal pytree node.
-        flatten_func: A function to be used during flattening, taking an instance of ``cls`` and
+        cls (type): A Python type to treat as an internal pytree node.
+        flatten_func (callable): A function to be used during flattening, taking an instance of ``cls`` and
             returning a triple or optionally a pair, with (1) an iterable for the children to be
             flattened recursively, and (2) some hashable auxiliary data to be stored in the treespec
             and to be passed to the ``unflatten_func``, and (3) (optional) an iterable for the tree
             path entries to the corresponding children. If the entries are not provided or given by
             :data:`None`, then `range(len(children))` will be used.
-        unflatten_func: A function taking two arguments: the auxiliary data that was returned by
+        unflatten_func (callable): A function taking two arguments: the auxiliary data that was returned by
             ``flatten_func`` and stored in the treespec, and the unflattened children. The function
             should return an instance of ``cls``.
-        namespace: A non-empty string that uniquely identifies the namespace of the type registry.
+        namespace (str): A non-empty string that uniquely identifies the namespace of the type registry.
             This is used to isolate the registry from other modules that might register a different
             custom behavior for the same type.
+
+    Returns:
+        The same type as the input ``cls``.
 
     Example::
 
@@ -220,10 +222,19 @@ def register_pytree_node_class(
     the same class in different namespaces for different use cases.
 
     .. warning::
-
         For safety reasons, a ``namespace`` must be specified while registering a custom type. It is
         used to isolate the behavior of flattening and unflattening a pytree node type. This is to
         prevent accidental collisions between different libraries that may register the same type.
+
+    Args:
+        cls (type, optional): A Python type to treat as an internal pytree node.
+        namespace (str, optional): A non-empty string that uniquely identifies the namespace of the
+            type registry. This is used to isolate the registry from other modules that might
+            register a different custom behavior for the same type.
+
+    Returns:
+        The same type as the input ``cls`` if the argument presents. Otherwise, return a decorator
+        function that registers the class as a pytree node.
 
     This function is a thin wrapper around :func:`register_pytree_node`, and provides a
     class-oriented interface::
@@ -406,7 +417,7 @@ class _HashablePartialShim:
 class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-few-public-methods
     """A version of :func:`functools.partial` that works in pytrees.
 
-    Use it for partial function evaluation in a way that is compatible with JAX's transformations,
+    Use it for partial function evaluation in a way that is compatible with transformations,
     e.g., ``Partial(func, *args, **kwargs)``.
 
     (You need to explicitly opt-in to this behavior because we did not want to give
@@ -415,40 +426,35 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
     For example, here is a basic usage of :class:`Partial` in a manner similar to
     :func:`functools.partial`:
 
-    >>> import jax.numpy as jnp
-    >>> add_one = Partial(jnp.add, 1)
-    >>> add_one(2)
-    DeviceArray(3, dtype=int32, weak_type=True)
+    >>> import operator
+    >>> import torch
+    >>> add_one = Partial(operator.add, torch.ones(()))
+    >>> add_one(torch.tensor([[1, 2], [3, 4]]))
+    tensor([[2., 3.],
+            [4., 5.]])
 
     Pytree compatibility means that the resulting partial function can be passed as an argument
-    within transformed JAX functions, which is not possible with a standard :func:`functools.partial`
+    within tree-map functions, which is not possible with a standard :func:`functools.partial`
     function:
 
-    >>> from jax import jit
-    >>> @jit
-    ... def call_func(f, *args):
-    ...   return f(*args)
+    >>> def call_func_on_cuda(f, *args, **kwargs):
+    ...     f, args, kwargs = tree_map(lambda t: t.cuda(), (f, args, kwargs))
+    ...     return f(*args, **kwargs)
     ...
-    >>> call_func(add_one, 2)
-    DeviceArray(3, dtype=int32, weak_type=True)
+    >>> tree_map(lambda t: t.cuda(), add_one)
+    Partial(<built-in function add>, tensor(1., device='cuda:0'))
+    >>> call_func_on_cuda(add_one, torch.tensor([[1, 2], [3, 4]]))
+    tensor([[2., 3.],
+            [4., 5.]], device='cuda:0')
 
     Passing zero arguments to :class:`Partial` effectively wraps the original function, making it a
     valid argument in JAX transformed functions:
 
-    >>> call_func(Partial(jnp.add), 1, 2)
-    DeviceArray(3, dtype=int32, weak_type=True)
+    >>> call_func_on_cuda(Partial(torch.add), torch.tensor(1), torch.tensor(2))
+    tensor(3, device='cuda:0')
 
-    Had we passed :func:`jnp.add` to ``call_func`` directly, it would have resulted in a
-    :class:`TypeError`.
-
-    Note that if the result of :class:`Partial` is used in the context where the value is traced, it
-    results in all bound arguments being traced when passed to the partially-evaluated function:
-
-    >>> print_zero = Partial(print, 0)
-    >>> print_zero()
-    0
-    >>> call_func(print_zero)
-    Traced<ShapedArray(int32[], weak_type=True)>with<DynamicJaxprTrace(level=0/1)>
+    Had we passed :func:`operator.add` to ``call_func_on_cuda`` directly, it would have resulted in
+    a :class:`TypeError` or :class:`AttributeError`.
     """
 
     func: Callable[..., Any]
