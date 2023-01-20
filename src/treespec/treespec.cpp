@@ -1,5 +1,5 @@
 /*
-Copyright 2022 MetaOPT Team. All Rights Reserved.
+Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,6 +28,11 @@ ssize_t PyTreeSpec::num_leaves() const {
 }
 
 ssize_t PyTreeSpec::num_nodes() const { return py::ssize_t_cast(m_traversal.size()); }
+
+ssize_t PyTreeSpec::num_children() const {
+    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    return m_traversal.back().arity;
+}
 
 bool PyTreeSpec::get_none_is_leaf() const { return m_none_is_leaf; }
 

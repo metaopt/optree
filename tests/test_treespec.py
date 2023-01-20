@@ -1,4 +1,4 @@
-# Copyright 2022 MetaOPT Team. All Rights Reserved.
+# Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -206,6 +206,15 @@ def test_treespec_children():
     _, c0 = optree.tree_flatten((0, 0, 0, 0), none_is_leaf=True)
     _, c1 = optree.tree_flatten((7,), none_is_leaf=True)
     assert treespec.children() == [c0, c1]
+
+
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+)
+def test_treespec_num_children(tree, none_is_leaf):
+    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf)
+    assert treespec.num_children == len(treespec.children())
 
 
 @parametrize(

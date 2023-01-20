@@ -1,4 +1,4 @@
-# Copyright 2022 MetaOPT Team. All Rights Reserved.
+# Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,10 +15,9 @@
 
 # pylint: disable=all
 
-from typing import TYPE_CHECKING, Any, Callable, Iterable, List, Optional, Sequence, Tuple, Type
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Type
 
-if TYPE_CHECKING:
-    from optree.typing import Children, CustomTreeNode, MetaData, PyTree, T, U
+from optree.typing import Children, CustomTreeNode, MetaData, PyTree, T, U
 
 class InternalError(RuntimeError): ...
 
@@ -48,6 +47,7 @@ def tuple(treespecs: Sequence['PyTreeSpec'], node_is_leaf: bool = False) -> 'PyT
 class PyTreeSpec:
     num_nodes: int
     num_leaves: int
+    num_children: int
     none_is_leaf: bool
     namespace: str
     def unflatten(self, leaves: Iterable[T]) -> PyTree[T]: ...

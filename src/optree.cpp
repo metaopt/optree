@@ -1,5 +1,5 @@
 /*
-Copyright 2022 MetaOPT Team. All Rights Reserved.
+Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -82,6 +82,11 @@ void BuildModule(py::module& mod) {  // NOLINT
             "num_nodes",
             &PyTreeSpec::num_nodes,
             "Number of nodes in the tree. Note that a leaf is also a node but has no children.")
+        .def_property_readonly(
+            "num_children",
+            &PyTreeSpec::num_children,
+            "Number of children in the current node. Note that a leaf is also a node but has no "
+            "children.")
         .def_property_readonly(
             "none_is_leaf",
             &PyTreeSpec::get_none_is_leaf,
