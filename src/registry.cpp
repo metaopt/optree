@@ -1,5 +1,5 @@
 /*
-Copyright 2022 MetaOPT Team. All Rights Reserved.
+Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,7 +36,9 @@ template <bool NoneIsLeaf>
                    absl::StrFormat("PyTree type %s is already registered in the global namespace.",
                                    py::repr(type)));
         };
-        if (!NoneIsLeaf) add_builtin_type(Py_TYPE(Py_None), PyTreeKind::None);
+        if (!NoneIsLeaf) {
+            add_builtin_type(Py_TYPE(Py_None), PyTreeKind::None);
+        }
         add_builtin_type(&PyTuple_Type, PyTreeKind::Tuple);
         add_builtin_type(&PyList_Type, PyTreeKind::List);
         add_builtin_type(&PyDict_Type, PyTreeKind::Dict);
@@ -67,12 +69,12 @@ template <bool NoneIsLeaf>
     registration->type = py::reinterpret_borrow<py::object>(cls);
     registration->to_iterable = py::reinterpret_borrow<py::function>(to_iterable);
     registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
-    if (registry_namespace.empty()) [[unlikely]] {  // NOLINT
+    if (registry_namespace.empty()) [[unlikely]] {
         if (!registry->m_registrations.emplace(cls, std::move(registration)).second) [[unlikely]] {
             throw std::invalid_argument(absl::StrFormat(
                 "PyTree type %s is already registered in the global namespace.", py::repr(cls)));
         }
-    } else [[likely]] {  // NOLINT
+    } else [[likely]] {
         if (registry->m_registrations.find(cls) != registry->m_registrations.end()) [[unlikely]] {
             throw std::invalid_argument(absl::StrFormat(
                 "PyTree type %s is already registered in the global namespace.", py::repr(cls)));
@@ -109,7 +111,7 @@ template <bool NoneIsLeaf>
     }
     if (registry_namespace.empty()) [[likely]] {
         return nullptr;
-    } else [[unlikely]] {  // NOLINT
+    } else [[unlikely]] {
         auto named_it =
             registry->m_named_registrations.find(std::make_pair(registry_namespace, type));
         return named_it != registry->m_named_registrations.end() ? named_it->second.get() : nullptr;

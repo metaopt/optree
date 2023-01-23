@@ -1,5 +1,5 @@
 /*
-Copyright 2022 MetaOPT Team. All Rights Reserved.
+Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ namespace optree {
 py::object PyTreeSpec::Walk(const py::function& f_node,
                             const py::handle& f_leaf,
                             const py::iterable& leaves) const {
-    std::vector<py::object> agenda;
+    auto agenda = std::vector<py::object>{};
     auto it = leaves.begin();
     const bool f_leaf_identity = f_leaf.is_none();
     for (const Node& node : m_traversal) {
@@ -35,7 +35,7 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
                     throw std::invalid_argument("Too few leaves for PyTreeSpec.");
                 }
 
-                py::object leaf = py::reinterpret_borrow<py::object>(*it);
+                auto leaf = py::reinterpret_borrow<py::object>(*it);
                 agenda.emplace_back(f_leaf_identity ? std::move(leaf) : f_leaf(std::move(leaf)));
                 ++it;
                 break;

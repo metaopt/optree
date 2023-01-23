@@ -59,7 +59,7 @@ pre-commit-install:
 	$(PYTHON) -m pre_commit install --install-hooks
 
 docs-install:
-	$(call check_pip_install,pydocstyle)
+	$(call check_pip_install_extra,pydocstyle,pydocstyle[toml])
 	$(call check_pip_install_extra,doc8,"doc8<1.0.0a0")
 	if ! $(PYTHON) -c "import sys; exit(sys.version_info < (3, 8))"; then \
 		$(PYTHON) -m pip uninstall --yes importlib-metadata; \
@@ -77,6 +77,9 @@ pytest-install:
 	$(call check_pip_install,pytest)
 	$(call check_pip_install,pytest-cov)
 	$(call check_pip_install,pytest-xdist)
+
+cmake-install:
+	command -v cmake || $(call check_pip_install,cmake)
 
 cpplint-install:
 	$(call check_pip_install,cpplint)
@@ -126,11 +129,26 @@ pre-commit: pre-commit-install
 
 # C++ linters
 
+cmake-configure: cmake-install
+	cmake -S . -B cmake-build-debug \
+		-DCMAKE_BUILD_TYPE=Debug \
+		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+		-DPYTHON_EXECUTABLE="$(PYTHON)" \
+		-DOPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)"
+
+cmake-build: cmake-configure
+	cmake --build cmake-build-debug --parallel
+
+cmake: cmake-build
+
 cpplint: cpplint-install
 	$(PYTHON) -m cpplint $(CXX_FILES)
 
 clang-format: clang-format-install
 	$(CLANG_FORMAT) --style=file -i $(CXX_FILES) -n --Werror
+
+clang-tidy: clang-tidy-install cmake-configure
+	clang-tidy -p=cmake-build-debug $(CXX_FILES)
 
 # Documentation
 
@@ -153,7 +171,7 @@ clean-docs:
 
 # Utility functions
 
-lint: flake8 py-format mypy pylint clang-format cpplint addlicense docstyle spelling
+lint: flake8 py-format mypy pylint clang-format clang-tidy cpplint addlicense docstyle spelling
 
 format: py-format-install clang-format-install addlicense-install
 	$(PYTHON) -m isort --project $(PROJECT_NAME) $(PYTHON_FILES)

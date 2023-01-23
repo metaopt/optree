@@ -1,5 +1,5 @@
 /*
-Copyright 2022 MetaOPT Team. All Rights Reserved.
+Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,25 +46,25 @@ using ssize_t = py::ssize_t;
 
 inline const py::module& ImportCollections() {
     // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
-    // garbage collection
+    //       garbage collection.
     static const py::module* ptr = new py::module{py::module::import("collections")};
     return *ptr;
 }
 inline const py::object& ImportOrderedDict() {
     // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
-    // garbage collection
+    //       garbage collection.
     static const py::object* ptr = new py::object{py::getattr(PyCollectionsModule, "OrderedDict")};
     return *ptr;
 }
 inline const py::object& ImportDefaultDict() {
     // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
-    // garbage collection
+    //       garbage collection.
     static const py::object* ptr = new py::object{py::getattr(PyCollectionsModule, "defaultdict")};
     return *ptr;
 }
 inline const py::object& ImportDeque() {
     // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
-    // garbage collection
+    //       garbage collection.
     static const py::object* ptr = new py::object{py::getattr(PyCollectionsModule, "deque")};
     return *ptr;
 }
@@ -85,11 +85,12 @@ inline py::list SortedDictKeys(const py::dict& dict) {
 
     try {
         // Sort directly if possible.
+        // NOLINTNEXTLINE[readability-implicit-bool-conversion]
         if (PyList_Sort(keys.ptr())) [[unlikely]] {
             throw py::error_already_set();
         }
     } catch (py::error_already_set& ex1) {
-        if (ex1.matches(PyExc_TypeError)) [[likely]] {  // NOLINT
+        if (ex1.matches(PyExc_TypeError)) [[likely]] {
             // Found incomparable keys (e.g. `int` vs. `str`, or user-defined types).
             try {
                 // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
@@ -107,11 +108,11 @@ inline py::list SortedDictKeys(const py::dict& dict) {
                     // Found incomparable user-defined key types.
                     // The keys remain in the insertion order.
                     PyErr_Clear();
-                } else [[unlikely]] {  // NOLINT
+                } else [[unlikely]] {
                     throw;
                 }
             }
-        } else [[unlikely]] {  // NOLINT
+        } else [[unlikely]] {
             throw;
         }
     }

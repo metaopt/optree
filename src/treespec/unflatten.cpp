@@ -1,5 +1,5 @@
 /*
-Copyright 2022 MetaOPT Team. All Rights Reserved.
+Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ namespace optree {
 
 template <typename Span>
 py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
-    absl::InlinedVector<py::object, 4> agenda;
+    auto agenda = absl::InlinedVector<py::object, 4>{};
     auto it = leaves.begin();
     ssize_t leaf_count = 0;
     for (const Node& node : m_traversal) {
@@ -34,7 +34,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
         switch (node.kind) {
             case PyTreeKind::None:
             case PyTreeKind::Leaf: {
-                if (node.kind == PyTreeKind::Leaf || m_none_is_leaf) [[likely]] {  // NOLINT
+                if (node.kind == PyTreeKind::Leaf || m_none_is_leaf) [[likely]] {
                     if (it == leaves.end()) [[unlikely]] {
                         throw std::invalid_argument(
                             absl::StrFormat("Too few leaves for PyTreeSpec; expected %ld, got %ld.",
