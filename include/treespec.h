@@ -179,13 +179,8 @@ class PyTreeSpec {
                 INTERNAL_ERROR();
         }
 
-        h = H::combine(std::move(h),
-                       n.kind,
-                       n.arity,
-                       n.custom,
-                       n.num_leaves,
-                       n.num_nodes,
-                       std::move(data_hash));
+        h = H::combine(
+            std::move(h), n.kind, n.arity, n.custom, n.num_leaves, n.num_nodes, data_hash);
         return h;
     }
 
