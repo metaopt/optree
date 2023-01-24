@@ -48,7 +48,9 @@ bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
         return false;
     }
 
+    // NOLINTNEXTLINE[readability-qualified-auto]
     auto b = other.m_traversal.begin();
+    // NOLINTNEXTLINE[readability-qualified-auto]
     for (auto a = m_traversal.begin(); a != m_traversal.end(); ++a, ++b) {
         if (a->kind != b->kind || a->arity != b->arity ||
             (a->node_data.ptr() == nullptr) != (b->node_data.ptr() == nullptr) ||
@@ -67,11 +69,11 @@ bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
 bool PyTreeSpec::operator!=(const PyTreeSpec& other) const { return !(*this == other); }
 
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
-    if (m_none_is_leaf != inner_treespec.m_none_is_leaf) [[unlikely]] {  // NOLINT
+    if (m_none_is_leaf != inner_treespec.m_none_is_leaf) [[unlikely]] {
         throw std::invalid_argument("PyTreeSpecs must have the same none_is_leaf value.");
     }
     if (!m_namespace.empty() && !inner_treespec.m_namespace.empty() &&
-        m_namespace != inner_treespec.m_namespace) [[unlikely]] {  // NOLINT
+        m_namespace != inner_treespec.m_namespace) [[unlikely]] {
         throw std::invalid_argument(
             absl::StrFormat("PyTreeSpecs must have the same namespace. Got %s vs. %s.",
                             py::repr(py::str(m_namespace)),
@@ -82,7 +84,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     treespec->m_none_is_leaf = m_none_is_leaf;
     if (inner_treespec.m_namespace.empty()) [[likely]] {
         treespec->m_namespace = m_namespace;
-    } else [[unlikely]] {  // NOLINT
+    } else [[unlikely]] {
         treespec->m_namespace = inner_treespec.m_namespace;
     }
 
@@ -93,7 +95,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     for (const Node& node : m_traversal) {
         if (node.kind == PyTreeKind::Leaf) [[likely]] {
             absl::c_copy(inner_treespec.m_traversal, std::back_inserter(treespec->m_traversal));
-        } else [[unlikely]] {  // NOLINT
+        } else [[unlikely]] {
             Node new_node{node};
             new_node.num_leaves = node.num_leaves * num_inner_leaves;
             new_node.num_nodes =
@@ -120,7 +122,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
             throw std::invalid_argument(absl::StrFormat(
                 "Expected TreeSpecs with `node_is_leaf=%s`.", (none_is_leaf ? "True" : "False")));
         }
-        if (!treespec.m_namespace.empty()) [[unlikely]] {  // NOLINT
+        if (!treespec.m_namespace.empty()) [[unlikely]] {
             if (registry_namespace.empty()) [[likely]] {
                 registry_namespace = treespec.m_namespace;
             } else if (registry_namespace != treespec.m_namespace) [[unlikely]] {
@@ -177,7 +179,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
 }
 
 std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
-    std::vector<std::unique_ptr<PyTreeSpec>> children;
+    auto children = std::vector<std::unique_ptr<PyTreeSpec>>{};
     if (m_traversal.empty()) [[likely]] {
         return children;
     }
@@ -235,7 +237,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
 
         case PyTreeKind::Dict: {
             py::dict dict;
-            py::list keys = py::reinterpret_borrow<py::list>(node.node_data);
+            auto keys = py::reinterpret_borrow<py::list>(node.node_data);
             for (ssize_t i = 0; i < node.arity; ++i) {
                 dict[GET_ITEM_HANDLE<py::list>(keys, i)] = std::move(children[i]);
             }
@@ -244,7 +246,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
 
         case PyTreeKind::OrderedDict: {
             py::list items{node.arity};
-            py::list keys = py::reinterpret_borrow<py::list>(node.node_data);
+            auto keys = py::reinterpret_borrow<py::list>(node.node_data);
             for (ssize_t i = 0; i < node.arity; ++i) {
                 SET_ITEM<py::list>(
                     items,
@@ -283,10 +285,10 @@ template <bool NoneIsLeaf>
                                           const std::string& registry_namespace) {
     const PyTreeTypeRegistry::Registration* registration =
         PyTreeTypeRegistry::Lookup<NoneIsLeaf>(handle.get_type(), registry_namespace);
-    if (registration) [[likely]] {  // NOLINT
+    if (registration) [[likely]] {
         if (registration->kind == PyTreeKind::Custom) [[unlikely]] {
             *custom = registration;
-        } else [[likely]] {  // NOLINT
+        } else [[likely]] {
             *custom = nullptr;
         }
         return registration->kind;
@@ -305,8 +307,9 @@ template PyTreeKind PyTreeSpec::GetKind<NONE_IS_LEAF>(const py::handle&,
                                                       PyTreeTypeRegistry::Registration const**,
                                                       const std::string&);
 
+// NOLINTNEXTLINE[readability-function-cognitive-complexity]
 std::string PyTreeSpec::ToString() const {
-    std::vector<std::string> agenda;
+    auto agenda = std::vector<std::string>{};
     for (const Node& node : m_traversal) {
         EXPECT_GE(py::ssize_t_cast(agenda.size()), node.arity, "Too few elements for container.");
 
@@ -332,10 +335,10 @@ std::string PyTreeSpec::ToString() const {
             case PyTreeKind::List:
             case PyTreeKind::Deque:
                 representation = absl::StrCat("[", children, "]");
-                if (node.kind == PyTreeKind::Deque) [[unlikely]] {  // NOLINT
+                if (node.kind == PyTreeKind::Deque) [[unlikely]] {
                     if (node.node_data.is_none()) [[likely]] {
                         representation = absl::StrCat("deque(", representation, ")");
-                    } else [[unlikely]] {  // NOLINT
+                    } else [[unlikely]] {
                         representation = absl::StrFormat(
                             "deque(%s, maxlen=%s)", representation, py::str(node.node_data));
                     }
@@ -361,7 +364,7 @@ std::string PyTreeSpec::ToString() const {
 
             case PyTreeKind::NamedTuple: {
                 py::object type = node.node_data;
-                py::tuple fields = py::reinterpret_borrow<py::tuple>(py::getattr(type, "_fields"));
+                auto fields = py::reinterpret_borrow<py::tuple>(py::getattr(type, "_fields"));
                 EXPECT_EQ(GET_SIZE<py::tuple>(fields),
                           node.arity,
                           "Number of fields and entries does not match.");
@@ -404,7 +407,7 @@ std::string PyTreeSpec::ToString() const {
                 EXPECT_EQ(
                     GET_SIZE<py::tuple>(node.node_data), 2, "Number of auxiliary data mismatch.");
                 py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
-                py::list keys =
+                auto keys =
                     py::reinterpret_borrow<py::list>(GET_ITEM_BORROW<py::tuple>(node.node_data, 1));
                 EXPECT_EQ(GET_SIZE<py::list>(keys),
                           node.arity,
@@ -469,17 +472,19 @@ py::object PyTreeSpec::ToPicklable() const {
     return py::make_tuple(std::move(node_states), py::bool_(m_none_is_leaf), py::str(m_namespace));
 }
 
+// NOLINTBEGIN[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
+// NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ PyTreeSpec PyTreeSpec::FromPicklableImpl(const py::object& picklable) {
-    py::tuple state = py::reinterpret_steal<py::tuple>(picklable);
+    auto state = py::reinterpret_steal<py::tuple>(picklable);
     if (state.size() != 3) [[unlikely]] {
         throw std::runtime_error("Malformed pickled PyTreeSpec.");
     }
-    bool none_is_leaf;
+    bool none_is_leaf = false;
     std::string registry_namespace;
     PyTreeSpec treespec;
     treespec.m_none_is_leaf = none_is_leaf = state[1].cast<bool>();
     treespec.m_namespace = registry_namespace = state[2].cast<std::string>();
-    py::tuple node_states = py::reinterpret_borrow<py::tuple>(state[0]);
+    auto node_states = py::reinterpret_borrow<py::tuple>(state[0]);
     for (const auto& item : node_states) {
         auto t = item.cast<py::tuple>();
         if (t.size() != 7) [[unlikely]] {
@@ -522,11 +527,11 @@ py::object PyTreeSpec::ToPicklable() const {
             }
             if (t[4].is_none()) [[unlikely]] {
                 node.custom = nullptr;
-            } else [[likely]] {  // NOLINT
+            } else [[likely]] {
                 if (none_is_leaf) [[unlikely]] {
                     node.custom =
                         PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(t[4], registry_namespace);
-                } else [[likely]] {  // NOLINT
+                } else [[likely]] {
                     node.custom =
                         PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(t[4], registry_namespace);
                 }
@@ -544,6 +549,7 @@ py::object PyTreeSpec::ToPicklable() const {
     }
     return treespec;
 }
+// NOLINTEND[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
 
 /*static*/ PyTreeSpec PyTreeSpec::FromPicklable(const py::object& picklable) {
     return FromPicklableImpl(picklable);

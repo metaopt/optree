@@ -1,0 +1,26 @@
+---
+# NOTE: there must be no spaces before the '-', so put the comma last.
+InheritParentConfig: true
+Checks: '
+abseil-*,
+bugprone-*,
+-bugprone-easily-swappable-parameters,
+clang-analyzer-*,
+cppcoreguidelines-*,
+-cppcoreguidelines-avoid-non-const-global-variables,
+-cppcoreguidelines-macro-usage,
+-cppcoreguidelines-pro-type-reinterpret-cast,
+hicpp-avoid-goto,
+hicpp-exception-baseclass,
+misc-*,
+-misc-const-correctness,
+modernize-*,
+-modernize-use-trailing-return-type,
+performance-*,
+readability-*,
+-readability-convert-member-functions-to-static,
+-readability-identifier-length,
+'
+HeaderFilterRegex: '^include/.*$'
+WarningsAsErrors: '*'
+FormatStyle: file

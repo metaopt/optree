@@ -27,7 +27,7 @@ limitations under the License.
 
 namespace optree {
 
-void BuildModule(py::module& mod) {  // NOLINT
+void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
     mod.doc() = "Optimized PyTree Utilities.";
     py::register_local_exception<InternalError>(mod, "InternalError", PyExc_RuntimeError);
     mod.attr("MAX_RECURSION_DEPTH") = MAX_RECURSION_DEPTH;
@@ -144,4 +144,5 @@ void BuildModule(py::module& mod) {  // NOLINT
 
 }  // namespace optree
 
+// NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
 PYBIND11_MODULE(_C, mod) { optree::BuildModule(mod); }

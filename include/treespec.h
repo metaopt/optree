@@ -66,7 +66,7 @@ class PyTreeSpec {
 
     // Recursive helper used to implement Flatten().
     bool FlattenInto(const py::handle &handle,
-                     std::vector<py::object> &leaves,  // NOLINT
+                     std::vector<py::object> &leaves,  // NOLINT[runtime/references]
                      const std::optional<py::function> &leaf_predicate,
                      const bool &none_is_leaf,
                      const std::string &registry_namespace);
@@ -82,8 +82,8 @@ class PyTreeSpec {
 
     // Recursive helper used to implement FlattenWithPath().
     bool FlattenIntoWithPath(const py::handle &handle,
-                             std::vector<py::object> &leaves,  // NOLINT
-                             std::vector<py::object> &paths,   // NOLINT
+                             std::vector<py::object> &leaves,  // NOLINT[runtime/references]
+                             std::vector<py::object> &paths,   // NOLINT[runtime/references]
                              const std::optional<py::function> &leaf_predicate,
                              const bool &none_is_leaf,
                              const std::string &registry_namespace);
@@ -91,7 +91,7 @@ class PyTreeSpec {
     // Flattens a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure
     // of 'x'. For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeSpec [(*,
     // *), *], the result is the list of leaves [1, (2, 3), {"foo": 4}].
-    py::list FlattenUpTo(const py::handle &full_tree) const;
+    [[nodiscard]] py::list FlattenUpTo(const py::handle &full_tree) const;
 
     // Tests whether the given list is a flat list of leaves.
     static bool AllLeaves(const py::iterable &iterable,
@@ -99,10 +99,10 @@ class PyTreeSpec {
                           const std::string &registry_namespace = "");
 
     // Returns an unflattened PyTree given an iterable of leaves and a PyTreeSpec.
-    py::object Unflatten(const py::iterable &leaves) const;
+    [[nodiscard]] py::object Unflatten(const py::iterable &leaves) const;
 
     // Composes two PyTreeSpecs, replacing the leaves of this tree with copies of `inner`.
-    std::unique_ptr<PyTreeSpec> Compose(const PyTreeSpec &inner_treespec) const;
+    [[nodiscard]] std::unique_ptr<PyTreeSpec> Compose(const PyTreeSpec &inner_treespec) const;
 
     // Makes a Tuple PyTreeSpec out of a vector of PyTreeSpecs.
     static std::unique_ptr<PyTreeSpec> Tuple(const std::vector<PyTreeSpec> &treespecs,
@@ -114,30 +114,30 @@ class PyTreeSpec {
     // Makes a PyTreeSpec representing a `None` node.
     static std::unique_ptr<PyTreeSpec> None(const bool &none_is_leaf);
 
-    std::vector<std::unique_ptr<PyTreeSpec>> Children() const;
+    [[nodiscard]] std::vector<std::unique_ptr<PyTreeSpec>> Children() const;
 
     // Maps a function over a PyTree structure, applying f_leaf to each leaf, and
     // f_node(children, node_data) to each container node.
-    py::object Walk(const py::function &f_node,
-                    const py::handle &f_leaf,
-                    const py::iterable &leaves) const;
+    [[nodiscard]] py::object Walk(const py::function &f_node,
+                                  const py::handle &f_leaf,
+                                  const py::iterable &leaves) const;
 
-    ssize_t num_leaves() const;
+    [[nodiscard]] ssize_t num_leaves() const;
 
-    ssize_t num_nodes() const;
+    [[nodiscard]] ssize_t num_nodes() const;
 
-    ssize_t num_children() const;
+    [[nodiscard]] ssize_t num_children() const;
 
-    bool get_none_is_leaf() const;
+    [[nodiscard]] bool get_none_is_leaf() const;
 
-    std::string get_namespace() const;
+    [[nodiscard]] std::string get_namespace() const;
 
     bool operator==(const PyTreeSpec &other) const;
     bool operator!=(const PyTreeSpec &other) const;
 
     template <typename H>
     friend H AbslHashValue(H h, const Node &n) {
-        ssize_t data_hash{0};
+        ssize_t data_hash = 0;
         switch (n.kind) {
             case PyTreeKind::Custom:
                 // We don't hash node_data custom node types since they may not hashable.
@@ -154,7 +154,7 @@ class PyTreeSpec {
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
                 py::list keys;
-                if (n.kind == PyTreeKind::DefaultDict) [[unlikely]] {  // NOLINT
+                if (n.kind == PyTreeKind::DefaultDict) [[unlikely]] {
                     EXPECT_EQ(
                         GET_SIZE<py::tuple>(n.node_data), 2, "Number of auxiliary data mismatch.");
                     py::object default_factory = GET_ITEM_BORROW<py::tuple>(n.node_data, 0);
@@ -164,7 +164,7 @@ class PyTreeSpec {
                               n.arity,
                               "Number of keys and entries does not match.");
                     data_hash = py::hash(default_factory);
-                } else [[likely]] {  // NOLINT
+                } else [[likely]] {
                     EXPECT_EQ(GET_SIZE<py::list>(n.node_data),
                               n.arity,
                               "Number of keys and entries does not match.");
@@ -190,11 +190,11 @@ class PyTreeSpec {
         return h;
     }
 
-    std::string ToString() const;
+    [[nodiscard]] std::string ToString() const;
 
     // Transforms the PyTreeSpec into a picklable object.
     // Used to implement `PyTreeSpec.__getstate__`.
-    py::object ToPicklable() const;
+    [[nodiscard]] py::object ToPicklable() const;
 
     // Transforms the object returned by `ToPicklable()` back to PyTreeSpec.
     // Used to implement `PyTreeSpec.__setstate__`.
@@ -240,7 +240,7 @@ class PyTreeSpec {
     // Whether to treat `None` as a leaf. If false, `None` is a non-leaf node with arity 0.
     bool m_none_is_leaf = false;
 
-    // The registry namespace used to resolve the custom pytree node types
+    // The registry namespace used to resolve the custom pytree node types.
     std::string m_namespace;
 
     // Helper that manufactures an instance of a node given its children.
@@ -254,21 +254,21 @@ class PyTreeSpec {
 
     template <bool NoneIsLeaf, typename Span>
     bool FlattenIntoImpl(const py::handle &handle,
-                         Span &leaves,  // NOLINT
+                         Span &leaves,  // NOLINT[runtime/references]
                          const ssize_t &depth,
                          const std::optional<py::function> &leaf_predicate,
                          const std::string &registry_namespace);
 
     template <bool NoneIsLeaf, typename Span, typename Stack>
     bool FlattenIntoWithPathImpl(const py::handle &handle,
-                                 Span &leaves,  // NOLINT
-                                 Span &paths,   // NOLINT
-                                 Stack &stack,  // NOLINT
+                                 Span &leaves,  // NOLINT[runtime/references]
+                                 Span &paths,   // NOLINT[runtime/references]
+                                 Stack &stack,  // NOLINT[runtime/references]
                                  const ssize_t &depth,
                                  const std::optional<py::function> &leaf_predicate,
                                  const std::string &registry_namespace);
 
-    py::list FlattenUpToImpl(const py::handle &full_tree) const;
+    [[nodiscard]] py::list FlattenUpToImpl(const py::handle &full_tree) const;
 
     template <bool NoneIsLeaf>
     static bool AllLeavesImpl(const py::iterable &iterable, const std::string &registry_namespace);

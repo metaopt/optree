@@ -1,5 +1,5 @@
 /*
-Copyright 2022 MetaOPT Team. All Rights Reserved.
+Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,25 +23,27 @@ limitations under the License.
 namespace optree {
 
 template <bool NoneIsLeaf, typename Span>
+// NOLINTNEXTLINE[readability-function-cognitive-complexity]
 bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                                  Span& leaves,
                                  const ssize_t& depth,
                                  const std::optional<py::function>& leaf_predicate,
                                  const std::string& registry_namespace) {
-    if (depth > MAX_RECURSION_DEPTH) [[unlikely]] {  // NOLINT
+    if (depth > MAX_RECURSION_DEPTH) [[unlikely]] {
         PyErr_SetString(PyExc_RecursionError,
                         "maximum recursion depth exceeded during flattening the tree");
         throw py::error_already_set();
     }
 
-    bool found_custom{false};
+    bool found_custom = false;
     Node node;
     ssize_t start_num_nodes = py::ssize_t_cast(m_traversal.size());
-    ssize_t start_num_leaves = leaves.size();
+    ssize_t start_num_leaves = py::ssize_t_cast(leaves.size());
     if (leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) [[unlikely]] {
         leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
-    } else [[likely]] {  // NOLINT
+    } else [[likely]] {
         node.kind = GetKind<NoneIsLeaf>(handle, &node.custom, registry_namespace);
+        // NOLINTNEXTLINE[misc-no-recursion]
         auto recurse = [this, &found_custom, &leaf_predicate, &registry_namespace, &leaves, &depth](
                            py::handle child) {
             found_custom |= FlattenIntoImpl<NoneIsLeaf>(
@@ -49,7 +51,9 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
         };
         switch (node.kind) {
             case PyTreeKind::None:
-                if (!NoneIsLeaf) break;
+                if (!NoneIsLeaf) {
+                    break;
+                }
                 [[fallthrough]];
             case PyTreeKind::Leaf:
                 leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
@@ -74,11 +78,11 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
-                py::dict dict = py::reinterpret_borrow<py::dict>(handle);
+                auto dict = py::reinterpret_borrow<py::dict>(handle);
                 py::list keys;
                 if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
                     keys = DictKeys(dict);
-                } else [[likely]] {  // NOLINT
+                } else [[likely]] {
                     keys = SortedDictKeys(dict);
                 }
                 for (const py::handle& key : keys) {
@@ -88,14 +92,14 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
                     node.node_data =
                         py::make_tuple(py::getattr(handle, "default_factory"), std::move(keys));
-                } else [[likely]] {  // NOLINT
+                } else [[likely]] {
                     node.node_data = std::move(keys);
                 }
                 break;
             }
 
             case PyTreeKind::NamedTuple: {
-                py::tuple tuple = py::reinterpret_borrow<py::tuple>(handle);
+                auto tuple = py::reinterpret_borrow<py::tuple>(handle);
                 node.arity = GET_SIZE<py::tuple>(tuple);
                 node.node_data = py::reinterpret_borrow<py::object>(tuple.get_type());
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -105,7 +109,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             }
 
             case PyTreeKind::Deque: {
-                py::list list = handle.cast<py::list>();
+                auto list = handle.cast<py::list>();
                 node.arity = GET_SIZE<py::list>(list);
                 node.node_data = py::getattr(handle, "maxlen");
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -118,7 +122,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 found_custom = true;
                 py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(handle));
                 const size_t num_out = GET_SIZE<py::tuple>(out);
-                if (num_out != 2 && num_out != 3) [[unlikely]] {  // NOLINT
+                if (num_out != 2 && num_out != 3) [[unlikely]] {
                     throw std::runtime_error(
                         "PyTree custom to_iterable function should return a pair or a triple.");
                 }
@@ -129,9 +133,9 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                     ++node.arity;
                     recurse(child);
                 }
-                if (num_out == 3) [[likely]] {  // NOLINT
+                if (num_out == 3) [[likely]] {
                     py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, 2);
-                    if (!node_entries.is_none()) [[likely]] {  // NOLINT
+                    if (!node_entries.is_none()) [[likely]] {
                         node.node_entries = py::cast<py::tuple>(std::move(node_entries));
                         const ssize_t num_entries = GET_SIZE<py::tuple>(node.node_entries);
                         if (num_entries != node.arity) [[unlikely]] {
@@ -163,7 +167,7 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
                              const std::string& registry_namespace) {
     if (none_is_leaf) [[unlikely]] {
         return FlattenIntoImpl<NONE_IS_LEAF>(handle, leaves, 0, leaf_predicate, registry_namespace);
-    } else [[likely]] {  // NOLINT
+    } else [[likely]] {
         return FlattenIntoImpl<NONE_IS_NODE>(handle, leaves, 0, leaf_predicate, registry_namespace);
     }
 }
@@ -184,6 +188,7 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
 }
 
 template <bool NoneIsLeaf, typename Span, typename Stack>
+// NOLINTNEXTLINE[readability-function-cognitive-complexity]
 bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                                          Span& leaves,
                                          Span& paths,
@@ -191,20 +196,21 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                                          const ssize_t& depth,
                                          const std::optional<py::function>& leaf_predicate,
                                          const std::string& registry_namespace) {
-    if (depth > MAX_RECURSION_DEPTH) [[unlikely]] {  // NOLINT
+    if (depth > MAX_RECURSION_DEPTH) [[unlikely]] {
         PyErr_SetString(PyExc_RecursionError,
                         "maximum recursion depth exceeded during flattening the tree");
         throw py::error_already_set();
     }
 
-    bool found_custom{false};
+    bool found_custom = false;
     Node node;
     ssize_t start_num_nodes = py::ssize_t_cast(m_traversal.size());
-    ssize_t start_num_leaves = leaves.size();
+    ssize_t start_num_leaves = py::ssize_t_cast(leaves.size());
     if (leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) [[unlikely]] {
         leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
-    } else [[likely]] {  // NOLINT
+    } else [[likely]] {
         node.kind = GetKind<NoneIsLeaf>(handle, &node.custom, registry_namespace);
+        // NOLINTNEXTLINE[misc-no-recursion]
         auto recurse = [this,
                         &found_custom,
                         &leaf_predicate,
@@ -220,10 +226,12 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
         };
         switch (node.kind) {
             case PyTreeKind::None:
-                if (!NoneIsLeaf) break;
+                if (!NoneIsLeaf) {
+                    break;
+                }
                 [[fallthrough]];
             case PyTreeKind::Leaf: {
-                py::tuple path = py::tuple{depth};
+                py::tuple path{depth};
                 for (ssize_t d = 0; d < depth; ++d) {
                     SET_ITEM<py::tuple>(path, d, stack[d]);
                 }
@@ -251,11 +259,11 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
-                py::dict dict = py::reinterpret_borrow<py::dict>(handle);
+                auto dict = py::reinterpret_borrow<py::dict>(handle);
                 py::list keys;
                 if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
                     keys = DictKeys(dict);
-                } else [[likely]] {  // NOLINT
+                } else [[likely]] {
                     keys = SortedDictKeys(dict);
                 }
                 for (const py::handle& key : keys) {
@@ -265,14 +273,14 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
                     node.node_data =
                         py::make_tuple(py::getattr(handle, "default_factory"), std::move(keys));
-                } else [[likely]] {  // NOLINT
+                } else [[likely]] {
                     node.node_data = std::move(keys);
                 }
                 break;
             }
 
             case PyTreeKind::NamedTuple: {
-                py::tuple tuple = py::reinterpret_borrow<py::tuple>(handle);
+                auto tuple = py::reinterpret_borrow<py::tuple>(handle);
                 node.arity = GET_SIZE<py::tuple>(tuple);
                 node.node_data = py::reinterpret_borrow<py::object>(tuple.get_type());
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -282,7 +290,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             }
 
             case PyTreeKind::Deque: {
-                py::list list = handle.cast<py::list>();
+                auto list = handle.cast<py::list>();
                 node.arity = GET_SIZE<py::list>(list);
                 node.node_data = py::getattr(handle, "maxlen");
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -302,17 +310,17 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 node.arity = 0;
                 node.node_data = GET_ITEM_BORROW<py::tuple>(out, 1);
                 py::object node_entries;
-                if (num_out == 3) [[likely]] {  // NOLINT
+                if (num_out == 3) [[likely]] {
                     node_entries = GET_ITEM_BORROW<py::tuple>(out, 2);
-                } else [[unlikely]] {  // NOLINT
+                } else [[unlikely]] {
                     node_entries = py::none();
                 }
-                if (node_entries.is_none()) [[unlikely]] {  // NOLINT
+                if (node_entries.is_none()) [[unlikely]] {
                     for (const py::handle& child :
                          py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, 0))) {
                         recurse(child, py::int_(node.arity++));
                     }
-                } else [[likely]] {  // NOLINT
+                } else [[likely]] {
                     node.node_entries = py::cast<py::tuple>(std::move(node_entries));
                     node.arity = GET_SIZE<py::tuple>(node.node_entries);
                     ssize_t num_children = 0;
@@ -353,11 +361,11 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
                                      const std::optional<py::function>& leaf_predicate,
                                      const bool& none_is_leaf,
                                      const std::string& registry_namespace) {
-    std::vector<py::handle> stack;
+    auto stack = std::vector<py::handle>{};
     if (none_is_leaf) [[unlikely]] {
         return FlattenIntoWithPathImpl<NONE_IS_LEAF>(
             handle, leaves, paths, stack, 0, leaf_predicate, registry_namespace);
-    } else [[likely]] {  // NOLINT
+    } else [[likely]] {
         return FlattenIntoWithPathImpl<NONE_IS_NODE>(
             handle, leaves, paths, stack, 0, leaf_predicate, registry_namespace);
     }
@@ -379,11 +387,11 @@ PyTreeSpec::FlattenWithPath(const py::handle& tree,
     return std::make_tuple(std::move(paths), std::move(leaves), std::move(treespec));
 }
 
+// NOLINTNEXTLINE[readability-function-cognitive-complexity]
 py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
     const ssize_t num_leaves = PyTreeSpec::num_leaves();
 
-    std::vector<py::object> agenda;
-    agenda.emplace_back(py::reinterpret_borrow<py::object>(full_tree));
+    auto agenda = std::vector<py::object>{py::reinterpret_borrow<py::object>(full_tree)};
 
     auto it = m_traversal.rbegin();
     py::list leaves{num_leaves};
@@ -410,7 +418,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
 
             case PyTreeKind::Tuple: {
                 AssertExact<py::tuple>(object);
-                py::tuple tuple = py::reinterpret_borrow<py::tuple>(object);
+                auto tuple = py::reinterpret_borrow<py::tuple>(object);
                 if (GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
                     throw std::invalid_argument(
                         absl::StrFormat("Tuple arity mismatch: %ld != %ld; tuple: %s.",
@@ -426,7 +434,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
 
             case PyTreeKind::List: {
                 AssertExact<py::list>(object);
-                py::list list = py::reinterpret_borrow<py::list>(object);
+                auto list = py::reinterpret_borrow<py::list>(object);
                 if (GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
                     throw std::invalid_argument(
                         absl::StrFormat("List arity mismatch: %ld != %ld; list: %s.",
@@ -444,14 +452,14 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
             case PyTreeKind::OrderedDict: {
                 if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
                     AssertExactOrderedDict(object);
-                } else [[likely]] {  // NOLINT
+                } else [[likely]] {
                     AssertExact<py::dict>(object);
                 }
-                py::dict dict = py::reinterpret_borrow<py::dict>(object);
+                auto dict = py::reinterpret_borrow<py::dict>(object);
                 py::list keys;
                 if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
                     keys = DictKeys(dict);
-                } else [[likely]] {  // NOLINT
+                } else [[likely]] {
                     keys = SortedDictKeys(dict);
                 }
                 if (keys.not_equal(node.node_data)) [[unlikely]] {
@@ -468,7 +476,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
 
             case PyTreeKind::NamedTuple: {
                 AssertExactNamedTuple(object);
-                py::tuple tuple = py::reinterpret_borrow<py::tuple>(object);
+                auto tuple = py::reinterpret_borrow<py::tuple>(object);
                 if (GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
                     throw std::invalid_argument(
                         absl::StrFormat("Named tuple arity mismatch: %ld != %ld; tuple: %s.",
@@ -490,8 +498,8 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
 
             case PyTreeKind::DefaultDict: {
                 AssertExactDefaultDict(object);
-                py::dict dict = py::reinterpret_borrow<py::dict>(object);
-                py::list keys = SortedDictKeys(dict);
+                auto dict = py::reinterpret_borrow<py::dict>(object);
+                const py::list keys = SortedDictKeys(dict);
                 py::object default_factory = py::getattr(object, "default_factory");
                 py::object expected_default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
                 py::list expected_keys = GET_ITEM_BORROW<py::tuple>(node.node_data, 1);
@@ -515,7 +523,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
 
             case PyTreeKind::Deque: {
                 AssertExactDeque(object);
-                py::list list = py::cast<py::list>(object);
+                auto list = py::cast<py::list>(object);
                 if (GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
                     throw std::invalid_argument(
                         absl::StrFormat("Deque arity mismatch: %ld != %ld; deque: %s.",
@@ -530,11 +538,11 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
             }
 
             case PyTreeKind::Custom: {
-                const PyTreeTypeRegistry::Registration* registration;
+                const PyTreeTypeRegistry::Registration* registration = nullptr;
                 if (m_none_is_leaf) [[unlikely]] {
                     registration =
                         PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(object.get_type(), m_namespace);
-                } else [[likely]] {  // NOLINT
+                } else [[likely]] {
                     registration =
                         PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(object.get_type(), m_namespace);
                 }
@@ -591,7 +599,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::handle& full_tree) const {
 template <bool NoneIsLeaf>
 /*static*/ bool PyTreeSpec::AllLeavesImpl(const py::iterable& iterable,
                                           const std::string& registry_namespace) {
-    const PyTreeTypeRegistry::Registration* custom;
+    const PyTreeTypeRegistry::Registration* custom = nullptr;
     for (const py::handle& h : iterable) {
         if (GetKind<NoneIsLeaf>(h, &custom, registry_namespace) != PyTreeKind::Leaf) [[unlikely]] {
             return false;
@@ -605,7 +613,7 @@ template <bool NoneIsLeaf>
                                       const std::string& registry_namespace) {
     if (none_is_leaf) [[unlikely]] {
         return AllLeavesImpl<NONE_IS_LEAF>(iterable, registry_namespace);
-    } else [[likely]] {  // NOLINT
+    } else [[likely]] {
         return AllLeavesImpl<NONE_IS_NODE>(iterable, registry_namespace);
     }
 }
