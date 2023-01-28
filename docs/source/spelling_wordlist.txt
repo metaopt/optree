@@ -52,3 +52,4 @@ const
 func
 recurse
 len
+doctest

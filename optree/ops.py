@@ -115,6 +115,7 @@ def tree_flatten(
     dependent on the **sorted** keys in the dictionary. Please use :class:`collections.OrderedDict`
     if you want to keep the keys in the insertion order.
 
+    >>> from collections import OrderedDict
     >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
     >>> tree_flatten(tree)
     ([2, 3, 4, 1, 5], PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)])))
@@ -155,18 +156,14 @@ def tree_flatten_with_path(
     corresponding to a left-to-right depth-first tree traversal.
 
     >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
-    >>> tree_flatten_with_path(tree)
-    (
-        [('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('d',)],
-        [1, 2, 3, 4, 5],
-        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
-    )
-    >>> tree_flatten_with_path(tree, none_is_leaf=True)
-    (
-        [('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('c',), ('d',)],
-        [1, 2, 3, 4, None, 5],
-        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf)
-    )
+    >>> tree_flatten_with_path(tree)  # doctest: +NORMALIZE_WHITESPACE
+    ([('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('d',)],
+     [1, 2, 3, 4, 5],
+     PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *}))
+    >>> tree_flatten_with_path(tree, none_is_leaf=True)  # doctest: +NORMALIZE_WHITESPACE
+    ([('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('c',), ('d',)],
+     [1, 2, 3, 4, None, 5],
+     PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf))
     >>> tree_flatten_with_path(1)
     ([()], [1], PyTreeSpec(*))
     >>> tree_flatten_with_path(None)
@@ -178,19 +175,16 @@ def tree_flatten_with_path(
     dependent on the **sorted** keys in the dictionary. Please use :class:`collections.OrderedDict`
     if you want to keep the keys in the insertion order.
 
+    >>> from collections import OrderedDict
     >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
-    >>> tree_flatten_with_path(tree)
-    (
-        [('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('d',)],
-        [2, 3, 4, 1, 5],
-        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)]))
-    )
-    >>> tree_flatten_with_path(tree, none_is_leaf=True)
-    (
-        [('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('c',), ('d',)],
-        [2, 3, 4, 1, None, 5],
-        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf)
-    )
+    >>> tree_flatten_with_path(tree)  # doctest: +NORMALIZE_WHITESPACE
+    ([('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('d',)],
+     [2, 3, 4, 1, 5],
+     PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)])))
+    >>> tree_flatten_with_path(tree, none_is_leaf=True)  # doctest: +NORMALIZE_WHITESPACE
+    ([('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('c',), ('d',)],
+     [2, 3, 4, 1, None, 5],
+     PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf))
 
     Args:
         tree (pytree): A pytree to flatten.
@@ -217,6 +211,7 @@ def tree_unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
 
     The inverse of :func:`tree_flatten`.
 
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
     >>> leaves, treespec = tree_flatten(tree)
     >>> tree == tree_unflatten(treespec, leaves)
     True
@@ -702,6 +697,7 @@ def tree_transpose(
     >>> outer_treespec
     PyTreeSpec({'a': *, 'b': *, 'c': (*, *)})
     >>> inner_treespec = tree_structure((1, 2))
+    >>> inner_treespec
     PyTreeSpec((*, *))
     >>> tree = {'a': (1, 2), 'b': (3, 4), 'c': ((5, 6), (7, 8))}
     >>> tree_transpose(outer_treespec, inner_treespec, tree)
@@ -1019,6 +1015,8 @@ def broadcast_prefix(
     >>> broadcast_prefix([1, 2, 3], [1, 2, 3])
     [1, 2, 3]
     >>> broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
+    Traceback (most recent call last):
+        ...
     ValueError: List arity mismatch: 4 != 3; list: [1, 2, 3, 4].
     >>> broadcast_prefix([1, 2, 3], [1, 2, (3, 4)])
     [1, 2, 3, 3]

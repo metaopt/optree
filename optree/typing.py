@@ -131,15 +131,13 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
     >>> import torch
     >>> from optree.typing import PyTree
     >>> TensorTree = PyTree[torch.Tensor]
-    >>> TensorTree
-    typing.Union[
-        torch.Tensor,
-        typing.Tuple[ForwardRef('PyTree[torch.Tensor]'), ...],
-        typing.List[ForwardRef('PyTree[torch.Tensor]')],
-        typing.Dict[typing.Any, ForwardRef('PyTree[torch.Tensor]')],
-        typing.Deque[ForwardRef('PyTree[torch.Tensor]')],
-        optree.typing.CustomTreeNode[ForwardRef('PyTree[torch.Tensor]')]
-    ]
+    >>> TensorTree  # doctest: +NORMALIZE_WHITESPACE
+    typing.Union[torch.Tensor,
+                 typing.Tuple[ForwardRef('PyTree[torch.Tensor]'), ...],
+                 typing.List[ForwardRef('PyTree[torch.Tensor]')],
+                 typing.Dict[typing.Any, ForwardRef('PyTree[torch.Tensor]')],
+                 typing.Deque[ForwardRef('PyTree[torch.Tensor]')],
+                 optree.typing.CustomTreeNode[ForwardRef('PyTree[torch.Tensor]')]]
     """
 
     @_tp_cache
@@ -212,15 +210,13 @@ class PyTreeTypeVar:
     >>> import torch
     >>> from optree.typing import PyTreeTypeVar
     >>> TensorTree = PyTreeTypeVar('TensorTree', torch.Tensor)
-    >>> TensorTree
-    typing.Union[
-        torch.Tensor,
-        typing.Tuple[ForwardRef('TensorTree'), ...],
-        typing.List[ForwardRef('TensorTree')],
-        typing.Dict[typing.Any, ForwardRef('TensorTree')],
-        typing.Deque[ForwardRef('TensorTree')],
-        optree.typing.CustomTreeNode[ForwardRef('TensorTree')]
-    ]
+    >>> TensorTree  # doctest: +NORMALIZE_WHITESPACE
+    typing.Union[torch.Tensor,
+                 typing.Tuple[ForwardRef('TensorTree'), ...],
+                 typing.List[ForwardRef('TensorTree')],
+                 typing.Dict[typing.Any, ForwardRef('TensorTree')],
+                 typing.Deque[ForwardRef('TensorTree')],
+                 optree.typing.CustomTreeNode[ForwardRef('TensorTree')]]
     """
 
     @_tp_cache

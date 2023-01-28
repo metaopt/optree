@@ -54,6 +54,9 @@ py-format-install:
 mypy-install:
 	$(call check_pip_install,mypy)
 
+xdoctest-install:
+	$(call check_pip_install,xdoctest)
+
 pre-commit-install:
 	$(call check_pip_install,pre-commit)
 	$(PYTHON) -m pre_commit install --install-hooks
@@ -124,6 +127,11 @@ py-format: py-format-install
 mypy: mypy-install
 	$(PYTHON) -m mypy $(PROJECT_PATH)
 
+xdoctest: xdoctest-install
+	$(PYTHON) -m xdoctest $(PROJECT_PATH)
+
+doctest: xdoctest
+
 pre-commit: pre-commit-install
 	$(PYTHON) -m pre_commit run --all-files
 
@@ -171,7 +179,7 @@ clean-docs:
 
 # Utility functions
 
-lint: flake8 py-format mypy pylint clang-format clang-tidy cpplint addlicense docstyle spelling
+lint: flake8 py-format mypy pylint doctest clang-format clang-tidy cpplint addlicense docstyle spelling
 
 format: py-format-install clang-format-install addlicense-install
 	$(PYTHON) -m isort --project $(PROJECT_NAME) $(PYTHON_FILES)
