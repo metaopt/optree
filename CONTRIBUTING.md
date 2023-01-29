@@ -49,7 +49,7 @@ We use several tools to secure code quality, including:
 - Type hint check: `mypy`
 - C++ code style: `cpplint`, `clang-format`, `clang-tidy`
 - License: `addlicense`
-- Documentation: `pydocstyle`, `doc8`
+- Documentation: `pydocstyle`, `doc8`, `xdoctest`
 
 To make things easier, we create several shortcuts as follows.
 

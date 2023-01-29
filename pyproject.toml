@@ -58,6 +58,7 @@ lint = [
     "doc8 < 1.0.0a0",
     "pydocstyle",
     "pyenchant",
+    "xdoctest",
     "cpplint",
     "pre-commit",
 ]

@@ -79,15 +79,15 @@ def register_pytree_node(
 
     Args:
         cls (type): A Python type to treat as an internal pytree node.
-        flatten_func (callable): A function to be used during flattening, taking an instance of ``cls`` and
-            returning a triple or optionally a pair, with (1) an iterable for the children to be
+        flatten_func (callable): A function to be used during flattening, taking an instance of ``cls``
+            and returning a triple or optionally a pair, with (1) an iterable for the children to be
             flattened recursively, and (2) some hashable auxiliary data to be stored in the treespec
             and to be passed to the ``unflatten_func``, and (3) (optional) an iterable for the tree
             path entries to the corresponding children. If the entries are not provided or given by
             :data:`None`, then `range(len(children))` will be used.
-        unflatten_func (callable): A function taking two arguments: the auxiliary data that was returned by
-            ``flatten_func`` and stored in the treespec, and the unflattened children. The function
-            should return an instance of ``cls``.
+        unflatten_func (callable): A function taking two arguments: the auxiliary data that was
+            returned by ``flatten_func`` and stored in the treespec, and the unflattened children.
+            The function should return an instance of ``cls``.
         namespace (str): A non-empty string that uniquely identifies the namespace of the type registry.
             This is used to isolate the registry from other modules that might register a different
             custom behavior for the same type.
@@ -104,6 +104,7 @@ def register_pytree_node(
         ...     lambda _, children: set(children),
         ...     namespace='set',
         ... )
+        <class 'set'>
 
         >>> # Register a Python type into a namespace
         >>> import torch
@@ -118,6 +119,7 @@ def register_pytree_node(
         ... )
         <class 'torch.Tensor'>
 
+        >>> # doctest: +SKIP
         >>> tree = {'weight': torch.ones(size=(1, 2)).cuda(), 'bias': torch.zeros(size=(2,))}
         >>> tree
         {'weight': tensor([[1., 1.]], device='cuda:0'), 'bias': tensor([0., 0.])}
@@ -127,7 +129,7 @@ def register_pytree_node(
         ([tensor([0., 0.]), tensor([[1., 1.]], device='cuda:0')], PyTreeSpec({'bias': *, 'weight': *}))
 
         >>> # Flatten with the namespace
-        >>> optree.tree_flatten(tree, namespace='torch2numpy')
+        >>> tree_flatten(tree, namespace='torch2numpy')
         (
             [array([0., 0.], dtype=float32), array([[1., 1.]], dtype=float32)],
             PyTreeSpec(
@@ -155,7 +157,7 @@ def register_pytree_node(
         <class 'torch.Tensor'>
 
         >>> # Flatten with the new namespace
-        >>> optree.tree_flatten(tree, namespace='tensor2flatparam')
+        >>> tree_flatten(tree, namespace='tensor2flatparam')
         (
             [
                 Parameter containing: tensor([0., 0.], requires_grad=True),
@@ -441,6 +443,7 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
     ...     f, args, kwargs = tree_map(lambda t: t.cuda(), (f, args, kwargs))
     ...     return f(*args, **kwargs)
     ...
+    >>> # doctest: +SKIP
     >>> tree_map(lambda t: t.cuda(), add_one)
     Partial(<built-in function add>, tensor(1., device='cuda:0'))
     >>> call_func_on_cuda(add_one, torch.tensor([[1, 2], [3, 4]]))
@@ -450,6 +453,7 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
     Passing zero arguments to :class:`Partial` effectively wraps the original function, making it a
     valid argument in tree-map functions:
 
+    >>> # doctest: +SKIP
     >>> call_func_on_cuda(Partial(torch.add), torch.tensor(1), torch.tensor(2))
     tensor(3, device='cuda:0')
 

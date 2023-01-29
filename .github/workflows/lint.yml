@@ -29,10 +29,10 @@ jobs:
           submodules: "recursive"
           fetch-depth: 1
 
-      - name: Set up Python 3.7
+      - name: Set up Python 3.8
         uses: actions/setup-python@v4
         with:
-          python-version: "3.7"
+          python-version: "3.8"
           update-environment: true
 
       - name: Upgrade pip
@@ -78,6 +78,10 @@ jobs:
       - name: mypy
         run: |
           make mypy
+
+      - name: doctest
+        run: |
+          make doctest
 
       - name: Install dependencies
         run: |
