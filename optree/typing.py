@@ -1,4 +1,4 @@
-# Copyright 2022 MetaOPT Team. All Rights Reserved.
+# Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 
 from typing import (
     Any,
+    Callable,
     DefaultDict,
     Deque,
     Dict,
@@ -55,7 +56,10 @@ __all__ = [
     'CustomTreeNode',
     'Children',
     'MetaData',
+    'FlattenFunc',
+    'UnflattenFunc',
     'is_namedtuple',
+    'is_namedtuple_class',
     'T',
     'S',
     'U',
@@ -239,6 +243,15 @@ class PyTreeTypeVar:
         return self
 
 
+FlattenFunc = Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]]
+UnflattenFunc = Callable[[MetaData, Children[T]], CustomTreeNode[T]]
+
+
 def is_namedtuple(obj: object) -> bool:
     """Return whether the object is a namedtuple."""
     return isinstance(obj, tuple) and hasattr(obj, '_fields')
+
+
+def is_namedtuple_class(cls: Type) -> bool:
+    """Return whether the class is a subclass of namedtuple."""
+    return issubclass(cls, tuple) and hasattr(cls, '_fields')

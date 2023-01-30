@@ -11,6 +11,7 @@ Typing Support
     PyTreeTypeVar
     CustomTreeNode
     is_namedtuple
+    is_namedtuple_class
 
 .. autoclass:: PyTreeSpec
     :members:
@@ -32,3 +33,5 @@ Typing Support
     :show-inheritance:
 
 .. autofunction:: is_namedtuple
+
+.. autofunction:: is_namedtuple_class
