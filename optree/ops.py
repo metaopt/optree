@@ -877,9 +877,13 @@ def treespec_children(treespec: PyTreeSpec) -> List[PyTreeSpec]:
 
 
 def treespec_is_leaf(treespec: PyTreeSpec) -> bool:
-    """Return whether the treespec is a leaf.
+    """Return whether the treespec is a leaf that has no children.
 
-    This function does not check whether the treespec set ``none_is_leaf``.
+    See also :func:`treespec_is_strict_leaf` and :meth:`PyTreeSpec.is_leaf`.
+
+    This function does not check whether the treespec set ``none_is_leaf``. It is equivalent to
+    ``treespec.is_leaf(strict=False)``. It will return :data:`True` if the treespec represents a
+    strict leaf or :data:`None` or an empty container (e.g., an empty tuple).
 
     >>> treespec_is_leaf(tree_structure(1))
     True
@@ -887,7 +891,13 @@ def treespec_is_leaf(treespec: PyTreeSpec) -> bool:
     False
     >>> treespec_is_leaf(tree_structure(None))
     True
+    >>> treespec_is_leaf(tree_structure(None, none_is_leaf=False))
+    True
     >>> treespec_is_leaf(tree_structure(None, none_is_leaf=True))
+    True
+    >>> treespec_is_leaf(tree_structure(()))
+    True
+    >>> treespec_is_leaf(tree_structure([]))
     True
     """
     return treespec.num_nodes == 1
@@ -896,14 +906,26 @@ def treespec_is_leaf(treespec: PyTreeSpec) -> bool:
 def treespec_is_strict_leaf(treespec: PyTreeSpec) -> bool:
     """Return whether the treespec is a strict leaf.
 
+    See also :func:`treespec_is_leaf` and :meth:`PyTreeSpec.is_leaf`.
+
+    This function respects the ``none_is_leaf`` setting in the treespec. It is equivalent to
+    ``treespec.is_leaf(strict=True)``. It will return :data:`True` if and only if the treespec
+    represents a strict leaf.
+
     >>> treespec_is_strict_leaf(tree_structure(1))
     True
     >>> treespec_is_strict_leaf(tree_structure((1, 2)))
     False
     >>> treespec_is_strict_leaf(tree_structure(None))
     False
+    >>> treespec_is_strict_leaf(tree_structure(None, none_is_leaf=False))
+    False
     >>> treespec_is_strict_leaf(tree_structure(None, none_is_leaf=True))
     True
+    >>> treespec_is_strict_leaf(tree_structure(()))
+    False
+    >>> treespec_is_strict_leaf(tree_structure([]))
+    False
     """
     return treespec.num_nodes == 1 and treespec.num_leaves == 1
 
@@ -1020,6 +1042,10 @@ def broadcast_prefix(
     ValueError: List arity mismatch: 4 != 3; list: [1, 2, 3, 4].
     >>> broadcast_prefix([1, 2, 3], [1, 2, (3, 4)])
     [1, 2, 3, 3]
+    >>> broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}])
+    [1, 2, 3, 3, 3]
+    >>> broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True)
+    [1, 2, 3, 3, 3, 3]
 
     Args:
         prefix_tree (pytree): A pytree with the same structure as a prefix of ``full_tree``.
@@ -1064,7 +1090,7 @@ def flatten_one_level(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> Tuple[Children[T], MetaData, Tuple[Any, ...]]:
+) -> Tuple[Children[T], MetaData, Tuple[Any, ...]]:  # pragma: no cover
     """Flatten the pytree one level, returning a tuple of children, auxiliary data, and path entries."""
     if tree is None:
         if none_is_leaf:  # type: ignore[unreachable]

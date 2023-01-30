@@ -1,4 +1,4 @@
-# Copyright 2022 MetaOPT Team. All Rights Reserved.
+# Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 
 import functools
 import itertools
-import platform
 from collections import OrderedDict
 
 import pytest
@@ -554,6 +553,24 @@ def test_tree_replace_nones():
         'c': (2, sentinel),
     }
     assert optree.tree_replace_nones(sentinel, None) == sentinel
+
+
+def test_broadcast_prefix():
+    assert optree.broadcast_prefix(1, [1, 2, 3]) == [1, 1, 1]
+    assert optree.broadcast_prefix([1, 2, 3], [1, 2, 3]) == [1, 2, 3]
+    with pytest.raises(ValueError, match=r'List arity mismatch: 4 != 3; list: \[1, 2, 3, 4\].'):
+        optree.broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
+    assert optree.broadcast_prefix([1, 2, 3], [1, 2, (3, 4)]) == [1, 2, 3, 3]
+    assert optree.broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}]) == [
+        1,
+        2,
+        3,
+        3,
+        3,
+    ]
+    assert optree.broadcast_prefix(
+        [1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True
+    ) == [1, 2, 3, 3, 3, 3]
 
 
 @parametrize(

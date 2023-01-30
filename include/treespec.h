@@ -132,6 +132,10 @@ class PyTreeSpec {
 
     [[nodiscard]] std::string get_namespace() const;
 
+    [[nodiscard]] py::object get_type() const;
+
+    [[nodiscard]] bool is_leaf(const bool &strict = true) const;
+
     bool operator==(const PyTreeSpec &other) const;
     bool operator!=(const PyTreeSpec &other) const;
 

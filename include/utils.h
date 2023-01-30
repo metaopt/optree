@@ -43,6 +43,9 @@ using ssize_t = py::ssize_t;
 #define PyOrderedDictTypeObject (ImportOrderedDict())
 #define PyDefaultDictTypeObject (ImportDefaultDict())
 #define PyDequeTypeObject (ImportDeque())
+#define PyOrderedDict_Type (reinterpret_cast<PyTypeObject*>(PyOrderedDictTypeObject.ptr()))
+#define PyDefaultDict_Type (reinterpret_cast<PyTypeObject*>(PyDefaultDictTypeObject.ptr()))
+#define PyDeque_Type (reinterpret_cast<PyTypeObject*>(PyDequeTypeObject.ptr()))
 
 inline const py::module& ImportCollections() {
     // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
