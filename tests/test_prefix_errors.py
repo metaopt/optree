@@ -54,8 +54,7 @@ def test_different_types_multiple():
 def test_different_num_children():
     (e,) = optree.prefix_errors((1,), (2, 3))
     expected = re.escape(
-        'pytree structure error: different numbers of pytree children '
-        'at key path\n'
+        'pytree structure error: different numbers of pytree children at key path\n'
         '    in_axes tree root'
     )
     with pytest.raises(ValueError, match=expected):
@@ -65,8 +64,7 @@ def test_different_num_children():
 def test_different_num_children_nested():
     (e,) = optree.prefix_errors([[1]], [[2, 3]])
     expected = re.escape(
-        'pytree structure error: different numbers of pytree children '
-        'at key path\n'
+        'pytree structure error: different numbers of pytree children at key path\n'
         '    in_axes[0]'
     )
     with pytest.raises(ValueError, match=expected):
@@ -76,15 +74,13 @@ def test_different_num_children_nested():
 def test_different_num_children_multiple():
     e1, e2 = optree.prefix_errors([[1], [2]], [[3, 4], [5, 6]])
     expected = re.escape(
-        'pytree structure error: different numbers of pytree children '
-        'at key path\n'
+        'pytree structure error: different numbers of pytree children at key path\n'
         '    in_axes[0]'
     )
     with pytest.raises(ValueError, match=expected):
         raise e1('in_axes')
     expected = re.escape(
-        'pytree structure error: different numbers of pytree children '
-        'at key path\n'
+        'pytree structure error: different numbers of pytree children at key path\n'
         '    in_axes[1]'
     )
     with pytest.raises(ValueError, match=expected):
@@ -94,7 +90,7 @@ def test_different_num_children_multiple():
 def test_different_metadata():
     (e,) = optree.prefix_errors({1: 2}, {3: 4})
     expected = re.escape(
-        'pytree structure error: different pytree metadata ' 'at key path\n' '    in_axes tree root'
+        'pytree structure error: different pytree metadata at key path\n' '    in_axes tree root'
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -103,7 +99,7 @@ def test_different_metadata():
 def test_different_metadata_nested():
     (e,) = optree.prefix_errors([{1: 2}], [{3: 4}])
     expected = re.escape(
-        'pytree structure error: different pytree metadata ' 'at key path\n' '    in_axes[0]'
+        'pytree structure error: different pytree metadata at key path\n' '    in_axes[0]'
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -112,12 +108,12 @@ def test_different_metadata_nested():
 def test_different_metadata_multiple():
     e1, e2 = optree.prefix_errors([{1: 2}, {3: 4}], [{3: 4}, {5: 6}])
     expected = re.escape(
-        'pytree structure error: different pytree metadata ' 'at key path\n' '    in_axes[0]'
+        'pytree structure error: different pytree metadata at key path\n' '    in_axes[0]'
     )
     with pytest.raises(ValueError, match=expected):
         raise e1('in_axes')
     expected = re.escape(
-        'pytree structure error: different pytree metadata ' 'at key path\n' '    in_axes[1]'
+        'pytree structure error: different pytree metadata at key path\n' '    in_axes[1]'
     )
     with pytest.raises(ValueError, match=expected):
         raise e2('in_axes')
@@ -148,8 +144,7 @@ def test_no_errors():
 def test_different_structure_no_children():
     (e,) = optree.prefix_errors({}, {'a': []})
     expected = re.escape(
-        'pytree structure error: different numbers of pytree children '
-        'at key path\n'
+        'pytree structure error: different numbers of pytree children at key path\n'
         '    in_axes tree root'
     )
     with pytest.raises(ValueError, match=expected):

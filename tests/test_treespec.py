@@ -17,7 +17,6 @@
 
 import itertools
 import pickle
-from collections import deque
 
 import optree
 
@@ -247,11 +246,11 @@ def test_treespec_num_leaves(tree, none_is_leaf):
 def test_treespec_num_nodes(tree, none_is_leaf):
     treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf)
     nodes = []
-    queue = deque([treespec])
-    while queue:
-        spec = queue.popleft()
+    stack = [treespec]
+    while stack:
+        spec = stack.pop()
         nodes.append(spec)
-        queue.extend(spec.children())
+        stack.extend(reversed(spec.children()))
     assert treespec.num_nodes == len(nodes)
 
 

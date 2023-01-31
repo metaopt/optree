@@ -20,7 +20,7 @@ import difflib
 import functools
 import textwrap
 from collections import deque
-from typing import Any, Callable, Optional, cast, overload
+from typing import Any, Callable, Optional, Sequence, cast, overload
 
 import optree._C as _C
 from optree.registry import (
@@ -1090,12 +1090,12 @@ def flatten_one_level(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> Tuple[Children[T], MetaData, Tuple[Any, ...]]:  # pragma: no cover
+) -> Tuple[Children[T], MetaData, Tuple[Any, ...]]:
     """Flatten the pytree one level, returning a tuple of children, auxiliary data, and path entries."""
     if tree is None:
         if none_is_leaf:  # type: ignore[unreachable]
-            raise ValueError('Cannot flatten leaf-type: `None`')
-        return (), None, ()
+            raise ValueError(f'Cannot flatten leaf-type: {type(None)}.')
+        return [], None, ()
 
     node_type = type(tree)
     handler = register_pytree_node.get(node_type, namespace=namespace)  # type: ignore[attr-defined]
@@ -1171,10 +1171,10 @@ def _prefix_error(
     # Or they may disagree if their roots have different numbers of children (note that because both
     # prefix_tree and full_tree have the same type at this point, and because prefix_tree is not a
     # leaf, each can be flattened once):
-    prefix_tree_children, prefix_tree_meta, _ = flatten_one_level(
+    prefix_tree_children, prefix_tree_metadata, _ = flatten_one_level(
         prefix_tree, none_is_leaf=none_is_leaf, namespace=namespace
     )
-    full_tree_children, full_tree_meta, _ = flatten_one_level(
+    full_tree_children, full_tree_metadata, _ = flatten_one_level(
         full_tree, none_is_leaf=none_is_leaf, namespace=namespace
     )
     if len(prefix_tree_children) != len(full_tree_children):
@@ -1190,12 +1190,15 @@ def _prefix_error(
         return  # don't look for more errors in this subtree
 
     # Or they may disagree if their roots have different pytree metadata:
-    if prefix_tree_meta != full_tree_meta:
-        prefix_tree_meta_str = str(prefix_tree_meta)
-        full_tree_meta_str = str(full_tree_meta)
+    if prefix_tree_metadata != full_tree_metadata:
+        prefix_tree_metadata_repr = repr(prefix_tree_metadata)
+        full_tree_metadata_repr = repr(full_tree_metadata)
         metadata_diff = textwrap.indent(
             '\n'.join(
-                difflib.ndiff(prefix_tree_meta_str.splitlines(), full_tree_meta_str.splitlines())
+                difflib.ndiff(
+                    prefix_tree_metadata_repr.splitlines(),
+                    full_tree_metadata_repr.splitlines(),
+                )
             ),
             prefix='    ',
         )
@@ -1205,10 +1208,10 @@ def _prefix_error(
             f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
             f'    {type(prefix_tree)}\n'
             f'with metadata\n'
-            f'    {prefix_tree_meta_str}\n'
+            f'    {prefix_tree_metadata_repr}\n'
             f'but at the same key path the full pytree has a subtree of the same '
             f'type but with metadata\n'
-            f'    {full_tree_meta_str}\n'
+            f'    {full_tree_metadata_repr}\n'
             f'so the diff in the metadata at these pytree nodes is\n'
             f'{metadata_diff}'.format(name=name)
         )
@@ -1218,7 +1221,7 @@ def _prefix_error(
     # so recurse:
     keys = _child_keys(prefix_tree)
     keys_ = _child_keys(full_tree)
-    assert keys == keys_, f'equal pytree nodes gave differing keys: {keys} and {keys_}'
+    assert keys == keys_, f'equal pytree nodes gave different keys: {keys} and {keys_}'
     # pylint: disable-next=invalid-name
     for k, t1, t2 in zip(keys, prefix_tree_children, full_tree_children):
         yield from _prefix_error(
@@ -1232,7 +1235,7 @@ def _prefix_error(
 
 def _child_keys(
     tree: PyTree[T], *, none_is_leaf: bool = False, namespace: str = ''
-) -> List[KeyPathEntry]:
+) -> Sequence[KeyPathEntry]:
     assert not treespec_is_strict_leaf(
         tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
     )
@@ -1242,7 +1245,7 @@ def _child_keys(
         return handler(tree)
 
     if is_namedtuple(tree):
-        # handle namedtuple as a special case, based on heuristic
+        # Handle namedtuple as a special case, based on heuristic
         return list(map(AttributeKeyPathEntry, cast(NamedTuple, tree)._fields))
 
     num_children = len(

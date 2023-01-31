@@ -17,14 +17,25 @@
 
 import functools
 import itertools
-from collections import OrderedDict
+import re
+from collections import OrderedDict, defaultdict, deque
 
 import pytest
 
 import optree
 
 # pylint: disable-next=wrong-import-order
-from helpers import LEAVES, TREE_PATHS, TREES, CustomTuple, FlatCache, MyAnotherDict, parametrize
+from helpers import (
+    LEAVES,
+    TREE_PATHS,
+    TREES,
+    Counter,
+    CustomTuple,
+    FlatCache,
+    MyAnotherDict,
+    parametrize,
+)
+from optree.typing import is_namedtuple_class
 
 
 def dummy_func(*args, **kwargs):  # pylint: disable=unused-argument
@@ -350,26 +361,6 @@ def test_tree_map_with_path_ignore_return_none_is_leaf():
 
 
 def test_tree_map_inplace():
-    class Counter:
-        def __init__(self, start):
-            self.count = start
-
-        def increment(self, n=1):
-            self.count += n
-            return self.count
-
-        def __int__(self):
-            return self.count
-
-        def __eq__(self, other):
-            return isinstance(other, Counter) and self.count == other.count
-
-        def __repr__(self):
-            return f'Counter({self.count})'
-
-        def __next__(self):
-            return self.increment()
-
     x = ((Counter(1), Counter(2), None), (Counter(3), Counter(4), Counter(5)))
     y = ((3, 0, 4), (5, 7, 6))
 
@@ -382,26 +373,6 @@ def test_tree_map_inplace():
 
 
 def test_tree_map_with_path_inplace():
-    class Counter:
-        def __init__(self, start):
-            self.count = start
-
-        def increment(self, n=1):
-            self.count += n
-            return self.count
-
-        def __int__(self):
-            return self.count
-
-        def __eq__(self, other):
-            return isinstance(other, Counter) and self.count == other.count
-
-        def __repr__(self):
-            return f'Counter({self.count})'
-
-        def __next__(self):
-            return self.increment()
-
     x = ((Counter(1), Counter(2), None), (Counter(3), Counter(4), Counter(5)))
     y = ((3, 0, 4), (5, 7, 6))
 
@@ -558,7 +529,9 @@ def test_tree_replace_nones():
 def test_broadcast_prefix():
     assert optree.broadcast_prefix(1, [1, 2, 3]) == [1, 1, 1]
     assert optree.broadcast_prefix([1, 2, 3], [1, 2, 3]) == [1, 2, 3]
-    with pytest.raises(ValueError, match=r'List arity mismatch: 4 != 3; list: \[1, 2, 3, 4\].'):
+    with pytest.raises(
+        ValueError, match=re.escape('List arity mismatch: 4 != 3; list: [1, 2, 3, 4].')
+    ):
         optree.broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
     assert optree.broadcast_prefix([1, 2, 3], [1, 2, (3, 4)]) == [1, 2, 3, 3]
     assert optree.broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}]) == [
@@ -571,6 +544,55 @@ def test_broadcast_prefix():
     assert optree.broadcast_prefix(
         [1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True
     ) == [1, 2, 3, 3, 3, 3]
+
+
+@parametrize(tree=TREES, none_is_leaf=[False, True], namespace=['', 'undefined', 'namespace'])
+def test_flatten_one_level(tree, none_is_leaf, namespace):
+    stack = [tree]
+    actual_leaves = []
+    expected_leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+    while stack:
+        node = stack.pop()
+        counter = Counter()
+        expected_children, one_level_treespec = optree.tree_flatten(
+            node,
+            is_leaf=lambda x: counter.increment() > 1,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        node_type = type(node)
+        if one_level_treespec.is_leaf():
+            assert expected_children == [node]
+            with pytest.raises(
+                ValueError, match=re.escape(f'Cannot flatten leaf-type: {node_type}.')
+            ):
+                optree.ops.flatten_one_level(node, none_is_leaf=none_is_leaf, namespace=namespace)
+            actual_leaves.append(node)
+        else:
+            children, metadata, entries = optree.ops.flatten_one_level(
+                node, none_is_leaf=none_is_leaf, namespace=namespace
+            )
+            assert children == expected_children
+            if node_type in (list, tuple, type(None)):
+                assert metadata is None
+            elif node_type is dict:
+                assert metadata == sorted(node.keys())
+            elif node_type is OrderedDict:
+                assert metadata == list(node.keys())
+            elif node_type is defaultdict:
+                assert metadata == (node.default_factory, sorted(node.keys()))
+            elif node_type is deque:
+                assert metadata == node.maxlen
+            elif optree.is_namedtuple(node):
+                assert optree.is_namedtuple_class(node_type)
+                assert metadata is node_type
+            assert len(entries) == len(children)
+            if hasattr(node, '__getitem__'):
+                for child, entry in zip(children, entries):
+                    assert node[entry] is child
+            stack.extend(reversed(children))
+
+    assert actual_leaves == expected_leaves
 
 
 @parametrize(

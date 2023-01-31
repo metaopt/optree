@@ -27,6 +27,7 @@ from typing import (
     List,
     NamedTuple,
     Optional,
+    Sequence,
     Tuple,
     Type,
     Union,
@@ -323,27 +324,23 @@ def _sorted_keys(dct: Dict[KT, VT]) -> Iterable[KT]:  # pragma: no cover
             return dct  # fallback to insertion order
 
 
-def _dict_flatten(
-    dct: Dict[KT, VT]
-) -> Tuple[Tuple[VT, ...], Tuple[KT, ...], Tuple[KT, ...]]:  # pragma: no cover
+def _dict_flatten(dct: Dict[KT, VT]) -> Tuple[Tuple[VT, ...], List[KT], Tuple[KT, ...]]:
     keys, values = unzip2(_sorted_items(dct.items()))
-    return values, keys, keys
+    return values, list(keys), keys
 
 
 def _ordereddict_flatten(
     dct: GenericOrderedDict[KT, VT]
-) -> Tuple[Tuple[VT, ...], Tuple[KT, ...], Tuple[KT, ...]]:  # pragma: no cover
+) -> Tuple[Tuple[VT, ...], List[KT], Tuple[KT, ...]]:
     keys, values = unzip2(dct.items())
-    return values, keys, keys
+    return values, list(keys), keys
 
 
 def _defaultdict_flatten(
     dct: DefaultDict[KT, VT]
-) -> Tuple[
-    Tuple[VT, ...], Tuple[Optional[Callable[[], VT]], Tuple[KT, ...]], Tuple[KT, ...]
-]:  # pragma: no cover
+) -> Tuple[Tuple[VT, ...], Tuple[Optional[Callable[[], VT]], List[KT]], Tuple[KT, ...]]:
     values, keys, entries = _dict_flatten(dct)
-    return values, (dct.default_factory, keys), entries
+    return values, (dct.default_factory, list(keys)), entries
 
 
 # pylint: disable=all
@@ -511,7 +508,14 @@ class KeyPath(NamedTuple):
     def __add__(self, other: object) -> 'KeyPath':
         if isinstance(other, KeyPathEntry):
             return KeyPath(self.keys + (other,))
-        raise TypeError(type(other))
+        if isinstance(other, KeyPath):
+            return KeyPath(self.keys + other.keys)
+        return NotImplemented
+
+    def __radd__(self, other: object) -> 'KeyPath':
+        if isinstance(other, KeyPathEntry):
+            return KeyPath((other,) + self.keys)
+        return NotImplemented
 
     def pprint(self) -> str:
         """Pretty name of the key path."""
@@ -544,7 +548,7 @@ class FlattenedKeyPathEntry(KeyPathEntry):  # fallback
         return f'[<flat index {self.key}>]'
 
 
-KeyPathHandler = Callable[[PyTree], List[KeyPathEntry]]
+KeyPathHandler = Callable[[PyTree], Sequence[KeyPathEntry]]
 _keypath_registry: Dict[Type[CustomTreeNode], KeyPathHandler] = {}
 
 

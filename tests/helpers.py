@@ -1,4 +1,4 @@
-# Copyright 2022 MetaOPT Team. All Rights Reserved.
+# Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -142,6 +142,27 @@ class MyDict(UserDict):
 @optree.register_pytree_node_class('namespace')
 class MyAnotherDict(MyDict):
     pass
+
+
+class Counter:
+    def __init__(self, start=0):
+        self.count = start
+
+    def increment(self, n=1):
+        self.count += n
+        return self.count
+
+    def __int__(self):
+        return self.count
+
+    def __eq__(self, other):
+        return isinstance(other, Counter) and self.count == other.count
+
+    def __repr__(self):
+        return f'Counter({self.count})'
+
+    def __next__(self):
+        return self.increment()
 
 
 NAMESPACED_TREE = MyAnotherDict([('baz', 101), ('foo', MyAnotherDict(a=1, b=2, c=None))])
