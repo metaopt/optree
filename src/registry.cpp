@@ -74,6 +74,16 @@ template <bool NoneIsLeaf>
             throw std::invalid_argument(absl::StrFormat(
                 "PyTree type %s is already registered in the global namespace.", py::repr(cls)));
         }
+        if (IsNamedTupleClass(cls)) [[unlikely]] {
+            PyErr_WarnEx(
+                PyExc_UserWarning,
+                absl::StrFormat("PyTree type %s is a subclass of `collections.namedtuple`, "
+                                "which is already registered in the global namespace. "
+                                "Override it with custom flatten/unflatten functions.",
+                                py::repr(cls))
+                    .c_str(),
+                /*stack_level=*/2);
+        }
     } else [[likely]] {
         if (registry->m_registrations.find(cls) != registry->m_registrations.end()) [[unlikely]] {
             throw std::invalid_argument(absl::StrFormat(
@@ -86,6 +96,17 @@ template <bool NoneIsLeaf>
                 absl::StrFormat("PyTree type %s is already registered in namespace %s.",
                                 py::repr(cls),
                                 py::repr(py::str(registry_namespace))));
+        }
+        if (IsNamedTupleClass(cls)) [[unlikely]] {
+            PyErr_WarnEx(PyExc_UserWarning,
+                         absl::StrFormat(
+                             "PyTree type %s is a subclass of `collections.namedtuple`, "
+                             "which is already registered in the global namespace. "
+                             "Override it with custom flatten/unflatten functions in namespace %s.",
+                             py::repr(cls),
+                             py::repr(py::str(registry_namespace)))
+                             .c_str(),
+                         /*stack_level=*/2);
         }
     }
 }

@@ -34,9 +34,9 @@ from typing import (
 )
 
 import optree._C as _C
-from optree.typing import KT, VT, Children, CustomTreeNode, DefaultDict, MetaData
+from optree.typing import KT, VT, CustomTreeNode, DefaultDict, FlattenFunc
 from optree.typing import OrderedDict as GenericOrderedDict
-from optree.typing import PyTree, T
+from optree.typing import PyTree, T, UnflattenFunc
 from optree.utils import safe_zip, unzip2
 
 
@@ -51,8 +51,8 @@ __all__ = [
 
 
 class PyTreeNodeRegistryEntry(NamedTuple):
-    to_iterable: Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]]
-    from_iterable: Callable[[MetaData, Children[T]], CustomTreeNode[T]]
+    to_iterable: FlattenFunc
+    from_iterable: UnflattenFunc
 
 
 __GLOBAL_NAMESPACE: str = object()  # type: ignore[assignment]
@@ -61,8 +61,8 @@ __REGISTRY_LOCK: Lock = Lock()
 
 def register_pytree_node(
     cls: Type[CustomTreeNode[T]],
-    flatten_func: Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]],
-    unflatten_func: Callable[[MetaData, Children[T]], CustomTreeNode[T]],
+    flatten_func: FlattenFunc,
+    unflatten_func: UnflattenFunc,
     namespace: str,
 ) -> Type[CustomTreeNode[T]]:
     """Extend the set of types that are considered internal nodes in pytrees.
@@ -189,7 +189,7 @@ def register_pytree_node(
     with __REGISTRY_LOCK:
         _C.register_node(cls, flatten_func, unflatten_func, namespace)
         CustomTreeNode.register(cls)  # pylint: disable=no-member
-        _nodetype_registry[registration_key] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)  # type: ignore[arg-type]
+        _nodetype_registry[registration_key] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
     return cls
 
 

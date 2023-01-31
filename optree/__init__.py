@@ -54,11 +54,14 @@ from optree.registry import (
 )
 from optree.typing import (
     CustomTreeNode,
+    FlattenFunc,
     PyTree,
     PyTreeDef,
     PyTreeSpec,
     PyTreeTypeVar,
+    UnflattenFunc,
     is_namedtuple,
+    is_namedtuple_class,
 )
 from optree.version import __version__
 
@@ -105,7 +108,10 @@ __all__ = [
     'PyTree',
     'PyTreeTypeVar',
     'CustomTreeNode',
+    'FlattenFunc',
+    'UnflattenFunc',
     'is_namedtuple',
+    'is_namedtuple_class',
 ]
 
 MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH

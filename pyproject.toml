@@ -129,3 +129,6 @@ convention = "google"
 
 [tool.doc8]
 max-line-length = 500
+
+[tool.pytest.ini_options]
+filterwarnings = ["error"]

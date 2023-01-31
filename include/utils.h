@@ -328,6 +328,12 @@ inline bool IsNamedTuple(const py::handle& object) {
     return PyTuple_Check(object.ptr()) && PyObject_HasAttrString(object.ptr(), "_fields") == 1;
 }
 
+inline bool IsNamedTupleClass(const py::handle& type) {
+    // We can only identify namedtuples heuristically, here by the presence of a _fields attribute.
+    return PyObject_IsSubclass(type.ptr(), reinterpret_cast<PyObject*>(&PyTuple_Type)) == 1 &&
+           PyObject_HasAttrString(type.ptr(), "_fields") == 1;
+}
+
 inline void AssertExactNamedTuple(const py::handle& object) {
     if (!IsNamedTuple(object)) [[unlikely]] {
         throw std::invalid_argument(
