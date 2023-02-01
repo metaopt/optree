@@ -121,10 +121,13 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             case PyTreeKind::Custom: {
                 found_custom = true;
                 py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(handle));
-                const size_t num_out = GET_SIZE<py::tuple>(out);
+                const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
-                    throw std::runtime_error(
-                        "PyTree custom to_iterable function should return a pair or a triple.");
+                    throw std::runtime_error(absl::StrFormat(
+                        "PyTree custom flatten function for type %s should return a 2- or 3-tuple, "
+                        "got %ld.",
+                        py::repr(node.custom->type),
+                        num_out));
                 }
                 node.arity = 0;
                 node.node_data = GET_ITEM_BORROW<py::tuple>(out, 1);
@@ -140,8 +143,9 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                         const ssize_t num_entries = GET_SIZE<py::tuple>(node.node_entries);
                         if (num_entries != node.arity) [[unlikely]] {
                             throw std::runtime_error(absl::StrFormat(
-                                "PyTree custom to_iterable function returned inconsistent number "
-                                "of children (%ld) and number of entries (%ld).",
+                                "PyTree custom flatten function for type %s returned inconsistent "
+                                "number of children (%ld) and number of entries (%ld).",
+                                py::repr(node.custom->type),
                                 node.arity,
                                 num_entries));
                         }
@@ -302,10 +306,13 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             case PyTreeKind::Custom: {
                 found_custom = true;
                 py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(handle));
-                const size_t num_out = GET_SIZE<py::tuple>(out);
+                const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
-                    throw std::runtime_error(
-                        "PyTree custom to_iterable function should return a pair or a triple.");
+                    throw std::runtime_error(absl::StrFormat(
+                        "PyTree custom flatten function for type %s should return a 2- or 3-tuple, "
+                        "got %ld.",
+                        py::repr(node.custom->type),
+                        num_out));
                 }
                 node.arity = 0;
                 node.node_data = GET_ITEM_BORROW<py::tuple>(out, 1);
@@ -327,17 +334,19 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                     for (const py::handle& child :
                          py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, 0))) {
                         if (num_children >= node.arity) [[unlikely]] {
-                            throw std::runtime_error(
-                                "PyTree custom to_iterable function returned too many children "
-                                "than number of entries.");
+                            throw std::runtime_error(absl::StrFormat(
+                                "PyTree custom flatten function for type %s returned inconsistent "
+                                "number of children and number of entries.",
+                                py::repr(node.custom->type)));
                         }
                         recurse(child,
                                 GET_ITEM_BORROW<py::tuple>(node.node_entries, num_children++));
                     }
                     if (num_children != node.arity) [[unlikely]] {
                         throw std::runtime_error(absl::StrFormat(
-                            "PyTree custom to_iterable function returned inconsistent number of "
-                            "children (%ld) and number of entries (%ld).",
+                            "PyTree custom flatten function for type %s returned inconsistent "
+                            "number of children (%ld) and number of entries (%ld).",
+                            py::repr(node.custom->type),
                             num_children,
                             node.arity));
                     }
@@ -553,10 +562,13 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                                         py::repr(object)));
                 }
                 py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(object));
-                const size_t num_out = GET_SIZE<py::tuple>(out);
+                const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
-                    throw std::runtime_error(
-                        "PyTree custom to_iterable function should return a pair or a triple.");
+                    throw std::runtime_error(absl::StrFormat(
+                        "PyTree custom flatten function for type %s should return a 2- or 3-tuple, "
+                        "got %ld.",
+                        py::repr(node.custom->type),
+                        num_out));
                 }
                 if (node.node_data.not_equal(GET_ITEM_BORROW<py::tuple>(out, 1))) [[unlikely]] {
                     throw std::invalid_argument(

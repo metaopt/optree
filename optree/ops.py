@@ -78,7 +78,7 @@ __all__ = [
 ]
 
 MAX_RECURSION_DEPTH: int = _C.MAX_RECURSION_DEPTH
-"""Maximum recursion depth for pytree traversal."""
+"""Maximum recursion depth for pytree traversal. It is 5000 on Unix systems and 2500 on Windows."""
 NONE_IS_NODE: bool = False  # literal constant
 """Literal constant that treats :data:`None` as a pytree non-leaf node."""
 NONE_IS_LEAF: bool = True  # literal constant
@@ -1104,13 +1104,21 @@ def flatten_one_level(
         if len(flattened) == 2:
             flattened = (*flattened, None)
         elif len(flattened) != 3:
-            raise ValueError('PyTree to_iterables must return a 2- or 3-tuple.')
+            raise RuntimeError(
+                f'PyTree custom flatten function for type {node_type} should return a 2- or 3-tuple, '
+                f'got {len(flattened)}.'
+            )
         children, metadata, entries = flattened
         children = list(children)
         if entries is None:
             entries = tuple(range(len(children)))
         else:
             entries = tuple(entries)
+        if len(children) != len(entries):
+            raise RuntimeError(
+                f'PyTree custom flatten function for type {node_type} returned inconsistent '
+                f'number of children ({len(children)}) and number of entries ({len(entries)}).'
+            )
         return children, metadata, entries
 
     if is_namedtuple(tree):
