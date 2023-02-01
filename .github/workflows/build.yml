@@ -124,6 +124,7 @@ jobs:
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_ARCHS_LINUX: auto64 aarch64
+          CIBW_ARCHS_WINDOWS: auto64 ARM64
           CIBW_ARCHS_MACOS: x86_64 arm64 universal2
         with:
           package-dir: .
@@ -183,6 +184,7 @@ jobs:
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_ARCHS_LINUX: auto64 aarch64
+          CIBW_ARCHS_WINDOWS: auto64 ARM64
           CIBW_ARCHS_MACOS: x86_64 arm64 universal2
         with:
           package-dir: .
