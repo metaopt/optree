@@ -58,7 +58,8 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
                     SET_ITEM<py::tuple>(tuple, i, agenda.back());
                     agenda.pop_back();
                 }
-                agenda.emplace_back(f_node(tuple, node.node_data ? node.node_data : py::none()));
+                agenda.emplace_back(
+                    f_node(std::move(tuple), node.node_data ? node.node_data : py::none()));
                 break;
             }
 

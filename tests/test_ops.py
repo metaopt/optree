@@ -15,6 +15,7 @@
 
 # pylint: disable=missing-function-docstring,invalid-name
 
+import copy
 import functools
 import itertools
 import re
@@ -114,6 +115,106 @@ def test_flatten_order(tree, none_is_leaf):
     flat, _ = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
 
     assert flat == list(range(10))
+
+
+def test_flatten_dict_order():
+    assert optree.tree_leaves({'a': 1, 2: 2}) == [2, 1]
+    assert optree.tree_leaves({'a': 1, 2: 2, 3.0: 3}) == [3, 2, 1]
+    assert optree.tree_leaves({2: 2, 3.0: 3}) == [2, 3]
+
+    tree = {'b': 2, 'a': 1, 'c': {'f': None, 'e': 3, 'g': 4}}
+    leaves, treespec = optree.tree_flatten(tree)
+    assert leaves == [1, 2, 3, 4]
+    assert str(treespec) == r"PyTreeSpec({'a': *, 'b': *, 'c': {'e': *, 'f': None, 'g': *}})"
+    restored_tree = optree.tree_unflatten(treespec, leaves)
+    assert list(restored_tree) == ['a', 'b', 'c']
+
+
+def test_walk():
+    tree = {'b': 2, 'a': 1, 'c': {'f': None, 'e': 3, 'g': 4}}
+    #          tree
+    #        /  |  \
+    #     ---   |   ---
+    #    /      |      \
+    # ('a')   ('b')   ('c')
+    #   1       2     / | \
+    #              ---  |  ---
+    #             /     |     \
+    #          ('e')  ('f')  ('g')
+    #            3     None    4
+    #                   |
+    #                   X
+    #
+
+    def get_functions():
+        nodes_visited = []
+        node_data_visited = []
+        leaves_visited = []
+
+        def f_node(node, node_data):
+            nodes_visited.append(node)
+            node_data_visited.append(node_data)
+            return copy.deepcopy(nodes_visited), None
+
+        def f_leaf(leaf):
+            leaves_visited.append(leaf)
+            return copy.deepcopy(leaves_visited)
+
+        return f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited
+
+    leaves, treespec = optree.tree_flatten(tree)
+
+    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    with pytest.raises(ValueError, match='Too few leaves for PyTreeSpec.'):
+        treespec.walk(f_node, f_leaf, leaves[:-1])
+
+    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    with pytest.raises(ValueError, match='Too many leaves for PyTreeSpec.'):
+        treespec.walk(f_node, f_leaf, (*leaves, 0))
+
+    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    output = treespec.walk(f_node, f_leaf, leaves)
+    assert leaves_visited == [1, 2, 3, 4]
+    assert nodes_visited == [
+        (),
+        ([1, 2, 3], ([()], None), [1, 2, 3, 4]),
+        ([1], [1, 2], ([(), ([1, 2, 3], ([()], None), [1, 2, 3, 4])], None)),
+    ]
+    assert node_data_visited == [None, ['e', 'f', 'g'], ['a', 'b', 'c']]
+    assert output == (
+        [
+            (),
+            ([1, 2, 3], ([()], None), [1, 2, 3, 4]),
+            ([1], [1, 2], ([(), ([1, 2, 3], ([()], None), [1, 2, 3, 4])], None)),
+        ],
+        None,
+    )
+
+    leaves, treespec = optree.tree_flatten(tree, none_is_leaf=True)
+
+    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    with pytest.raises(ValueError, match='Too few leaves for PyTreeSpec.'):
+        treespec.walk(f_node, f_leaf, leaves[:-1])
+
+    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    with pytest.raises(ValueError, match='Too many leaves for PyTreeSpec.'):
+        treespec.walk(f_node, f_leaf, (*leaves, 0))
+
+    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    output = treespec.walk(f_node, f_leaf, leaves)
+    assert leaves_visited == [1, 2, 3, None, 4]
+    assert nodes_visited == [
+        ([1, 2, 3], [1, 2, 3, None], [1, 2, 3, None, 4]),
+        ([1], [1, 2], ([([1, 2, 3], [1, 2, 3, None], [1, 2, 3, None, 4])], None)),
+    ]
+    assert node_data_visited == [['e', 'f', 'g'], ['a', 'b', 'c']]
+    assert output == (
+        [
+            ([1, 2, 3], [1, 2, 3, None], [1, 2, 3, None, 4]),
+            ([1], [1, 2], ([([1, 2, 3], [1, 2, 3, None], [1, 2, 3, None, 4])], None)),
+        ],
+        None,
+    )
 
 
 def test_flatten_up_to():
