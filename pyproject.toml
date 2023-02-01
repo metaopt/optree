@@ -80,6 +80,7 @@ include = ["optree", "optree.*"]
 # Reference: https://cibuildwheel.readthedocs.io
 [tool.cibuildwheel]
 archs = ["auto64"]
+skip = "*musllinux*"
 build-frontend = "build"
 build-verbosity = 3
 container-engine = "docker"
