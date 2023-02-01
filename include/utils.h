@@ -79,17 +79,11 @@ inline std::vector<T> reserved_vector(const size_t& size) {
     return v;
 }
 
-inline py::list DictKeys(const py::dict& dict) {
-    return py::reinterpret_steal<py::list>(PyDict_Keys(dict.ptr()));
-}
-
-inline py::list SortedDictKeys(const py::dict& dict) {
-    py::list keys = DictKeys(dict);
-
+inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
     try {
         // Sort directly if possible.
         // NOLINTNEXTLINE[readability-implicit-bool-conversion]
-        if (PyList_Sort(keys.ptr())) [[unlikely]] {
+        if (PyList_Sort(list.ptr())) [[unlikely]] {
             throw py::error_already_set();
         }
     } catch (py::error_already_set& ex1) {
@@ -105,7 +99,7 @@ inline py::list SortedDictKeys(const py::dict& dict) {
                         static_cast<std::string>(py::getattr(t, "__qualname__").cast<py::str>()))};
                     return py::make_tuple(qualname, o);
                 });
-                keys.attr("sort")(py::arg("key") = sort_key_fn);
+                list.attr("sort")(py::arg("key") = sort_key_fn);
             } catch (py::error_already_set& ex2) {
                 if (ex2.matches(PyExc_TypeError)) [[likely]] {
                     // Found incomparable user-defined key types.
@@ -119,7 +113,15 @@ inline py::list SortedDictKeys(const py::dict& dict) {
             throw;
         }
     }
+}
 
+inline py::list DictKeys(const py::dict& dict) {
+    return py::reinterpret_steal<py::list>(PyDict_Keys(dict.ptr()));
+}
+
+inline py::list SortedDictKeys(const py::dict& dict) {
+    py::list keys = DictKeys(dict);
+    TotalOrderSort(keys);
     return keys;
 }
 
