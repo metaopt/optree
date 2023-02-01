@@ -31,6 +31,7 @@ Optimized PyTree Utilities.
   - [Tree Copy](#tree-copy)
   - [Tree Map](#tree-map)
   - [Tree Map (nargs)](#tree-map-nargs)
+- [Changelog](#changelog)
 - [License](#license)
 
 --------------------------------------------------------------------------------
@@ -487,7 +488,7 @@ TypeError: '<' not supported between instances of 'int' and 'str'
 [1.5, 1, 'a']
 ```
 
-If users want to keep the values in the insertion order, they should use [`collection.OrderedDict`](https://docs.python.org/3/library/collections.html#collections.OrderedDict), which will take the order of keys under consideration:
+If users want to keep the values in the insertion order, they should use [`collections.OrderedDict`](https://docs.python.org/3/library/collections.html#collections.OrderedDict), which will take the order of keys under consideration:
 
 ```python
 >>> OrderedDict([('a', [1, 2]), ('b', [3])]) == OrderedDict([('b', [3]), ('a', [1, 2])])
@@ -636,6 +637,12 @@ Please refer to [`benchmark.py`](https://github.com/metaopt/optree/blob/HEAD/ben
 <div align="center">
   <img src="https://user-images.githubusercontent.com/16078332/216265082-cceccfe1-d9a7-48ec-9c41-d1b56b5169ba.png" width="90%" />
 </div>
+
+--------------------------------------------------------------------------------
+
+## Changelog
+
+See [CHANGELOG.md](https://github.com/metaopt/optree/blob/HEAD/CHANGELOG.md).
 
 --------------------------------------------------------------------------------
 
