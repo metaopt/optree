@@ -1,4 +1,4 @@
-# Copyright 2022 MetaOPT Team. All Rights Reserved.
+# Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,21 +15,34 @@
 
 # pylint: disable=missing-function-docstring,invalid-name
 
+import copy
 import functools
 import itertools
-import platform
-from collections import OrderedDict
+import re
+from collections import OrderedDict, defaultdict, deque
 
 import pytest
 
 import optree
 
 # pylint: disable-next=wrong-import-order
-from helpers import LEAVES, TREE_PATHS, TREES, CustomTuple, FlatCache, MyAnotherDict, parametrize
+from helpers import (
+    LEAVES,
+    TREE_PATHS,
+    TREES,
+    Counter,
+    CustomTuple,
+    FlatCache,
+    MyAnotherDict,
+    parametrize,
+)
 
 
 def dummy_func(*args, **kwargs):  # pylint: disable=unused-argument
     return
+
+
+dummy_partial_func = functools.partial(dummy_func, a=1)
 
 
 def is_tuple(t):
@@ -104,6 +117,106 @@ def test_flatten_order(tree, none_is_leaf):
     flat, _ = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
 
     assert flat == list(range(10))
+
+
+def test_flatten_dict_order():
+    assert optree.tree_leaves({'a': 1, 2: 2}) == [2, 1]
+    assert optree.tree_leaves({'a': 1, 2: 2, 3.0: 3}) == [3, 2, 1]
+    assert optree.tree_leaves({2: 2, 3.0: 3}) == [2, 3]
+
+    tree = {'b': 2, 'a': 1, 'c': {'f': None, 'e': 3, 'g': 4}}
+    leaves, treespec = optree.tree_flatten(tree)
+    assert leaves == [1, 2, 3, 4]
+    assert str(treespec) == r"PyTreeSpec({'a': *, 'b': *, 'c': {'e': *, 'f': None, 'g': *}})"
+    restored_tree = optree.tree_unflatten(treespec, leaves)
+    assert list(restored_tree) == ['a', 'b', 'c']
+
+
+def test_walk():
+    tree = {'b': 2, 'a': 1, 'c': {'f': None, 'e': 3, 'g': 4}}
+    #          tree
+    #        /  |  \
+    #     ---   |   ---
+    #    /      |      \
+    # ('a')   ('b')   ('c')
+    #   1       2     / | \
+    #              ---  |  ---
+    #             /     |     \
+    #          ('e')  ('f')  ('g')
+    #            3     None    4
+    #                   |
+    #                   X
+    #
+
+    def get_functions():
+        nodes_visited = []
+        node_data_visited = []
+        leaves_visited = []
+
+        def f_node(node, node_data):
+            nodes_visited.append(node)
+            node_data_visited.append(node_data)
+            return copy.deepcopy(nodes_visited), None
+
+        def f_leaf(leaf):
+            leaves_visited.append(leaf)
+            return copy.deepcopy(leaves_visited)
+
+        return f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited
+
+    leaves, treespec = optree.tree_flatten(tree)
+
+    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    with pytest.raises(ValueError, match='Too few leaves for PyTreeSpec.'):
+        treespec.walk(f_node, f_leaf, leaves[:-1])
+
+    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    with pytest.raises(ValueError, match='Too many leaves for PyTreeSpec.'):
+        treespec.walk(f_node, f_leaf, (*leaves, 0))
+
+    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    output = treespec.walk(f_node, f_leaf, leaves)
+    assert leaves_visited == [1, 2, 3, 4]
+    assert nodes_visited == [
+        (),
+        ([1, 2, 3], ([()], None), [1, 2, 3, 4]),
+        ([1], [1, 2], ([(), ([1, 2, 3], ([()], None), [1, 2, 3, 4])], None)),
+    ]
+    assert node_data_visited == [None, ['e', 'f', 'g'], ['a', 'b', 'c']]
+    assert output == (
+        [
+            (),
+            ([1, 2, 3], ([()], None), [1, 2, 3, 4]),
+            ([1], [1, 2], ([(), ([1, 2, 3], ([()], None), [1, 2, 3, 4])], None)),
+        ],
+        None,
+    )
+
+    leaves, treespec = optree.tree_flatten(tree, none_is_leaf=True)
+
+    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    with pytest.raises(ValueError, match='Too few leaves for PyTreeSpec.'):
+        treespec.walk(f_node, f_leaf, leaves[:-1])
+
+    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    with pytest.raises(ValueError, match='Too many leaves for PyTreeSpec.'):
+        treespec.walk(f_node, f_leaf, (*leaves, 0))
+
+    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    output = treespec.walk(f_node, f_leaf, leaves)
+    assert leaves_visited == [1, 2, 3, None, 4]
+    assert nodes_visited == [
+        ([1, 2, 3], [1, 2, 3, None], [1, 2, 3, None, 4]),
+        ([1], [1, 2], ([([1, 2, 3], [1, 2, 3, None], [1, 2, 3, None, 4])], None)),
+    ]
+    assert node_data_visited == [['e', 'f', 'g'], ['a', 'b', 'c']]
+    assert output == (
+        [
+            ([1, 2, 3], [1, 2, 3, None], [1, 2, 3, None, 4]),
+            ([1], [1, 2], ([([1, 2, 3], [1, 2, 3, None], [1, 2, 3, None, 4])], None)),
+        ],
+        None,
+    )
 
 
 def test_flatten_up_to():
@@ -351,26 +464,6 @@ def test_tree_map_with_path_ignore_return_none_is_leaf():
 
 
 def test_tree_map_inplace():
-    class Counter:
-        def __init__(self, start):
-            self.count = start
-
-        def increment(self, n=1):
-            self.count += n
-            return self.count
-
-        def __int__(self):
-            return self.count
-
-        def __eq__(self, other):
-            return isinstance(other, Counter) and self.count == other.count
-
-        def __repr__(self):
-            return f'Counter({self.count})'
-
-        def __next__(self):
-            return self.increment()
-
     x = ((Counter(1), Counter(2), None), (Counter(3), Counter(4), Counter(5)))
     y = ((3, 0, 4), (5, 7, 6))
 
@@ -383,26 +476,6 @@ def test_tree_map_inplace():
 
 
 def test_tree_map_with_path_inplace():
-    class Counter:
-        def __init__(self, start):
-            self.count = start
-
-        def increment(self, n=1):
-            self.count += n
-            return self.count
-
-        def __int__(self):
-            return self.count
-
-        def __eq__(self, other):
-            return isinstance(other, Counter) and self.count == other.count
-
-        def __repr__(self):
-            return f'Counter({self.count})'
-
-        def __next__(self):
-            return self.increment()
-
     x = ((Counter(1), Counter(2), None), (Counter(3), Counter(4), Counter(5)))
     y = ((3, 0, 4), (5, 7, 6))
 
@@ -556,6 +629,75 @@ def test_tree_replace_nones():
     assert optree.tree_replace_nones(sentinel, None) == sentinel
 
 
+def test_broadcast_prefix():
+    assert optree.broadcast_prefix(1, [1, 2, 3]) == [1, 1, 1]
+    assert optree.broadcast_prefix([1, 2, 3], [1, 2, 3]) == [1, 2, 3]
+    with pytest.raises(
+        ValueError, match=re.escape('List arity mismatch: 4 != 3; list: [1, 2, 3, 4].')
+    ):
+        optree.broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
+    assert optree.broadcast_prefix([1, 2, 3], [1, 2, (3, 4)]) == [1, 2, 3, 3]
+    assert optree.broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}]) == [
+        1,
+        2,
+        3,
+        3,
+        3,
+    ]
+    assert optree.broadcast_prefix(
+        [1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True
+    ) == [1, 2, 3, 3, 3, 3]
+
+
+@parametrize(tree=TREES, none_is_leaf=[False, True], namespace=['', 'undefined', 'namespace'])
+def test_flatten_one_level(tree, none_is_leaf, namespace):
+    stack = [tree]
+    actual_leaves = []
+    expected_leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+    while stack:
+        node = stack.pop()
+        counter = Counter()
+        expected_children, one_level_treespec = optree.tree_flatten(
+            node,
+            is_leaf=lambda x: counter.increment() > 1,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        node_type = type(node)
+        if one_level_treespec.is_leaf():
+            assert expected_children == [node]
+            with pytest.raises(
+                ValueError, match=re.escape(f'Cannot flatten leaf-type: {node_type}.')
+            ):
+                optree.ops.flatten_one_level(node, none_is_leaf=none_is_leaf, namespace=namespace)
+            actual_leaves.append(node)
+        else:
+            children, metadata, entries = optree.ops.flatten_one_level(
+                node, none_is_leaf=none_is_leaf, namespace=namespace
+            )
+            assert children == expected_children
+            if node_type in (list, tuple, type(None)):
+                assert metadata is None
+            elif node_type is dict:
+                assert metadata == sorted(node.keys())
+            elif node_type is OrderedDict:
+                assert metadata == list(node.keys())
+            elif node_type is defaultdict:
+                assert metadata == (node.default_factory, sorted(node.keys()))
+            elif node_type is deque:
+                assert metadata == node.maxlen
+            elif optree.is_namedtuple(node):
+                assert optree.is_namedtuple_class(node_type)
+                assert metadata is node_type
+            assert len(entries) == len(children)
+            if hasattr(node, '__getitem__'):
+                for child, entry in zip(children, entries):
+                    assert node[entry] is child
+            stack.extend(reversed(children))
+
+    assert actual_leaves == expected_leaves
+
+
 @parametrize(
     tree=[
         optree.Partial(dummy_func),
@@ -563,6 +705,7 @@ def test_tree_replace_nones():
         optree.Partial(dummy_func, x='a'),
         optree.Partial(dummy_func, 1, 2, 3, x=4, y=5),
         optree.Partial(dummy_func, 1, None, x=4, y=5, z=None),
+        optree.Partial(dummy_partial_func, 1, 2, 3, x=4, y=5),
     ],
     none_is_leaf=[False, True],
 )
@@ -575,12 +718,14 @@ def test_partial_round_trip(tree, none_is_leaf):
 
 
 def test_partial_does_not_merge_with_other_partials():
-    def f(a, b, c):  # pylint: disable=unused-argument
-        pass
+    def f(a=None, b=None, c=None):
+        return a, b, c
 
     g = functools.partial(f, 2)
     h = optree.Partial(g, 3)
     assert h.args == (3,)
+    assert g() == (2, None, None)
+    assert h() == (2, 3, None)
 
 
 def test_partial_func_attribute_has_stable_hash():

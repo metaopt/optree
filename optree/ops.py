@@ -78,7 +78,7 @@ __all__ = [
 ]
 
 MAX_RECURSION_DEPTH: int = _C.MAX_RECURSION_DEPTH
-"""Maximum recursion depth for pytree traversal."""
+"""Maximum recursion depth for pytree traversal. It is 5000 on Unix systems and 2500 on Windows."""
 NONE_IS_NODE: bool = False  # literal constant
 """Literal constant that treats :data:`None` as a pytree non-leaf node."""
 NONE_IS_LEAF: bool = True  # literal constant
@@ -403,7 +403,7 @@ def all_leaves(
     if all(map(is_leaf, nodes)):
         return True
     leaves = tree_leaves(nodes, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)  # type: ignore[arg-type]
-    return all(map(lambda a, b: a is b, nodes, leaves))
+    return len(nodes) == len(leaves) and all(map(lambda a, b: a is b, nodes, leaves))
 
 
 def tree_map(
@@ -877,9 +877,13 @@ def treespec_children(treespec: PyTreeSpec) -> List[PyTreeSpec]:
 
 
 def treespec_is_leaf(treespec: PyTreeSpec) -> bool:
-    """Return whether the treespec is a leaf.
+    """Return whether the treespec is a leaf that has no children.
 
-    This function does not check whether the treespec set ``none_is_leaf``.
+    See also :func:`treespec_is_strict_leaf` and :meth:`PyTreeSpec.is_leaf`.
+
+    This function does not check whether the treespec set ``none_is_leaf``. It is equivalent to
+    ``treespec.is_leaf(strict=False)``. It will return :data:`True` if the treespec represents a
+    strict leaf or :data:`None` or an empty container (e.g., an empty tuple).
 
     >>> treespec_is_leaf(tree_structure(1))
     True
@@ -887,7 +891,13 @@ def treespec_is_leaf(treespec: PyTreeSpec) -> bool:
     False
     >>> treespec_is_leaf(tree_structure(None))
     True
+    >>> treespec_is_leaf(tree_structure(None, none_is_leaf=False))
+    True
     >>> treespec_is_leaf(tree_structure(None, none_is_leaf=True))
+    True
+    >>> treespec_is_leaf(tree_structure(()))
+    True
+    >>> treespec_is_leaf(tree_structure([]))
     True
     """
     return treespec.num_nodes == 1
@@ -896,14 +906,26 @@ def treespec_is_leaf(treespec: PyTreeSpec) -> bool:
 def treespec_is_strict_leaf(treespec: PyTreeSpec) -> bool:
     """Return whether the treespec is a strict leaf.
 
+    See also :func:`treespec_is_leaf` and :meth:`PyTreeSpec.is_leaf`.
+
+    This function respects the ``none_is_leaf`` setting in the treespec. It is equivalent to
+    ``treespec.is_leaf(strict=True)``. It will return :data:`True` if and only if the treespec
+    represents a strict leaf.
+
     >>> treespec_is_strict_leaf(tree_structure(1))
     True
     >>> treespec_is_strict_leaf(tree_structure((1, 2)))
     False
     >>> treespec_is_strict_leaf(tree_structure(None))
     False
+    >>> treespec_is_strict_leaf(tree_structure(None, none_is_leaf=False))
+    False
     >>> treespec_is_strict_leaf(tree_structure(None, none_is_leaf=True))
     True
+    >>> treespec_is_strict_leaf(tree_structure(()))
+    False
+    >>> treespec_is_strict_leaf(tree_structure([]))
+    False
     """
     return treespec.num_nodes == 1 and treespec.num_leaves == 1
 
@@ -1020,6 +1042,10 @@ def broadcast_prefix(
     ValueError: List arity mismatch: 4 != 3; list: [1, 2, 3, 4].
     >>> broadcast_prefix([1, 2, 3], [1, 2, (3, 4)])
     [1, 2, 3, 3]
+    >>> broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}])
+    [1, 2, 3, 3, 3]
+    >>> broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True)
+    [1, 2, 3, 3, 3, 3]
 
     Args:
         prefix_tree (pytree): A pytree with the same structure as a prefix of ``full_tree``.
@@ -1068,8 +1094,8 @@ def flatten_one_level(
     """Flatten the pytree one level, returning a tuple of children, auxiliary data, and path entries."""
     if tree is None:
         if none_is_leaf:  # type: ignore[unreachable]
-            raise ValueError('Cannot flatten leaf-type: `None`')
-        return (), None, ()
+            raise ValueError(f'Cannot flatten leaf-type: {type(None)}.')
+        return [], None, ()
 
     node_type = type(tree)
     handler = register_pytree_node.get(node_type, namespace=namespace)  # type: ignore[attr-defined]
@@ -1078,13 +1104,21 @@ def flatten_one_level(
         if len(flattened) == 2:
             flattened = (*flattened, None)
         elif len(flattened) != 3:
-            raise ValueError('PyTree to_iterables must return a 2- or 3-tuple.')
+            raise RuntimeError(
+                f'PyTree custom flatten function for type {node_type} should return a 2- or 3-tuple, '
+                f'got {len(flattened)}.'
+            )
         children, metadata, entries = flattened
         children = list(children)
         if entries is None:
             entries = tuple(range(len(children)))
         else:
             entries = tuple(entries)
+        if len(children) != len(entries):
+            raise RuntimeError(
+                f'PyTree custom flatten function for type {node_type} returned inconsistent '
+                f'number of children ({len(children)}) and number of entries ({len(entries)}).'
+            )
         return children, metadata, entries
 
     if is_namedtuple(tree):
@@ -1126,7 +1160,7 @@ def _prefix_error(
 ) -> Iterable[Callable[[str], ValueError]]:
     # A leaf is a valid prefix of any tree
     if treespec_is_strict_leaf(
-        tree_structure(prefix_tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+        tree_structure(prefix_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     ):
         return
 
@@ -1145,10 +1179,10 @@ def _prefix_error(
     # Or they may disagree if their roots have different numbers of children (note that because both
     # prefix_tree and full_tree have the same type at this point, and because prefix_tree is not a
     # leaf, each can be flattened once):
-    prefix_tree_children, prefix_tree_meta, _ = flatten_one_level(
+    prefix_tree_children, prefix_tree_metadata, _ = flatten_one_level(
         prefix_tree, none_is_leaf=none_is_leaf, namespace=namespace
     )
-    full_tree_children, full_tree_meta, _ = flatten_one_level(
+    full_tree_children, full_tree_metadata, _ = flatten_one_level(
         full_tree, none_is_leaf=none_is_leaf, namespace=namespace
     )
     if len(prefix_tree_children) != len(full_tree_children):
@@ -1164,12 +1198,15 @@ def _prefix_error(
         return  # don't look for more errors in this subtree
 
     # Or they may disagree if their roots have different pytree metadata:
-    if prefix_tree_meta != full_tree_meta:
-        prefix_tree_meta_str = str(prefix_tree_meta)
-        full_tree_meta_str = str(full_tree_meta)
+    if prefix_tree_metadata != full_tree_metadata:
+        prefix_tree_metadata_repr = repr(prefix_tree_metadata)
+        full_tree_metadata_repr = repr(full_tree_metadata)
         metadata_diff = textwrap.indent(
             '\n'.join(
-                difflib.ndiff(prefix_tree_meta_str.splitlines(), full_tree_meta_str.splitlines())
+                difflib.ndiff(
+                    prefix_tree_metadata_repr.splitlines(),
+                    full_tree_metadata_repr.splitlines(),
+                )
             ),
             prefix='    ',
         )
@@ -1179,10 +1216,10 @@ def _prefix_error(
             f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
             f'    {type(prefix_tree)}\n'
             f'with metadata\n'
-            f'    {prefix_tree_meta_str}\n'
+            f'    {prefix_tree_metadata_repr}\n'
             f'but at the same key path the full pytree has a subtree of the same '
             f'type but with metadata\n'
-            f'    {full_tree_meta_str}\n'
+            f'    {full_tree_metadata_repr}\n'
             f'so the diff in the metadata at these pytree nodes is\n'
             f'{metadata_diff}'.format(name=name)
         )
@@ -1190,36 +1227,38 @@ def _prefix_error(
 
     # If the root types and numbers of children agree, there must be an error in a subtree,
     # so recurse:
-    keys = _child_keys(prefix_tree)
-    keys_ = _child_keys(full_tree)
-    assert keys == keys_, f'equal pytree nodes gave differing keys: {keys} and {keys_}'
+    keys = _child_keys(prefix_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    keys_ = _child_keys(full_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)  # type: ignore[arg-type]
+    assert keys == keys_, f'equal pytree nodes gave different keys: {keys} and {keys_}'
     # pylint: disable-next=invalid-name
     for k, t1, t2 in zip(keys, prefix_tree_children, full_tree_children):
         yield from _prefix_error(
             key_path + k,
             cast(PyTree[T], t1),
             cast(PyTree[S], t2),
+            is_leaf,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
 
 
 def _child_keys(
-    tree: PyTree[T], *, none_is_leaf: bool = False, namespace: str = ''
+    tree: PyTree[T],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
 ) -> List[KeyPathEntry]:
-    assert not treespec_is_strict_leaf(
-        tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    )
+    treespec = tree_structure(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    assert not treespec_is_strict_leaf(treespec)
 
     handler = register_keypaths.get(type(tree))  # type: ignore[attr-defined]
     if handler:
-        return handler(tree)
+        return list(handler(tree))
 
     if is_namedtuple(tree):
-        # handle namedtuple as a special case, based on heuristic
+        # Handle namedtuple as a special case, based on heuristic
         return list(map(AttributeKeyPathEntry, cast(NamedTuple, tree)._fields))
 
-    num_children = len(
-        treespec_children(tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace))
-    )
+    num_children = treespec.num_children
     return list(map(FlattenedKeyPathEntry, range(num_children)))

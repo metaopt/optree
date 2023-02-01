@@ -38,6 +38,44 @@ bool PyTreeSpec::get_none_is_leaf() const { return m_none_is_leaf; }
 
 std::string PyTreeSpec::get_namespace() const { return m_namespace; }
 
+py::object PyTreeSpec::get_type() const {
+    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    Node node = m_traversal.back();
+    switch (node.kind) {
+        case PyTreeKind::Custom:
+            EXPECT_NE(node.custom, nullptr, "The custom registration is null.");
+            return node.custom->type;
+        case PyTreeKind::Leaf:
+            return py::none();
+        case PyTreeKind::None:
+            return py::type::of(py::none());
+        case PyTreeKind::Tuple:
+            return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyTuple_Type));
+        case PyTreeKind::List:
+            return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyList_Type));
+        case PyTreeKind::Dict:
+            return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyDict_Type));
+        case PyTreeKind::NamedTuple:
+            return node.node_data;
+        case PyTreeKind::OrderedDict:
+            return PyOrderedDictTypeObject;
+        case PyTreeKind::DefaultDict:
+            return PyDefaultDictTypeObject;
+        case PyTreeKind::Deque:
+            return PyDequeTypeObject;
+        default:
+            INTERNAL_ERROR();
+    }
+    INTERNAL_ERROR();
+}
+
+bool PyTreeSpec::is_leaf(const bool& strict) const {
+    if (strict) [[likely]] {
+        return num_nodes() == 1 && num_leaves() == 1;
+    }
+    return num_nodes() == 1;
+}
+
 bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
     if (m_traversal.size() != other.m_traversal.size() || m_none_is_leaf != other.m_none_is_leaf)
         [[likely]] {

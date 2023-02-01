@@ -54,3 +54,4 @@ recurse
 len
 doctest
 traceback
+str

@@ -96,6 +96,10 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
             "namespace",
             &PyTreeSpec::get_namespace,
             "The registry namespace used to resolve the custom pytree node types.")
+        .def_property_readonly(
+            "type",
+            &PyTreeSpec::get_type,
+            "The type of the current node. Return None if the current node is a leaf.")
         .def("unflatten",
              static_cast<py::object (PyTreeSpec::*)(const py::iterable&) const>(
                  &PyTreeSpec::Unflatten),
@@ -118,6 +122,10 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
              py::arg("f_leaf"),
              py::arg("leaves"))
         .def("children", &PyTreeSpec::Children, "Return a list of treespecs for the children.")
+        .def("is_leaf",
+             &PyTreeSpec::is_leaf,
+             "Test whether the current node is a leaf.",
+             py::arg("strict") = true)
         .def("__str__", &PyTreeSpec::ToString, "Return a string representation of the treespec.")
         .def("__repr__", &PyTreeSpec::ToString, "Return a string representation of the treespec.")
         .def(
