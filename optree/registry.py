@@ -497,9 +497,19 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
 class KeyPathEntry(NamedTuple):
     key: Any
 
+    def __add__(self, other: object) -> 'KeyPath':
+        if isinstance(other, KeyPathEntry):
+            return KeyPath((self, other))
+        if isinstance(other, KeyPath):
+            return KeyPath((self,) + other.keys)
+        return NotImplemented
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, self.__class__) and self.key == other.key
+
     def pprint(self) -> str:
         """Pretty name of the key path entry."""
-        return NotImplemented
+        raise NotImplementedError
 
 
 class KeyPath(NamedTuple):
@@ -512,10 +522,8 @@ class KeyPath(NamedTuple):
             return KeyPath(self.keys + other.keys)
         return NotImplemented
 
-    def __radd__(self, other: object) -> 'KeyPath':
-        if isinstance(other, KeyPathEntry):
-            return KeyPath((other,) + self.keys)
-        return NotImplemented
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, KeyPath) and self.keys == other.keys
 
     def pprint(self) -> str:
         """Pretty name of the key path."""
@@ -564,6 +572,9 @@ def register_keypaths(
 register_keypaths(tuple, lambda tup: list(map(GetitemKeyPathEntry, range(len(tup)))))  # type: ignore[arg-type]
 register_keypaths(list, lambda lst: list(map(GetitemKeyPathEntry, range(len(lst)))))  # type: ignore[arg-type]
 register_keypaths(dict, lambda dct: list(map(GetitemKeyPathEntry, _sorted_keys(dct))))  # type: ignore[arg-type]
+register_keypaths(OrderedDict, lambda odct: list(map(GetitemKeyPathEntry, odct)))  # type: ignore[arg-type,call-overload]
+register_keypaths(defaultdict, lambda ddct: list(map(GetitemKeyPathEntry, _sorted_keys(ddct))))  # type: ignore[arg-type]
+register_keypaths(deque, lambda dq: list(map(GetitemKeyPathEntry, range(len(dq)))))  # type: ignore[arg-type]
 
 # pylint: disable-next=line-too-long
 register_keypaths.get: Callable[[Type[CustomTreeNode[T]]], KeyPathHandler] = _keypath_registry.get  # type: ignore[attr-defined,misc]

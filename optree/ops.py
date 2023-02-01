@@ -20,7 +20,7 @@ import difflib
 import functools
 import textwrap
 from collections import deque
-from typing import Any, Callable, Optional, Sequence, cast, overload
+from typing import Any, Callable, Optional, cast, overload
 
 import optree._C as _C
 from optree.registry import (
@@ -403,7 +403,7 @@ def all_leaves(
     if all(map(is_leaf, nodes)):
         return True
     leaves = tree_leaves(nodes, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)  # type: ignore[arg-type]
-    return all(map(lambda a, b: a is b, nodes, leaves))
+    return len(nodes) == len(leaves) and all(map(lambda a, b: a is b, nodes, leaves))
 
 
 def tree_map(
@@ -1152,7 +1152,7 @@ def _prefix_error(
 ) -> Iterable[Callable[[str], ValueError]]:
     # A leaf is a valid prefix of any tree
     if treespec_is_strict_leaf(
-        tree_structure(prefix_tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+        tree_structure(prefix_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     ):
         return
 
@@ -1219,8 +1219,8 @@ def _prefix_error(
 
     # If the root types and numbers of children agree, there must be an error in a subtree,
     # so recurse:
-    keys = _child_keys(prefix_tree)
-    keys_ = _child_keys(full_tree)
+    keys = _child_keys(prefix_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    keys_ = _child_keys(full_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)  # type: ignore[arg-type]
     assert keys == keys_, f'equal pytree nodes gave different keys: {keys} and {keys_}'
     # pylint: disable-next=invalid-name
     for k, t1, t2 in zip(keys, prefix_tree_children, full_tree_children):
@@ -1228,27 +1228,29 @@ def _prefix_error(
             key_path + k,
             cast(PyTree[T], t1),
             cast(PyTree[S], t2),
+            is_leaf,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
 
 
 def _child_keys(
-    tree: PyTree[T], *, none_is_leaf: bool = False, namespace: str = ''
-) -> Sequence[KeyPathEntry]:
-    assert not treespec_is_strict_leaf(
-        tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    )
+    tree: PyTree[T],
+    is_leaf: Optional[Callable[[T], bool]] = None,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> List[KeyPathEntry]:
+    treespec = tree_structure(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    assert not treespec_is_strict_leaf(treespec)
 
     handler = register_keypaths.get(type(tree))  # type: ignore[attr-defined]
     if handler:
-        return handler(tree)
+        return list(handler(tree))
 
     if is_namedtuple(tree):
         # Handle namedtuple as a special case, based on heuristic
         return list(map(AttributeKeyPathEntry, cast(NamedTuple, tree)._fields))
 
-    num_children = len(
-        treespec_children(tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace))
-    )
+    num_children = treespec.num_children
     return list(map(FlattenedKeyPathEntry, range(num_children)))
