@@ -116,11 +116,6 @@ autodoc_default_options = {
 }
 autoclass_content = 'both'
 
-# -- Options for myst -------------------------------------------------------
-
-nb_execution_mode = 'force'
-nb_execution_allow_errors = False
-
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for

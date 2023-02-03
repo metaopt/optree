@@ -158,14 +158,14 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     for (const PyTreeSpec& treespec : treespecs) {
         if (treespec.m_none_is_leaf != none_is_leaf) [[unlikely]] {
             throw std::invalid_argument(absl::StrFormat(
-                "Expected TreeSpecs with `node_is_leaf=%s`.", (none_is_leaf ? "True" : "False")));
+                "Expected treespecs with `node_is_leaf=%s`.", (none_is_leaf ? "True" : "False")));
         }
         if (!treespec.m_namespace.empty()) [[unlikely]] {
             if (registry_namespace.empty()) [[likely]] {
                 registry_namespace = treespec.m_namespace;
             } else if (registry_namespace != treespec.m_namespace) [[unlikely]] {
                 throw std::invalid_argument(
-                    absl::StrFormat("Expected TreeSpecs with the same namespace. Got %s vs. %s.",
+                    absl::StrFormat("Expected treespecs with the same namespace. Got %s vs. %s.",
                                     py::repr(py::str(registry_namespace)),
                                     py::repr(py::str(treespec.m_namespace))));
             }
