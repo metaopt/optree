@@ -14,25 +14,14 @@
 # ==============================================================================
 """OpTree: Optimized PyTree Utilities."""
 
+from __future__ import annotations
+
 import functools
 import inspect
 from collections import OrderedDict, defaultdict, deque
 from operator import methodcaller
 from threading import Lock
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    NamedTuple,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    Union,
-    overload,
-)
+from typing import Any, Callable, Iterable, NamedTuple, Sequence, overload
 
 import optree._C as _C
 from optree.typing import KT, VT, CustomTreeNode, DefaultDict, FlattenFunc
@@ -61,11 +50,11 @@ __REGISTRY_LOCK: Lock = Lock()
 
 
 def register_pytree_node(
-    cls: Type[CustomTreeNode[T]],
+    cls: type[CustomTreeNode[T]],
     flatten_func: FlattenFunc,
     unflatten_func: UnflattenFunc,
     namespace: str,
-) -> Type[CustomTreeNode[T]]:
+) -> type[CustomTreeNode[T]]:
     """Extend the set of types that are considered internal nodes in pytrees.
 
     The ``namespace`` argument is used to avoid collisions that occur when different libraries
@@ -180,7 +169,7 @@ def register_pytree_node(
     if namespace == '':
         raise ValueError('The namespace cannot be an empty string.')
 
-    registration_key: Union[Type, Tuple[str, Type]]
+    registration_key: type | tuple[str, type]
     if namespace is __GLOBAL_NAMESPACE:
         registration_key = cls
         namespace = ''
@@ -196,27 +185,27 @@ def register_pytree_node(
 
 @overload
 def register_pytree_node_class(
-    cls: Optional[str] = None,
+    cls: str | None = None,
     *,
-    namespace: Optional[str] = None,
-) -> Callable[[Type[CustomTreeNode[T]]], Type[CustomTreeNode[T]]]:  # pragma: no cover
+    namespace: str | None = None,
+) -> Callable[[type[CustomTreeNode[T]]], type[CustomTreeNode[T]]]:  # pragma: no cover
     ...
 
 
 @overload
 def register_pytree_node_class(
-    cls: Type[CustomTreeNode[T]],
+    cls: type[CustomTreeNode[T]],
     *,
     namespace: str,
-) -> Type[CustomTreeNode[T]]:  # pragma: no cover
+) -> type[CustomTreeNode[T]]:  # pragma: no cover
     ...
 
 
 def register_pytree_node_class(
-    cls: Optional[Union[Type[CustomTreeNode[T]], str]] = None,
+    cls: type[CustomTreeNode[T]] | str | None = None,
     *,
-    namespace: Optional[str] = None,
-) -> Union[Type[CustomTreeNode[T]], Callable[[Type[CustomTreeNode[T]]], Type[CustomTreeNode[T]]]]:
+    namespace: str | None = None,
+) -> type[CustomTreeNode[T]] | Callable[[type[CustomTreeNode[T]]], type[CustomTreeNode[T]]]:
     """Extend the set of types that are considered internal nodes in pytrees.
 
     The ``namespace`` argument is used to avoid collisions that occur when different libraries
@@ -290,7 +279,7 @@ def register_pytree_node_class(
     return cls
 
 
-def _sorted_items(items: Iterable[Tuple[KT, VT]]) -> Iterable[Tuple[KT, VT]]:  # pragma: no cover
+def _sorted_items(items: Iterable[tuple[KT, VT]]) -> Iterable[tuple[KT, VT]]:  # pragma: no cover
     try:
         # Sort directly if possible (do not use `key` for performance reasons)
         return sorted(items)
@@ -307,7 +296,7 @@ def _sorted_items(items: Iterable[Tuple[KT, VT]]) -> Iterable[Tuple[KT, VT]]:  #
             return items  # fallback to insertion order
 
 
-def _sorted_keys(dct: Dict[KT, VT]) -> Iterable[KT]:  # pragma: no cover
+def _sorted_keys(dct: dict[KT, VT]) -> Iterable[KT]:  # pragma: no cover
     try:
         # Sort directly if possible (do not use `key` for performance reasons)
         return sorted(dct)  # type: ignore[type-var]
@@ -324,27 +313,27 @@ def _sorted_keys(dct: Dict[KT, VT]) -> Iterable[KT]:  # pragma: no cover
             return dct  # fallback to insertion order
 
 
-def _dict_flatten(dct: Dict[KT, VT]) -> Tuple[Tuple[VT, ...], List[KT], Tuple[KT, ...]]:
+def _dict_flatten(dct: dict[KT, VT]) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
     keys, values = unzip2(_sorted_items(dct.items()))
     return values, list(keys), keys
 
 
 def _ordereddict_flatten(
     dct: GenericOrderedDict[KT, VT]
-) -> Tuple[Tuple[VT, ...], List[KT], Tuple[KT, ...]]:
+) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
     keys, values = unzip2(dct.items())
     return values, list(keys), keys
 
 
 def _defaultdict_flatten(
     dct: DefaultDict[KT, VT]
-) -> Tuple[Tuple[VT, ...], Tuple[Optional[Callable[[], VT]], List[KT]], Tuple[KT, ...]]:
+) -> tuple[tuple[VT, ...], tuple[Callable[[], VT] | None, list[KT]], tuple[KT, ...]]:
     values, keys, entries = _dict_flatten(dct)
     return values, (dct.default_factory, list(keys)), entries
 
 
 # pylint: disable=all
-_nodetype_registry: Dict[Union[Type, Tuple[str, Type]], PyTreeNodeRegistryEntry] = {
+_nodetype_registry: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {
     type(None): PyTreeNodeRegistryEntry(
         lambda n: ((), None),
         lambda _, n: None,  # type: ignore[arg-type,return-value]
@@ -378,9 +367,9 @@ _nodetype_registry: Dict[Union[Type, Tuple[str, Type]], PyTreeNodeRegistryEntry]
 
 
 def _pytree_node_registry_get(
-    type: Type, *, namespace: str = __GLOBAL_NAMESPACE
-) -> Optional[PyTreeNodeRegistryEntry]:
-    entry: Optional[PyTreeNodeRegistryEntry] = _nodetype_registry.get(type)
+    type: type, *, namespace: str = __GLOBAL_NAMESPACE
+) -> PyTreeNodeRegistryEntry | None:
+    entry: PyTreeNodeRegistryEntry | None = _nodetype_registry.get(type)
     if entry is not None or namespace is __GLOBAL_NAMESPACE or namespace == '':
         return entry
     return _nodetype_registry.get((namespace, type))
@@ -394,8 +383,8 @@ class _HashablePartialShim:
     """Object that delegates :meth:`__call__`, :meth:`__hash__`, and :meth:`__eq__` to another object."""
 
     func: Callable[..., Any]
-    args: Tuple[Any, ...]
-    keywords: Dict[str, Any]
+    args: tuple[Any, ...]
+    keywords: dict[str, Any]
 
     def __init__(self, partial_func: functools.partial) -> None:
         self.partial_func: functools.partial = partial_func
@@ -459,10 +448,10 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
     """
 
     func: Callable[..., Any]
-    args: Tuple[Any, ...]
-    keywords: Dict[str, Any]
+    args: tuple[Any, ...]
+    keywords: dict[str, Any]
 
-    def __new__(cls, func: Callable[..., Any], *args, **keywords) -> 'Partial':
+    def __new__(cls, func: Callable[..., Any], *args, **keywords) -> Partial:
         """Create a new :class:`Partial` instance."""
         # In Python 3.10+, if func is itself a functools.partial instance, functools.partial.__new__
         # would merge the arguments of this Partial instance with the arguments of the func. We box
@@ -480,7 +469,7 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
 
         return super().__new__(cls, func, *args, **keywords)
 
-    def tree_flatten(self) -> Tuple[Tuple[Tuple[Any, ...], Dict[str, Any]], Callable[..., Any]]:
+    def tree_flatten(self) -> tuple[tuple[tuple[Any, ...], dict[str, Any]], Callable[..., Any]]:
         """Flatten the :class:`Partial` instance to children and auxiliary data."""
         return (self.args, self.keywords), self.func
 
@@ -488,8 +477,8 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
     def tree_unflatten(  # type: ignore[override] # pylint: disable=arguments-renamed
         cls,
         func: Callable[..., Any],
-        args: Tuple[Tuple[Any, ...], Dict[str, Any]],
-    ) -> 'Partial':
+        args: tuple[tuple[Any, ...], dict[str, Any]],
+    ) -> Partial:
         """Unflatten the children and auxiliary data into a :class:`Partial` instance."""
         return cls(func, *args[0], **args[1])
 
@@ -497,7 +486,7 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
 class KeyPathEntry(NamedTuple):
     key: Any
 
-    def __add__(self, other: object) -> 'KeyPath':
+    def __add__(self, other: object) -> KeyPath:
         if isinstance(other, KeyPathEntry):
             return KeyPath((self, other))
         if isinstance(other, KeyPath):
@@ -513,9 +502,9 @@ class KeyPathEntry(NamedTuple):
 
 
 class KeyPath(NamedTuple):
-    keys: Tuple[KeyPathEntry, ...] = ()
+    keys: tuple[KeyPathEntry, ...] = ()
 
-    def __add__(self, other: object) -> 'KeyPath':
+    def __add__(self, other: object) -> KeyPath:
         if isinstance(other, KeyPathEntry):
             return KeyPath(self.keys + (other,))
         if isinstance(other, KeyPath):
@@ -557,11 +546,11 @@ class FlattenedKeyPathEntry(KeyPathEntry):  # fallback
 
 
 KeyPathHandler = Callable[[PyTree], Sequence[KeyPathEntry]]
-_keypath_registry: Dict[Type[CustomTreeNode], KeyPathHandler] = {}
+_keypath_registry: dict[type[CustomTreeNode], KeyPathHandler] = {}
 
 
 def register_keypaths(
-    cls: Type[CustomTreeNode[T]],
+    cls: type[CustomTreeNode[T]],
     handler: KeyPathHandler,
 ) -> KeyPathHandler:
     """Register a key path handler for a custom pytree node type."""
@@ -576,5 +565,4 @@ register_keypaths(OrderedDict, lambda odct: list(map(GetitemKeyPathEntry, odct))
 register_keypaths(defaultdict, lambda ddct: list(map(GetitemKeyPathEntry, _sorted_keys(ddct))))  # type: ignore[arg-type]
 register_keypaths(deque, lambda dq: list(map(GetitemKeyPathEntry, range(len(dq)))))  # type: ignore[arg-type]
 
-# pylint: disable-next=line-too-long
-register_keypaths.get: Callable[[Type[CustomTreeNode[T]]], KeyPathHandler] = _keypath_registry.get  # type: ignore[attr-defined,misc]
+register_keypaths.get = _keypath_registry.get  # type: ignore[attr-defined]

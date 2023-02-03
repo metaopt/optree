@@ -16,6 +16,8 @@
 
 # mypy: no-warn-unused-ignores
 
+from __future__ import annotations
+
 from typing import (
     Any,
     Callable,
@@ -30,7 +32,6 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
-    Type,
     TypeVar,
     Union,
 )
@@ -97,16 +98,17 @@ class CustomTreeNode(Protocol[T]):
 
     def tree_flatten(
         self,
-    ) -> Union[
+    ) -> (
         # Use `range(num_children)` as path entries
-        Tuple[Children[T], MetaData],
+        tuple[Children[T], MetaData]
+        |
         # With optionally implemented path entries
-        Tuple[Children[T], MetaData, Optional[Iterable[Any]]],
-    ]:
+        tuple[Children[T], MetaData, Iterable[Any] | None]
+    ):
         """Flatten the custom pytree node into children and auxiliary data."""
 
     @classmethod
-    def tree_unflatten(cls, metadata: MetaData, children: Children[T]) -> 'CustomTreeNode[T]':
+    def tree_unflatten(cls, metadata: MetaData, children: Children[T]) -> CustomTreeNode[T]:
         """Unflatten the children and auxiliary data into the custom pytree node."""
 
 
@@ -145,7 +147,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
     """
 
     @_tp_cache
-    def __class_getitem__(cls, item: Union[T, Tuple[T], Tuple[T, Optional[str]]]) -> TypeAlias:
+    def __class_getitem__(cls, item: T | tuple[T] | tuple[T, str | None]) -> TypeAlias:
         """Instantiate a PyTree type with the given type."""
         if not isinstance(item, tuple):
             item = (item, None)
@@ -224,7 +226,7 @@ class PyTreeTypeVar:
     """
 
     @_tp_cache
-    def __new__(cls, name: str, param: Type) -> TypeAlias:
+    def __new__(cls, name: str, param: type) -> TypeAlias:
         """Instantiate a PyTree type variable with the given name and parameter."""
         if not isinstance(name, str):
             raise TypeError(f'{cls.__name__} only supports a string of type name. Got {name!r}.')
@@ -252,6 +254,6 @@ def is_namedtuple(obj: object) -> bool:
     return isinstance(obj, tuple) and hasattr(obj, '_fields')
 
 
-def is_namedtuple_class(cls: Type) -> bool:
+def is_namedtuple_class(cls: type) -> bool:
     """Return whether the class is a subclass of namedtuple."""
     return issubclass(cls, tuple) and hasattr(cls, '_fields')
