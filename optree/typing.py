@@ -63,6 +63,7 @@ __all__ = [
     'is_namedtuple_class',
     'is_structseq',
     'is_structseq_class',
+    'structseq_fields',
     'T',
     'S',
     'U',
@@ -296,4 +297,4 @@ def is_structseq_class(cls: type) -> bool:
 
 # Ensure that the behavior is consistent with C++ implementation
 # pylint: disable-next=wrong-import-position
-from optree._C import is_namedtuple_class, is_structseq_class
+from optree._C import is_namedtuple_class, is_structseq_class, structseq_fields

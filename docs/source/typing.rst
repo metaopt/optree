@@ -14,6 +14,7 @@ Typing Support
     is_namedtuple_class
     is_structseq
     is_structseq_class
+    structseq_fields
 
 .. autoclass:: PyTreeSpec
     :members:
@@ -41,3 +42,5 @@ Typing Support
 .. autofunction:: is_structseq
 
 .. autofunction:: is_structseq_class
+
+.. autofunction:: structseq_fields

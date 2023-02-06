@@ -82,6 +82,10 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
             &IsStructSequenceClass,
             "Return whether the object is a class of PyStructSequence.",
             py::arg("cls"));
+    mod.def("structseq_fields",
+            &StructSequenceGetFields,
+            "Return the field names of a PyStructSequence.",
+            py::arg("obj"));
 
     py::class_<PyTreeSpec>(mod, "PyTreeSpec", "Representing the structure of the pytree.")
         .def_property_readonly(

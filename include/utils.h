@@ -24,6 +24,7 @@ limitations under the License.
 #include <absl/strings/str_format.h>
 #include <absl/strings/str_join.h>
 #include <pybind11/pybind11.h>
+#include <structmember.h>  // PyMemberDef
 
 #include <memory>
 #include <optional>
@@ -416,4 +417,26 @@ inline void AssertExactStructSequence(const py::handle& object) {
         throw std::invalid_argument(
             absl::StrFormat("Expected StructSequence, got %s.", py::repr(object)));
     }
+}
+inline py::tuple StructSequenceGetFields(const py::handle& object) {
+    py::handle type;
+    if (PyType_Check(object.ptr())) {
+        type = object;
+        if (!IsStructSequenceClass(type)) [[unlikely]] {
+            throw std::invalid_argument(
+                absl::StrFormat("Expected StructSequence type, got %s.", py::repr(object)));
+        }
+    } else {
+        type = object.get_type();
+        AssertExactStructSequence(object);
+    }
+
+    const auto n_sequence_fields = getattr(type, "n_sequence_fields").cast<ssize_t>();
+    auto* members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
+    py::tuple fields{n_sequence_fields};
+    for (ssize_t i = 0; i < n_sequence_fields; ++i) {
+        // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+        SET_ITEM<py::tuple>(fields, i, py::str(members[i].name));
+    }
+    return fields;
 }

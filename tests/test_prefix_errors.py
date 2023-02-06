@@ -141,7 +141,7 @@ def test_structseq():
         TimeStructTime((1, [2, [3]], *range(7))), TimeStructTime((4, [5, 6], *range(7)))
     )
     expected = re.escape(
-        'pytree structure error: different types at key path\n' '    in_axes[1][1]'
+        'pytree structure error: different types at key path\n' '    in_axes.tm_mon[1]'
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')

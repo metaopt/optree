@@ -28,7 +28,6 @@ import optree._C as _C
 from optree.registry import (
     AttributeKeyPathEntry,
     FlattenedKeyPathEntry,
-    GetitemKeyPathEntry,
     KeyPath,
     KeyPathEntry,
     register_keypaths,
@@ -48,6 +47,7 @@ from optree.typing import (
     U,
     is_namedtuple,
     is_structseq,
+    structseq_fields,
 )
 
 
@@ -1314,7 +1314,7 @@ def _child_keys(
 
     if is_structseq(tree):
         # Handle PyStructSequence as a special case, based on heuristic
-        return list(map(GetitemKeyPathEntry, range(len(cast(tuple, tree)))))
+        return list(map(AttributeKeyPathEntry, structseq_fields(tree)))
 
     num_children = treespec.num_children
     return list(map(FlattenedKeyPathEntry, range(num_children)))

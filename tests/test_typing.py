@@ -15,8 +15,11 @@
 
 # pylint: disable=missing-function-docstring
 
+import re
 import sys
 import time
+
+import pytest
 
 import optree
 from helpers import CustomNamedTupleSubclass, CustomTuple, Vector2D
@@ -87,3 +90,98 @@ def test_is_structseq():
     assert not optree.is_structseq_class(FakeNamedTuple)
     assert not optree.is_structseq_class(Vector2D)
     assert not optree.is_structseq_class(FakeStructSequence)
+
+
+def test_structseq_fields():
+    assert optree.structseq_fields(sys.float_info) == (
+        'max',
+        'max_exp',
+        'max_10_exp',
+        'min',
+        'min_exp',
+        'min_10_exp',
+        'dig',
+        'mant_dig',
+        'epsilon',
+        'radix',
+        'rounds',
+    )
+    assert optree.structseq_fields(type(sys.float_info)) == (
+        'max',
+        'max_exp',
+        'max_10_exp',
+        'min',
+        'min_exp',
+        'min_10_exp',
+        'dig',
+        'mant_dig',
+        'epsilon',
+        'radix',
+        'rounds',
+    )
+    assert optree.structseq_fields(time.gmtime()) == (
+        'tm_year',
+        'tm_mon',
+        'tm_mday',
+        'tm_hour',
+        'tm_min',
+        'tm_sec',
+        'tm_wday',
+        'tm_yday',
+        'tm_isdst',
+    )
+    assert optree.structseq_fields(time.struct_time) == (
+        'tm_year',
+        'tm_mon',
+        'tm_mday',
+        'tm_hour',
+        'tm_min',
+        'tm_sec',
+        'tm_wday',
+        'tm_yday',
+        'tm_isdst',
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(r'Expected StructSequence, got [1, 2].'),
+    ):
+        optree.structseq_fields([1, 2])
+    with pytest.raises(
+        ValueError,
+        match=re.escape(r"Expected StructSequence type, got <class 'list'>."),
+    ):
+        optree.structseq_fields(list)
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(r'Expected StructSequence, got (1, 2).'),
+    ):
+        optree.structseq_fields((1, 2))
+    with pytest.raises(
+        ValueError,
+        match=re.escape(r"Expected StructSequence type, got <class 'tuple'>."),
+    ):
+        optree.structseq_fields(tuple)
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(r'Expected StructSequence, got CustomTuple(foo=1, bar=2).'),
+    ):
+        optree.structseq_fields(CustomTuple(1, 2))
+    with pytest.raises(
+        ValueError,
+        match=re.escape(r"Expected StructSequence type, got <class 'helpers.CustomTuple'>."),
+    ):
+        optree.structseq_fields(CustomTuple)
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(r'Expected StructSequence, got (1, 2).'),
+    ):
+        optree.structseq_fields(FakeStructSequence((1, 2)))
+    with pytest.raises(
+        ValueError,
+        match=r"Expected StructSequence type, got <class '.*\.FakeStructSequence'>\.",
+    ):
+        optree.structseq_fields(FakeStructSequence)

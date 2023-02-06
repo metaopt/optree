@@ -64,6 +64,7 @@ from optree.typing import (
     is_namedtuple_class,
     is_structseq,
     is_structseq_class,
+    structseq_fields,
 )
 from optree.version import __version__
 
@@ -116,6 +117,7 @@ __all__ = [
     'is_namedtuple_class',
     'is_structseq',
     'is_structseq_class',
+    'structseq_fields',
 ]
 
 MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH
