@@ -62,6 +62,8 @@ from optree.typing import (
     UnflattenFunc,
     is_namedtuple,
     is_namedtuple_class,
+    is_structseq,
+    is_structseq_class,
 )
 from optree.version import __version__
 
@@ -112,6 +114,8 @@ __all__ = [
     'UnflattenFunc',
     'is_namedtuple',
     'is_namedtuple_class',
+    'is_structseq',
+    'is_structseq_class',
 ]
 
 MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH

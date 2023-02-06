@@ -74,6 +74,14 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
             "Make a tuple treespec from a list of child treespecs.",
             py::arg("treespecs"),
             py::arg("none_is_leaf") = false);
+    mod.def("is_namedtuple_class",
+            &IsNamedTupleClass,
+            "Return whether the class is a subclass of namedtuple.",
+            py::arg("cls"));
+    mod.def("is_structseq_class",
+            &IsStructSequenceClass,
+            "Return whether the object is a class of PyStructSequence.",
+            py::arg("cls"));
 
     py::class_<PyTreeSpec>(mod, "PyTreeSpec", "Representing the structure of the pytree.")
         .def_property_readonly(

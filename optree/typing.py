@@ -61,6 +61,8 @@ __all__ = [
     'UnflattenFunc',
     'is_namedtuple',
     'is_namedtuple_class',
+    'is_structseq',
+    'is_structseq_class',
     'T',
     'S',
     'U',
@@ -249,11 +251,48 @@ FlattenFunc = Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]]
 UnflattenFunc = Callable[[MetaData, Children[T]], CustomTreeNode[T]]
 
 
-def is_namedtuple(obj: object) -> bool:
-    """Return whether the object is a namedtuple."""
-    return isinstance(obj, tuple) and hasattr(obj, '_fields')
+def is_namedtuple(obj: object | type) -> bool:
+    """Return whether the object is an instance of namedtuple or a subclass of namedtuple."""
+    cls = obj if isinstance(obj, type) else type(obj)
+    return is_namedtuple_class(cls)
 
 
 def is_namedtuple_class(cls: type) -> bool:
     """Return whether the class is a subclass of namedtuple."""
-    return issubclass(cls, tuple) and hasattr(cls, '_fields')
+    return (
+        isinstance(cls, type)
+        and issubclass(cls, tuple)
+        and isinstance(getattr(cls, '_fields', None), tuple)
+    )
+
+
+def is_structseq(obj: object | type) -> bool:
+    """Return whether the object is an instance of PyStructSequence or a class of PyStructSequence."""
+    cls = obj if isinstance(obj, type) else type(obj)
+    return is_structseq_class(cls)
+
+
+def is_structseq_class(cls: type) -> bool:
+    """Return whether the class is a class of PyStructSequence."""
+    if (
+        isinstance(cls, type)
+        # Check direct inheritance from `tuple` rather than `issubclass(cls, tuple)`
+        and cls.__base__ is tuple
+        and isinstance(getattr(cls, 'n_sequence_fields', None), int)
+        and isinstance(getattr(cls, 'n_fields', None), int)
+        and isinstance(getattr(cls, 'n_unnamed_fields', None), int)
+    ):
+        try:
+            # pylint: disable-next=missing-class-docstring,too-few-public-methods,unused-variable
+            class SubClass(cls):  # type: ignore[misc,valid-type]
+                pass
+
+        except TypeError:
+            return True
+
+    return False
+
+
+# Ensure that the behavior is consistent with C++ implementation
+# pylint: disable-next=wrong-import-position
+from optree._C import is_namedtuple_class, is_structseq_class

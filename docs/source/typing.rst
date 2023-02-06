@@ -12,6 +12,8 @@ Typing Support
     CustomTreeNode
     is_namedtuple
     is_namedtuple_class
+    is_structseq
+    is_structseq_class
 
 .. autoclass:: PyTreeSpec
     :members:
@@ -35,3 +37,7 @@ Typing Support
 .. autofunction:: is_namedtuple
 
 .. autofunction:: is_namedtuple_class
+
+.. autofunction:: is_structseq
+
+.. autofunction:: is_structseq_class
