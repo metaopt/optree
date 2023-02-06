@@ -23,7 +23,7 @@ from helpers import CustomNamedTupleSubclass, CustomTuple, Vector2D
 
 
 class FakeNamedTuple(tuple):
-    _fields = 1
+    _fields = ('a', 2, 'b')
 
 
 class FakeStructSequence(tuple):
@@ -39,12 +39,12 @@ def test_is_namedtuple():
     assert not optree.is_namedtuple(time.gmtime())
     assert optree.is_namedtuple(CustomTuple(1, 2))
     assert optree.is_namedtuple(CustomNamedTupleSubclass(1, 2))
-    assert not optree.is_namedtuple(FakeNamedTuple((1, 2)))
+    assert not optree.is_namedtuple(FakeNamedTuple((1, 2, 3)))
     assert not optree.is_namedtuple(Vector2D(1, 2))
     assert not optree.is_namedtuple(FakeStructSequence((1, 2)))
     assert not optree.is_namedtuple_class(CustomTuple(1, 2))
     assert not optree.is_namedtuple_class(CustomNamedTupleSubclass(1, 2))
-    assert not optree.is_namedtuple_class(FakeNamedTuple((1, 2)))
+    assert not optree.is_namedtuple_class(FakeNamedTuple((1, 2, 3)))
 
     assert not optree.is_namedtuple(type(sys.float_info))
     assert not optree.is_namedtuple(time.struct_time)
@@ -68,7 +68,7 @@ def test_is_structseq():
     assert optree.is_structseq(time.gmtime())
     assert not optree.is_structseq(CustomTuple(1, 2))
     assert not optree.is_structseq(CustomNamedTupleSubclass(1, 2))
-    assert not optree.is_structseq(FakeNamedTuple((1, 2)))
+    assert not optree.is_structseq(FakeNamedTuple((1, 2, 3)))
     assert not optree.is_structseq(Vector2D(1, 2))
     assert not optree.is_structseq(FakeStructSequence((1, 2)))
     assert not optree.is_structseq_class(sys.float_info)

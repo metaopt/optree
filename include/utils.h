@@ -334,6 +334,14 @@ inline bool IsNamedTupleClassImpl(const py::handle& type) {
         [[unlikely]] {
         if (PyObject* _fields = PyObject_GetAttrString(type.ptr(), "_fields")) [[unlikely]] {
             bool result = static_cast<bool>(PyTuple_CheckExact(_fields));
+            if (result) [[likely]] {
+                for (const auto& field : py::reinterpret_borrow<py::tuple>(_fields)) {
+                    if (!static_cast<bool>(PyUnicode_CheckExact(field.ptr()))) [[unlikely]] {
+                        result = false;
+                        break;
+                    }
+                }
+            }
             Py_DECREF(_fields);
             return result;
         }
