@@ -190,7 +190,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
 
         pytree_alias = Union[
             param,  # type: ignore[valid-type]
-            Tuple[recurse_ref, ...],  # type: ignore[valid-type] # Tuple, NamedTuple
+            Tuple[recurse_ref, ...],  # type: ignore[valid-type] # Tuple, NamedTuple, PyStructSequence
             List[recurse_ref],  # type: ignore[valid-type]
             Dict[Any, recurse_ref],  # type: ignore[valid-type] # Dict, OrderedDict, DefaultDict
             Deque[recurse_ref],  # type: ignore[valid-type]

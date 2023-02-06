@@ -16,6 +16,8 @@
 # pylint: disable=missing-class-docstring,missing-function-docstring,invalid-name
 
 import itertools
+import sys
+import time
 from collections import OrderedDict, UserDict, defaultdict, deque, namedtuple
 
 import pytest
@@ -39,6 +41,12 @@ CustomTuple = namedtuple('CustomTuple', ('foo', 'bar'))
 
 class CustomNamedTupleSubclass(CustomTuple):
     pass
+
+
+# sys.float_info(max=*, max_exp=*, max_10_exp=*, min=*, min_exp=*, min_10_exp=*, dig=*, mant_dig=*, epsilon=*, radix=*, rounds=*)
+SysFloatInfo = type(sys.float_info)
+# time.struct_time(tm_year=*, tm_mon=*, tm_mday=*, tm_hour=*, tm_min=*, tm_sec=*, tm_wday=*, tm_yday=*, tm_isdst=*)
+TimeStructTime = time.struct_time
 
 
 class Vector3D:
@@ -180,6 +188,8 @@ TREES = (
     ((1, 'foo'), ['bar', (3, None, 7)]),
     [3],
     [3, CustomTuple(foo=(3, CustomTuple(foo=3, bar=None)), bar={'baz': 34})],
+    TimeStructTime((*range(1, 3), None, *range(3, 9))),
+    SysFloatInfo((*range(1, 10), None, TimeStructTime((*range(10, 15), None, *range(15, 20))))),
     [Vector3D(3, None, [4, 'foo'])],
     Vector2D(2, 3.0),
     {'a': 1, 'b': 2},
@@ -208,6 +218,26 @@ TREE_PATHS_NONE_IS_NODE = [
     [(0, 0), (0, 1), (1, 0), (1, 1, 0), (1, 1, 2)],
     [(0,)],
     [(0,), (1, 0, 0), (1, 0, 1, 0), (1, 1, 'baz')],
+    [(0,), (1,), (3,), (4,), (5,), (6,), (7,), (8,)],
+    [
+        (0,),
+        (1,),
+        (2,),
+        (3,),
+        (4,),
+        (5,),
+        (6,),
+        (7,),
+        (8,),
+        (10, 0),
+        (10, 1),
+        (10, 2),
+        (10, 3),
+        (10, 4),
+        (10, 6),
+        (10, 7),
+        (10, 8),
+    ],
     [(0, 0)],
     [(0,), (1,)],
     [('a',), ('b',)],
@@ -235,6 +265,28 @@ TREE_PATHS_NONE_IS_LEAF = [
     [(0, 0), (0, 1), (1, 0), (1, 1, 0), (1, 1, 1), (1, 1, 2)],
     [(0,)],
     [(0,), (1, 0, 0), (1, 0, 1, 0), (1, 0, 1, 1), (1, 1, 'baz')],
+    [(0,), (1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)],
+    [
+        (0,),
+        (1,),
+        (2,),
+        (3,),
+        (4,),
+        (5,),
+        (6,),
+        (7,),
+        (8,),
+        (9,),
+        (10, 0),
+        (10, 1),
+        (10, 2),
+        (10, 3),
+        (10, 4),
+        (10, 5),
+        (10, 6),
+        (10, 7),
+        (10, 8),
+    ],
     [(0, 0), (0, 1)],
     [(0,), (1,)],
     [('a',), ('b',)],
@@ -268,6 +320,8 @@ TREE_STRINGS_NONE_IS_NODE = (
     'PyTreeSpec(((*, *), [*, (*, None, *)]))',
     'PyTreeSpec([*])',
     "PyTreeSpec([*, CustomTuple(foo=(*, CustomTuple(foo=*, bar=None)), bar={'baz': *})])",
+    'PyTreeSpec(time.struct_time(tm_year=*, tm_mon=*, tm_mday=None, tm_hour=*, tm_min=*, tm_sec=*, tm_wday=*, tm_yday=*, tm_isdst=*))',
+    'PyTreeSpec(sys.float_info(max=*, max_exp=*, max_10_exp=*, min=*, min_exp=*, min_10_exp=*, dig=*, mant_dig=*, epsilon=*, radix=None, rounds=time.struct_time(tm_year=*, tm_mon=*, tm_mday=*, tm_hour=*, tm_min=*, tm_sec=None, tm_wday=*, tm_yday=*, tm_isdst=*)))',
     "PyTreeSpec([CustomTreeNode(Vector3D[[4, 'foo']], [*, None])])",
     'PyTreeSpec(CustomTreeNode(Vector2D[None], [*, *]))',
     "PyTreeSpec({'a': *, 'b': *})",
@@ -295,6 +349,8 @@ TREE_STRINGS_NONE_IS_LEAF = (
     'PyTreeSpec(((*, *), [*, (*, *, *)]), NoneIsLeaf)',
     'PyTreeSpec([*], NoneIsLeaf)',
     "PyTreeSpec([*, CustomTuple(foo=(*, CustomTuple(foo=*, bar=*)), bar={'baz': *})], NoneIsLeaf)",
+    'PyTreeSpec(time.struct_time(tm_year=*, tm_mon=*, tm_mday=*, tm_hour=*, tm_min=*, tm_sec=*, tm_wday=*, tm_yday=*, tm_isdst=*), NoneIsLeaf)',
+    'PyTreeSpec(sys.float_info(max=*, max_exp=*, max_10_exp=*, min=*, min_exp=*, min_10_exp=*, dig=*, mant_dig=*, epsilon=*, radix=*, rounds=time.struct_time(tm_year=*, tm_mon=*, tm_mday=*, tm_hour=*, tm_min=*, tm_sec=*, tm_wday=*, tm_yday=*, tm_isdst=*)), NoneIsLeaf)',
     "PyTreeSpec([CustomTreeNode(Vector3D[[4, 'foo']], [*, *])], NoneIsLeaf)",
     'PyTreeSpec(CustomTreeNode(Vector2D[None], [*, *]), NoneIsLeaf)',
     "PyTreeSpec({'a': *, 'b': *}, NoneIsLeaf)",

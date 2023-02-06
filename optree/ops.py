@@ -28,6 +28,7 @@ import optree._C as _C
 from optree.registry import (
     AttributeKeyPathEntry,
     FlattenedKeyPathEntry,
+    GetitemKeyPathEntry,
     KeyPath,
     KeyPathEntry,
     register_keypaths,
@@ -46,6 +47,7 @@ from optree.typing import (
     Tuple,
     U,
     is_namedtuple,
+    is_structseq,
 )
 
 
@@ -1171,6 +1173,9 @@ def flatten_one_level(
     if is_namedtuple(tree):
         return list(cast(NamedTuple, tree)), node_type, tuple(range(len(cast(NamedTuple, tree))))
 
+    if is_structseq(tree):
+        return list(cast(tuple, tree)), node_type, tuple(range(len(cast(tuple, tree))))
+
     raise ValueError(f'Cannot flatten leaf-type: {node_type}.')
 
 
@@ -1306,6 +1311,10 @@ def _child_keys(
     if is_namedtuple(tree):
         # Handle namedtuple as a special case, based on heuristic
         return list(map(AttributeKeyPathEntry, cast(NamedTuple, tree)._fields))
+
+    if is_structseq(tree):
+        # Handle PyStructSequence as a special case, based on heuristic
+        return list(map(GetitemKeyPathEntry, range(len(cast(tuple, tree)))))
 
     num_children = treespec.num_children
     return list(map(FlattenedKeyPathEntry, range(num_children)))

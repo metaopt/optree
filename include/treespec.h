@@ -152,6 +152,7 @@ class PyTreeSpec {
             case PyTreeKind::List:
             case PyTreeKind::NamedTuple:
             case PyTreeKind::Deque:
+            case PyTreeKind::StructSequence:
                 data_hash = py::hash(n.node_data ? n.node_data : py::none());
                 break;
             case PyTreeKind::Dict:
@@ -212,7 +213,7 @@ class PyTreeSpec {
         ssize_t arity = 0;
 
         // Kind-specific auxiliary data.
-        // For a NamedTuple, contains the tuple type object.
+        // For a NamedTuple/PyStructSequence, contains the tuple type object.
         // For a Dict, contains a sorted list of keys.
         // For a OrderedDict, contains a list of keys.
         // For a DefaultDict, contains a tuple of (default_factory, sorted list of keys).

@@ -18,6 +18,8 @@
 import itertools
 import pickle
 
+import pytest
+
 import optree
 
 # pylint: disable-next=wrong-import-order
@@ -112,8 +114,17 @@ def test_with_namespace():
 @parametrize(tree=TREES, none_is_leaf=[False, True], namespace=['', 'undefined', 'namespace'])
 def test_treespec_pickle_round_trip(tree, none_is_leaf, namespace):
     expected = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    actual = pickle.loads(pickle.dumps(expected))
-    assert actual == expected
+    try:
+        pickle.loads(pickle.dumps(tree))
+    except pickle.PicklingError:
+        with pytest.raises(
+            pickle.PicklingError,
+            match="Can't pickle .*: it's not the same object as .*",
+        ):
+            pickle.loads(pickle.dumps(expected))
+    else:
+        actual = pickle.loads(pickle.dumps(expected))
+        assert actual == expected
 
 
 @parametrize(

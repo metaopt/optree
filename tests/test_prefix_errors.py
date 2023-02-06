@@ -23,7 +23,7 @@ import pytest
 import optree
 
 # pylint: disable-next=wrong-import-order
-from helpers import CustomTuple, Vector2D
+from helpers import CustomTuple, TimeStructTime, Vector2D
 from optree.registry import (
     AttributeKeyPathEntry,
     FlattenedKeyPathEntry,
@@ -131,6 +131,17 @@ def test_namedtuple():
     (e,) = optree.prefix_errors(CustomTuple(1, [2, [3]]), CustomTuple(4, [5, 6]))
     expected = re.escape(
         'pytree structure error: different types at key path\n' '    in_axes.bar[1]'
+    )
+    with pytest.raises(ValueError, match=expected):
+        raise e('in_axes')
+
+
+def test_structseq():
+    (e,) = optree.prefix_errors(
+        TimeStructTime((1, [2, [3]], *range(7))), TimeStructTime((4, [5, 6], *range(7)))
+    )
+    expected = re.escape(
+        'pytree structure error: different types at key path\n' '    in_axes[1][1]'
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')

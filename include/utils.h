@@ -20,6 +20,7 @@ limitations under the License.
 
 #pragma once
 
+#include <Python.h>
 #include <absl/strings/str_format.h>
 #include <absl/strings/str_join.h>
 #include <pybind11/pybind11.h>
