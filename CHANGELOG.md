@@ -13,12 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `PyStructSequence` types as internal node types by [@XuehaiPan](https://github.com/XuehaiPan) in [#30](https://github.com/metaopt/optree/pull/30).
+-
 
 ### Changed
 
-- Add `PyStructSequence` types as internal node types by [@XuehaiPan](https://github.com/XuehaiPan) in [#30](https://github.com/metaopt/optree/pull/30).
-- Use postponed evaluation of annotations by [@XuehaiPan](https://github.com/XuehaiPan) in [#28](https://github.com/metaopt/optree/pull/28).
+-
 
 ### Fixed
 
@@ -27,6 +26,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 -
+
+------
+
+## [0.7.0] - 2023-02-07
+
+### Added
+
+- Add `PyStructSequence` types as internal node types by [@XuehaiPan](https://github.com/XuehaiPan) in [#30](https://github.com/metaopt/optree/pull/30).
+
+### Changed
+
+- Add `PyStructSequence` types as internal node types by [@XuehaiPan](https://github.com/XuehaiPan) in [#30](https://github.com/metaopt/optree/pull/30).
+- Use postponed evaluation of annotations by [@XuehaiPan](https://github.com/XuehaiPan) in [#28](https://github.com/metaopt/optree/pull/28).
 
 ------
 
@@ -151,7 +163,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/metaopt/optree/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/metaopt/optree/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/metaopt/optree/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/metaopt/optree/compare/v0.4.2...v0.5.0
