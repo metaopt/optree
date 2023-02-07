@@ -39,59 +39,75 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
             py::arg("cls"),
             py::arg("to_iterable"),
             py::arg("from_iterable"),
-            py::arg("namespace") = "");
+            py::arg("namespace") = "")
+        .def("flatten",
+             &PyTreeSpec::Flatten,
+             "Flattens a pytree.",
+             py::arg("tree"),
+             py::arg("leaf_predicate") = std::nullopt,
+             py::arg("none_is_leaf") = false,
+             py::arg("namespace") = "")
+        .def("flatten_with_path",
+             &PyTreeSpec::FlattenWithPath,
+             "Flatten a pytree and additionally record the paths.",
+             py::arg("tree"),
+             py::arg("leaf_predicate") = std::nullopt,
+             py::arg("none_is_leaf") = false,
+             py::arg("namespace") = "")
+        .def("all_leaves",
+             &PyTreeSpec::AllLeaves,
+             "Test whether all elements in the given iterable are all leaves.",
+             py::arg("iterable"),
+             py::arg("none_is_leaf") = false,
+             py::arg("namespace") = "")
+        .def("leaf",
+             &PyTreeSpec::Leaf,
+             "Make a treespec representing a leaf node.",
+             py::arg("none_is_leaf") = false)
+        .def("none",
+             &PyTreeSpec::None,
+             "Make a treespec representing a `None` node.",
+             py::arg("none_is_leaf") = false)
+        .def("tuple",
+             &PyTreeSpec::Tuple,
+             "Make a tuple treespec from a list of child treespecs.",
+             py::arg("treespecs"),
+             py::arg("none_is_leaf") = false)
+        .def("is_namedtuple_class",
+             &IsNamedTupleClass,
+             "Return whether the class is a subclass of namedtuple.",
+             py::arg("cls"))
+        .def("is_structseq_class",
+             &IsStructSequenceClass,
+             "Return whether the object is a class of PyStructSequence.",
+             py::arg("cls"))
+        .def("structseq_fields",
+             &StructSequenceGetFields,
+             "Return the field names of a PyStructSequence.",
+             py::arg("obj"));
 
-    mod.def("flatten",
-            &PyTreeSpec::Flatten,
-            "Flattens a pytree.",
-            py::arg("tree"),
-            py::arg("leaf_predicate") = std::nullopt,
-            py::arg("none_is_leaf") = false,
-            py::arg("namespace") = "");
-    mod.def("flatten_with_path",
-            &PyTreeSpec::FlattenWithPath,
-            "Flatten a pytree and additionally record the paths.",
-            py::arg("tree"),
-            py::arg("leaf_predicate") = std::nullopt,
-            py::arg("none_is_leaf") = false,
-            py::arg("namespace") = "");
-    mod.def("all_leaves",
-            &PyTreeSpec::AllLeaves,
-            "Test whether all elements in the given iterable are all leaves.",
-            py::arg("iterable"),
-            py::arg("none_is_leaf") = false,
-            py::arg("namespace") = "");
-    mod.def("leaf",
-            &PyTreeSpec::Leaf,
-            "Make a treespec representing a leaf node.",
-            py::arg("none_is_leaf") = false);
-    mod.def("none",
-            &PyTreeSpec::None,
-            "Make a treespec representing a `None` node.",
-            py::arg("none_is_leaf") = false);
-    mod.def("tuple",
-            &PyTreeSpec::Tuple,
-            "Make a tuple treespec from a list of child treespecs.",
-            py::arg("treespecs"),
-            py::arg("none_is_leaf") = false);
+    auto PyTreeSpecTypeObject =
+        py::class_<PyTreeSpec>(mod, "PyTreeSpec", "Representing the structure of the pytree.");
+    reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_name = "optree.PyTreeSpec";
+    py::setattr(PyTreeSpecTypeObject, "__module__", py::str("optree"));
 
-    py::class_<PyTreeSpec>(mod, "PyTreeSpec", "Representing the structure of the pytree.")
+    PyTreeSpecTypeObject
         .def_property_readonly(
             "num_leaves", &PyTreeSpec::num_leaves, "Number of leaves in the tree.")
-        .def_property_readonly(
-            "num_nodes",
-            &PyTreeSpec::num_nodes,
-            "Number of nodes in the tree. Note that a leaf is also a node but has no children.")
-        .def_property_readonly(
-            "num_children",
-            &PyTreeSpec::num_children,
-            "Number of children in the current node. Note that a leaf is also a node but has no "
-            "children.")
+        .def_property_readonly("num_nodes",
+                               &PyTreeSpec::num_nodes,
+                               "Number of nodes in the tree. "
+                               "Note that a leaf is also a node but has no children.")
+        .def_property_readonly("num_children",
+                               &PyTreeSpec::num_children,
+                               "Number of children in the current node. "
+                               "Note that a leaf is also a node but has no children.")
         .def_property_readonly(
             "none_is_leaf",
             &PyTreeSpec::get_none_is_leaf,
-            "Whether to treat None as a leaf. If false, None is a non-leaf node with arity 0. Thus "
-            "None is contained in the treespec rather than in the leaves list.")
+            "Whether to treat None as a leaf. "
+            "If false, None is a non-leaf node with arity 0. "
+            "Thus None is contained in the treespec rather than in the leaves list.")
         .def_property_readonly(
             "namespace",
             &PyTreeSpec::get_namespace,
@@ -108,8 +124,8 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
         .def("flatten_up_to",
              &PyTreeSpec::FlattenUpTo,
              py::arg("full_tree"),
-             "Flatten the subtrees in ``full_tree`` up to the structure of this treespec and "
-             "return a list of subtrees.")
+             "Flatten the subtrees in ``full_tree`` up to the structure of this treespec "
+             "and return a list of subtrees.")
         .def("compose",
              &PyTreeSpec::Compose,
              py::arg("inner_treespec"),

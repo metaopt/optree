@@ -20,6 +20,9 @@ limitations under the License.
 
 #include "include/treespec.h"
 
+#include <Python.h>
+#include <structmember.h>  // PyMemberDef
+
 namespace optree {
 
 ssize_t PyTreeSpec::num_leaves() const {
@@ -56,6 +59,7 @@ py::object PyTreeSpec::get_type() const {
         case PyTreeKind::Dict:
             return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyDict_Type));
         case PyTreeKind::NamedTuple:
+        case PyTreeKind::StructSequence:
             return node.node_data;
         case PyTreeKind::OrderedDict:
             return PyOrderedDictTypeObject;
@@ -250,13 +254,17 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
             return py::none();
 
         case PyTreeKind::Tuple:
-        case PyTreeKind::NamedTuple: {
+        case PyTreeKind::NamedTuple:
+        case PyTreeKind::StructSequence: {
             py::tuple tuple{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
                 SET_ITEM<py::tuple>(tuple, i, children[i]);
             }
             if (node.kind == PyTreeKind::NamedTuple) [[unlikely]] {
                 return node.node_data(*tuple);
+            }
+            if (node.kind == PyTreeKind::StructSequence) [[unlikely]] {
+                return node.node_data(std::move(tuple));
             }
             return std::move(tuple);
         }
@@ -334,6 +342,9 @@ template <bool NoneIsLeaf>
     *custom = nullptr;
     if (IsNamedTuple(handle)) [[unlikely]] {
         return PyTreeKind::NamedTuple;
+    }
+    if (IsStructSequence(handle)) [[unlikely]] {
+        return PyTreeKind::StructSequence;
     }
     return PyTreeKind::Leaf;
 }
@@ -463,6 +474,27 @@ std::string PyTreeSpec::ToString() const {
                 break;
             }
 
+            case PyTreeKind::StructSequence: {
+                py::object type = node.node_data;
+                auto* members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
+                std::string kind = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_name;
+                representation = absl::StrFormat("%s(", kind);
+                std::string separator;
+                auto child_iter = agenda.end() - node.arity;
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    absl::StrAppendFormat(
+                        &representation,
+                        "%s%s=%s",
+                        separator,
+                        members[i].name,  // NOLINT[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                        *child_iter);
+                    ++child_iter;
+                    separator = ", ";
+                }
+                representation += ")";
+                break;
+            }
+
             case PyTreeKind::Custom: {
                 py::object type = node.custom->type;
                 std::string kind = static_cast<std::string>(py::str(py::getattr(type, "__name__")));
@@ -532,21 +564,6 @@ py::object PyTreeSpec::ToPicklable() const {
         node.kind = static_cast<PyTreeKind>(t[0].cast<ssize_t>());
         node.arity = t[1].cast<ssize_t>();
         switch (node.kind) {
-            case PyTreeKind::NamedTuple:
-                node.node_data = t[2].cast<py::type>();
-                break;
-
-            case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict:
-                node.node_data = t[2].cast<py::list>();
-                break;
-
-            case PyTreeKind::DefaultDict:
-            case PyTreeKind::Deque:
-            case PyTreeKind::Custom:
-                node.node_data = t[2];
-                break;
-
             case PyTreeKind::Leaf:
             case PyTreeKind::None:
             case PyTreeKind::Tuple:
@@ -554,6 +571,22 @@ py::object PyTreeSpec::ToPicklable() const {
                 if (!t[2].is_none()) [[unlikely]] {
                     throw std::runtime_error("Malformed pickled PyTreeSpec.");
                 }
+                break;
+
+            case PyTreeKind::Dict:
+            case PyTreeKind::OrderedDict:
+                node.node_data = t[2].cast<py::list>();
+                break;
+
+            case PyTreeKind::NamedTuple:
+            case PyTreeKind::StructSequence:
+                node.node_data = t[2].cast<py::type>();
+                break;
+
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::Deque:
+            case PyTreeKind::Custom:
+                node.node_data = t[2];
                 break;
 
             default:

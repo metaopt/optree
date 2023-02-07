@@ -98,7 +98,8 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 break;
             }
 
-            case PyTreeKind::NamedTuple: {
+            case PyTreeKind::NamedTuple:
+            case PyTreeKind::StructSequence: {
                 auto tuple = py::reinterpret_borrow<py::tuple>(handle);
                 node.arity = GET_SIZE<py::tuple>(tuple);
                 node.node_data = py::reinterpret_borrow<py::object>(tuple.get_type());
@@ -283,7 +284,8 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 break;
             }
 
-            case PyTreeKind::NamedTuple: {
+            case PyTreeKind::NamedTuple:
+            case PyTreeKind::StructSequence: {
                 auto tuple = py::reinterpret_borrow<py::tuple>(handle);
                 node.arity = GET_SIZE<py::tuple>(tuple);
                 node.node_data = py::reinterpret_borrow<py::object>(tuple.get_type());
@@ -542,6 +544,28 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 }
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     agenda.emplace_back(GET_ITEM_BORROW<py::list>(list, i));
+                }
+                break;
+            }
+
+            case PyTreeKind::StructSequence: {
+                AssertExactStructSequence(object);
+                auto tuple = py::reinterpret_borrow<py::tuple>(object);
+                if (GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
+                    throw std::invalid_argument(
+                        absl::StrFormat("Struct sequence arity mismatch: %ld != %ld; tuple: %s.",
+                                        GET_SIZE<py::tuple>(tuple),
+                                        node.arity,
+                                        py::repr(object)));
+                }
+                if (tuple.get_type().not_equal(node.node_data)) [[unlikely]] {
+                    throw std::invalid_argument(absl::StrFormat(
+                        "Struct sequence type mismatch: expected type: %s, tuple: %s.",
+                        py::repr(node.node_data),
+                        py::repr(object)));
+                }
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    agenda.emplace_back(GET_ITEM_BORROW<py::tuple>(tuple, i));
                 }
                 break;
             }

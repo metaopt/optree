@@ -689,6 +689,9 @@ def test_flatten_one_level(tree, none_is_leaf, namespace):
             elif optree.is_namedtuple(node):
                 assert optree.is_namedtuple_class(node_type)
                 assert metadata is node_type
+            elif optree.is_structseq(node):
+                assert optree.is_structseq_class(node_type)
+                assert metadata is node_type
             assert len(entries) == len(children)
             if hasattr(node, '__getitem__'):
                 for child, entry in zip(children, entries):

@@ -34,16 +34,17 @@ limitations under the License.
 namespace optree {
 
 enum class PyTreeKind {
-    Custom = 0,   // A custom type
-    Leaf,         // An opaque leaf node
-    None,         // None
-    Tuple,        // A tuple
-    List,         // A list
-    Dict,         // A dict
-    NamedTuple,   // A collections.namedtuple
-    OrderedDict,  // A collections.OrderedDict
-    DefaultDict,  // A collections.defaultdict
-    Deque,        // A collections.deque
+    Custom = 0,      // A custom type
+    Leaf,            // An opaque leaf node
+    None,            // None
+    Tuple,           // A tuple
+    List,            // A list
+    Dict,            // A dict
+    NamedTuple,      // A collections.namedtuple
+    OrderedDict,     // A collections.OrderedDict
+    DefaultDict,     // A collections.defaultdict
+    Deque,           // A collections.deque
+    StructSequence,  // A PyStructSequence
 };
 
 constexpr PyTreeKind kCustom = PyTreeKind::Custom;
@@ -56,6 +57,7 @@ constexpr PyTreeKind kNamedTuple = PyTreeKind::NamedTuple;
 constexpr PyTreeKind kOrderedDict = PyTreeKind::OrderedDict;
 constexpr PyTreeKind kDefaultDict = PyTreeKind::DefaultDict;
 constexpr PyTreeKind kDeque = PyTreeKind::Deque;
+constexpr PyTreeKind kStructSequence = PyTreeKind::StructSequence;
 
 // Registry of custom node types.
 class PyTreeTypeRegistry {

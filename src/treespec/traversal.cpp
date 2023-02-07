@@ -43,12 +43,13 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
 
             case PyTreeKind::None:
             case PyTreeKind::Tuple:
-            case PyTreeKind::NamedTuple:
             case PyTreeKind::List:
             case PyTreeKind::Dict:
+            case PyTreeKind::NamedTuple:
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict:
             case PyTreeKind::Deque:
+            case PyTreeKind::StructSequence:
             case PyTreeKind::Custom: {
                 EXPECT_GE(py::ssize_t_cast(agenda.size()),
                           node.arity,

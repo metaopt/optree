@@ -36,7 +36,17 @@ if(MSVC)
         APPEND CMAKE_CXX_FLAGS
         " /Zc:preprocessor"
         " /experimental:external /external:anglebrackets /external:W0"
-        " /Wall /Wv:19.33 /wd4365 /wd4514 /wd4710 /wd4711 /wd4820 /wd4868 /wd5045 /wd5264"
+        " /Wall /Wv:19.34"  # Visual Studio 2022 version 17.4
+        # Suppress following warnings
+        " /wd4365"  # conversion from 'type_1' to 'type_2', signed/unsigned mismatch
+        " /wd4514"  # unreferenced inline function has been removed
+        " /wd4710"  # function not inlined
+        " /wd4711"  # function selected for inline expansion
+        " /wd4820"  # bytes padding added after construct 'member_name'
+        " /wd4868"  # compiler may not enforce left-to-right evaluation order in braced initializer list
+        " /wd5045"  # compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
+        " /wd5262"  # use [[fallthrough]] when a break statement is intentionally omitted between cases
+        " /wd5264"  # 'const' variable is not used
     )
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " /Zi")
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " /O2 /Ob2")

@@ -20,9 +20,11 @@ limitations under the License.
 
 #pragma once
 
+#include <Python.h>
 #include <absl/strings/str_format.h>
 #include <absl/strings/str_join.h>
 #include <pybind11/pybind11.h>
+#include <structmember.h>  // PyMemberDef
 
 #include <memory>
 #include <optional>
@@ -328,17 +330,31 @@ inline void AssertExact<py::dict>(const py::handle& object) {
     }
 }
 
-inline bool IsNamedTuple(const py::handle& object) {
+inline bool IsNamedTupleClassImpl(const py::handle& type) {
     // We can only identify namedtuples heuristically, here by the presence of a _fields attribute.
-    return PyTuple_Check(object.ptr()) && PyObject_HasAttrString(object.ptr(), "_fields") == 1;
+    if (PyObject_IsSubclass(type.ptr(), reinterpret_cast<PyObject*>(&PyTuple_Type)) == 1)
+        [[unlikely]] {
+        if (PyObject* _fields = PyObject_GetAttrString(type.ptr(), "_fields")) [[unlikely]] {
+            bool result = static_cast<bool>(PyTuple_CheckExact(_fields));
+            if (result) [[likely]] {
+                for (const auto& field : py::reinterpret_borrow<py::tuple>(_fields)) {
+                    if (!static_cast<bool>(PyUnicode_CheckExact(field.ptr()))) [[unlikely]] {
+                        result = false;
+                        break;
+                    }
+                }
+            }
+            Py_DECREF(_fields);
+            return result;
+        }
+        PyErr_Clear();
+    }
+    return false;
 }
-
 inline bool IsNamedTupleClass(const py::handle& type) {
-    // We can only identify namedtuples heuristically, here by the presence of a _fields attribute.
-    return PyObject_IsSubclass(type.ptr(), reinterpret_cast<PyObject*>(&PyTuple_Type)) == 1 &&
-           PyObject_HasAttrString(type.ptr(), "_fields") == 1;
+    return PyType_Check(type.ptr()) && IsNamedTupleClassImpl(type);
 }
-
+inline bool IsNamedTuple(const py::handle& object) { return IsNamedTupleClass(object.get_type()); }
 inline void AssertExactNamedTuple(const py::handle& object) {
     if (!IsNamedTuple(object)) [[unlikely]] {
         throw std::invalid_argument(
@@ -365,4 +381,62 @@ inline void AssertExactDeque(const py::handle& object) {
         throw std::invalid_argument(
             absl::StrFormat("Expected collections.deque, got %s.", py::repr(object)));
     }
+}
+
+inline bool IsStructSequenceClassImpl(const py::handle& type) {
+    // We can only identify StructSequences heuristically, here by the presence of
+    // n_sequence_fields, n_fields, n_unnamed_fields attributes.
+    auto* type_object = reinterpret_cast<PyTypeObject*>(type.ptr());
+    if (type_object->tp_base == &PyTuple_Type &&
+        !static_cast<bool>(PyType_HasFeature(type_object, Py_TPFLAGS_BASETYPE))) [[unlikely]] {
+        // NOLINTNEXTLINE[readability-use-anyofallof]
+        for (const char* name : {"n_sequence_fields", "n_fields", "n_unnamed_fields"}) {
+            if (PyObject* attr = PyObject_GetAttrString(type.ptr(), name)) [[unlikely]] {
+                bool result = static_cast<bool>(PyLong_CheckExact(attr));
+                Py_DECREF(attr);
+                if (!result) [[unlikely]] {
+                    return false;
+                }
+            } else [[likely]] {
+                PyErr_Clear();
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+inline bool IsStructSequenceClass(const py::handle& type) {
+    return PyType_Check(type.ptr()) && IsStructSequenceClassImpl(type);
+}
+inline bool IsStructSequence(const py::handle& object) {
+    return IsStructSequenceClass(object.get_type());
+}
+inline void AssertExactStructSequence(const py::handle& object) {
+    if (!IsStructSequence(object)) [[unlikely]] {
+        throw std::invalid_argument(
+            absl::StrFormat("Expected StructSequence, got %s.", py::repr(object)));
+    }
+}
+inline py::tuple StructSequenceGetFields(const py::handle& object) {
+    py::handle type;
+    if (PyType_Check(object.ptr())) {
+        type = object;
+        if (!IsStructSequenceClass(type)) [[unlikely]] {
+            throw std::invalid_argument(
+                absl::StrFormat("Expected StructSequence type, got %s.", py::repr(object)));
+        }
+    } else {
+        type = object.get_type();
+        AssertExactStructSequence(object);
+    }
+
+    const auto n_sequence_fields = getattr(type, "n_sequence_fields").cast<ssize_t>();
+    auto* members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
+    py::tuple fields{n_sequence_fields};
+    for (ssize_t i = 0; i < n_sequence_fields; ++i) {
+        // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+        SET_ITEM<py::tuple>(fields, i, py::str(members[i].name));
+    }
+    return fields;
 }

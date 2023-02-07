@@ -114,6 +114,7 @@ OpTree out-of-box supports the following Python container types in the registry:
 - [`collections.OrderedDict`](https://docs.python.org/3/library/collections.html#collections.OrderedDict)
 - [`collections.defaultdict`](https://docs.python.org/3/library/collections.html#collections.defaultdict)
 - [`collections.deque`](https://docs.python.org/3/library/collections.html#collections.deque)
+- classes of [`PyStructSequence`](https://docs.python.org/3/c-api/tuple.html#struct-sequence-objects) created by C API [`PyStructSequence_NewType`](https://docs.python.org/3/c-api/tuple.html#c.PyStructSequence_NewType)
 
 which are considered non-leaf nodes in the tree.
 Python objects that the type is not registered will be treated as leaf nodes.
