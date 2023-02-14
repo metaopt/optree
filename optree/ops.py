@@ -36,14 +36,12 @@ from optree.registry import (
 from optree.typing import (
     Children,
     Iterable,
-    List,
     MetaData,
     NamedTuple,
     PyTree,
     PyTreeSpec,
     S,
     T,
-    Tuple,
     U,
     is_namedtuple,
     is_structseq,
@@ -95,7 +93,7 @@ def tree_flatten(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> Tuple[List[T], PyTreeSpec]:
+) -> tuple[list[T], PyTreeSpec]:
     """Flatten a pytree.
 
     See also :func:`tree_flatten_with_path`.
@@ -151,7 +149,7 @@ def tree_flatten_with_path(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> Tuple[List[Tuple[Any, ...]], List[T], PyTreeSpec]:
+) -> tuple[list[tuple[Any, ...]], list[T], PyTreeSpec]:
     """Flatten a pytree and additionally record the paths.
 
     See also :func:`tree_flatten` and :func:`tree_paths`.
@@ -238,7 +236,7 @@ def tree_leaves(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> List[T]:
+) -> list[T]:
     """Get the leaves of a pytree.
 
     See also :func:`tree_flatten`.
@@ -320,7 +318,7 @@ def tree_paths(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> List[Tuple[Any, ...]]:
+) -> list[tuple[Any, ...]]:
     """Get the path entries to the leaves of a pytree.
 
     See also :func:`tree_flatten` and :func:`tree_flatten_with_path`.
@@ -875,7 +873,7 @@ def tree_any(
     return any(tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace))  # type: ignore[arg-type]
 
 
-def treespec_children(treespec: PyTreeSpec) -> List[PyTreeSpec]:
+def treespec_children(treespec: PyTreeSpec) -> list[PyTreeSpec]:
     """Return a list of treespecs for the children of a treespec."""
     return treespec.children()
 
@@ -1071,7 +1069,7 @@ def broadcast_prefix(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> List[T]:
+) -> list[T]:
     """Return a list of broadcasted leaves in ``prefix_tree`` to match the number of leaves in ``full_tree``.
 
     If a ``prefix_tree`` is a prefix of a ``full_tree``, this means the ``full_tree`` can be
@@ -1115,7 +1113,7 @@ def broadcast_prefix(
     """
     # If prefix_tree is not a tree prefix of full_tree, this code can raise a ValueError;
     # use prefix_errors to find disagreements and raise more precise error messages.
-    result: List[T] = []
+    result: list[T] = []
 
     def num_leaves(tree: PyTree[U]) -> int:
         return tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace).num_leaves
@@ -1139,7 +1137,7 @@ def flatten_one_level(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> Tuple[Children[T], MetaData, Tuple[Any, ...]]:
+) -> tuple[Children[T], MetaData, tuple[Any, ...]]:
     """Flatten the pytree one level, returning a tuple of children, auxiliary data, and path entries."""
     if tree is None:
         if none_is_leaf:  # type: ignore[unreachable]
@@ -1186,7 +1184,7 @@ def prefix_errors(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> List[Callable[[str], ValueError]]:
+) -> list[Callable[[str], ValueError]]:
     """Return a list of errors that would be raised by :func:`broadcast_prefix`."""
     return list(
         _prefix_error(
@@ -1300,7 +1298,7 @@ def _child_keys(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> List[KeyPathEntry]:
+) -> list[KeyPathEntry]:
     treespec = tree_structure(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     assert not treespec_is_strict_leaf(treespec)
 

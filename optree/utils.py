@@ -14,10 +14,12 @@
 # ==============================================================================
 """Utility functions for OpTree."""
 
-from typing import Any, Iterable, List, Sequence, Tuple
+from __future__ import annotations
+
+from typing import Any, Iterable, Sequence
 
 
-def safe_zip(*args: Sequence[Any]) -> List[Tuple[Any, ...]]:
+def safe_zip(*args: Sequence[Any]) -> list[tuple[Any, ...]]:
     """Strict zip that requires all arguments to be the same length."""
     n = len(args[0])
     for arg in args[1:]:
@@ -25,7 +27,7 @@ def safe_zip(*args: Sequence[Any]) -> List[Tuple[Any, ...]]:
     return list(zip(*args))
 
 
-def unzip2(xys: Iterable[Tuple[Any, Any]]) -> Tuple[Tuple[Any, ...], Tuple[Any, ...]]:
+def unzip2(xys: Iterable[tuple[Any, Any]]) -> tuple[tuple[Any, ...], tuple[Any, ...]]:
     """Unzip sequence of length-2 tuples into two tuples."""
     # Note: we deliberately don't use zip(*xys) because it is lazily evaluated,
     # is too permissive about inputs, and does not guarantee a length-2 output.

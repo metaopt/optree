@@ -17,11 +17,13 @@
 
 # pylint: disable=missing-module-docstring,missing-function-docstring,invalid-name
 
+from __future__ import annotations
+
 import argparse
 import sys
 from collections import OrderedDict, namedtuple
 from itertools import count
-from typing import Any, Dict, Iterable, Optional, Tuple
+from typing import Any, Iterable
 
 import jax
 import pandas as pd
@@ -43,9 +45,9 @@ if not sys.stdout.isatty() or colored is None:
 
     def colored(  # pylint: disable=function-redefined,unused-argument
         text: str,
-        color: Optional[str] = None,
-        on_color: Optional[str] = None,
-        attrs: Optional[Iterable[str]] = None,
+        color: str | None = None,
+        on_color: str | None = None,
+        attrs: Iterable[str] | None = None,
     ) -> str:
         return text
 
@@ -376,7 +378,7 @@ def timeit(
     init_stmt: str,
     number: int,
     repeat: int = 5,
-    globals: Optional[Dict[str, Any]] = None,  # pylint: disable=redefined-builtin
+    globals: dict[str, Any] | None = None,  # pylint: disable=redefined-builtin
 ) -> float:
     import timeit  # pylint: disable=redefined-outer-name,import-outside-toplevel
 
@@ -402,11 +404,11 @@ for _ in range({number} // 10):
 
 def compare(  # pylint: disable=too-many-locals
     subject: str,
-    stmts: Dict[str, Tuple[str, str]],
+    stmts: dict[str, tuple[str, str]],
     number: int,
     repeat: int = 5,
-    globals: Optional[Dict[str, Any]] = None,  # pylint: disable=redefined-builtin
-) -> Dict[str, float]:
+    globals: dict[str, Any] | None = None,  # pylint: disable=redefined-builtin
+) -> dict[str, float]:
     times_us = OrderedDict(
         [
             (lib, 10e6 * timeit(stmt, init_stmt, number, repeat=repeat, globals=globals))
