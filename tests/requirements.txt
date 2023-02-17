@@ -11,6 +11,7 @@ flake8
 flake8-bugbear
 flake8-comprehensions
 flake8-pyi
+flake8-simplify
 doc8 < 1.0.0a0  # unpin this when we drop support for Python 3.7
 pydocstyle
 pyenchant
