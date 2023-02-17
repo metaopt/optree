@@ -48,6 +48,7 @@ flake8-install:
 	$(call check_pip_install,flake8)
 	$(call check_pip_install,flake8-bugbear)
 	$(call check_pip_install,flake8-comprehensions)
+	$(call check_pip_install,flake8-docstrings)
 	$(call check_pip_install,flake8-pyi)
 	$(call check_pip_install,flake8-simplify)
 
