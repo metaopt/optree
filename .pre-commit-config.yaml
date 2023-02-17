@@ -73,3 +73,16 @@ repos:
             ^tests/|
             ^setup.py$
           )
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        additional_dependencies: ['.[toml]']
+        exclude: |
+          (?x)(
+            ^.github/|
+            ^docs/|
+            ^tests/|
+            ^benchmark.py$|
+            ^setup.py$
+          )
