@@ -1,0 +1,36 @@
+[flake8]
+max-line-length = 120
+max-doc-length = 100
+select = B,C,E,F,W
+ignore =
+    # E501: line too long
+    # too long docstring due to long example blocks
+    E501,
+    # W503: line break before binary operator
+    # format by black
+    W503,
+    # W504: line break after binary operator
+    # format by black
+    W504,
+    # W505: doc line too long
+    # too long docstring due to long example blocks
+    W505,
+per-file-ignores =
+    # F401: module imported but unused
+    # intentionally unused imports
+    __init__.py: F401
+    # E402: module level import not at top of file
+    # intentionally import after function declarations
+    # F811: redefinition of unused function
+    # intentionally shown how the function works
+    optree/typing.py:E402,F811
+exclude =
+    .git,
+    .vscode,
+    venv,
+    third-party,
+    __pycache__,
+    docs/source/conf.py,
+    build,
+    dist,
+    tests
