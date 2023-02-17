@@ -72,6 +72,7 @@ dependencies:
   - flake8
   - flake8-bugbear
   - flake8-comprehensions
+  - flake8-pyi
   - doc8
   - pydocstyle
   - xdoctest
