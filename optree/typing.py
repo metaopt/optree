@@ -125,7 +125,7 @@ def _tp_cache(func):
 
     @functools.wraps(func)
     def inner(*args, **kwds):
-        try:
+        try:  # noqa: SIM105
             return cached(*args, **kwds)
         except TypeError:
             pass  # All real errors (not unhashable args) are raised below.

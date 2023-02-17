@@ -30,7 +30,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.utils._pytree as torch_utils_pytree
-import tree as dm_tree  # pylint: disable=unused-import
+import tree as dm_tree  # noqa: F401 # pylint: disable=unused-import
 from torchvision import models
 
 import optree
@@ -90,8 +90,8 @@ def extract(module: nn.Module, unordered: bool) -> Any:
     )
     extracted.update(
         tensors=Tensors(
-            parameters=tuple(map(lambda t: t.data, module.parameters(recurse=False))),
-            buffers=list(map(lambda t: t.data, module.buffers(recurse=False))),
+            parameters=tuple(t.data for t in module.parameters(recurse=False)),
+            buffers=[t.data for t in module.buffers(recurse=False)],
         ),
         containers=Containers(
             parameters=dict_factory(module._parameters),  # pylint: disable=protected-access
@@ -438,7 +438,7 @@ def compare(  # pylint: disable=too-many-locals
     attrs = {lib: ('bold',) if color == 'green' else () for lib, color in colors.items()}
 
     cprint(f'### {subject} ###')
-    for lib, (stmt, init_stmt) in stmts.items():
+    for lib, (stmt, _) in stmts.items():
         label = labels[lib]
         color = colors[lib]
         attr = attrs[lib]

@@ -440,7 +440,7 @@ def tree_map(
             corresponding leaves of the pytrees.
         tree (pytree): A pytree to be mapped over, with each leaf providing the first positional
             argument to function ``func``.
-        rests (tuple of pytrees): A tuple of pytrees, each of which has the same structure as
+        rests (tuple of pytree): A tuple of pytrees, each of which has the same structure as
             ``tree`` or has ``tree`` as a prefix.
         is_leaf (callable, optional): An optionally specified function that will be called at each
             flattening step. It should return a boolean, with :data:`True` stopping the traversal
@@ -481,7 +481,7 @@ def tree_map_(
             corresponding leaves of the pytrees.
         tree (pytree): A pytree to be mapped over, with each leaf providing the first positional
             argument to function ``func``.
-        rests (tuple of pytrees): A tuple of pytrees, each of which has the same structure as
+        rests (tuple of pytree): A tuple of pytrees, each of which has the same structure as
             ``tree`` or has ``tree`` as a prefix.
         is_leaf (callable, optional): An optionally specified function that will be called at each
             flattening step. It should return a boolean, with :data:`True` stopping the traversal
@@ -533,7 +533,7 @@ def tree_map_with_path(
         tree (pytree): A pytree to be mapped over, with each leaf providing the second positional
             argument and the corresponding path providing the first positional argument to function
             ``func``.
-        rests (tuple of pytrees): A tuple of pytrees, each of which has the same structure as
+        rests (tuple of pytree): A tuple of pytrees, each of which has the same structure as
             ``tree`` or has ``tree`` as a prefix.
         is_leaf (callable, optional): An optionally specified function that will be called at each
             flattening step. It should return a boolean, with :data:`True` stopping the traversal
@@ -580,7 +580,7 @@ def tree_map_with_path_(
         tree (pytree): A pytree to be mapped over, with each leaf providing the second positional
             argument and the corresponding path providing the first positional argument to function
             ``func``.
-        rests (tuple of pytrees): A tuple of pytrees, each of which has the same structure as
+        rests (tuple of pytree): A tuple of pytrees, each of which has the same structure as
             ``tree`` or has ``tree`` as a prefix.
         is_leaf (callable, optional): An optionally specified function that will be called at each
             flattening step. It should return a boolean, with :data:`True` stopping the traversal
