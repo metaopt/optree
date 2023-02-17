@@ -333,16 +333,16 @@ def _defaultdict_flatten(
 # pylint: disable=all
 _nodetype_registry: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {
     type(None): PyTreeNodeRegistryEntry(
-        lambda n: ((), None),
-        lambda _, n: None,  # type: ignore[arg-type,return-value]
+        lambda none: ((), None),
+        lambda _, none: None,  # type: ignore[arg-type,return-value]
     ),
     tuple: PyTreeNodeRegistryEntry(
-        lambda t: (t, None),  # type: ignore[arg-type,return-value]
-        lambda _, t: tuple(t),  # type: ignore[arg-type,return-value]
+        lambda tup: (tup, None),  # type: ignore[arg-type,return-value]
+        lambda _, tup: tuple(tup),  # type: ignore[arg-type,return-value]
     ),
     list: PyTreeNodeRegistryEntry(
-        lambda l: (l, None),  # type: ignore[arg-type,return-value]
-        lambda _, l: list(l),  # type: ignore[arg-type,return-value]
+        lambda lst: (lst, None),  # type: ignore[arg-type,return-value]
+        lambda _, lst: list(lst),  # type: ignore[arg-type,return-value]
     ),
     dict: PyTreeNodeRegistryEntry(
         _dict_flatten,  # type: ignore[arg-type]
@@ -357,8 +357,8 @@ _nodetype_registry: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {
         lambda metadata, values: defaultdict(metadata[0], safe_zip(metadata[1], values)),  # type: ignore[arg-type,return-value,index]
     ),
     deque: PyTreeNodeRegistryEntry(
-        lambda d: (list(d), d.maxlen),  # type: ignore[call-overload,attr-defined]
-        lambda maxlen, d: deque(d, maxlen=maxlen),  # type: ignore[arg-type,return-value]
+        lambda deq: (list(deq), deq.maxlen),  # type: ignore[call-overload,attr-defined]
+        lambda maxlen, lst: deque(lst, maxlen=maxlen),  # type: ignore[arg-type,return-value]
     ),
 }
 # pylint: enable=all
