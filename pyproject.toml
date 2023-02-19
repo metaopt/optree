@@ -160,7 +160,6 @@ select = [
     "RET",     # flake8-return
     "SIM",     # flake8-simplify
     "TID",     # flake8-tidy-imports
-    "ERA",     # eradicate
     "PL",      # pylint
     "RUF",     # ruff
 ]
@@ -196,9 +195,6 @@ typing-modules = ["optree.typing"]
 ]
 "setup.py" = [
     "ANN",   # flake8-annotations
-]
-"docs/source/conf.py" = [
-    "ERA",   # commented-out-code
 ]
 
 [tool.ruff.flake8-annotations]
