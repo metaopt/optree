@@ -136,10 +136,10 @@ py-format: py-format-install
 	$(PYTHON) -m black --check $(PYTHON_FILES)
 
 ruff: ruff-install
-	$(PYTHON) -m ruff check . --statistics
+	$(PYTHON) -m ruff check .
 
 ruff-fix: ruff-install
-	$(PYTHON) -m ruff check . --statistics --fix --exit-non-zero-on-fix
+	$(PYTHON) -m ruff check . --fix --exit-non-zero-on-fix
 
 mypy: mypy-install
 	$(PYTHON) -m mypy $(PROJECT_PATH)
