@@ -36,7 +36,7 @@ PROJECT_ROOT = HERE.parent.parent
 
 def get_version() -> str:
     sys.path.insert(0, str(PROJECT_ROOT / 'optree'))
-    import version  # noqa
+    import version
 
     return version.__version__
 

@@ -24,7 +24,7 @@ import textwrap
 from collections import deque
 from typing import Any, Callable, cast, overload
 
-import optree._C as _C
+from optree import _C
 from optree.registry import (
     AttributeKeyPathEntry,
     FlattenedKeyPathEntry,
@@ -1157,10 +1157,7 @@ def flatten_one_level(
             )
         children, metadata, entries = flattened
         children = list(children)
-        if entries is None:
-            entries = tuple(range(len(children)))
-        else:
-            entries = tuple(entries)
+        entries = tuple(range(len(children)) if entries is None else entries)
         if len(children) != len(entries):
             raise RuntimeError(
                 f'PyTree custom flatten function for type {node_type} returned inconsistent '
@@ -1300,7 +1297,7 @@ def _child_keys(
     namespace: str = '',
 ) -> list[KeyPathEntry]:
     treespec = tree_structure(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
-    assert not treespec_is_strict_leaf(treespec)
+    assert not treespec_is_strict_leaf(treespec), 'treespec must be a non-leaf node'
 
     handler = register_keypaths.get(type(tree))  # type: ignore[attr-defined]
     if handler:
