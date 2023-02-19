@@ -254,7 +254,7 @@ STMTS = OrderedDict(
 )
 
 
-def cprint(text=''):
+def cprint(text: str = '') -> None:
     text = (
         text.replace(
             ', none_is_leaf=False',

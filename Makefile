@@ -56,6 +56,9 @@ py-format-install:
 	$(call check_pip_install,isort)
 	$(call check_pip_install,black)
 
+ruff-install:
+	$(call check_pip_install,ruff)
+
 mypy-install:
 	$(call check_pip_install,mypy)
 
@@ -132,6 +135,12 @@ py-format: py-format-install
 	$(PYTHON) -m isort --project $(PROJECT_NAME) --check $(PYTHON_FILES) && \
 	$(PYTHON) -m black --check $(PYTHON_FILES)
 
+ruff: ruff-install
+	$(PYTHON) -m ruff check .
+
+ruff-fix: ruff-install
+	$(PYTHON) -m ruff check . --fix --exit-non-zero-on-fix
+
 mypy: mypy-install
 	$(PYTHON) -m mypy $(PROJECT_PATH)
 
@@ -187,11 +196,12 @@ clean-docs:
 
 # Utility functions
 
-lint: flake8 py-format mypy pylint doctest clang-format clang-tidy cpplint addlicense docstyle spelling
+lint: ruff flake8 py-format mypy pylint doctest clang-format clang-tidy cpplint addlicense docstyle spelling
 
-format: py-format-install clang-format-install addlicense-install
+format: py-format-install ruff-install clang-format-install addlicense-install
 	$(PYTHON) -m isort --project $(PROJECT_NAME) $(PYTHON_FILES)
 	$(PYTHON) -m black $(PYTHON_FILES)
+	$(PYTHON) -m ruff check . --fix --exit-zero
 	$(CLANG_FORMAT) -style=file -i $(CXX_FILES)
 	addlicense -c $(COPYRIGHT) -ignore tests/coverage.xml -l apache -y 2022-$(shell date +"%Y") $(SOURCE_FOLDERS)
 

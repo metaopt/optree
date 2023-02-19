@@ -23,7 +23,7 @@ from operator import methodcaller
 from threading import Lock
 from typing import Any, Callable, Iterable, NamedTuple, Sequence, overload
 
-import optree._C as _C
+from optree import _C
 from optree.typing import KT, VT, CustomTreeNode, FlattenFunc, PyTree, T, UnflattenFunc
 from optree.utils import safe_zip, unzip2
 
@@ -387,7 +387,7 @@ class _HashablePartialShim:
     def __init__(self, partial_func: functools.partial) -> None:
         self.partial_func: functools.partial = partial_func
 
-    def __call__(self, *args, **kwargs) -> Any:
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         return self.partial_func(*args, **kwargs)
 
     def __hash__(self) -> int:
@@ -449,7 +449,7 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
     args: tuple[Any, ...]
     keywords: dict[str, Any]
 
-    def __new__(cls, func: Callable[..., Any], *args, **keywords) -> Partial:
+    def __new__(cls, func: Callable[..., Any], *args: Any, **keywords: Any) -> Partial:
         """Create a new :class:`Partial` instance."""
         # In Python 3.10+, if func is itself a functools.partial instance, functools.partial.__new__
         # would merge the arguments of this Partial instance with the arguments of the func. We box
@@ -458,7 +458,7 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
         if isinstance(func, functools.partial):
             original_func = func
             func = _HashablePartialShim(original_func)
-            assert not hasattr(func, 'func')
+            assert not hasattr(func, 'func'), 'shimmed function should not have a `func` attribute'
             out = super().__new__(cls, func, *args, **keywords)
             func.func = original_func.func
             func.args = original_func.args
@@ -488,7 +488,7 @@ class KeyPathEntry(NamedTuple):
         if isinstance(other, KeyPathEntry):
             return KeyPath((self, other))
         if isinstance(other, KeyPath):
-            return KeyPath((self,) + other.keys)
+            return KeyPath((self, *other.keys))
         return NotImplemented
 
     def __eq__(self, other: object) -> bool:
@@ -504,7 +504,7 @@ class KeyPath(NamedTuple):
 
     def __add__(self, other: object) -> KeyPath:
         if isinstance(other, KeyPathEntry):
-            return KeyPath(self.keys + (other,))
+            return KeyPath((*self.keys, other))
         if isinstance(other, KeyPath):
             return KeyPath(self.keys + other.keys)
         return NotImplemented

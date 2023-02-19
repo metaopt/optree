@@ -29,6 +29,7 @@ from typing import (
     Hashable,
     Iterable,
     List,
+    NoReturn,
     Optional,
     Sequence,
     Tuple,
@@ -39,7 +40,7 @@ from typing_extensions import OrderedDict  # Generic OrderedDict: Python 3.7.2+
 from typing_extensions import Protocol  # Python 3.8+
 from typing_extensions import TypeAlias  # Python 3.10+
 
-import optree._C as _C
+from optree import _C
 
 
 try:
@@ -118,18 +119,18 @@ class CustomTreeNode(Protocol[T]):
 _GenericAlias = type(Union[int, str])
 
 
-def _tp_cache(func):
+def _tp_cache(func: Callable) -> Callable:
     import functools  # pylint: disable=import-outside-toplevel
 
     cached = functools.lru_cache()(func)
 
     @functools.wraps(func)
-    def inner(*args, **kwds):
-        try:  # noqa: SIM105
+    def inner(*args: Any, **kwds: Any) -> Any:
+        try:
             return cached(*args, **kwds)
         except TypeError:
-            pass  # All real errors (not unhashable args) are raised below.
-        return func(*args, **kwds)
+            # All real errors (not unhashable args) are raised below.
+            return func(*args, **kwds)
 
     return inner
 
@@ -150,7 +151,9 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
     """
 
     @_tp_cache
-    def __class_getitem__(cls, item: T | tuple[T] | tuple[T, str | None]) -> TypeAlias:
+    def __class_getitem__(  # noqa: C901
+        cls, item: T | tuple[T] | tuple[T, str | None]
+    ) -> TypeAlias:
         """Instantiate a PyTree type with the given type."""
         if not isinstance(item, tuple):
             item = (item, None)
@@ -200,15 +203,19 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
         pytree_alias.__pytree_args__ = item  # type: ignore[attr-defined]
         return pytree_alias
 
-    def __init_subclass__(cls, *args, **kwargs):
+    def __new__(cls) -> NoReturn:  # pylint: disable=arguments-differ
+        """Prohibit instantiation."""
+        raise TypeError('Cannot instantiate special typing classes.')
+
+    def __init_subclass__(cls, *args: Any, **kwargs: Any) -> NoReturn:
         """Prohibit subclassing."""
         raise TypeError('Cannot subclass special typing classes.')
 
-    def __copy__(self):
+    def __copy__(self) -> PyTree:
         """Immutable copy."""
         return self
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: dict[int, Any]) -> PyTree:
         """Immutable copy."""
         return self
 
@@ -235,15 +242,15 @@ class PyTreeTypeVar:
             raise TypeError(f'{cls.__name__} only supports a string of type name. Got {name!r}.')
         return PyTree[param, name]  # type: ignore[misc,valid-type]
 
-    def __init_subclass__(cls, *args, **kwargs):
+    def __init_subclass__(cls, *args: Any, **kwargs: Any) -> NoReturn:
         """Prohibit subclassing."""
         raise TypeError('Cannot subclass special typing classes.')
 
-    def __copy__(self):
+    def __copy__(self) -> TypeAlias:
         """Immutable copy."""
         return self
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: dict[int, Any]) -> TypeAlias:
         """Immutable copy."""
         return self
 
@@ -296,5 +303,5 @@ def is_structseq_class(cls: type) -> bool:
 
 
 # Ensure that the behavior is consistent with C++ implementation
-# pylint: disable-next=wrong-import-position
+# pylint: disable-next=wrong-import-position,ungrouped-imports
 from optree._C import is_namedtuple_class, is_structseq_class, structseq_fields

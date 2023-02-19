@@ -30,7 +30,7 @@ class CMakeExtension(Extension):
         self.target = target if target is not None else name.rpartition('.')[-1]
 
 
-class cmake_build_ext(build_ext):
+class cmake_build_ext(build_ext):  # noqa: N801
     def build_extension(self, ext):
         if not isinstance(ext, CMakeExtension):
             super().build_extension(ext)
@@ -80,9 +80,9 @@ class cmake_build_ext(build_ext):
 
         try:
             os.chdir(build_temp)
-            self.spawn([cmake, ext.source_dir] + cmake_args)
+            self.spawn([cmake, ext.source_dir, *cmake_args])
             if not self.dry_run:
-                self.spawn([cmake, '--build', '.'] + build_args)
+                self.spawn([cmake, '--build', '.', *build_args])
         finally:
             os.chdir(HERE)
 

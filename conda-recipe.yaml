@@ -75,6 +75,7 @@ dependencies:
   - flake8-docstrings
   - flake8-pyi
   - flake8-simplify
+  - ruff
   - doc8
   - pydocstyle
   - xdoctest
