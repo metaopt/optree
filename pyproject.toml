@@ -176,6 +176,9 @@ ignore = [
     "ANN102",
     # ANN401: dynamically typed expressions (typing.Any) are disallowed
     "ANN401",
+    # N999: invalid module name
+    # optree._C is not snake_cased
+    "N999",
     # S101: use of `assert` detected
     # internal use and may never raise at runtime
     "S101",
