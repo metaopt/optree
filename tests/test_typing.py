@@ -144,44 +144,46 @@ def test_structseq_fields():
 
     with pytest.raises(
         ValueError,
-        match=re.escape(r'Expected StructSequence, got [1, 2].'),
+        match=re.escape(r'Expected an instance of StructSequence type, got [1, 2].'),
     ):
         optree.structseq_fields([1, 2])
     with pytest.raises(
         ValueError,
-        match=re.escape(r"Expected StructSequence type, got <class 'list'>."),
+        match=re.escape(r"Expected a StructSequence type, got <class 'list'>."),
     ):
         optree.structseq_fields(list)
 
     with pytest.raises(
         ValueError,
-        match=re.escape(r'Expected StructSequence, got (1, 2).'),
+        match=re.escape(r'Expected an instance of StructSequence type, got (1, 2).'),
     ):
         optree.structseq_fields((1, 2))
     with pytest.raises(
         ValueError,
-        match=re.escape(r"Expected StructSequence type, got <class 'tuple'>."),
+        match=re.escape(r"Expected a StructSequence type, got <class 'tuple'>."),
     ):
         optree.structseq_fields(tuple)
 
     with pytest.raises(
         ValueError,
-        match=re.escape(r'Expected StructSequence, got CustomTuple(foo=1, bar=2).'),
+        match=re.escape(
+            r'Expected an instance of StructSequence type, got CustomTuple(foo=1, bar=2).'
+        ),
     ):
         optree.structseq_fields(CustomTuple(1, 2))
     with pytest.raises(
         ValueError,
-        match=re.escape(r"Expected StructSequence type, got <class 'helpers.CustomTuple'>."),
+        match=re.escape(r"Expected a StructSequence type, got <class 'helpers.CustomTuple'>."),
     ):
         optree.structseq_fields(CustomTuple)
 
     with pytest.raises(
         ValueError,
-        match=re.escape(r'Expected StructSequence, got (1, 2).'),
+        match=re.escape(r'Expected an instance of StructSequence type, got (1, 2).'),
     ):
         optree.structseq_fields(FakeStructSequence((1, 2)))
     with pytest.raises(
         ValueError,
-        match=r"Expected StructSequence type, got <class '.*\.FakeStructSequence'>\.",
+        match=r"Expected a StructSequence type, got <class '.*\.FakeStructSequence'>\.",
     ):
         optree.structseq_fields(FakeStructSequence)

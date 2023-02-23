@@ -121,7 +121,7 @@ __all__ = [
 ]
 
 MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH
-"""Maximum recursion depth for pytree traversal. It is 5000 on Unix systems and 2500 on Windows."""
+"""Maximum recursion depth for pytree traversal. It is 5000 on Unix-like systems and 2500 on Windows."""
 NONE_IS_NODE: bool = NONE_IS_NODE  # literal constant
 """Literal constant that treats :data:`None` as a pytree non-leaf node."""
 NONE_IS_LEAF: bool = NONE_IS_LEAF  # literal constant

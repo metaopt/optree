@@ -380,7 +380,9 @@ There are several key attributes of the pytree type registry:
 
     # Children are also `np.ndarray`s, recurse without termination condition.
     >>> optree.tree_flatten(np.arange(9).reshape(3, 3), namespace='numpy3')
-    RecursionError: maximum recursion depth exceeded during flattening the tree
+    Traceback (most recent call last):
+        ...
+    RecursionError: Maximum recursion depth exceeded during flattening the tree.
 
     >>> optree.tree_flatten(torch.arange(9).reshape(3, 3), namespace='torch1')
     (
@@ -398,7 +400,9 @@ There are several key attributes of the pytree type registry:
 
     # Children are also `torch.Tensor`s, recurse without termination condition.
     >>> optree.tree_flatten(torch.arange(9).reshape(3, 3), namespace='torch2')
-    RecursionError: maximum recursion depth exceeded during flattening the tree
+    Traceback (most recent call last):
+        ...
+    RecursionError: Maximum recursion depth exceeded during flattening the tree.
     ```
 
 ### `None` is Non-leaf Node vs. `None` is Leaf
@@ -451,6 +455,8 @@ OrderedDict([
 ])
 
 >>> optree.tree_map(torch.zeros_like, linear._parameters, none_is_leaf=True)
+Traceback (most recent call last):
+    ...
 TypeError: zeros_like(): argument 'input' (position 1) must be Tensor, not NoneType
 
 >>> optree.tree_map(lambda t: torch.zeros_like(t) if t is not None else 0, linear._parameters, none_is_leaf=True)
@@ -484,6 +490,8 @@ The keys are sorted in ascending order by `key=lambda k: k` first if capable oth
 >>> sorted({1: 2, 1.5: 1}.keys())
 [1, 1.5]
 >>> sorted({'a': 3, 1: 2, 1.5: 1}.keys())
+Traceback (most recent call last):
+    ...
 TypeError: '<' not supported between instances of 'int' and 'str'
 >>> sorted({'a': 3, 1: 2, 1.5: 1}.keys(), key=lambda k: (k.__class__.__qualname__, k))
 [1.5, 1, 'a']
