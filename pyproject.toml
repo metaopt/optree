@@ -200,6 +200,9 @@ typing-modules = ["optree.typing"]
 "setup.py" = [
     "ANN",   # flake8-annotations
 ]
+"benchmark.py" = [
+    "PLW2901",  # redefined-loop-name
+]
 
 [tool.ruff.flake8-annotations]
 allow-star-arg-any = true

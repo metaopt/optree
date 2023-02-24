@@ -74,11 +74,11 @@ def test_max_depth():
 
     l = [l]
     with pytest.raises(
-        RecursionError, match='maximum recursion depth exceeded during flattening the tree'
+        RecursionError, match='Maximum recursion depth exceeded during flattening the tree.'
     ):
         optree.tree_flatten(l)
     with pytest.raises(
-        RecursionError, match='maximum recursion depth exceeded during flattening the tree'
+        RecursionError, match='Maximum recursion depth exceeded during flattening the tree.'
     ):
         optree.tree_flatten_with_path(l)
 
@@ -633,7 +633,7 @@ def test_broadcast_prefix():
     assert optree.broadcast_prefix(1, [1, 2, 3]) == [1, 1, 1]
     assert optree.broadcast_prefix([1, 2, 3], [1, 2, 3]) == [1, 2, 3]
     with pytest.raises(
-        ValueError, match=re.escape('List arity mismatch: 4 != 3; list: [1, 2, 3, 4].')
+        ValueError, match=re.escape('list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].')
     ):
         optree.broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
     assert optree.broadcast_prefix([1, 2, 3], [1, 2, (3, 4)]) == [1, 2, 3, 3]

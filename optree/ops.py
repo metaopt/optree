@@ -80,7 +80,7 @@ __all__ = [
 ]
 
 MAX_RECURSION_DEPTH: int = _C.MAX_RECURSION_DEPTH
-"""Maximum recursion depth for pytree traversal. It is 5000 on Unix systems and 2500 on Windows."""
+"""Maximum recursion depth for pytree traversal. It is 5000 on Unix-like systems and 2500 on Windows."""
 NONE_IS_NODE: bool = False  # literal constant
 """Literal constant that treats :data:`None` as a pytree non-leaf node."""
 NONE_IS_LEAF: bool = True  # literal constant
@@ -690,6 +690,7 @@ def tree_transpose(
     outer_treespec: PyTreeSpec,
     inner_treespec: PyTreeSpec,
     tree: PyTree[T],
+    is_leaf: Callable[[T], bool] | None = None,
 ) -> PyTree[T]:  # PyTree[PyTree[T]]
     """Transform a tree having tree structure (outer, inner) into one having structure (inner, outer).
 
@@ -718,6 +719,10 @@ def tree_transpose(
         outer_treespec (PyTreeSpec): A treespec object representing the outer structure of the pytree.
         inner_treespec (PyTreeSpec): A treespec object representing the inner structure of the pytree.
         tree (pytree): A pytree to be transposed.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
 
     Returns:
         A new pytree with the same structure as ``inner_treespec`` but with the value at each leaf
@@ -738,19 +743,21 @@ def tree_transpose(
             f'Tree structures must have the same namespace. '
             f'Got {outer_treespec.namespace!r} vs. {inner_treespec.namespace!r}.'
         )
+
     leaves, treespec = tree_flatten(
         tree,
+        is_leaf=is_leaf,
         none_is_leaf=outer_treespec.none_is_leaf,
         namespace=outer_treespec.namespace or inner_treespec.namespace,
     )
-    if treespec.num_leaves != inner_size * outer_size:
+    if treespec.num_leaves != outer_size * inner_size:
         expected_treespec = outer_treespec.compose(inner_treespec)
-        raise TypeError(f'Tree structure mismatch:\n{treespec}\n != \n{expected_treespec}')
-    iter_leaves = iter(leaves)
+        raise TypeError(f'Tree structure mismatch; expected: {expected_treespec}, got: {treespec}.')
+
     grouped = [
-        [next(iter_leaves) for _ in range(inner_size)]
-        for __ in range(outer_size)
-    ]  # fmt: skip
+        leaves[offset : offset + inner_size]
+        for offset in range(0, outer_size * inner_size, inner_size)
+    ]
     transposed = zip(*grouped)
     subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
@@ -1086,7 +1093,7 @@ def broadcast_prefix(
     >>> broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
     Traceback (most recent call last):
         ...
-    ValueError: List arity mismatch: 4 != 3; list: [1, 2, 3, 4].
+    ValueError: list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].
     >>> broadcast_prefix([1, 2, 3], [1, 2, (3, 4)])
     [1, 2, 3, 3]
     >>> broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}])

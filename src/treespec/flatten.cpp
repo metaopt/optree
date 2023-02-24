@@ -31,7 +31,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                                  const std::string& registry_namespace) {
     if (depth > MAX_RECURSION_DEPTH) [[unlikely]] {
         PyErr_SetString(PyExc_RecursionError,
-                        "maximum recursion depth exceeded during flattening the tree");
+                        "Maximum recursion depth exceeded during flattening the tree.");
         throw py::error_already_set();
     }
 
@@ -203,7 +203,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                                          const std::string& registry_namespace) {
     if (depth > MAX_RECURSION_DEPTH) [[unlikely]] {
         PyErr_SetString(PyExc_RecursionError,
-                        "maximum recursion depth exceeded during flattening the tree");
+                        "Maximum recursion depth exceeded during flattening the tree.");
         throw py::error_already_set();
     }
 
@@ -409,8 +409,10 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
     ssize_t leaf = num_leaves - 1;
     while (!agenda.empty()) {
         if (it == m_traversal.rend()) [[unlikely]] {
-            throw std::invalid_argument(absl::StrFormat(
-                "Tree structures did not match: %s vs %s.", py::repr(full_tree), ToString()));
+            throw std::invalid_argument(
+                absl::StrFormat("Tree structures did not match; expected: %s, got: %s.",
+                                ToString(),
+                                py::repr(full_tree)));
         }
         const Node& node = *it;
         py::object object = std::move(agenda.back());
@@ -432,9 +434,9 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 auto tuple = py::reinterpret_borrow<py::tuple>(object);
                 if (GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
                     throw std::invalid_argument(
-                        absl::StrFormat("Tuple arity mismatch: %ld != %ld; tuple: %s.",
-                                        GET_SIZE<py::tuple>(tuple),
+                        absl::StrFormat("tuple arity mismatch; expected: %ld, got: %ld; tuple: %s.",
                                         node.arity,
+                                        GET_SIZE<py::tuple>(tuple),
                                         py::repr(object)));
                 }
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -448,9 +450,9 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 auto list = py::reinterpret_borrow<py::list>(object);
                 if (GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
                     throw std::invalid_argument(
-                        absl::StrFormat("List arity mismatch: %ld != %ld; list: %s.",
-                                        GET_SIZE<py::list>(list),
+                        absl::StrFormat("list arity mismatch; expected: %ld, got: %ld; list: %s.",
                                         node.arity,
+                                        GET_SIZE<py::list>(list),
                                         py::repr(object)));
                 }
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -474,10 +476,11 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                     keys = SortedDictKeys(dict);
                 }
                 if (keys.not_equal(node.node_data)) [[unlikely]] {
-                    throw std::invalid_argument(
-                        absl::StrFormat("Dict key mismatch; expected keys: %s; dict: %s.",
-                                        py::repr(node.node_data),
-                                        py::repr(object)));
+                    throw std::invalid_argument(absl::StrFormat(
+                        "dict key mismatch; expected keys: %s, got keys: %s; dict: %s.",
+                        py::repr(node.node_data),
+                        py::repr(keys),
+                        py::repr(object)));
                 }
                 for (const py::handle& key : keys) {
                     agenda.emplace_back(dict[key]);
@@ -489,17 +492,18 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 AssertExactNamedTuple(object);
                 auto tuple = py::reinterpret_borrow<py::tuple>(object);
                 if (GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
-                    throw std::invalid_argument(
-                        absl::StrFormat("Named tuple arity mismatch: %ld != %ld; tuple: %s.",
-                                        GET_SIZE<py::tuple>(tuple),
-                                        node.arity,
-                                        py::repr(object)));
+                    throw std::invalid_argument(absl::StrFormat(
+                        "namedtuple arity mismatch; expected: %ld, got: %ld; tuple: %s.",
+                        node.arity,
+                        GET_SIZE<py::tuple>(tuple),
+                        py::repr(object)));
                 }
-                if (tuple.get_type().not_equal(node.node_data)) [[unlikely]] {
-                    throw std::invalid_argument(
-                        absl::StrFormat("Named tuple type mismatch: expected type: %s, tuple: %s.",
-                                        py::repr(node.node_data),
-                                        py::repr(object)));
+                if (object.get_type().not_equal(node.node_data)) [[unlikely]] {
+                    throw std::invalid_argument(absl::StrFormat(
+                        "namedtuple type mismatch; expected type: %s, got type: %s; tuple: %s.",
+                        py::repr(node.node_data),
+                        py::repr(object.get_type()),
+                        py::repr(object)));
                 }
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     agenda.emplace_back(GET_ITEM_BORROW<py::tuple>(tuple, i));
@@ -515,16 +519,20 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 py::object expected_default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
                 py::list expected_keys = GET_ITEM_BORROW<py::tuple>(node.node_data, 1);
                 if (default_factory.not_equal(expected_default_factory)) [[unlikely]] {
-                    throw std::invalid_argument(absl::StrFormat(
-                        "Defaultdict factory mismatch; expected factory: %s; defaultdict: %s.",
-                        py::repr(expected_default_factory),
-                        py::repr(object)));
+                    throw std::invalid_argument(
+                        absl::StrFormat("defaultdict factory mismatch; "
+                                        "expected factory: %s, got factory: %s; defaultdict: %s.",
+                                        py::repr(expected_default_factory),
+                                        py::repr(default_factory),
+                                        py::repr(object)));
                 }
                 if (keys.not_equal(expected_keys)) [[unlikely]] {
-                    throw std::invalid_argument(absl::StrFormat(
-                        "Defaultdict key mismatch; expected keys: %s; defaultdict: %s.",
-                        py::repr(expected_keys),
-                        py::repr(object)));
+                    throw std::invalid_argument(
+                        absl::StrFormat("defaultdict key mismatch; "
+                                        "expected keys: %s, got keys: %s; defaultdict: %s.",
+                                        py::repr(expected_keys),
+                                        py::repr(keys),
+                                        py::repr(object)));
                 }
                 for (const py::handle& key : keys) {
                     agenda.emplace_back(dict[key]);
@@ -537,9 +545,9 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 auto list = py::cast<py::list>(object);
                 if (GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
                     throw std::invalid_argument(
-                        absl::StrFormat("Deque arity mismatch: %ld != %ld; deque: %s.",
-                                        GET_SIZE<py::list>(list),
+                        absl::StrFormat("deque arity mismatch; expected: %ld, got: %ld; deque: %s.",
                                         node.arity,
+                                        GET_SIZE<py::list>(list),
                                         py::repr(object)));
                 }
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -552,17 +560,19 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 AssertExactStructSequence(object);
                 auto tuple = py::reinterpret_borrow<py::tuple>(object);
                 if (GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
-                    throw std::invalid_argument(
-                        absl::StrFormat("Struct sequence arity mismatch: %ld != %ld; tuple: %s.",
-                                        GET_SIZE<py::tuple>(tuple),
-                                        node.arity,
-                                        py::repr(object)));
-                }
-                if (tuple.get_type().not_equal(node.node_data)) [[unlikely]] {
                     throw std::invalid_argument(absl::StrFormat(
-                        "Struct sequence type mismatch: expected type: %s, tuple: %s.",
-                        py::repr(node.node_data),
+                        "StructSequence arity mismatch; expected: %ld, got: %ld; tuple: %s.",
+                        node.arity,
+                        GET_SIZE<py::tuple>(tuple),
                         py::repr(object)));
+                }
+                if (object.get_type().not_equal(node.node_data)) [[unlikely]] {
+                    throw std::invalid_argument(
+                        absl::StrFormat("StructSequence type mismatch; "
+                                        "expected type: %s, got type: %s; tuple: %s.",
+                                        py::repr(node.node_data),
+                                        py::repr(object.get_type()),
+                                        py::repr(object)));
                 }
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     agenda.emplace_back(GET_ITEM_BORROW<py::tuple>(tuple, i));
@@ -580,10 +590,11 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                         PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(object.get_type(), m_namespace);
                 }
                 if (registration != node.custom) [[unlikely]] {
-                    throw std::invalid_argument(
-                        absl::StrFormat("Custom node type mismatch: expected type: %s, value: %s.",
-                                        py::repr(node.custom->type),
-                                        py::repr(object)));
+                    throw std::invalid_argument(absl::StrFormat(
+                        "Custom node type mismatch; expected type: %s, got type: %s; value: %s.",
+                        py::repr(node.custom->type),
+                        py::repr(object.get_type()),
+                        py::repr(object)));
                 }
                 py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(object));
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
@@ -595,11 +606,11 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                         num_out));
                 }
                 if (node.node_data.not_equal(GET_ITEM_BORROW<py::tuple>(out, 1))) [[unlikely]] {
-                    throw std::invalid_argument(
-                        absl::StrFormat("Mismatch custom node data: %s != %s; value: %s.",
-                                        py::repr(node.node_data),
-                                        py::repr(GET_ITEM_BORROW<py::tuple>(out, 1)),
-                                        py::repr(object)));
+                    throw std::invalid_argument(absl::StrFormat(
+                        "Mismatch custom node data; expected: %s, got: %s; value: %s.",
+                        py::repr(node.node_data),
+                        py::repr(GET_ITEM_BORROW<py::tuple>(out, 1)),
+                        py::repr(object)));
                 }
                 ssize_t arity = 0;
                 for (const py::handle& child :
@@ -608,11 +619,11 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                     agenda.emplace_back(py::reinterpret_borrow<py::object>(child));
                 }
                 if (arity != node.arity) [[unlikely]] {
-                    throw std::invalid_argument(
-                        absl::StrFormat("Custom type arity mismatch: %ld != %ld; value: %s.",
-                                        arity,
-                                        node.arity,
-                                        py::repr(object)));
+                    throw std::invalid_argument(absl::StrFormat(
+                        "Custom type arity mismatch; expected: %ld, got: %ld; value: %s.",
+                        node.arity,
+                        arity,
+                        py::repr(object)));
                 }
                 break;
             }
@@ -622,8 +633,10 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
         }
     }
     if (it != m_traversal.rend() || leaf != -1) [[unlikely]] {
-        throw std::invalid_argument(absl::StrFormat(
-            "Tree structures did not match: %s vs %s.", py::repr(full_tree), ToString()));
+        throw std::invalid_argument(
+            absl::StrFormat("Tree structures did not match; expected: %s, got: %s.",
+                            ToString(),
+                            py::repr(full_tree)));
     }
     return leaves;
 }

@@ -608,9 +608,8 @@ py::object PyTreeSpec::ToPicklable() const {
                 }
             }
             if (node.custom == nullptr) [[unlikely]] {
-                throw std::runtime_error(absl::StrCat("Unknown custom type in pickled PyTreeSpec: ",
-                                                      static_cast<std::string>(py::repr(t[4])),
-                                                      "."));
+                throw std::runtime_error(absl::StrFormat(
+                    "Unknown custom type in pickled PyTreeSpec: %s.", py::repr(t[4])));
             }
         } else if (!t[3].is_none() || !t[4].is_none()) [[unlikely]] {
             throw std::runtime_error("Malformed pickled PyTreeSpec.");
