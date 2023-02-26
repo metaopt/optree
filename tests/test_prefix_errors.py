@@ -150,7 +150,7 @@ def test_different_num_children_multiple():
 def test_different_metadata():
     lhs, rhs = {1: 2}, {3: 4}
     with pytest.raises(
-        ValueError, match=r'dict key mismatch; expected keys: .*, got keys: .*; dict: .*\.'
+        ValueError, match=r'dict key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.'
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
@@ -164,7 +164,7 @@ def test_different_metadata():
     lhs, rhs = OrderedDict({'a': 1, 'b': 2}), OrderedDict({'a': 3, 'c': 4})
     with pytest.raises(
         ValueError,
-        match=r'OrderedDict key mismatch; expected keys: .*, got keys: .*; OrderedDict: .*\.',
+        match=r'OrderedDict key mismatch; expected key\(s\): .*, got key\(s\): .*; OrderedDict: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
@@ -178,7 +178,7 @@ def test_different_metadata():
     lhs, rhs = OrderedDict({'a': 1, 'b': 2}), OrderedDict({'b': 4, 'a': 3})
     with pytest.raises(
         ValueError,
-        match=r'OrderedDict key mismatch; expected keys: .*, got keys: .*; OrderedDict: .*\.',
+        match=r'OrderedDict key mismatch; expected key\(s\): .*, got key\(s\): .*; OrderedDict: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
@@ -207,7 +207,7 @@ def test_different_metadata():
 def test_different_metadata_nested():
     lhs, rhs = [{1: 2}], [{3: 4}]
     with pytest.raises(
-        ValueError, match=r'dict key mismatch; expected keys: .*, got keys: .*; dict: .*\.'
+        ValueError, match=r'dict key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.'
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
@@ -222,7 +222,7 @@ def test_different_metadata_nested():
 def test_different_metadata_multiple():
     lhs, rhs = [{1: 2}, {3: 4}], [{3: 4}, {5: 6}]
     with pytest.raises(
-        ValueError, match=r'dict key mismatch; expected keys: .*, got keys: .*; dict: .*\.'
+        ValueError, match=r'dict key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.'
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 

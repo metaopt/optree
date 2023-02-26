@@ -494,7 +494,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                     if (keys.not_equal(expected_keys)) [[unlikely]] {
                         throw std::invalid_argument(
                             absl::StrFormat("OrderedDict key mismatch; "
-                                            "expected keys: %s, got keys: %s; OrderedDict: %s.",
+                                            "expected key(s): %s, got key(s): %s; OrderedDict: %s.",
                                             py::repr(expected_keys),
                                             py::repr(keys),
                                             py::repr(object)));
@@ -502,7 +502,8 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 } else if (!DictKeysEqual(expected_keys, dict)) [[unlikely]] {
                     py::list keys = SortedDictKeys(dict);
                     throw std::invalid_argument(
-                        absl::StrFormat("%s key mismatch; expected keys: %s, got keys: %s; %s: %s.",
+                        absl::StrFormat("%s key mismatch; "
+                                        "expected key(s): %s, got key(s): %s; %s: %s.",
                                         (node.kind == PyTreeKind::Dict ? "dict" : "defaultdict"),
                                         py::repr(expected_keys),
                                         py::repr(keys),
