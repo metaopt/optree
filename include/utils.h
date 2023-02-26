@@ -455,3 +455,14 @@ inline bool DictKeysEqual(const py::list& /* unique */ keys, const py::dict& dic
     }
     return true;
 }
+
+inline std::pair<py::list, py::list> DictKeysDifference(const py::list& /* unique */ keys,
+                                                        const py::dict& dict) {
+    py::set expected_keys{keys};
+    py::set got_keys{DictKeys(dict)};
+    py::list missing_keys{expected_keys - got_keys};
+    py::list extra_keys{got_keys - expected_keys};
+    TotalOrderSort(missing_keys);
+    TotalOrderSort(extra_keys);
+    return {missing_keys, extra_keys};
+}

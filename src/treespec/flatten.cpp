@@ -501,13 +501,25 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                     }
                 } else if (!DictKeysEqual(expected_keys, dict)) [[unlikely]] {
                     py::list keys = SortedDictKeys(dict);
+                    std::string cls_name = (node.kind == PyTreeKind::Dict ? "dict" : "defaultdict");
+                    auto [missing_keys, extra_keys] = DictKeysDifference(expected_keys, dict);
+                    std::string key_difference;
+                    if (GET_SIZE<py::list>(missing_keys) != 0) [[likely]] {
+                        key_difference +=
+                            absl::StrFormat(", missing key(s): %s", py::repr(missing_keys));
+                    }
+                    if (GET_SIZE<py::list>(extra_keys) != 0) [[likely]] {
+                        key_difference +=
+                            absl::StrFormat(", extra key(s): %s", py::repr(extra_keys));
+                    }
                     throw std::invalid_argument(
                         absl::StrFormat("%s key mismatch; "
-                                        "expected key(s): %s, got key(s): %s; %s: %s.",
-                                        (node.kind == PyTreeKind::Dict ? "dict" : "defaultdict"),
+                                        "expected key(s): %s, got key(s): %s%s; %s: %s.",
+                                        cls_name,
                                         py::repr(expected_keys),
                                         py::repr(keys),
-                                        (node.kind == PyTreeKind::Dict ? "dict" : "defaultdict"),
+                                        key_difference,
+                                        cls_name,
                                         py::repr(object)));
                 }
                 for (const py::handle& key : expected_keys) {
