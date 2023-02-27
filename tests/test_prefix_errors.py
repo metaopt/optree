@@ -34,7 +34,33 @@ from optree.registry import (
 
 
 def test_different_types():
-    (e,) = optree.prefix_errors((1, 2), [1, 2])
+    lhs, rhs = (1, 2), [1, 2]
+    with pytest.raises(ValueError, match=r'Expected an instance of .*, got .*\.'):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
+    expected = re.escape(
+        'pytree structure error: different types at key path\n' '    in_axes tree root'
+    )
+    with pytest.raises(ValueError, match=expected):
+        raise e('in_axes')
+
+    lhs, rhs = {'a': 1, 'b': 2}, OrderedDict({'a': 1, 'b': 2})
+    with pytest.raises(ValueError, match=r'Expected an instance of .*, got .*\.'):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
+    expected = re.escape(
+        'pytree structure error: different types at key path\n' '    in_axes tree root'
+    )
+    with pytest.raises(ValueError, match=expected):
+        raise e('in_axes')
+
+    lhs, rhs = {'a': 1, 'b': 2}, defaultdict(int, {'a': 1, 'b': 2})
+    with pytest.raises(ValueError, match=r'Expected an instance of .*, got .*\.'):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
         'pytree structure error: different types at key path\n' '    in_axes tree root'
     )
@@ -43,14 +69,22 @@ def test_different_types():
 
 
 def test_different_types_nested():
-    (e,) = optree.prefix_errors(((1,), (2,)), ([3], (4,)))
+    lhs, rhs = ((1,), (2,)), ([3], (4,))
+    with pytest.raises(ValueError, match=r'Expected an instance of .*, got .*\.'):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape('pytree structure error: different types at key path\n' '    in_axes[0]')
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
 
 
 def test_different_types_multiple():
-    e1, e2 = optree.prefix_errors(((1,), (2,)), ([3], [4]))
+    lhs, rhs = ((1,), (2,)), ([3], [4])
+    with pytest.raises(ValueError, match=r'Expected an instance of .*, got .*\.'):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    e1, e2 = optree.prefix_errors(lhs, rhs)
     expected = re.escape('pytree structure error: different types at key path\n' '    in_axes[0]')
     with pytest.raises(ValueError, match=expected):
         raise e1('in_axes')
@@ -60,7 +94,13 @@ def test_different_types_multiple():
 
 
 def test_different_num_children():
-    (e,) = optree.prefix_errors((1,), (2, 3))
+    lhs, rhs = (1,), (2, 3)
+    with pytest.raises(
+        ValueError, match=r'tuple arity mismatch; expected: \d+, got: \d+; tuple: .*\.'
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
         'pytree structure error: different numbers of pytree children at key path\n'
         '    in_axes tree root'
@@ -70,7 +110,13 @@ def test_different_num_children():
 
 
 def test_different_num_children_nested():
-    (e,) = optree.prefix_errors([[1]], [[2, 3]])
+    lhs, rhs = [[1]], [[2, 3]]
+    with pytest.raises(
+        ValueError, match=r'list arity mismatch; expected: \d+, got: \d+; list: .*\.'
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
         'pytree structure error: different numbers of pytree children at key path\n'
         '    in_axes[0]'
@@ -80,7 +126,13 @@ def test_different_num_children_nested():
 
 
 def test_different_num_children_multiple():
-    e1, e2 = optree.prefix_errors([[1], [2]], [[3, 4], [5, 6]])
+    lhs, rhs = [[1], [2]], [[3, 4], [5, 6]]
+    with pytest.raises(
+        ValueError, match=r'list arity mismatch; expected: \d+, got: \d+; list: .*\.'
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    e1, e2 = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
         'pytree structure error: different numbers of pytree children at key path\n'
         '    in_axes[0]'
@@ -96,7 +148,55 @@ def test_different_num_children_multiple():
 
 
 def test_different_metadata():
-    (e,) = optree.prefix_errors({1: 2}, {3: 4})
+    lhs, rhs = {1: 2}, {3: 4}
+    with pytest.raises(
+        ValueError, match=r'dict key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.'
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
+    expected = re.escape(
+        'pytree structure error: different pytree metadata at key path\n' '    in_axes tree root'
+    )
+    with pytest.raises(ValueError, match=expected):
+        raise e('in_axes')
+
+    lhs, rhs = OrderedDict({'a': 1, 'b': 2}), OrderedDict({'a': 3, 'c': 4})
+    with pytest.raises(
+        ValueError,
+        match=r'OrderedDict key mismatch; expected key\(s\): .*, got key\(s\): .*; OrderedDict: .*\.',
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
+    expected = re.escape(
+        'pytree structure error: different pytree metadata at key path\n' '    in_axes tree root'
+    )
+    with pytest.raises(ValueError, match=expected):
+        raise e('in_axes')
+
+    lhs, rhs = OrderedDict({'a': 1, 'b': 2}), OrderedDict({'b': 4, 'a': 3})
+    with pytest.raises(
+        ValueError,
+        match=r'OrderedDict key mismatch; expected key\(s\): .*, got key\(s\): .*; OrderedDict: .*\.',
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
+    expected = re.escape(
+        'pytree structure error: different pytree metadata at key path\n' '    in_axes tree root'
+    )
+    with pytest.raises(ValueError, match=expected):
+        raise e('in_axes')
+
+    lhs, rhs = defaultdict(list, {'a': 1, 'b': 2}), defaultdict(set, {'b': 4, 'a': 3})
+    with pytest.raises(
+        ValueError,
+        match=r'defaultdict factory mismatch; expected factory: .*, got factory: .*; defaultdict: .*\.',
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
         'pytree structure error: different pytree metadata at key path\n' '    in_axes tree root'
     )
@@ -105,7 +205,13 @@ def test_different_metadata():
 
 
 def test_different_metadata_nested():
-    (e,) = optree.prefix_errors([{1: 2}], [{3: 4}])
+    lhs, rhs = [{1: 2}], [{3: 4}]
+    with pytest.raises(
+        ValueError, match=r'dict key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.'
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
         'pytree structure error: different pytree metadata at key path\n' '    in_axes[0]'
     )
@@ -114,7 +220,13 @@ def test_different_metadata_nested():
 
 
 def test_different_metadata_multiple():
-    e1, e2 = optree.prefix_errors([{1: 2}, {3: 4}], [{3: 4}, {5: 6}])
+    lhs, rhs = [{1: 2}, {3: 4}], [{3: 4}, {5: 6}]
+    with pytest.raises(
+        ValueError, match=r'dict key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.'
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    e1, e2 = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
         'pytree structure error: different pytree metadata at key path\n' '    in_axes[0]'
     )
@@ -128,7 +240,11 @@ def test_different_metadata_multiple():
 
 
 def test_namedtuple():
-    (e,) = optree.prefix_errors(CustomTuple(1, [2, [3]]), CustomTuple(4, [5, 6]))
+    lhs, rhs = CustomTuple(1, [2, [3]]), CustomTuple(4, [5, 6])
+    with pytest.raises(ValueError):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
         'pytree structure error: different types at key path\n' '    in_axes.bar[1]'
     )
@@ -137,9 +253,11 @@ def test_namedtuple():
 
 
 def test_structseq():
-    (e,) = optree.prefix_errors(
-        TimeStructTime((1, [2, [3]], *range(7))), TimeStructTime((4, [5, 6], *range(7)))
-    )
+    lhs, rhs = TimeStructTime((1, [2, [3]], *range(7))), TimeStructTime((4, [5, 6], *range(7)))
+    with pytest.raises(ValueError):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
         'pytree structure error: different types at key path\n' '    in_axes.tm_mon[1]'
     )
@@ -157,7 +275,12 @@ def test_fallback_keypath():
 
 
 def test_no_errors():
-    () = optree.prefix_errors((1, 2), ((11, 12, 13), 2))
+    for lhs, rhs in (
+        ((1, 2), ((11, 12, 13), 2)),
+        ({'a': 1, 'b': 2}, {'b': (11, 12, 13), 'a': 2}),
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+        () = optree.prefix_errors(lhs, rhs)
 
 
 def test_different_structure_no_children():

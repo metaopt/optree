@@ -81,52 +81,6 @@ inline std::vector<T> reserved_vector(const size_t& size) {
     return v;
 }
 
-inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
-    try {
-        // Sort directly if possible.
-        // NOLINTNEXTLINE[readability-implicit-bool-conversion]
-        if (PyList_Sort(list.ptr())) [[unlikely]] {
-            throw py::error_already_set();
-        }
-    } catch (py::error_already_set& ex1) {
-        if (ex1.matches(PyExc_TypeError)) [[likely]] {
-            // Found incomparable keys (e.g. `int` vs. `str`, or user-defined types).
-            try {
-                // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
-                auto sort_key_fn = py::cpp_function([](const py::object& o) {
-                    py::handle t = o.get_type();
-                    py::str qualname{absl::StrFormat(
-                        "%s.%s",
-                        static_cast<std::string>(py::getattr(t, "__module__").cast<py::str>()),
-                        static_cast<std::string>(py::getattr(t, "__qualname__").cast<py::str>()))};
-                    return py::make_tuple(qualname, o);
-                });
-                list.attr("sort")(py::arg("key") = sort_key_fn);
-            } catch (py::error_already_set& ex2) {
-                if (ex2.matches(PyExc_TypeError)) [[likely]] {
-                    // Found incomparable user-defined key types.
-                    // The keys remain in the insertion order.
-                    PyErr_Clear();
-                } else [[unlikely]] {
-                    throw;
-                }
-            }
-        } else [[unlikely]] {
-            throw;
-        }
-    }
-}
-
-inline py::list DictKeys(const py::dict& dict) {
-    return py::reinterpret_steal<py::list>(PyDict_Keys(dict.ptr()));
-}
-
-inline py::list SortedDictKeys(const py::dict& dict) {
-    py::list keys = DictKeys(dict);
-    TotalOrderSort(keys);
-    return keys;
-}
-
 template <typename Sized = py::object>
 inline ssize_t GetSize(const py::handle& sized) {
     return py::ssize_t_cast(py::len(sized));
@@ -156,17 +110,10 @@ template <>
 inline ssize_t GET_SIZE<py::list>(const py::handle& sized) {
     return PyList_GET_SIZE(sized.ptr());
 }
-#ifdef PyDict_GET_SIZE
 template <>
 inline ssize_t GET_SIZE<py::dict>(const py::handle& sized) {
     return PyDict_GET_SIZE(sized.ptr());
 }
-#else
-template <>
-inline ssize_t GET_SIZE<py::dict>(const py::handle& sized) {
-    return PyDict_Size(sized.ptr());
-}
-#endif
 
 template <typename Container, typename Item>
 inline py::handle GET_ITEM_HANDLE(const py::handle& container, const Item& item) {
@@ -442,4 +389,80 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
         SET_ITEM<py::tuple>(fields, i, py::str(members[i].name));
     }
     return fields;
+}
+
+inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
+    try {
+        // Sort directly if possible.
+        // NOLINTNEXTLINE[readability-implicit-bool-conversion]
+        if (PyList_Sort(list.ptr())) [[unlikely]] {
+            throw py::error_already_set();
+        }
+    } catch (py::error_already_set& ex1) {
+        if (ex1.matches(PyExc_TypeError)) [[likely]] {
+            // Found incomparable keys (e.g. `int` vs. `str`, or user-defined types).
+            try {
+                // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
+                auto sort_key_fn = py::cpp_function([](const py::object& o) {
+                    py::handle t = o.get_type();
+                    py::str qualname{absl::StrFormat(
+                        "%s.%s",
+                        static_cast<std::string>(py::getattr(t, "__module__").cast<py::str>()),
+                        static_cast<std::string>(py::getattr(t, "__qualname__").cast<py::str>()))};
+                    return py::make_tuple(qualname, o);
+                });
+                list.attr("sort")(py::arg("key") = sort_key_fn);
+            } catch (py::error_already_set& ex2) {
+                if (ex2.matches(PyExc_TypeError)) [[likely]] {
+                    // Found incomparable user-defined key types.
+                    // The keys remain in the insertion order.
+                    PyErr_Clear();
+                } else [[unlikely]] {
+                    throw;
+                }
+            }
+        } else [[unlikely]] {
+            throw;
+        }
+    }
+}
+
+inline py::list DictKeys(const py::dict& dict) {
+    return py::reinterpret_steal<py::list>(PyDict_Keys(dict.ptr()));
+}
+
+inline py::list SortedDictKeys(const py::dict& dict) {
+    py::list keys = DictKeys(dict);
+    TotalOrderSort(keys);
+    return keys;
+}
+
+inline bool DictKeysEqual(const py::list& /* unique */ keys, const py::dict& dict) {
+    ssize_t list_len = GET_SIZE<py::list>(keys);
+    ssize_t dict_len = GET_SIZE<py::dict>(dict);
+    if (list_len != dict_len) [[likely]] {  // assumes keys are unique
+        return false;
+    }
+    for (ssize_t i = 0; i < list_len; ++i) {
+        py::object key = GET_ITEM_BORROW<py::list>(keys, i);
+        int result = PyDict_Contains(dict.ptr(), key.ptr());
+        if (result == -1) [[unlikely]] {
+            throw py::error_already_set();
+        }
+        if (result == 0) [[likely]] {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline std::pair<py::list, py::list> DictKeysDifference(const py::list& /* unique */ keys,
+                                                        const py::dict& dict) {
+    py::set expected_keys{keys};
+    py::set got_keys{DictKeys(dict)};
+    py::list missing_keys{expected_keys - got_keys};
+    py::list extra_keys{got_keys - expected_keys};
+    TotalOrderSort(missing_keys);
+    TotalOrderSort(extra_keys);
+    return {missing_keys, extra_keys};
 }
