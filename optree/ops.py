@@ -65,6 +65,7 @@ __all__ = [
     'tree_map_with_path',
     'tree_map_with_path_',
     'tree_transpose',
+    'tree_broadcast_prefix',
     'broadcast_prefix',
     'tree_replace_nones',
     'tree_reduce',
@@ -693,6 +694,80 @@ def tree_transpose(
     return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
 
+def tree_broadcast_prefix(
+    prefix_tree: PyTree[T],
+    full_tree: PyTree[S],
+    is_leaf: Callable[[T], bool] | None = None,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> PyTree[T]:  # PyTree[PyTree[T]]
+    """Return a pytree of same structure of ``full_tree`` with broadcasted subtrees in ``prefix_tree``.
+
+    See also :func:`broadcast_prefix` and :func:`treespec_is_prefix`.
+
+    If a ``prefix_tree`` is a prefix of a ``full_tree``, this means the ``full_tree`` can be
+    constructed by replacing the leaves of ``prefix_tree`` with appropriate **subtrees**.
+
+    This function returns a pytree with the same size as ``full_tree``. The leaves are replicated
+    from ``prefix_tree``. The number of replicas is determined by the corresponding subtree in
+    ``full_tree``.
+
+    >>> tree_broadcast_prefix(1, [1, 2, 3])
+    [1, 1, 1]
+    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, 3])
+    [1, 2, 3]
+    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
+    Traceback (most recent call last):
+        ...
+    ValueError: list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].
+    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, (3, 4)])
+    [1, 2, (3, 3)]
+    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}])
+    [1, 2, {'a': 3, 'b': 3, 'c': (None, 3)}]
+    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True)
+    [1, 2, {'a': 3, 'b': 3, 'c': (3, 3)}]
+
+    Args:
+        prefix_tree (pytree): A pytree with the same structure as a prefix of ``full_tree``.
+        full_tree (pytree): A pytree with the same structure as a suffix of ``prefix_tree``.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        A pytree of same structure of ``full_tree`` with broadcasted subtrees in ``prefix_tree``.
+    """
+
+    def broadcast_leaves(x: T, subtree: PyTree[S]) -> None:
+        subtreespec = tree_structure(
+            subtree,
+            is_leaf,  # type: ignore[arg-type]
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        return subtreespec.unflatten([x] * subtreespec.num_leaves)
+
+    # If prefix_tree is not a tree prefix of full_tree, this code can raise a ValueError;
+    # use prefix_errors to find disagreements and raise more precise error messages.
+    # prefix_errors = prefix_errors(prefix_tree, full_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    return tree_map(
+        broadcast_leaves,
+        prefix_tree,
+        full_tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+
+
 def broadcast_prefix(
     prefix_tree: PyTree[T],
     full_tree: PyTree[S],
@@ -702,6 +777,8 @@ def broadcast_prefix(
     namespace: str = '',
 ) -> list[T]:
     """Return a list of broadcasted leaves in ``prefix_tree`` to match the number of leaves in ``full_tree``.
+
+    See also :func:`tree_broadcast_prefix` and :func:`treespec_is_prefix`.
 
     If a ``prefix_tree`` is a prefix of a ``full_tree``, this means the ``full_tree`` can be
     constructed by replacing the leaves of ``prefix_tree`` with appropriate **subtrees**.
