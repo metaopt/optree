@@ -32,12 +32,12 @@ Tree Manipulation Functions
     tree_map_
     tree_map_with_path
     tree_map_with_path_
-    tree_reduce
     tree_transpose
+    broadcast_prefix
     tree_replace_nones
+    tree_reduce
     tree_all
     tree_any
-    broadcast_prefix
     prefix_errors
 
 .. autofunction:: tree_flatten
@@ -51,12 +51,12 @@ Tree Manipulation Functions
 .. autofunction:: tree_map_
 .. autofunction:: tree_map_with_path
 .. autofunction:: tree_map_with_path_
-.. autofunction:: tree_reduce
 .. autofunction:: tree_transpose
+.. autofunction:: broadcast_prefix
 .. autofunction:: tree_replace_nones
+.. autofunction:: tree_reduce
 .. autofunction:: tree_all
 .. autofunction:: tree_any
-.. autofunction:: broadcast_prefix
 .. autofunction:: prefix_errors
 
 PyTreeSpec Functions
