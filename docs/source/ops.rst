@@ -16,6 +16,8 @@ Constants
 .. autodata:: NONE_IS_NODE
 .. autodata:: NONE_IS_LEAF
 
+------
+
 Tree Manipulation Functions
 ---------------------------
 
@@ -35,12 +37,6 @@ Tree Manipulation Functions
     tree_transpose
     broadcast_prefix
     tree_replace_nones
-    tree_reduce
-    tree_sum
-    tree_max
-    tree_min
-    tree_all
-    tree_any
     prefix_errors
 
 .. autofunction:: tree_flatten
@@ -57,13 +53,31 @@ Tree Manipulation Functions
 .. autofunction:: tree_transpose
 .. autofunction:: broadcast_prefix
 .. autofunction:: tree_replace_nones
+.. autofunction:: prefix_errors
+
+------
+
+Tree Reduce Functions
+---------------------
+
+.. autosummary::
+
+    tree_replace_nones
+    tree_reduce
+    tree_sum
+    tree_max
+    tree_min
+    tree_all
+    tree_any
+
 .. autofunction:: tree_reduce
 .. autofunction:: tree_sum
 .. autofunction:: tree_max
 .. autofunction:: tree_min
 .. autofunction:: tree_all
 .. autofunction:: tree_any
-.. autofunction:: prefix_errors
+
+------
 
 PyTreeSpec Functions
 --------------------
