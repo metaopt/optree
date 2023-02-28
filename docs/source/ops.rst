@@ -36,6 +36,7 @@ Tree Manipulation Functions
     broadcast_prefix
     tree_replace_nones
     tree_reduce
+    tree_sum
     tree_max
     tree_min
     tree_all
@@ -57,6 +58,7 @@ Tree Manipulation Functions
 .. autofunction:: broadcast_prefix
 .. autofunction:: tree_replace_nones
 .. autofunction:: tree_reduce
+.. autofunction:: tree_sum
 .. autofunction:: tree_max
 .. autofunction:: tree_min
 .. autofunction:: tree_all

@@ -631,6 +631,20 @@ def test_tree_reduce():
     )
 
 
+def test_tree_sum():
+    assert optree.tree_sum({'x': 1, 'y': (2, 3)}) == 6
+    assert optree.tree_sum({'x': 1, 'y': (2, None), 'z': 3}) == 6
+    with pytest.raises(
+        TypeError, match=re.escape("unsupported operand type(s) for +: 'int' and 'NoneType'")
+    ):
+        optree.tree_sum({'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
+    assert optree.tree_sum({'x': 'a', 'y': ('b', None), 'z': 'c'}, start='') == 'abc'
+    assert optree.tree_sum({'x': b'a', 'y': (b'b', None), 'z': b'c'}, start=b'') == b'abc'
+    assert optree.tree_sum(
+        {'x': [1], 'y': ([2], [None]), 'z': [3]}, start=[], is_leaf=lambda x: isinstance(x, list)
+    ) == [1, 2, None, 3]
+
+
 def test_tree_max():
     with pytest.raises(ValueError, match=re.escape('max() arg is an empty sequence')):
         optree.tree_max({})

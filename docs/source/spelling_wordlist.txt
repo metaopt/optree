@@ -58,3 +58,4 @@ traceback
 str
 instantiation
 instantiate
+isinstance
