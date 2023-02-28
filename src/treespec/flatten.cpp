@@ -400,7 +400,7 @@ PyTreeSpec::FlattenWithPath(const py::handle& tree,
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
-    const ssize_t num_leaves = PyTreeSpec::num_leaves();
+    const ssize_t num_leaves = GetNumLeaves();
 
     auto agenda = std::vector<py::object>{py::reinterpret_borrow<py::object>(full_tree)};
 

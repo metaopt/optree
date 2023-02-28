@@ -25,23 +25,23 @@ limitations under the License.
 
 namespace optree {
 
-ssize_t PyTreeSpec::num_leaves() const {
+ssize_t PyTreeSpec::GetNumLeaves() const {
     EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
     return m_traversal.back().num_leaves;
 }
 
-ssize_t PyTreeSpec::num_nodes() const { return py::ssize_t_cast(m_traversal.size()); }
+ssize_t PyTreeSpec::GetNumNodes() const { return py::ssize_t_cast(m_traversal.size()); }
 
-ssize_t PyTreeSpec::num_children() const {
+ssize_t PyTreeSpec::GetNumChildren() const {
     EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
     return m_traversal.back().arity;
 }
 
-bool PyTreeSpec::get_none_is_leaf() const { return m_none_is_leaf; }
+bool PyTreeSpec::GetNoneIsLeaf() const { return m_none_is_leaf; }
 
-std::string PyTreeSpec::get_namespace() const { return m_namespace; }
+std::string PyTreeSpec::GetNamespace() const { return m_namespace; }
 
-py::object PyTreeSpec::get_type() const {
+py::object PyTreeSpec::GetType() const {
     EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
     Node node = m_traversal.back();
     switch (node.kind) {
@@ -73,11 +73,11 @@ py::object PyTreeSpec::get_type() const {
     INTERNAL_ERROR();
 }
 
-bool PyTreeSpec::is_leaf(const bool& strict) const {
+bool PyTreeSpec::IsLeaf(const bool& strict) const {
     if (strict) [[likely]] {
-        return num_nodes() == 1 && num_leaves() == 1;
+        return GetNumNodes() == 1 && GetNumLeaves() == 1;
     }
-    return num_nodes() == 1;
+    return GetNumNodes() == 1;
 }
 
 bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
@@ -130,10 +130,10 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
         treespec->m_namespace = inner_treespec.m_namespace;
     }
 
-    const ssize_t num_outer_leaves = num_leaves();
-    const ssize_t num_outer_nodes = num_nodes();
-    const ssize_t num_inner_leaves = inner_treespec.num_leaves();
-    const ssize_t num_inner_nodes = inner_treespec.num_nodes();
+    const ssize_t num_outer_leaves = GetNumLeaves();
+    const ssize_t num_outer_nodes = GetNumNodes();
+    const ssize_t num_inner_leaves = inner_treespec.GetNumLeaves();
+    const ssize_t num_inner_nodes = inner_treespec.GetNumNodes();
     for (const Node& node : m_traversal) {
         if (node.kind == PyTreeKind::Leaf) [[likely]] {
             absl::c_copy(inner_treespec.m_traversal, std::back_inserter(treespec->m_traversal));
@@ -180,7 +180,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     ssize_t num_leaves = 0;
     for (const PyTreeSpec& treespec : treespecs) {
         absl::c_copy(treespec.m_traversal, std::back_inserter(out->m_traversal));
-        num_leaves += treespec.num_leaves();
+        num_leaves += treespec.GetNumLeaves();
     }
     Node node;
     node.kind = PyTreeKind::Tuple;
@@ -526,7 +526,7 @@ std::string PyTreeSpec::ToString() const {
 }
 
 py::object PyTreeSpec::ToPicklable() const {
-    py::tuple node_states{num_nodes()};
+    py::tuple node_states{GetNumNodes()};
     ssize_t i = 0;
     for (const auto& node : m_traversal) {
         SET_ITEM<py::tuple>(node_states,

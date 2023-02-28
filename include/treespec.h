@@ -122,19 +122,19 @@ class PyTreeSpec {
                                   const py::handle &f_leaf,
                                   const py::iterable &leaves) const;
 
-    [[nodiscard]] ssize_t num_leaves() const;
+    [[nodiscard]] ssize_t GetNumLeaves() const;
 
-    [[nodiscard]] ssize_t num_nodes() const;
+    [[nodiscard]] ssize_t GetNumNodes() const;
 
-    [[nodiscard]] ssize_t num_children() const;
+    [[nodiscard]] ssize_t GetNumChildren() const;
 
-    [[nodiscard]] bool get_none_is_leaf() const;
+    [[nodiscard]] bool GetNoneIsLeaf() const;
 
-    [[nodiscard]] std::string get_namespace() const;
+    [[nodiscard]] std::string GetNamespace() const;
 
-    [[nodiscard]] py::object get_type() const;
+    [[nodiscard]] py::object GetType() const;
 
-    [[nodiscard]] bool is_leaf(const bool &strict = true) const;
+    [[nodiscard]] bool IsLeaf(const bool &strict = true) const;
 
     bool operator==(const PyTreeSpec &other) const;
     bool operator!=(const PyTreeSpec &other) const;
