@@ -123,13 +123,13 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
              py::arg("leaves"))
         .def("flatten_up_to",
              &PyTreeSpec::FlattenUpTo,
-             py::arg("full_tree"),
              "Flatten the subtrees in ``full_tree`` up to the structure of this treespec "
-             "and return a list of subtrees.")
+             "and return a list of subtrees.",
+             py::arg("full_tree"))
         .def("compose",
              &PyTreeSpec::Compose,
-             py::arg("inner_treespec"),
-             "Compose two treespecs. Constructs the inner treespec as a subtree at each leaf node.")
+             "Compose two treespecs. Constructs the inner treespec as a subtree at each leaf node.",
+             py::arg("inner_treespec"))
         .def("walk",
              &PyTreeSpec::Walk,
              "Walk over the pytree structure, calling ``f_node(children, node_data)`` at nodes, "
@@ -137,6 +137,16 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
              py::arg("f_node"),
              py::arg("f_leaf"),
              py::arg("leaves"))
+        .def("is_prefix",
+             &PyTreeSpec::IsPrefix,
+             "Test whether this treespec is a prefix of the given treespec.",
+             py::arg("other"),
+             py::arg("strict") = true)
+        .def("is_suffix",
+             &PyTreeSpec::IsSuffix,
+             "Test whether this treespec is a suffix of the given treespec.",
+             py::arg("other"),
+             py::arg("strict") = true)
         .def("children", &PyTreeSpec::Children, "Return a list of treespecs for the children.")
         .def("is_leaf",
              &PyTreeSpec::IsLeaf,
@@ -154,6 +164,30 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
             "__ne__",
             [](const PyTreeSpec& a, const PyTreeSpec& b) { return a != b; },
             "Test for inequality to another object.",
+            py::is_operator(),
+            py::arg("other"))
+        .def(
+            "__lt__",
+            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a < b; },
+            "Test for this treespec is a strict prefix of another object.",
+            py::is_operator(),
+            py::arg("other"))
+        .def(
+            "__le__",
+            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a <= b; },
+            "Test for this treespec is a prefix of another object.",
+            py::is_operator(),
+            py::arg("other"))
+        .def(
+            "__gt__",
+            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a > b; },
+            "Test for this treespec is a strict suffix of another object.",
+            py::is_operator(),
+            py::arg("other"))
+        .def(
+            "__ge__",
+            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a >= b; },
+            "Test for this treespec is a suffix of another object.",
             py::is_operator(),
             py::arg("other"))
         .def(

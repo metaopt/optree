@@ -73,6 +73,8 @@ __all__ = [
     'tree_min',
     'tree_all',
     'tree_any',
+    'treespec_is_prefix',
+    'treespec_is_suffix',
     'treespec_children',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',
@@ -1180,6 +1182,30 @@ def tree_any(
         empty, return :data:`False`.
     """
     return any(tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace))  # type: ignore[arg-type]
+
+
+def treespec_is_prefix(
+    treespec: PyTreeSpec,
+    other_treespec: PyTreeSpec,
+    strict: bool = False,
+) -> bool:
+    """Return whether ``treespec`` is a prefix of ``other_treespec``.
+
+    See also :func:`treespec_is_prefix` and :meth:`PyTreeSpec.is_prefix`.
+    """
+    return treespec.is_prefix(other_treespec, strict=strict)
+
+
+def treespec_is_suffix(
+    treespec: PyTreeSpec,
+    other_treespec: PyTreeSpec,
+    strict: bool = False,
+) -> bool:
+    """Return whether ``treespec`` is a suffix of ``other_treespec``.
+
+    See also :func:`treespec_is_suffix` :meth:`PyTreeSpec.is_suffix`.
+    """
+    return treespec.is_suffix(other_treespec, strict=strict)
 
 
 def treespec_children(treespec: PyTreeSpec) -> list[PyTreeSpec]:

@@ -104,6 +104,23 @@ class PyTreeSpec {
     // Composes two PyTreeSpecs, replacing the leaves of this tree with copies of `inner`.
     [[nodiscard]] std::unique_ptr<PyTreeSpec> Compose(const PyTreeSpec &inner_treespec) const;
 
+    // Maps a function over a PyTree structure, applying f_leaf to each leaf, and
+    // f_node(children, node_data) to each container node.
+    [[nodiscard]] py::object Walk(const py::function &f_node,
+                                  const py::handle &f_leaf,
+                                  const py::iterable &leaves) const;
+    // Returns true if this PyTreeSpec is a prefix of `other`.
+    [[nodiscard]] bool IsPrefix(const PyTreeSpec &other, const bool &strict = false) const;
+
+    // Returns true if this PyTreeSpec is a suffix of `other`.
+    [[nodiscard]] inline bool IsSuffix(const PyTreeSpec &other, const bool &strict = false) const {
+        return other.IsPrefix(*this, strict);
+    }
+
+    [[nodiscard]] std::vector<std::unique_ptr<PyTreeSpec>> Children() const;
+
+    [[nodiscard]] bool IsLeaf(const bool &strict = true) const;
+
     // Makes a Tuple PyTreeSpec out of a vector of PyTreeSpecs.
     static std::unique_ptr<PyTreeSpec> Tuple(const std::vector<PyTreeSpec> &treespecs,
                                              const bool &none_is_leaf);
@@ -113,14 +130,6 @@ class PyTreeSpec {
 
     // Makes a PyTreeSpec representing a `None` node.
     static std::unique_ptr<PyTreeSpec> None(const bool &none_is_leaf);
-
-    [[nodiscard]] std::vector<std::unique_ptr<PyTreeSpec>> Children() const;
-
-    // Maps a function over a PyTree structure, applying f_leaf to each leaf, and
-    // f_node(children, node_data) to each container node.
-    [[nodiscard]] py::object Walk(const py::function &f_node,
-                                  const py::handle &f_leaf,
-                                  const py::iterable &leaves) const;
 
     [[nodiscard]] ssize_t GetNumLeaves() const;
 
@@ -134,10 +143,12 @@ class PyTreeSpec {
 
     [[nodiscard]] py::object GetType() const;
 
-    [[nodiscard]] bool IsLeaf(const bool &strict = true) const;
-
     bool operator==(const PyTreeSpec &other) const;
-    bool operator!=(const PyTreeSpec &other) const;
+    inline bool operator!=(const PyTreeSpec &other) const { return !(*this == other); }
+    inline bool operator<(const PyTreeSpec &other) const { return IsPrefix(other, true); }
+    inline bool operator<=(const PyTreeSpec &other) const { return IsPrefix(other, false); }
+    inline bool operator>(const PyTreeSpec &other) const { return IsSuffix(other, true); }
+    inline bool operator>=(const PyTreeSpec &other) const { return IsSuffix(other, false); }
 
     template <typename H>
     friend H AbslHashValue(H h, const Node &n) {
