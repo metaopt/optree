@@ -68,6 +68,8 @@ __all__ = [
     'broadcast_prefix',
     'tree_replace_nones',
     'tree_reduce',
+    'tree_max',
+    'tree_min',
     'tree_all',
     'tree_any',
     'treespec_children',
@@ -742,7 +744,7 @@ def broadcast_prefix(
     def add_leaves(x: T, subtree: PyTree[S]) -> None:
         subtreespec = tree_structure(
             subtree,
-            is_leaf,
+            is_leaf,  # type: ignore[arg-type]
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
@@ -819,15 +821,7 @@ def tree_reduce(
     ...
 
 
-def tree_reduce(
-    func,
-    tree,
-    initial=__MISSING,
-    *,
-    is_leaf=None,
-    none_is_leaf=False,
-    namespace='',
-):
+def tree_reduce(func, tree, initial=__MISSING, *, is_leaf=None, none_is_leaf=False, namespace=''):
     """Traversal through a pytree and reduce the leaves.
 
     See also :func:`tree_leaves`.
@@ -866,10 +860,184 @@ def tree_reduce(
     return functools.reduce(func, leaves, initial)
 
 
+@overload
+def tree_max(
+    tree: PyTree[T],
+    *,
+    is_leaf: Callable[[T], bool] | None = None,
+    key: Callable[[T], Any] | None = None,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> T:  # pragma: no cover
+    ...
+
+
+@overload
+def tree_max(
+    tree: PyTree[T],
+    *,
+    default: T = __MISSING,
+    key: Callable[[T], Any] | None = None,
+    is_leaf: Callable[[T], bool] | None = None,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> T:  # pragma: no cover
+    ...
+
+
+def tree_max(tree, *, default=__MISSING, key=None, is_leaf=None, none_is_leaf=False, namespace=''):
+    """Return the maximum leaf value in ``tree``.
+
+    See also :func:`tree_leaves` and :func:`tree_min`.
+
+    >>> tree_max({})
+    Traceback (most recent call last):
+        ...
+    ValueError: max() arg is an empty sequence
+    >>> tree_max({}, default=0)
+    0
+    >>> tree_max({'x': 0, 'y': (2, 1)})
+    2
+    >>> tree_max({'x': 0, 'y': (2, 1)}, key=lambda x: -x)
+    0
+    >>> tree_max({'a': None})  # `None` is a non-leaf node with arity 0 by default
+    Traceback (most recent call last):
+        ...
+    ValueError: max() arg is an empty sequence
+    >>> tree_max({'a': None}, default=0)  # `None` is a non-leaf node with arity 0 by default
+    0
+    >>> tree_max({'a': None}, none_is_leaf=True)
+    None
+    >>> tree_max(None)  # `None` is a non-leaf node with arity 0 by default
+    Traceback (most recent call last):
+        ...
+    ValueError: max() arg is an empty sequence
+    >>> tree_max(None, default=0)
+    0
+    >>> tree_max(None, none_is_leaf=True)
+    None
+
+    Args:
+        tree (pytree): A pytree to be traversed.
+        default (object, optional): The default value to return if ``tree`` is empty. If the ``tree``
+            is empty and ``default`` is not specified, raise a :exc:`ValueError`.
+        key (callable or None, optional): An one argument ordering function like that used for
+            :meth:`list.sort`.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        The maximum leaf value in ``tree``.
+    """
+    leaves = tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    if default is __MISSING:
+        if key is None:  # special handling for Python 3.7
+            return max(leaves)
+        return max(leaves, key=key)
+    if key is None:  # special handling for Python 3.7
+        return max(leaves, default=default)
+    return max(leaves, default=default, key=key)
+
+
+@overload
+def tree_min(
+    tree: PyTree[T],
+    *,
+    key: Callable[[T], Any] | None = None,
+    is_leaf: Callable[[T], bool] | None = None,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> T:  # pragma: no cover
+    ...
+
+
+@overload
+def tree_min(
+    tree: PyTree[T],
+    *,
+    default: T = __MISSING,
+    key: Callable[[T], Any] | None = None,
+    is_leaf: Callable[[T], bool] | None = None,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> T:  # pragma: no cover
+    ...
+
+
+def tree_min(tree, *, default=__MISSING, key=None, is_leaf=None, none_is_leaf=False, namespace=''):
+    """Return the minimum leaf value in ``tree``.
+
+    See also :func:`tree_leaves` and :func:`tree_max`.
+
+    >>> tree_min({})
+    Traceback (most recent call last):
+        ...
+    ValueError: min() arg is an empty sequence
+    >>> tree_min({}, default=0)
+    0
+    >>> tree_min({'x': 0, 'y': (2, 1)})
+    0
+    >>> tree_min({'x': 0, 'y': (2, 1)}, key=lambda x: -x)
+    2
+    >>> tree_min({'a': None})  # `None` is a non-leaf node with arity 0 by default
+    Traceback (most recent call last):
+        ...
+    ValueError: min() arg is an empty sequence
+    >>> tree_min({'a': None}, default=0)  # `None` is a non-leaf node with arity 0 by default
+    0
+    >>> tree_min({'a': None}, none_is_leaf=True)
+    None
+    >>> tree_min(None)  # `None` is a non-leaf node with arity 0 by default
+    Traceback (most recent call last):
+        ...
+    ValueError: min() arg is an empty sequence
+    >>> tree_min(None, default=0)
+    0
+    >>> tree_min(None, none_is_leaf=True)
+    None
+
+    Args:
+        tree (pytree): A pytree to be traversed.
+        default (object, optional): The default value to return if ``tree`` is empty. If the ``tree``
+            is empty and ``default`` is not specified, raise a :exc:`ValueError`.
+        key (callable or None, optional): An one argument ordering function like that used for
+            :meth:`list.sort`.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        The minimum leaf value in ``tree``.
+    """
+    leaves = tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    if default is __MISSING:
+        if key is None:  # special handling for Python 3.7
+            return min(leaves)
+        return min(leaves, key=key)
+    if key is None:  # special handling for Python 3.7
+        return min(leaves, default=default)
+    return min(leaves, default=default, key=key)
+
+
 def tree_all(
     tree: PyTree[T],
-    is_leaf: Callable[[T], bool] | None = None,
     *,
+    is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> bool:
@@ -912,8 +1080,8 @@ def tree_all(
 
 def tree_any(
     tree: PyTree[T],
-    is_leaf: Callable[[T], bool] | None = None,
     *,
+    is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> bool:
