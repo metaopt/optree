@@ -487,24 +487,6 @@ def test_tree_map_with_path_inplace():
     assert x == ((Counter(4), Counter(2), None), (Counter(13), Counter(25), Counter(29)))
 
 
-def test_tree_reduce():
-    assert optree.tree_reduce(lambda x, y: x + y, {'x': 1, 'y': (2, 3)}) == 6
-    assert optree.tree_reduce(lambda x, y: x + y, {'x': 1, 'y': (2, None), 'z': 3}) == 6
-    assert optree.tree_reduce(lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3}) == 3
-    assert (
-        optree.tree_reduce(
-            lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True
-        )
-        is None
-    )
-    assert (
-        optree.tree_reduce(
-            lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3}, False, none_is_leaf=True
-        )
-        is False
-    )
-
-
 @parametrize(tree=TREES)
 def test_tree_transpose(tree):
     outer_treespec = optree.tree_structure(tree)
@@ -601,34 +583,6 @@ def test_tree_transpose_mismatch_namespace():
     )
 
 
-def test_tree_all():
-    assert optree.tree_all({})
-    assert optree.tree_all({'x': 1, 'y': (2, 3)})
-    assert optree.tree_all({'x': 1, 'y': (2, None), 'z': 3})
-    assert not optree.tree_all({'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
-    assert optree.tree_all(None)
-    assert not optree.tree_all(None, none_is_leaf=True)
-
-
-def test_tree_any():
-    assert not optree.tree_any({})
-    assert optree.tree_any({'x': 0, 'y': (2, 0)})
-    assert not optree.tree_any({'a': None})
-    assert not optree.tree_any({'a': None}, none_is_leaf=True)
-    assert not optree.tree_any(None)
-    assert not optree.tree_any(None, none_is_leaf=True)
-
-
-def test_tree_replace_nones():
-    sentinel = object()
-    assert optree.tree_replace_nones(sentinel, {'a': 1, 'b': None, 'c': (2, None)}) == {
-        'a': 1,
-        'b': sentinel,
-        'c': (2, sentinel),
-    }
-    assert optree.tree_replace_nones(sentinel, None) == sentinel
-
-
 def test_broadcast_prefix():
     assert optree.broadcast_prefix(1, [1, 2, 3]) == [1, 1, 1]
     assert optree.broadcast_prefix([1, 2, 3], [1, 2, 3]) == [1, 2, 3]
@@ -647,6 +601,104 @@ def test_broadcast_prefix():
     assert optree.broadcast_prefix(
         [1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True
     ) == [1, 2, 3, 3, 3, 3]
+
+
+def test_tree_replace_nones():
+    sentinel = object()
+    assert optree.tree_replace_nones(sentinel, {'a': 1, 'b': None, 'c': (2, None)}) == {
+        'a': 1,
+        'b': sentinel,
+        'c': (2, sentinel),
+    }
+    assert optree.tree_replace_nones(sentinel, None) == sentinel
+
+
+def test_tree_reduce():
+    assert optree.tree_reduce(lambda x, y: x + y, {'x': 1, 'y': (2, 3)}) == 6
+    assert optree.tree_reduce(lambda x, y: x + y, {'x': 1, 'y': (2, None), 'z': 3}) == 6
+    assert optree.tree_reduce(lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3}) == 3
+    assert (
+        optree.tree_reduce(
+            lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True
+        )
+        is None
+    )
+    assert (
+        optree.tree_reduce(
+            lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3}, False, none_is_leaf=True
+        )
+        is False
+    )
+
+
+def test_tree_sum():
+    assert optree.tree_sum({'x': 1, 'y': (2, 3)}) == 6
+    assert optree.tree_sum({'x': 1, 'y': (2, None), 'z': 3}) == 6
+    with pytest.raises(
+        TypeError, match=re.escape("unsupported operand type(s) for +: 'int' and 'NoneType'")
+    ):
+        optree.tree_sum({'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
+    assert optree.tree_sum({'x': 'a', 'y': ('b', None), 'z': 'c'}, start='') == 'abc'
+    assert optree.tree_sum({'x': b'a', 'y': (b'b', None), 'z': b'c'}, start=b'') == b'abc'
+    assert optree.tree_sum(
+        {'x': [1], 'y': ([2], [None]), 'z': [3]}, start=[], is_leaf=lambda x: isinstance(x, list)
+    ) == [1, 2, None, 3]
+
+
+def test_tree_max():
+    with pytest.raises(ValueError, match=re.escape('max() arg is an empty sequence')):
+        optree.tree_max({})
+    assert optree.tree_max({}, default=0) == 0
+    assert optree.tree_max({'x': 0, 'y': (2, 1)}) == 2
+    assert optree.tree_max({'x': 0, 'y': (2, 1)}, key=lambda x: -x) == 0
+    with pytest.raises(ValueError, match=re.escape('max() arg is an empty sequence')):
+        optree.tree_max({'a': None})
+    assert optree.tree_max({'a': None}, default=0) == 0
+    assert optree.tree_max({'a': None}, none_is_leaf=True) is None
+    with pytest.raises(ValueError, match=re.escape('max() arg is an empty sequence')):
+        optree.tree_max(None)
+    assert optree.tree_max(None, default=0) == 0
+    assert optree.tree_max(None, none_is_leaf=True) is None
+    assert optree.tree_max(None, default=0, key=lambda x: -x) == 0
+    with pytest.raises(TypeError, match=re.escape("bad operand type for unary -: 'NoneType'")):
+        assert optree.tree_max(None, default=0, key=lambda x: -x, none_is_leaf=True) is None
+
+
+def test_tree_min():
+    with pytest.raises(ValueError, match=re.escape('min() arg is an empty sequence')):
+        optree.tree_min({})
+    assert optree.tree_min({}, default=0) == 0
+    assert optree.tree_min({'x': 0, 'y': (2, 1)}) == 0
+    assert optree.tree_min({'x': 0, 'y': (2, 1)}, key=lambda x: -x) == 2
+    with pytest.raises(ValueError, match=re.escape('min() arg is an empty sequence')):
+        optree.tree_min({'a': None})
+    assert optree.tree_min({'a': None}, default=0) == 0
+    assert optree.tree_min({'a': None}, none_is_leaf=True) is None
+    with pytest.raises(ValueError, match=re.escape('min() arg is an empty sequence')):
+        optree.tree_min(None)
+    assert optree.tree_min(None, default=0) == 0
+    assert optree.tree_min(None, none_is_leaf=True) is None
+    assert optree.tree_min(None, default=0, key=lambda x: -x) == 0
+    with pytest.raises(TypeError, match=re.escape("bad operand type for unary -: 'NoneType'")):
+        assert optree.tree_min(None, default=0, key=lambda x: -x, none_is_leaf=True) is None
+
+
+def test_tree_all():
+    assert optree.tree_all({})
+    assert optree.tree_all({'x': 1, 'y': (2, 3)})
+    assert optree.tree_all({'x': 1, 'y': (2, None), 'z': 3})
+    assert not optree.tree_all({'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
+    assert optree.tree_all(None)
+    assert not optree.tree_all(None, none_is_leaf=True)
+
+
+def test_tree_any():
+    assert not optree.tree_any({})
+    assert optree.tree_any({'x': 0, 'y': (2, 0)})
+    assert not optree.tree_any({'a': None})
+    assert not optree.tree_any({'a': None}, none_is_leaf=True)
+    assert not optree.tree_any(None)
+    assert not optree.tree_any(None, none_is_leaf=True)
 
 
 @parametrize(tree=TREES, none_is_leaf=[False, True], namespace=['', 'undefined', 'namespace'])

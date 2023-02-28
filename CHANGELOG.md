@@ -13,13 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add tree reduce functions `tree_sum`, `tree_max`, and `tree_min` by [@XuehaiPan](https://github.com/XuehaiPan) in [#39](https://github.com/metaopt/optree/pull/39).
 - Test dict key equality with `PyDict_Contains` ($O (n)$) rather than sorting ($O (n \log n)$) by [@XuehaiPan](https://github.com/XuehaiPan) in [#37](https://github.com/metaopt/optree/pull/37).
 - Make error message more clear when value mismatch by [@XuehaiPan](https://github.com/XuehaiPan) in [#36](https://github.com/metaopt/optree/pull/36).
 - Add `ruff` and `flake8` plugins integration by [@XuehaiPan](https://github.com/XuehaiPan) in [#33](https://github.com/metaopt/optree/pull/33) and [#34](https://github.com/metaopt/optree/pull/34).
 
 ### Changed
 
--
+- Change keyword argument `initial` to `initializer` for `tree_reduce` to align with `functools.reduce` by [@XuehaiPan](https://github.com/XuehaiPan) in [#39](https://github.com/metaopt/optree/pull/39).
 
 ### Fixed
 
