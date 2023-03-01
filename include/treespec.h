@@ -109,6 +109,7 @@ class PyTreeSpec {
     [[nodiscard]] py::object Walk(const py::function &f_node,
                                   const py::handle &f_leaf,
                                   const py::iterable &leaves) const;
+
     // Returns true if this PyTreeSpec is a prefix of `other`.
     [[nodiscard]] bool IsPrefix(const PyTreeSpec &other, const bool &strict = false) const;
 
