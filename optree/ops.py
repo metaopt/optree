@@ -746,7 +746,7 @@ def tree_broadcast_prefix(
         A pytree of same structure of ``full_tree`` with broadcasted subtrees in ``prefix_tree``.
     """
 
-    def broadcast_leaves(x: T, subtree: PyTree[S]) -> None:
+    def broadcast_leaves(x: T, subtree: PyTree[S]) -> PyTree[T]:
         subtreespec = tree_structure(
             subtree,
             is_leaf,  # type: ignore[arg-type]
@@ -759,7 +759,7 @@ def tree_broadcast_prefix(
     # use prefix_errors to find disagreements and raise more precise error messages.
     # prefix_errors = prefix_errors(prefix_tree, full_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     return tree_map(
-        broadcast_leaves,
+        broadcast_leaves,  # type: ignore[arg-type]
         prefix_tree,
         full_tree,
         is_leaf=is_leaf,
