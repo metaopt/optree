@@ -50,6 +50,55 @@ def test_treespec_equal_hash():
             assert hash(treespec1_none_is_leaf) != hash(treespec2)
 
 
+@parametrize(tree=TREES, none_is_leaf=[False, True], namespace=['', 'undefined', 'namespace'])
+def test_treespec_rich_compare(tree, none_is_leaf, namespace):
+    count = itertools.count()
+
+    def build_subtree(x):
+        cnt = next(count)
+        if cnt % 4 == 0:
+            return (x,)
+        if cnt % 4 == 1:
+            return [x, x]
+        if cnt % 4 == 2:
+            return (x, [x])
+        return {'a': x, 'b': [x]}
+
+    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+    suffix_treespec = optree.tree_structure(
+        optree.tree_map(build_subtree, tree, none_is_leaf=none_is_leaf, namespace=namespace),
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    assert treespec == treespec
+    assert not (treespec != treespec)
+    assert not (treespec < treespec)
+    assert not (treespec > treespec)
+    assert treespec <= treespec
+    assert treespec >= treespec
+    assert optree.treespec_is_prefix(treespec, treespec, strict=False)
+    assert not optree.treespec_is_prefix(treespec, treespec, strict=True)
+    assert optree.treespec_is_suffix(treespec, treespec, strict=False)
+    assert not optree.treespec_is_suffix(treespec, treespec, strict=True)
+
+    if 'FlatCache' in str(treespec) or treespec == suffix_treespec:
+        return
+
+    assert treespec != suffix_treespec
+    assert not (treespec == suffix_treespec)
+    assert treespec != suffix_treespec
+    assert treespec < suffix_treespec
+    assert not (treespec > suffix_treespec)
+    assert treespec <= suffix_treespec
+    assert not (treespec >= suffix_treespec)
+    assert suffix_treespec != treespec
+    assert not (suffix_treespec == treespec)
+    assert suffix_treespec > treespec
+    assert not (suffix_treespec < treespec)
+    assert suffix_treespec >= treespec
+    assert not (suffix_treespec <= treespec)
+
+
 @parametrize(
     data=list(
         itertools.chain(
@@ -187,26 +236,57 @@ def test_treespec_compose_children(tree, inner_tree, none_is_leaf):
     leaves = [1] * expected_leaves
     composed = optree.tree_unflatten(composed_treespec, leaves)
     assert leaves == optree.tree_leaves(composed, none_is_leaf=none_is_leaf)
-    try:
-        assert composed_treespec == expected_treespec
-    except AssertionError:
-        if 'FlatCache' not in str(expected_treespec):
-            raise
-    try:
-        stack = [(composed_treespec.children(), expected_treespec.children())]
-        while stack:
-            composed_children, expected_children = stack.pop()
-            for composed_child, expected_child in zip(composed_children, expected_children):
-                assert composed_child == expected_child
-                stack.append((composed_child.children(), expected_child.children()))
-    except AssertionError:
-        if 'FlatCache' not in str(expected_treespec):
-            raise
-    try:
-        assert composed_treespec == optree.tree_structure(composed, none_is_leaf=none_is_leaf)
-    except AssertionError:
-        if 'FlatCache' not in str(expected_treespec):
-            raise
+
+    if 'FlatCache' in str(treespec):
+        return
+
+    assert composed_treespec == expected_treespec
+
+    stack = [(composed_treespec.children(), expected_treespec.children())]
+    while stack:
+        composed_children, expected_children = stack.pop()
+        for composed_child, expected_child in zip(composed_children, expected_children):
+            assert composed_child == expected_child
+            stack.append((composed_child.children(), expected_child.children()))
+
+    assert composed_treespec == optree.tree_structure(composed, none_is_leaf=none_is_leaf)
+
+    if treespec == expected_treespec:
+        assert not (treespec != expected_treespec)
+        assert not (treespec < expected_treespec)
+        assert treespec <= expected_treespec
+        assert not (treespec > expected_treespec)
+        assert treespec >= expected_treespec
+        assert expected_treespec >= treespec
+        assert not (expected_treespec > treespec)
+        assert expected_treespec <= treespec
+        assert not (expected_treespec < treespec)
+        assert not optree.treespec_is_prefix(treespec, expected_treespec, strict=True)
+        assert optree.treespec_is_prefix(treespec, expected_treespec, strict=False)
+        assert not optree.treespec_is_suffix(treespec, expected_treespec, strict=True)
+        assert optree.treespec_is_suffix(treespec, expected_treespec, strict=False)
+        assert not optree.treespec_is_prefix(expected_treespec, treespec, strict=True)
+        assert optree.treespec_is_prefix(expected_treespec, treespec, strict=False)
+        assert not optree.treespec_is_suffix(expected_treespec, treespec, strict=True)
+        assert optree.treespec_is_suffix(expected_treespec, treespec, strict=False)
+    else:
+        assert treespec != expected_treespec
+        assert treespec < expected_treespec
+        assert treespec <= expected_treespec
+        assert not (treespec > expected_treespec)
+        assert not (treespec >= expected_treespec)
+        assert expected_treespec >= treespec
+        assert expected_treespec > treespec
+        assert not (expected_treespec <= treespec)
+        assert not (expected_treespec < treespec)
+        assert optree.treespec_is_prefix(treespec, expected_treespec, strict=True)
+        assert optree.treespec_is_prefix(treespec, expected_treespec, strict=False)
+        assert not optree.treespec_is_suffix(treespec, expected_treespec, strict=True)
+        assert not optree.treespec_is_suffix(treespec, expected_treespec, strict=False)
+        assert not optree.treespec_is_prefix(expected_treespec, treespec, strict=True)
+        assert not optree.treespec_is_prefix(expected_treespec, treespec, strict=False)
+        assert optree.treespec_is_suffix(expected_treespec, treespec, strict=True)
+        assert optree.treespec_is_suffix(expected_treespec, treespec, strict=False)
 
 
 def test_treespec_children():

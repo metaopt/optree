@@ -464,5 +464,5 @@ inline std::pair<py::list, py::list> DictKeysDifference(const py::list& /* uniqu
     py::list extra_keys{got_keys - expected_keys};
     TotalOrderSort(missing_keys);
     TotalOrderSort(extra_keys);
-    return {missing_keys, extra_keys};
+    return std::make_pair(std::move(missing_keys), std::move(extra_keys));
 }

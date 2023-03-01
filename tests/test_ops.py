@@ -583,6 +583,24 @@ def test_tree_transpose_mismatch_namespace():
     )
 
 
+def test_tree_broadcast_prefix():
+    assert optree.tree_broadcast_prefix(1, [1, 2, 3]) == [1, 1, 1]
+    assert optree.tree_broadcast_prefix([1, 2, 3], [1, 2, 3]) == [1, 2, 3]
+    with pytest.raises(
+        ValueError, match=re.escape('list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].')
+    ):
+        optree.tree_broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
+    assert optree.tree_broadcast_prefix([1, 2, 3], [1, 2, (3, 4)]) == [1, 2, (3, 3)]
+    assert optree.tree_broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}]) == [
+        1,
+        2,
+        {'a': 3, 'b': 3, 'c': (None, 3)},
+    ]
+    assert optree.tree_broadcast_prefix(
+        [1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True
+    ) == [1, 2, {'a': 3, 'b': 3, 'c': (3, 3)}]
+
+
 def test_broadcast_prefix():
     assert optree.broadcast_prefix(1, [1, 2, 3]) == [1, 1, 1]
     assert optree.broadcast_prefix([1, 2, 3], [1, 2, 3]) == [1, 2, 3]

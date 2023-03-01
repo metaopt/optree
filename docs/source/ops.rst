@@ -35,6 +35,7 @@ Tree Manipulation Functions
     tree_map_with_path
     tree_map_with_path_
     tree_transpose
+    tree_broadcast_prefix
     broadcast_prefix
     tree_replace_nones
     prefix_errors
@@ -51,6 +52,7 @@ Tree Manipulation Functions
 .. autofunction:: tree_map_with_path
 .. autofunction:: tree_map_with_path_
 .. autofunction:: tree_transpose
+.. autofunction:: tree_broadcast_prefix
 .. autofunction:: broadcast_prefix
 .. autofunction:: tree_replace_nones
 .. autofunction:: prefix_errors
@@ -84,6 +86,8 @@ PyTreeSpec Functions
 
 .. autosummary::
 
+    treespec_is_prefix
+    treespec_is_suffix
     treespec_children
     treespec_is_leaf
     treespec_is_strict_leaf
@@ -91,6 +95,8 @@ PyTreeSpec Functions
     treespec_none
     treespec_tuple
 
+.. autofunction:: treespec_is_prefix
+.. autofunction:: treespec_is_suffix
 .. autofunction:: treespec_children
 .. autofunction:: treespec_is_leaf
 .. autofunction:: treespec_is_strict_leaf
