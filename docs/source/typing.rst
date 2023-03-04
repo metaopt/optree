@@ -12,6 +12,7 @@ Typing Support
     CustomTreeNode
     is_namedtuple
     is_namedtuple_class
+    namedtuple_fields
     is_structseq
     is_structseq_class
     structseq_fields
@@ -38,6 +39,8 @@ Typing Support
 .. autofunction:: is_namedtuple
 
 .. autofunction:: is_namedtuple_class
+
+.. autofunction:: namedtuple_fields
 
 .. autofunction:: is_structseq
 

@@ -45,6 +45,7 @@ from optree.typing import (
     U,
     is_namedtuple,
     is_structseq,
+    namedtuple_fields,
     structseq_fields,
 )
 
@@ -1647,11 +1648,11 @@ def _child_keys(
 
     if is_namedtuple(tree):
         # Handle namedtuple as a special case, based on heuristic
-        return list(map(AttributeKeyPathEntry, cast(NamedTuple, tree)._fields))
+        return list(map(AttributeKeyPathEntry, namedtuple_fields(tree)))  # type: ignore[arg-type]
 
     if is_structseq(tree):
         # Handle PyStructSequence as a special case, based on heuristic
-        return list(map(AttributeKeyPathEntry, structseq_fields(tree)))
+        return list(map(AttributeKeyPathEntry, structseq_fields(tree)))  # type: ignore[arg-type]
 
     num_children = treespec.num_children
     return list(map(FlattenedKeyPathEntry, range(num_children)))

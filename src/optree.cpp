@@ -30,7 +30,8 @@ namespace optree {
 void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
     mod.doc() = "Optimized PyTree Utilities.";
     py::register_local_exception<InternalError>(mod, "InternalError", PyExc_RuntimeError);
-    mod.attr("MAX_RECURSION_DEPTH") = MAX_RECURSION_DEPTH;
+    mod.attr("MAX_RECURSION_DEPTH") = py::ssize_t_cast(MAX_RECURSION_DEPTH);
+    mod.attr("Py_TPFLAGS_BASETYPE") = py::ssize_t_cast(Py_TPFLAGS_BASETYPE);
 
     mod.def("register_node",
             &PyTreeTypeRegistry::Register,
@@ -73,10 +74,23 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
              "Make a tuple treespec from a list of child treespecs.",
              py::arg("treespecs"),
              py::arg("none_is_leaf") = false)
+        .def("is_namedtuple",
+             &IsNamedTuple,
+             "Return whether the object is an instance of namedtuple or a subclass of namedtuple.",
+             py::arg("obj"))
         .def("is_namedtuple_class",
              &IsNamedTupleClass,
              "Return whether the class is a subclass of namedtuple.",
              py::arg("cls"))
+        .def("namedtuple_fields",
+             &NamedTupleGetFields,
+             "Return the field names of a namedtuple.",
+             py::arg("obj"))
+        .def("is_structseq",
+             &IsStructSequence,
+             "Return whether the object is an instance of PyStructSequence or a class of "
+             "PyStructSequence.",
+             py::arg("obj"))
         .def("is_structseq_class",
              &IsStructSequenceClass,
              "Return whether the object is a class of PyStructSequence.",

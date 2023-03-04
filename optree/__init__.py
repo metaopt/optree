@@ -70,6 +70,7 @@ from optree.typing import (
     is_namedtuple_class,
     is_structseq,
     is_structseq_class,
+    namedtuple_fields,
     structseq_fields,
 )
 from optree.version import __version__
@@ -127,6 +128,7 @@ __all__ = [
     'UnflattenFunc',
     'is_namedtuple',
     'is_namedtuple_class',
+    'namedtuple_fields',
     'is_structseq',
     'is_structseq_class',
     'structseq_fields',
