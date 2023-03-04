@@ -1,4 +1,4 @@
-# Copyright 2022 MetaOPT Team. All Rights Reserved.
+# Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,9 +26,9 @@ def test_safe_zip():
     assert safe_zip([1, 2]) == [(1,), (2,)]
     assert safe_zip([1, 2], [3, 4]) == [(1, 3), (2, 4)]
     assert safe_zip([1, 2], [3, 4], [5, 6]) == [(1, 3, 5), (2, 4, 6)]
-    with pytest.raises(AssertionError, match='length mismatch'):
+    with pytest.raises(ValueError, match='length mismatch'):
         safe_zip([1, 2], [3, 4, 5])
-    with pytest.raises(AssertionError, match='length mismatch'):
+    with pytest.raises(ValueError, match='length mismatch'):
         safe_zip([1, 2], [3, 4], [5, 6, 7])
 
 

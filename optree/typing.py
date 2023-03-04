@@ -282,11 +282,11 @@ def namedtuple_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
     if isinstance(obj, type):
         cls = obj
         if not is_namedtuple_class(cls):
-            raise ValueError(f'Expected a collections.namedtuple type, got {cls!r}.')
+            raise TypeError(f'Expected a collections.namedtuple type, got {cls!r}.')
     else:
         cls = type(obj)
         if not is_namedtuple_class(cls):
-            raise ValueError(f'Expected an instance of collections.namedtuple type, got {obj!r}.')
+            raise TypeError(f'Expected an instance of collections.namedtuple type, got {obj!r}.')
     return cls._fields  # type: ignore[attr-defined]
 
 
@@ -320,11 +320,11 @@ def structseq_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
     if isinstance(obj, type):
         cls = obj
         if not is_structseq_class(cls):
-            raise ValueError(f'Expected a PyStructSequence type, got {cls!r}.')
+            raise TypeError(f'Expected a PyStructSequence type, got {cls!r}.')
     else:
         cls = type(obj)
         if not is_structseq_class(cls):
-            raise ValueError(f'Expected an instance of PyStructSequence type, got {obj!r}.')
+            raise TypeError(f'Expected an instance of PyStructSequence type, got {obj!r}.')
 
     n_sequence_fields: int = cls.n_sequence_fields  # type: ignore[attr-defined]
     fields: list[str] = []

@@ -15,9 +15,6 @@ limitations under the License.
 ================================================================================
 */
 
-// Caution: this code uses exceptions. The exception use is local to the binding
-// code and the idiomatic way to emit Python exceptions.
-
 #pragma once
 
 #include <absl/strings/str_format.h>

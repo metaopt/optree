@@ -99,29 +99,29 @@ def test_namedtuple_fields():
     assert optree.namedtuple_fields(CustomNamedTupleSubclass(1, 2)) == ('foo', 'bar')
 
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(r'Expected an instance of collections.namedtuple type, got [1, 2].'),
     ):
         optree.namedtuple_fields([1, 2])
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(r"Expected a collections.namedtuple type, got <class 'list'>."),
     ):
         optree.namedtuple_fields(list)
 
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(r'Expected an instance of collections.namedtuple type, got (1, 2).'),
     ):
         optree.namedtuple_fields((1, 2))
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(r"Expected a collections.namedtuple type, got <class 'tuple'>."),
     ):
         optree.namedtuple_fields(tuple)
 
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(
             r'Expected an instance of collections.namedtuple type, '
             r'got time.struct_time(tm_year=0, tm_mon=1, tm_mday=2, tm_hour=3, tm_min=4, tm_sec=5, tm_wday=6, tm_yday=7, tm_isdst=8).'
@@ -129,18 +129,18 @@ def test_namedtuple_fields():
     ):
         optree.namedtuple_fields(time.struct_time(range(9)))
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(r"Expected a collections.namedtuple type, got <class 'time.struct_time'>."),
     ):
         optree.namedtuple_fields(time.struct_time)
 
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(r'Expected an instance of collections.namedtuple type, got (1, 2, 3).'),
     ):
         optree.namedtuple_fields(FakeNamedTuple((1, 2, 3)))
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=r"Expected a collections.namedtuple type, got <class '.*\.FakeNamedTuple'>\.",
     ):
         optree.namedtuple_fields(FakeNamedTuple)
@@ -197,47 +197,47 @@ def test_structseq_fields():
     )
 
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(r'Expected an instance of PyStructSequence type, got [1, 2].'),
     ):
         optree.structseq_fields([1, 2])
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(r"Expected a PyStructSequence type, got <class 'list'>."),
     ):
         optree.structseq_fields(list)
 
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(r'Expected an instance of PyStructSequence type, got (1, 2).'),
     ):
         optree.structseq_fields((1, 2))
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(r"Expected a PyStructSequence type, got <class 'tuple'>."),
     ):
         optree.structseq_fields(tuple)
 
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(
             r'Expected an instance of PyStructSequence type, got CustomTuple(foo=1, bar=2).'
         ),
     ):
         optree.structseq_fields(CustomTuple(1, 2))
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(r"Expected a PyStructSequence type, got <class 'helpers.CustomTuple'>."),
     ):
         optree.structseq_fields(CustomTuple)
 
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=re.escape(r'Expected an instance of PyStructSequence type, got (1, 2).'),
     ):
         optree.structseq_fields(FakeStructSequence((1, 2)))
     with pytest.raises(
-        ValueError,
+        TypeError,
         match=r"Expected a PyStructSequence type, got <class '.*\.FakeStructSequence'>\.",
     ):
         optree.structseq_fields(FakeStructSequence)

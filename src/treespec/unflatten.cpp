@@ -15,9 +15,6 @@ limitations under the License.
 ================================================================================
 */
 
-// Caution: this code uses exceptions. The exception use is local to the binding
-// code and the idiomatic way to emit Python exceptions.
-
 #include "include/treespec.h"
 
 namespace optree {
@@ -36,7 +33,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
             case PyTreeKind::Leaf: {
                 if (node.kind == PyTreeKind::Leaf || m_none_is_leaf) [[likely]] {
                     if (it == leaves.end()) [[unlikely]] {
-                        throw std::invalid_argument(absl::StrFormat(
+                        throw py::value_error(absl::StrFormat(
                             "Too few leaves for PyTreeSpec; expected: %ld, got: %ld.",
                             GetNumLeaves(),
                             leaf_count));
@@ -74,7 +71,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
         }
     }
     if (it != leaves.end()) [[unlikely]] {
-        throw std::invalid_argument(
+        throw py::value_error(
             absl::StrFormat("Too many leaves for PyTreeSpec; expected: %ld.", GetNumLeaves()));
     }
     EXPECT_EQ(agenda.size(), 1, "PyTreeSpec traversal did not yield a singleton.");

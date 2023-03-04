@@ -15,9 +15,6 @@ limitations under the License.
 ================================================================================
 */
 
-// Caution: this code uses exceptions. The exception use is local to the binding
-// code and the idiomatic way to emit Python exceptions.
-
 #include "include/registry.h"
 
 namespace optree {
@@ -71,7 +68,7 @@ template <bool NoneIsLeaf>
     registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
     if (registry_namespace.empty()) [[unlikely]] {
         if (!registry->m_registrations.emplace(cls, std::move(registration)).second) [[unlikely]] {
-            throw std::invalid_argument(absl::StrFormat(
+            throw py::value_error(absl::StrFormat(
                 "PyTree type %s is already registered in the global namespace.", py::repr(cls)));
         }
         if (IsNamedTupleClass(cls)) [[unlikely]] {
@@ -95,13 +92,13 @@ template <bool NoneIsLeaf>
         }
     } else [[likely]] {
         if (registry->m_registrations.find(cls) != registry->m_registrations.end()) [[unlikely]] {
-            throw std::invalid_argument(absl::StrFormat(
+            throw py::value_error(absl::StrFormat(
                 "PyTree type %s is already registered in the global namespace.", py::repr(cls)));
         }
         if (!registry->m_named_registrations
                  .emplace(std::make_pair(registry_namespace, cls), std::move(registration))
                  .second) [[unlikely]] {
-            throw std::invalid_argument(
+            throw py::value_error(
                 absl::StrFormat("PyTree type %s is already registered in namespace %s.",
                                 py::repr(cls),
                                 py::repr(py::str(registry_namespace))));
