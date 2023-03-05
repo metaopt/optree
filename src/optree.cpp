@@ -26,7 +26,7 @@ namespace optree {
 
 void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
     mod.doc() = "Optimized PyTree Utilities.";
-    py::register_local_exception<InternalError>(mod, "InternalError", PyExc_RuntimeError);
+    py::register_local_exception<InternalError>(mod, "InternalError", PyExc_SystemError);
     mod.attr("MAX_RECURSION_DEPTH") = py::ssize_t_cast(MAX_RECURSION_DEPTH);
     mod.attr("Py_TPFLAGS_BASETYPE") = py::ssize_t_cast(Py_TPFLAGS_BASETYPE);
 
