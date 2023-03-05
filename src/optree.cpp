@@ -163,7 +163,6 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
              &PyTreeSpec::IsLeaf,
              "Test whether the current node is a leaf.",
              py::arg("strict") = true)
-        .def("__str__", &PyTreeSpec::ToString, "Return a string representation of the treespec.")
         .def("__repr__", &PyTreeSpec::ToString, "Return a string representation of the treespec.")
         .def(
             "__eq__",
