@@ -212,6 +212,11 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
         .def(py::pickle([](const PyTreeSpec& t) { return t.ToPicklable(); },
                         [](const py::object& o) { return PyTreeSpec::FromPicklable(o); }),
              "Serialization support for PyTreeSpec.");
+
+#ifdef Py_TPFLAGS_IMMUTABLETYPE
+    reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_flags |=
+        Py_TPFLAGS_IMMUTABLETYPE;
+#endif
 }
 
 }  // namespace optree
