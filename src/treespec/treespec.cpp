@@ -15,9 +15,6 @@ limitations under the License.
 ================================================================================
 */
 
-// Caution: this code uses exceptions. The exception use is local to the binding
-// code and the idiomatic way to emit Python exceptions.
-
 #include "include/treespec.h"
 
 #include <Python.h>
@@ -152,11 +149,11 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec& other, const bool& strict) const {
 
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
     if (m_none_is_leaf != inner_treespec.m_none_is_leaf) [[unlikely]] {
-        throw std::invalid_argument("PyTreeSpecs must have the same none_is_leaf value.");
+        throw py::value_error("PyTreeSpecs must have the same none_is_leaf value.");
     }
     if (!m_namespace.empty() && !inner_treespec.m_namespace.empty() &&
         m_namespace != inner_treespec.m_namespace) [[unlikely]] {
-        throw std::invalid_argument(
+        throw py::value_error(
             absl::StrFormat("PyTreeSpecs must have the same namespace. Got %s vs. %s.",
                             py::repr(py::str(m_namespace)),
                             py::repr(py::str(inner_treespec.m_namespace))));
@@ -224,14 +221,14 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
     std::string registry_namespace;
     for (const PyTreeSpec& treespec : treespecs) {
         if (treespec.m_none_is_leaf != none_is_leaf) [[unlikely]] {
-            throw std::invalid_argument(absl::StrFormat(
-                "Expected treespecs with `node_is_leaf=%s`.", (none_is_leaf ? "True" : "False")));
+            throw py::value_error(absl::StrFormat("Expected treespecs with `node_is_leaf=%s`.",
+                                                  (none_is_leaf ? "True" : "False")));
         }
         if (!treespec.m_namespace.empty()) [[unlikely]] {
             if (registry_namespace.empty()) [[likely]] {
                 registry_namespace = treespec.m_namespace;
             } else if (registry_namespace != treespec.m_namespace) [[unlikely]] {
-                throw std::invalid_argument(
+                throw py::value_error(
                     absl::StrFormat("Expected treespecs with the same namespace. Got %s vs. %s.",
                                     py::repr(py::str(registry_namespace)),
                                     py::repr(py::str(treespec.m_namespace))));
@@ -380,10 +377,10 @@ template <bool NoneIsLeaf>
         return registration->kind;
     }
     *custom = nullptr;
-    if (IsNamedTuple(handle)) [[unlikely]] {
+    if (IsNamedTupleInstance(handle)) [[unlikely]] {
         return PyTreeKind::NamedTuple;
     }
-    if (IsStructSequence(handle)) [[unlikely]] {
+    if (IsStructSequenceInstance(handle)) [[unlikely]] {
         return PyTreeKind::StructSequence;
     }
     return PyTreeKind::Leaf;

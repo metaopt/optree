@@ -317,7 +317,7 @@ def test_paths(data):
 )
 def test_round_trip_is_leaf(tree, is_leaf, none_is_leaf, namespace):
     subtrees, treespec = optree.tree_flatten(
-        tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace
+        tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace
     )
     actual = optree.tree_unflatten(treespec, subtrees)
     assert actual == tree
@@ -348,12 +348,8 @@ def test_all_leaves_with_leaves(leaf, none_is_leaf):
     namespace=['', 'undefined', 'namespace'],
 )
 def test_all_leaves_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
-    leaves = optree.tree_leaves(
-        tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace
-    )
-    assert optree.all_leaves(
-        leaves, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace
-    )
+    leaves = optree.tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    assert optree.all_leaves(leaves, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
 
 def test_tree_map():

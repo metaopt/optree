@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import types
 from typing import (
     Any,
     Callable,
@@ -62,6 +63,7 @@ __all__ = [
     'UnflattenFunc',
     'is_namedtuple',
     'is_namedtuple_class',
+    'namedtuple_fields',
     'is_structseq',
     'is_structseq_class',
     'structseq_fields',
@@ -275,33 +277,72 @@ def is_namedtuple_class(cls: type) -> bool:
     )
 
 
+def namedtuple_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
+    """Return the field names of a namedtuple."""
+    if isinstance(obj, type):
+        cls = obj
+        if not is_namedtuple_class(cls):
+            raise TypeError(f'Expected a collections.namedtuple type, got {cls!r}.')
+    else:
+        cls = type(obj)
+        if not is_namedtuple_class(cls):
+            raise TypeError(f'Expected an instance of collections.namedtuple type, got {obj!r}.')
+    return cls._fields  # type: ignore[attr-defined]
+
+
 def is_structseq(obj: object | type) -> bool:
     """Return whether the object is an instance of PyStructSequence or a class of PyStructSequence."""
     cls = obj if isinstance(obj, type) else type(obj)
     return is_structseq_class(cls)
 
 
+# Set if the type allows subclassing (see CPython's Include/object.h)
+Py_TPFLAGS_BASETYPE = _C.Py_TPFLAGS_BASETYPE  # (1UL << 10)
+
+
 def is_structseq_class(cls: type) -> bool:
     """Return whether the class is a class of PyStructSequence."""
-    if (
+    return (
         isinstance(cls, type)
         # Check direct inheritance from `tuple` rather than `issubclass(cls, tuple)`
         and cls.__base__ is tuple
+        # Check PyStructSequence members
         and isinstance(getattr(cls, 'n_sequence_fields', None), int)
         and isinstance(getattr(cls, 'n_fields', None), int)
         and isinstance(getattr(cls, 'n_unnamed_fields', None), int)
-    ):
-        try:
-            # pylint: disable-next=missing-class-docstring,too-few-public-methods,unused-variable
-            class SubClass(cls):  # type: ignore[misc,valid-type]
-                pass
+        # Check the type does not allow subclassing
+        and not (cls.__flags__ & Py_TPFLAGS_BASETYPE)
+    )
 
-        except TypeError:
-            return True
 
-    return False
+def structseq_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
+    """Return the field names of a PyStructSequence."""
+    if isinstance(obj, type):
+        cls = obj
+        if not is_structseq_class(cls):
+            raise TypeError(f'Expected a PyStructSequence type, got {cls!r}.')
+    else:
+        cls = type(obj)
+        if not is_structseq_class(cls):
+            raise TypeError(f'Expected an instance of PyStructSequence type, got {obj!r}.')
+
+    n_sequence_fields: int = cls.n_sequence_fields  # type: ignore[attr-defined]
+    fields: list[str] = []
+    for name, member in vars(cls).items():
+        if len(fields) >= n_sequence_fields:
+            break
+        if isinstance(member, types.MemberDescriptorType):
+            fields.append(name)
+    return tuple(fields)
 
 
 # Ensure that the behavior is consistent with C++ implementation
 # pylint: disable-next=wrong-import-position,ungrouped-imports
-from optree._C import is_namedtuple_class, is_structseq_class, structseq_fields
+from optree._C import (
+    is_namedtuple,
+    is_namedtuple_class,
+    is_structseq,
+    is_structseq_class,
+    namedtuple_fields,
+    structseq_fields,
+)
