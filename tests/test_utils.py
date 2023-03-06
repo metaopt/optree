@@ -17,7 +17,41 @@
 
 import pytest
 
-from optree.utils import safe_zip, unzip2
+from optree.utils import safe_zip, total_order_sorted, unzip2
+
+
+def test_total_order_sorted():
+    assert total_order_sorted([]) == []
+    assert total_order_sorted([1, 5, 4, 2, 3]) == [1, 2, 3, 4, 5]
+    assert total_order_sorted([1, 5, 4.1, 2, 3]) == [1, 2, 3, 4.1, 5]
+    assert total_order_sorted([1, 5, 4, 2, 3], reverse=True) == [5, 4, 3, 2, 1]
+    assert total_order_sorted([1, 5, 4.1, 2, 3], reverse=True) == [5, 4.1, 3, 2, 1]
+    assert total_order_sorted([1, 5, 4, '20', '3']) == [1, 4, 5, '20', '3']
+    assert total_order_sorted([1, 5, 4.5, '20', '3']) == [4.5, 1, 5, '20', '3']
+    assert total_order_sorted(
+        {1: 1, 5: 2, 4.5: 3, '20': 4, '3': 5}.items(), key=lambda kv: kv[0]
+    ) == [(4.5, 3), (1, 1), (5, 2), ('20', 4), ('3', 5)]
+
+    class NonSortable:
+        def __init__(self, x):
+            self.x = x
+
+        def __repr__(self) -> str:
+            return f'{self.__class__.__name__}({self.x})'
+
+        def __eq__(self, other):
+            return isinstance(other, self.__class__) and self.x == other.x
+
+        def __hash__(self):
+            return hash(self.x)
+
+    assert total_order_sorted([1, 5, 4, NonSortable(2), NonSortable(3)]) == [
+        1,
+        5,
+        4,
+        NonSortable(2),
+        NonSortable(3),
+    ]
 
 
 def test_safe_zip():

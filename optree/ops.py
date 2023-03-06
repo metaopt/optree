@@ -21,7 +21,7 @@ from __future__ import annotations
 import difflib
 import functools
 import textwrap
-from collections import deque
+from collections import OrderedDict, defaultdict, deque
 from typing import Any, Callable, cast, overload
 
 from optree import _C
@@ -1538,6 +1538,9 @@ def prefix_errors(
     )
 
 
+STANDARD_DICT_TYPES = frozenset([dict, OrderedDict, defaultdict])
+
+
 # pylint: disable-next=too-many-locals
 def _prefix_error(
     key_path: KeyPath,
@@ -1555,7 +1558,17 @@ def _prefix_error(
         return
 
     # The subtrees may disagree because their roots are of different types:
-    if type(prefix_tree) is not type(full_tree):
+    prefix_tree_type = type(prefix_tree)
+    full_tree_type = type(full_tree)
+    both_standard_dict = (
+        prefix_tree_type in STANDARD_DICT_TYPES  # type: ignore[comparison-overlap]
+        and full_tree_type in STANDARD_DICT_TYPES  # type: ignore[comparison-overlap]
+    )
+    both_deque = prefix_tree_type is deque and full_tree_type is deque  # type: ignore[comparison-overlap]
+    if prefix_tree_type is not full_tree_type and (
+        # Special handling for directory types
+        not both_standard_dict
+    ):
         yield lambda name: ValueError(
             f'pytree structure error: different types at key path\n'
             f'    {{name}}{key_path.pprint()}\n'
@@ -1575,6 +1588,41 @@ def _prefix_error(
     full_tree_children, full_tree_metadata, _ = flatten_one_level(
         full_tree, none_is_leaf=none_is_leaf, namespace=namespace
     )
+    # Special handling for directory types
+    if both_standard_dict:
+        prefix_tree_keys = (
+            prefix_tree_metadata
+            if prefix_tree_type is not defaultdict  # type: ignore[comparison-overlap]
+            else prefix_tree_metadata[1]  # type: ignore[index]
+        )
+        full_tree_keys = (
+            full_tree_metadata
+            if full_tree_type is not defaultdict  # type: ignore[comparison-overlap]
+            else full_tree_metadata[1]  # type: ignore[index]
+        )
+        prefix_tree_keys_set = set(prefix_tree_keys)
+        full_tree_keys_set = set(full_tree_keys)
+        if prefix_tree_keys_set != full_tree_keys_set:
+            missing_keys = sorted(prefix_tree_keys_set.difference(full_tree_keys_set))
+            extra_keys = sorted(full_tree_keys_set.difference(prefix_tree_keys_set))
+            key_difference = ''
+            if missing_keys:
+                key_difference += f'\nmissing key(s):\n    {missing_keys}'
+            if extra_keys:
+                key_difference += f'\nextra key(s):\n    {extra_keys}'
+            yield lambda name: ValueError(
+                f'pytree structure error: different pytree keys at key path\n'
+                f'    {{name}}{key_path.pprint()}\n'
+                f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
+                f'    {type(prefix_tree)}\n'
+                f'with {len(prefix_tree_keys)} key(s)\n'
+                f'    {prefix_tree_keys}\n'
+                f'but at the same key path the full pytree has a subtree of the same '
+                f'type but with {len(full_tree_keys)} key(s)\n'
+                f'    {full_tree_keys}{key_difference}'.format(name=name)
+            )
+            return  # don't look for more errors in this subtree
+
     if len(prefix_tree_children) != len(full_tree_children):
         yield lambda name: ValueError(
             f'pytree structure error: different numbers of pytree children at key path\n'
@@ -1588,7 +1636,14 @@ def _prefix_error(
         return  # don't look for more errors in this subtree
 
     # Or they may disagree if their roots have different pytree metadata:
-    if prefix_tree_metadata != full_tree_metadata:
+    if (
+        prefix_tree_metadata != full_tree_metadata
+        and (not both_deque)  # ignore maxlen mismatch for deque
+        and (
+            # Special handling for directory types already done in the keys check above
+            not both_standard_dict
+        )
+    ):
         prefix_tree_metadata_repr = repr(prefix_tree_metadata)
         full_tree_metadata_repr = repr(full_tree_metadata)
         metadata_diff = textwrap.indent(
@@ -1619,7 +1674,10 @@ def _prefix_error(
     # so recurse:
     keys = _child_keys(prefix_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     keys_ = _child_keys(full_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)  # type: ignore[arg-type]
-    assert keys == keys_, f'equal pytree nodes gave different keys: {keys} and {keys_}'
+    assert keys == keys_ or (
+        # Special handling for directory types already done in the keys check above
+        both_standard_dict
+    ), f'equal pytree nodes gave different keys: {keys} and {keys_}'
     # pylint: disable-next=invalid-name
     for k, t1, t2 in zip(keys, prefix_tree_children, full_tree_children):
         yield from _prefix_error(

@@ -23,7 +23,7 @@ import pytest
 import optree
 
 # pylint: disable-next=wrong-import-order
-from helpers import CustomTuple, TimeStructTime, Vector2D
+from helpers import CustomTuple, FlatCache, TimeStructTime, Vector2D
 from optree.registry import (
     AttributeKeyPathEntry,
     FlattenedKeyPathEntry,
@@ -35,7 +35,24 @@ from optree.registry import (
 
 def test_different_types():
     lhs, rhs = (1, 2), [1, 2]
-    with pytest.raises(ValueError, match=r'Expected an instance of .*, got .*\.'):
+    with pytest.raises(ValueError, match=r'Expected an instance of tuple, got .*\.'):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
+    expected = re.escape(
+        'pytree structure error: different types at key path\n' '    in_axes tree root'
+    )
+    with pytest.raises(ValueError, match=expected):
+        raise e('in_axes')
+
+    lhs, rhs = {'a': 1, 'b': 2}, [1, 2]
+    with pytest.raises(
+        ValueError,
+        match=(
+            r'Expected an instance of dict, collections.OrderedDict, or collections.defaultdict, '
+            r'got .*\.'
+        ),
+    ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
     (e,) = optree.prefix_errors(lhs, rhs)
@@ -46,26 +63,12 @@ def test_different_types():
         raise e('in_axes')
 
     lhs, rhs = {'a': 1, 'b': 2}, OrderedDict({'a': 1, 'b': 2})
-    with pytest.raises(ValueError, match=r'Expected an instance of .*, got .*\.'):
-        optree.tree_map_(lambda x, y: None, lhs, rhs)
-
-    (e,) = optree.prefix_errors(lhs, rhs)
-    expected = re.escape(
-        'pytree structure error: different types at key path\n' '    in_axes tree root'
-    )
-    with pytest.raises(ValueError, match=expected):
-        raise e('in_axes')
+    optree.tree_map_(lambda x, y: None, lhs, rhs)
+    () = optree.prefix_errors(lhs, rhs)
 
     lhs, rhs = {'a': 1, 'b': 2}, defaultdict(int, {'a': 1, 'b': 2})
-    with pytest.raises(ValueError, match=r'Expected an instance of .*, got .*\.'):
-        optree.tree_map_(lambda x, y: None, lhs, rhs)
-
-    (e,) = optree.prefix_errors(lhs, rhs)
-    expected = re.escape(
-        'pytree structure error: different types at key path\n' '    in_axes tree root'
-    )
-    with pytest.raises(ValueError, match=expected):
-        raise e('in_axes')
+    optree.tree_map_(lambda x, y: None, lhs, rhs)
+    () = optree.prefix_errors(lhs, rhs)
 
 
 def test_different_types_nested():
@@ -150,13 +153,14 @@ def test_different_num_children_multiple():
 def test_different_metadata():
     lhs, rhs = {1: 2}, {3: 4}
     with pytest.raises(
-        ValueError, match=r'dict key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.'
+        ValueError,
+        match=r'dictionary key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different pytree metadata at key path\n' '    in_axes tree root'
+        'pytree structure error: different pytree keys at key path\n' '    in_axes tree root'
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -164,35 +168,41 @@ def test_different_metadata():
     lhs, rhs = OrderedDict({'a': 1, 'b': 2}), OrderedDict({'a': 3, 'c': 4})
     with pytest.raises(
         ValueError,
-        match=r'OrderedDict key mismatch; expected key\(s\): .*, got key\(s\): .*; OrderedDict: .*\.',
+        match=r'dictionary key mismatch; expected key\(s\): .*, got key\(s\): .*; OrderedDict: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different pytree metadata at key path\n' '    in_axes tree root'
+        'pytree structure error: different pytree keys at key path\n' '    in_axes tree root'
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
 
     lhs, rhs = OrderedDict({'a': 1, 'b': 2}), OrderedDict({'b': 4, 'a': 3})
-    with pytest.raises(
-        ValueError,
-        match=r'OrderedDict key mismatch; expected key\(s\): .*, got key\(s\): .*; OrderedDict: .*\.',
-    ):
-        optree.tree_map_(lambda x, y: None, lhs, rhs)
-
-    (e,) = optree.prefix_errors(lhs, rhs)
-    expected = re.escape(
-        'pytree structure error: different pytree metadata at key path\n' '    in_axes tree root'
-    )
-    with pytest.raises(ValueError, match=expected):
-        raise e('in_axes')
+    optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore key ordering
+    () = optree.prefix_errors(lhs, rhs)
 
     lhs, rhs = defaultdict(list, {'a': 1, 'b': 2}), defaultdict(set, {'b': 4, 'a': 3})
+    optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore default factory
+    () = optree.prefix_errors(lhs, rhs)
+
+    lhs, rhs = {'a': 1, 'b': 2}, defaultdict(list, {'b': 4, 'a': 3})
+    optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore dictionary types
+    () = optree.prefix_errors(lhs, rhs)
+
+    lhs, rhs = OrderedDict({'b': 4, 'a': 3}), {'a': 1, 'b': 2}
+    optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore dictionary types
+    () = optree.prefix_errors(lhs, rhs)
+
+    lhs, rhs = deque([1, 2], maxlen=None), deque([3, 4], maxlen=3)
+    optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore maxlen
+    () = optree.prefix_errors(lhs, rhs)
+
+    lhs, rhs = FlatCache([None, 1]), FlatCache(1)
     with pytest.raises(
         ValueError,
-        match=r'defaultdict factory mismatch; expected factory: .*, got factory: .*; defaultdict: .*\.',
+        match=r'Mismatch custom node data; expected: .*, got: .*; value: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
@@ -207,13 +217,14 @@ def test_different_metadata():
 def test_different_metadata_nested():
     lhs, rhs = [{1: 2}], [{3: 4}]
     with pytest.raises(
-        ValueError, match=r'dict key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.'
+        ValueError,
+        match=r'dictionary key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different pytree metadata at key path\n' '    in_axes[0]'
+        'pytree structure error: different pytree keys at key path\n' '    in_axes[0]'
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -222,18 +233,19 @@ def test_different_metadata_nested():
 def test_different_metadata_multiple():
     lhs, rhs = [{1: 2}, {3: 4}], [{3: 4}, {5: 6}]
     with pytest.raises(
-        ValueError, match=r'dict key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.'
+        ValueError,
+        match=r'dictionary key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
     e1, e2 = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different pytree metadata at key path\n' '    in_axes[0]'
+        'pytree structure error: different pytree keys at key path\n' '    in_axes[0]'
     )
     with pytest.raises(ValueError, match=expected):
         raise e1('in_axes')
     expected = re.escape(
-        'pytree structure error: different pytree metadata at key path\n' '    in_axes[1]'
+        'pytree structure error: different pytree keys at key path\n' '    in_axes[1]'
     )
     with pytest.raises(ValueError, match=expected):
         raise e2('in_axes')
@@ -284,10 +296,17 @@ def test_no_errors():
 
 
 def test_different_structure_no_children():
-    (e,) = optree.prefix_errors({}, {'a': []})
+    (e,) = optree.prefix_errors((), ([],))
     expected = re.escape(
         'pytree structure error: different numbers of pytree children at key path\n'
         '    in_axes tree root'
+    )
+    with pytest.raises(ValueError, match=expected):
+        raise e('in_axes')
+
+    (e,) = optree.prefix_errors({}, {'a': []})
+    expected = re.escape(
+        'pytree structure error: different pytree keys at key path\n' '    in_axes tree root'
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')

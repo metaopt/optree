@@ -45,6 +45,8 @@ fmt
 CustomTreeNode
 ForwardRef
 Deque
+deque
+maxlen
 TensorTree
 unhashable
 xys
@@ -62,3 +64,4 @@ isinstance
 initializer
 CPython
 CPython's
+sortable
