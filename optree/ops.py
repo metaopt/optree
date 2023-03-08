@@ -1614,11 +1614,12 @@ def _prefix_error(
                 f'pytree structure error: different pytree keys at key path\n'
                 f'    {{name}}{key_path.pprint()}\n'
                 f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
-                f'    {type(prefix_tree)}\n'
+                f'    {prefix_tree_type}\n'
                 f'with {len(prefix_tree_keys)} key(s)\n'
                 f'    {prefix_tree_keys}\n'
-                f'but at the same key path the full pytree has a subtree of the same '
-                f'type but with {len(full_tree_keys)} key(s)\n'
+                f'but at the same key path the full pytree has a subtree of type\n'
+                f'    {full_tree_type}\n'
+                f'but with {len(full_tree_keys)} key(s)\n'
                 f'    {full_tree_keys}{key_difference}'.format(name=name)
             )
             return  # don't look for more errors in this subtree
@@ -1628,7 +1629,7 @@ def _prefix_error(
             f'pytree structure error: different numbers of pytree children at key path\n'
             f'    {{name}}{key_path.pprint()}\n'
             f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
-            f'    {type(prefix_tree)}\n'
+            f'    {prefix_tree_type}\n'
             f'with {len(prefix_tree_children)} children, '
             f'but at the same key path the full pytree has a subtree of the same '
             f'type but with {len(full_tree_children)} children.'.format(name=name)
@@ -1659,7 +1660,7 @@ def _prefix_error(
             f'pytree structure error: different pytree metadata at key path\n'
             f'    {{name}}{key_path.pprint()}\n'
             f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
-            f'    {type(prefix_tree)}\n'
+            f'    {prefix_tree_type}\n'
             f'with metadata\n'
             f'    {prefix_tree_metadata_repr}\n'
             f'but at the same key path the full pytree has a subtree of the same '
