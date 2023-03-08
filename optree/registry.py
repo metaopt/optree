@@ -277,11 +277,11 @@ def register_pytree_node_class(
     return cls
 
 
-def _sorted_items(items: Iterable[tuple[KT, VT]]) -> Iterable[tuple[KT, VT]]:  # pragma: no cover
+def _sorted_items(items: Iterable[tuple[KT, VT]]) -> list[tuple[KT, VT]]:  # pragma: no cover
     return total_order_sorted(items, key=lambda kv: kv[0])
 
 
-def _sorted_keys(dct: dict[KT, VT]) -> Iterable[KT]:  # pragma: no cover
+def _sorted_keys(dct: dict[KT, VT]) -> list[KT]:  # pragma: no cover
     return total_order_sorted(dct)
 
 
@@ -339,12 +339,14 @@ _nodetype_registry: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {
 
 
 def _pytree_node_registry_get(
-    type: type, *, namespace: str = __GLOBAL_NAMESPACE
+    cls: type,
+    *,
+    namespace: str = __GLOBAL_NAMESPACE,
 ) -> PyTreeNodeRegistryEntry | None:
-    entry: PyTreeNodeRegistryEntry | None = _nodetype_registry.get(type)
+    entry: PyTreeNodeRegistryEntry | None = _nodetype_registry.get(cls)
     if entry is not None or namespace is __GLOBAL_NAMESPACE or namespace == '':
         return entry
-    return _nodetype_registry.get((namespace, type))
+    return _nodetype_registry.get((namespace, cls))
 
 
 register_pytree_node.get = _pytree_node_registry_get  # type: ignore[attr-defined]
