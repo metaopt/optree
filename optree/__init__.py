@@ -48,6 +48,7 @@ from optree.ops import (
     treespec_is_suffix,
     treespec_leaf,
     treespec_none,
+    treespec_paths,
     treespec_tuple,
 )
 from optree.registry import (
@@ -105,6 +106,7 @@ __all__ = [
     'prefix_errors',
     'treespec_is_prefix',
     'treespec_is_suffix',
+    'treespec_paths',
     'treespec_children',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',

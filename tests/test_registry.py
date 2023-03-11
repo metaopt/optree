@@ -388,6 +388,7 @@ def test_pytree_node_registry_with_init_subclass():
     paths, leaves, treespec = optree.tree_flatten_with_path(tree, namespace='mydict')
     assert paths == [('c', 'f'), ('c', 'd'), ('b',), ('a', 0), ('a', 1)]
     assert leaves == [6, 5, 4, 2, 3]
+    assert paths == treespec.paths()
     assert (
         str(treespec)
         == "PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyAnotherDict[['f', 'd']], [*, *]), *, (*, *)]), namespace='mydict')"

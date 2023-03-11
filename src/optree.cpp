@@ -158,6 +158,7 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
              "Test whether this treespec is a suffix of the given treespec.",
              py::arg("other"),
              py::arg("strict") = true)
+        .def("paths", &PyTreeSpec::Paths, "Return a list of paths to the leaves of the treespec.")
         .def("children", &PyTreeSpec::Children, "Return a list of treespecs for the children.")
         .def("is_leaf",
              &PyTreeSpec::IsLeaf,

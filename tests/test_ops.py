@@ -295,10 +295,13 @@ def test_paths(data):
     tree, expected_paths, none_is_leaf = data
     expected_leaves, expected_treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
     paths, leaves, treespec = optree.tree_flatten_with_path(tree, none_is_leaf=none_is_leaf)
+    treespec_paths = optree.treespec_paths(treespec)
     assert len(paths) == len(leaves)
     assert leaves == expected_leaves
     assert treespec == expected_treespec
     assert paths == expected_paths
+    assert len(treespec_paths) == len(leaves)
+    assert treespec_paths == expected_paths
     paths = optree.tree_paths(tree, none_is_leaf=none_is_leaf)
     assert paths == expected_paths
 

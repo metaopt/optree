@@ -77,6 +77,7 @@ __all__ = [
     'tree_any',
     'treespec_is_prefix',
     'treespec_is_suffix',
+    'treespec_paths',
     'treespec_children',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',
@@ -159,7 +160,7 @@ def tree_flatten_with_path(
 ) -> tuple[list[tuple[Any, ...]], list[T], PyTreeSpec]:
     """Flatten a pytree and additionally record the paths.
 
-    See also :func:`tree_flatten` and :func:`tree_paths`.
+    See also :func:`tree_flatten`, :func:`tree_paths`, and :func:`treespec_paths`.
 
     The flattening order (i.e., the order of elements in the output list) is deterministic,
     corresponding to a left-to-right depth-first tree traversal.
@@ -328,7 +329,7 @@ def tree_paths(
 ) -> list[tuple[Any, ...]]:
     """Get the path entries to the leaves of a pytree.
 
-    See also :func:`tree_flatten` and :func:`tree_flatten_with_path`.
+    See also :func:`tree_flatten`, :func:`tree_flatten_with_path`, and :func:`treespec_paths`.
 
     >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
     >>> tree_paths(tree)
@@ -1284,6 +1285,14 @@ def treespec_is_suffix(
     See also :func:`treespec_is_suffix` :meth:`PyTreeSpec.is_suffix`.
     """
     return treespec.is_suffix(other_treespec, strict=strict)
+
+
+def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
+    """Return a list of paths to the leaves of a treespec.
+
+    See also :func:`tree_flatten_with_path`, :func:`tree_paths`, and :meth:`PyTreeSpec.paths`.
+    """
+    return treespec.paths()
 
 
 def treespec_children(treespec: PyTreeSpec) -> list[PyTreeSpec]:
