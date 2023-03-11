@@ -291,6 +291,17 @@ inline void AssertExactDefaultDict(const py::handle& object) {
     }
 }
 
+inline void AssertExactStandardDict(const py::handle& object) {
+    if (!(PyDict_CheckExact(object.ptr()) || object.get_type().is(PyOrderedDictTypeObject) ||
+          object.get_type().is(PyDefaultDictTypeObject))) [[unlikely]] {
+        throw py::value_error(
+            absl::StrFormat("Expected an instance of "
+                            "dict, collections.OrderedDict, or collections.defaultdict, "
+                            "got %s.",
+                            py::repr(object)));
+    }
+}
+
 inline void AssertExactDeque(const py::handle& object) {
     if (!object.get_type().is(PyDequeTypeObject)) [[unlikely]] {
         throw py::value_error(absl::StrFormat("Expected an instance of collections.deque, got %s.",

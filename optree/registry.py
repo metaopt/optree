@@ -25,7 +25,7 @@ from typing import Any, Callable, Iterable, NamedTuple, Sequence, overload
 
 from optree import _C
 from optree.typing import KT, VT, CustomTreeNode, FlattenFunc, PyTree, T, UnflattenFunc
-from optree.utils import safe_zip, unzip2
+from optree.utils import safe_zip, total_order_sorted, unzip2
 
 
 __all__ = [
@@ -277,38 +277,12 @@ def register_pytree_node_class(
     return cls
 
 
-def _sorted_items(items: Iterable[tuple[KT, VT]]) -> Iterable[tuple[KT, VT]]:  # pragma: no cover
-    try:
-        # Sort directly if possible (do not use `key` for performance reasons)
-        return sorted(items)
-    except TypeError:  # the keys are not comparable
-        try:
-            # Add `{obj.__class__.__module__}.{obj.__class__.__qualname__}` to the key order to make
-            # it sortable between different types (e.g. `int` vs. `str`)
-            return sorted(
-                items,
-                # pylint: disable-next=consider-using-f-string
-                key=lambda kv: ('{0.__module__}.{0.__qualname__}'.format(kv[0].__class__), kv),
-            )
-        except TypeError:  # cannot sort the keys (e.g. user-defined types)
-            return items  # fallback to insertion order
+def _sorted_items(items: Iterable[tuple[KT, VT]]) -> list[tuple[KT, VT]]:  # pragma: no cover
+    return total_order_sorted(items, key=lambda kv: kv[0])
 
 
-def _sorted_keys(dct: dict[KT, VT]) -> Iterable[KT]:  # pragma: no cover
-    try:
-        # Sort directly if possible (do not use `key` for performance reasons)
-        return sorted(dct)  # type: ignore[type-var]
-    except TypeError:  # the keys are not comparable
-        try:
-            # Add `{obj.__class__.__module__}.{obj.__class__.__qualname__}` to the key order to make
-            # it sortable between different types (e.g. `int` vs. `str`)
-            return sorted(
-                dct,
-                # pylint: disable-next=consider-using-f-string
-                key=lambda o: ('{0.__module__}.{0.__qualname__}'.format(o.__class__), o),
-            )
-        except TypeError:  # cannot sort the keys (e.g. user-defined types)
-            return dct  # fallback to insertion order
+def _sorted_keys(dct: dict[KT, VT]) -> list[KT]:  # pragma: no cover
+    return total_order_sorted(dct)
 
 
 def _dict_flatten(dct: dict[KT, VT]) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
@@ -365,12 +339,14 @@ _nodetype_registry: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {
 
 
 def _pytree_node_registry_get(
-    type: type, *, namespace: str = __GLOBAL_NAMESPACE
+    cls: type,
+    *,
+    namespace: str = __GLOBAL_NAMESPACE,
 ) -> PyTreeNodeRegistryEntry | None:
-    entry: PyTreeNodeRegistryEntry | None = _nodetype_registry.get(type)
+    entry: PyTreeNodeRegistryEntry | None = _nodetype_registry.get(cls)
     if entry is not None or namespace is __GLOBAL_NAMESPACE or namespace == '':
         return entry
-    return _nodetype_registry.get((namespace, type))
+    return _nodetype_registry.get((namespace, cls))
 
 
 register_pytree_node.get = _pytree_node_registry_get  # type: ignore[attr-defined]

@@ -461,44 +461,18 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
-                if (node.kind == PyTreeKind::Dict) [[likely]] {
-                    AssertExact<py::dict>(object);
-                } else if (node.kind == PyTreeKind::OrderedDict) [[likely]] {
-                    AssertExactOrderedDict(object);
-                } else [[unlikely]] {
-                    AssertExactDefaultDict(object);
-                }
+                AssertExactStandardDict(object);
                 auto dict = py::reinterpret_borrow<py::dict>(object);
-                py::list expected_keys;
-                if (node.kind != PyTreeKind::DefaultDict) [[likely]] {
-                    expected_keys = node.node_data;
-                } else [[unlikely]] {
-                    py::object default_factory = py::getattr(object, "default_factory");
-                    py::object expected_default_factory =
-                        GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
-                    if (default_factory.not_equal(expected_default_factory)) [[unlikely]] {
-                        throw py::value_error(absl::StrFormat(
-                            "defaultdict factory mismatch; "
-                            "expected factory: %s, got factory: %s; defaultdict: %s.",
-                            py::repr(expected_default_factory),
-                            py::repr(default_factory),
-                            py::repr(object)));
-                    }
-                    expected_keys = GET_ITEM_BORROW<py::tuple>(node.node_data, 1);
-                }
-                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
-                    py::list keys = DictKeys(dict);
-                    if (keys.not_equal(expected_keys)) [[unlikely]] {
-                        throw py::value_error(
-                            absl::StrFormat("OrderedDict key mismatch; "
-                                            "expected key(s): %s, got key(s): %s; OrderedDict: %s.",
-                                            py::repr(expected_keys),
-                                            py::repr(keys),
-                                            py::repr(object)));
-                    }
-                } else if (!DictKeysEqual(expected_keys, dict)) [[unlikely]] {
+                py::list expected_keys = (node.kind != PyTreeKind::DefaultDict
+                                              ? node.node_data
+                                              : GET_ITEM_BORROW<py::tuple>(node.node_data, 1));
+                if (!DictKeysEqual(expected_keys, dict)) [[unlikely]] {
                     py::list keys = SortedDictKeys(dict);
-                    std::string cls_name = (node.kind == PyTreeKind::Dict ? "dict" : "defaultdict");
+                    std::string dict_type_name =
+                        (node.kind == PyTreeKind::Dict
+                             ? "dict"
+                             : (node.kind == PyTreeKind::OrderedDict ? "OrderedDict"
+                                                                     : "defaultdict"));
                     auto [missing_keys, extra_keys] = DictKeysDifference(expected_keys, dict);
                     std::string key_difference;
                     if (GET_SIZE<py::list>(missing_keys) != 0) [[likely]] {
@@ -510,13 +484,12 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                             absl::StrFormat(", extra key(s): %s", py::repr(extra_keys));
                     }
                     throw py::value_error(
-                        absl::StrFormat("%s key mismatch; "
+                        absl::StrFormat("dictionary key mismatch; "
                                         "expected key(s): %s, got key(s): %s%s; %s: %s.",
-                                        cls_name,
                                         py::repr(expected_keys),
                                         py::repr(keys),
                                         key_difference,
-                                        cls_name,
+                                        dict_type_name,
                                         py::repr(object)));
                 }
                 for (const py::handle& key : expected_keys) {
@@ -569,14 +542,14 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                 auto tuple = py::reinterpret_borrow<py::tuple>(object);
                 if (GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
                     throw py::value_error(absl::StrFormat(
-                        "StructSequence arity mismatch; expected: %ld, got: %ld; tuple: %s.",
+                        "PyStructSequence arity mismatch; expected: %ld, got: %ld; tuple: %s.",
                         node.arity,
                         GET_SIZE<py::tuple>(tuple),
                         py::repr(object)));
                 }
                 if (object.get_type().not_equal(node.node_data)) [[unlikely]] {
                     throw py::value_error(
-                        absl::StrFormat("StructSequence type mismatch; "
+                        absl::StrFormat("PyStructSequence type mismatch; "
                                         "expected type: %s, got type: %s; tuple: %s.",
                                         py::repr(node.node_data),
                                         py::repr(object.get_type()),
