@@ -70,7 +70,7 @@ lint = [
 test = ['pytest', 'pytest-cov', 'pytest-xdist']
 benchmark = [
     'jax[cpu] >= 0.4.6, < 0.5.0a0',
-    'torch >= 1.13, < 1.14.0a0',
+    'torch >= 2.0, < 2.1.0a0',
     'torchvision',
     'dm-tree >= 0.1, < 0.2.0a0',
     'pandas',

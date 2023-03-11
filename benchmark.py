@@ -15,15 +15,18 @@
 # limitations under the License.
 # ==============================================================================
 
-# pylint: disable=missing-module-docstring,missing-function-docstring,invalid-name
+# pylint: disable=missing-module-docstring,missing-class-docstring,missing-function-docstring
+# pylint: disable=invalid-name
 
 from __future__ import annotations
 
 import argparse
 import sys
-from collections import OrderedDict, namedtuple
+import textwrap
+import timeit
+from collections import OrderedDict
 from itertools import count
-from typing import Any, Iterable
+from typing import Any, Iterable, NamedTuple, Sequence
 
 import jax
 import pandas as pd
@@ -52,6 +55,290 @@ if not sys.stdout.isatty() or colored is None:
         return text
 
 
+cmark = '✔'  # pylint: disable=invalid-name
+xmark = '✘'  # pylint: disable=invalid-name
+tie = '~'  # pylint: disable=invalid-name
+CMARK = colored(cmark, color='green', attrs=('bold',))
+XMARK = colored(xmark, color='red', attrs=('bold',))
+TIE = colored(tie, color='yellow', attrs=('bold',))
+
+INIT = """
+import jax
+import optree
+import torch.utils._pytree as torch_utils_pytree
+import tree as dm_tree
+
+def fn1(x):
+    return None
+
+def fn3(x, y, z):
+    return None
+
+def fnp1(p, x):
+    return None
+
+def fnp3(p, x, y, z):
+    return None
+"""
+
+
+class BenchmarkCase(NamedTuple):
+    name: str
+    stmt: str
+    init_stmt: str = ''
+
+    def timeit(
+        self,
+        number: int,
+        repeat: int = 5,
+        globals: dict[str, Any] | None = None,  # pylint: disable=redefined-builtin
+    ) -> float:
+        init_warmup = (
+            INIT.strip()
+            + '\n\n'
+            + textwrap.dedent(
+                f"""
+                {self.init_stmt.strip()}
+
+                for _ in range({number} // 10):
+                    {self.stmt.strip()}
+                """,
+            ).strip()
+        )
+
+        times = timeit.repeat(
+            self.stmt.strip(),
+            setup=init_warmup,
+            number=number,
+            repeat=repeat,
+            globals=globals,
+        )
+        return min(times) / number
+
+
+BENCHMARK_CASES: dict[str, Sequence[BenchmarkCase]] = OrderedDict(
+    [
+        (
+            'Tree Flatten',
+            [
+                BenchmarkCase(
+                    name='OpTree(default)',
+                    stmt='optree.tree_leaves(x)',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsNode)',
+                    stmt='optree.tree_leaves(x, none_is_leaf=False)',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsLeaf)',
+                    stmt='optree.tree_leaves(x, none_is_leaf=True)',
+                ),
+                BenchmarkCase(
+                    name='JAX XLA',
+                    stmt='jax.tree_util.tree_leaves(x)',
+                ),
+                BenchmarkCase(
+                    name='PyTorch',
+                    stmt='torch_utils_pytree.tree_flatten(x)[0]',
+                ),
+                BenchmarkCase(
+                    name='DM-Tree',
+                    stmt='dm_tree.flatten(x)',
+                ),
+            ],
+        ),
+        (
+            'Tree UnFlatten',
+            [
+                BenchmarkCase(
+                    name='OpTree(NoneIsNode)',  # default
+                    stmt='optree.tree_unflatten(spec, flat)',
+                    init_stmt='flat, spec = optree.tree_flatten(x, none_is_leaf=False)',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsLeaf)',
+                    stmt='optree.tree_unflatten(spec, flat)',
+                    init_stmt='flat, spec = optree.tree_flatten(x, none_is_leaf=True)',
+                ),
+                BenchmarkCase(
+                    name='JAX XLA',
+                    stmt='jax.tree_util.tree_unflatten(spec, flat)',
+                    init_stmt='flat, spec = jax.tree_util.tree_flatten(x)',
+                ),
+                BenchmarkCase(
+                    name='PyTorch',
+                    stmt='torch_utils_pytree.tree_unflatten(flat, spec)',
+                    init_stmt='flat, spec = torch_utils_pytree.tree_flatten(x)',
+                ),
+                BenchmarkCase(
+                    name='DM-Tree',
+                    stmt='dm_tree.unflatten_as(spec, flat)',
+                    init_stmt='flat, spec = dm_tree.flatten(x), x',
+                ),
+            ],
+        ),
+        (
+            'Tree Flatten with Path',
+            [
+                BenchmarkCase(
+                    name='OpTree(default)',
+                    stmt='optree.tree_flatten_with_path(x)',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsNode)',
+                    stmt='optree.tree_flatten_with_path(x, none_is_leaf=False)',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsLeaf)',
+                    stmt='optree.tree_flatten_with_path(x, none_is_leaf=True)',
+                ),
+                BenchmarkCase(
+                    name='JAX XLA',
+                    stmt='jax.tree_util.tree_flatten_with_path(x)',
+                ),
+                BenchmarkCase(
+                    name='DM-Tree',
+                    stmt='dm_tree.flatten_with_path(x)',
+                ),
+            ],
+        ),
+        (
+            'Tree Copy',
+            [
+                BenchmarkCase(
+                    name='OpTree(default)',
+                    stmt='optree.tree_unflatten(*optree.tree_flatten(x)[::-1])',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsNode)',
+                    stmt='optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsLeaf)',
+                    stmt='optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])',
+                ),
+                BenchmarkCase(
+                    name='JAX XLA',
+                    stmt='jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])',
+                ),
+                BenchmarkCase(
+                    name='PyTorch',
+                    stmt='torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))',
+                ),
+                BenchmarkCase(
+                    name='DM-Tree',
+                    stmt='dm_tree.unflatten_as(x, dm_tree.flatten(x))',
+                ),
+            ],
+        ),
+        (
+            'Tree Map',
+            [
+                BenchmarkCase(
+                    name='OpTree(default)',
+                    stmt='optree.tree_map(fn1, x)',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsNode)',
+                    stmt='optree.tree_map(fn1, x, none_is_leaf=False)',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsLeaf)',
+                    stmt='optree.tree_map(fn1, x, none_is_leaf=True)',
+                ),
+                BenchmarkCase(
+                    name='JAX XLA',
+                    stmt='jax.tree_util.tree_map(fn1, x)',
+                ),
+                BenchmarkCase(
+                    name='PyTorch',
+                    stmt='torch_utils_pytree.tree_map(fn1, x)',
+                ),
+                BenchmarkCase(
+                    name='DM-Tree',
+                    stmt='dm_tree.map_structure(fn1, x)',
+                ),
+            ],
+        ),
+        (
+            'Tree Map (nargs)',
+            [
+                BenchmarkCase(
+                    name='OpTree(default)',
+                    stmt='optree.tree_map(fn3, x, y, z)',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsNode)',
+                    stmt='optree.tree_map(fn3, x, y, z, none_is_leaf=False)',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsLeaf)',
+                    stmt='optree.tree_map(fn3, x, y, z, none_is_leaf=True)',
+                ),
+                BenchmarkCase(
+                    name='JAX XLA',
+                    stmt='jax.tree_util.tree_map(fn3, x, y, z)',
+                ),
+                BenchmarkCase(
+                    name='DM-Tree',
+                    stmt='dm_tree.map_structure_up_to(x, fn3, x, y, z)',
+                ),
+            ],
+        ),
+        (
+            'Tree Map with Path',
+            [
+                BenchmarkCase(
+                    name='OpTree(default)',
+                    stmt='optree.tree_map_with_path(fnp1, x)',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsNode)',
+                    stmt='optree.tree_map_with_path(fnp1, x, none_is_leaf=False)',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsLeaf)',
+                    stmt='optree.tree_map_with_path(fnp1, x, none_is_leaf=True)',
+                ),
+                BenchmarkCase(
+                    name='JAX XLA',
+                    stmt='jax.tree_util.tree_map_with_path(fnp1, x)',
+                ),
+                BenchmarkCase(
+                    name='DM-Tree',
+                    stmt='dm_tree.map_structure_with_path(fnp1, x)',
+                ),
+            ],
+        ),
+        (
+            'Tree Map with Path (nargs)',
+            [
+                BenchmarkCase(
+                    name='OpTree(default)',
+                    stmt='optree.tree_map_with_path(fnp3, x, y, z)',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsNode)',
+                    stmt='optree.tree_map_with_path(fnp3, x, y, z, none_is_leaf=False)',
+                ),
+                BenchmarkCase(
+                    name='OpTree(NoneIsLeaf)',
+                    stmt='optree.tree_map_with_path(fnp3, x, y, z, none_is_leaf=True)',
+                ),
+                BenchmarkCase(
+                    name='JAX XLA',
+                    stmt='jax.tree_util.tree_map_with_path(fnp3, x, y, z)',
+                ),
+                BenchmarkCase(
+                    name='DM-Tree',
+                    stmt='dm_tree.map_structure_with_path(fnp3, x, y, z)',
+                ),
+            ],
+        ),
+    ],
+)
+
+
 torch_utils_pytree._register_pytree_node(  # pylint: disable=protected-access
     dict,
     lambda d: tuple(zip(*sorted(d.items())))[::-1] if d else ((), ()),
@@ -59,8 +346,14 @@ torch_utils_pytree._register_pytree_node(  # pylint: disable=protected-access
 )
 
 
-Tensors = namedtuple('Tensors', ['parameters', 'buffers'])
-Containers = namedtuple('Containers', ['parameters', 'buffers'])
+class Tensors(NamedTuple):
+    parameters: tuple[torch.Tensor, ...]
+    buffers: list[torch.Tensor]
+
+
+class Containers(NamedTuple):
+    parameters: dict[str, torch.Tensor | None]
+    buffers: dict[str, torch.Tensor | None]
 
 
 def get_none() -> None:
@@ -100,224 +393,6 @@ def extract(module: nn.Module, unordered: bool) -> Any:
     )
 
     return extracted
-
-
-cmark = '✔'  # pylint: disable=invalid-name
-xmark = '✘'  # pylint: disable=invalid-name
-tie = '~'  # pylint: disable=invalid-name
-CMARK = colored(cmark, color='green', attrs=('bold',))
-XMARK = colored(xmark, color='red', attrs=('bold',))
-TIE = colored(tie, color='yellow', attrs=('bold',))
-
-INIT = """
-import jax
-import optree
-import torch.utils._pytree as torch_utils_pytree
-import tree as dm_tree
-
-def fn1(x):
-    return None
-
-def fn3(x, y, z):
-    return None
-
-def fnp1(p, x):
-    return None
-
-def fnp3(p, x, y, z):
-    return None
-"""
-
-STMTS = OrderedDict(
-    [
-        (
-            'Tree Flatten',
-            OrderedDict(
-                [
-                    ('OpTree(default)', ('optree.tree_leaves(x)', '')),
-                    ('OpTree(NoneIsNode)', ('optree.tree_leaves(x, none_is_leaf=False)', '')),
-                    ('OpTree(NoneIsLeaf)', ('optree.tree_leaves(x, none_is_leaf=True)', '')),
-                    ('JAX XLA', ('jax.tree_util.tree_leaves(x)', '')),
-                    ('PyTorch', ('torch_utils_pytree.tree_flatten(x)[0]', '')),
-                    ('DM-Tree', ('dm_tree.flatten(x)', '')),
-                ],
-            ),
-        ),
-        (
-            'Tree UnFlatten',
-            OrderedDict(
-                [
-                    (
-                        'OpTree(NoneIsNode)',  # default
-                        (
-                            'optree.tree_unflatten(spec, flat)',
-                            'flat, spec = optree.tree_flatten(x, none_is_leaf=False)',
-                        ),
-                    ),
-                    (
-                        'OpTree(NoneIsLeaf)',
-                        (
-                            'optree.tree_unflatten(spec, flat)',
-                            'flat, spec = optree.tree_flatten(x, none_is_leaf=True)',
-                        ),
-                    ),
-                    (
-                        'JAX XLA',
-                        (
-                            'jax.tree_util.tree_unflatten(spec, flat)',
-                            'flat, spec = jax.tree_util.tree_flatten(x)',
-                        ),
-                    ),
-                    (
-                        'PyTorch',
-                        (
-                            'torch_utils_pytree.tree_unflatten(flat, spec)',
-                            'flat, spec = torch_utils_pytree.tree_flatten(x)',
-                        ),
-                    ),
-                    (
-                        'DM-Tree',
-                        (
-                            'dm_tree.unflatten_as(spec, flat)',
-                            'flat, spec = dm_tree.flatten(x), x',
-                        ),
-                    ),
-                ],
-            ),
-        ),
-        (
-            'Tree Flatten with Path',
-            OrderedDict(
-                [
-                    ('OpTree(default)', ('optree.tree_flatten_with_path(x)', '')),
-                    (
-                        'OpTree(NoneIsNode)',
-                        ('optree.tree_flatten_with_path(x, none_is_leaf=False)', ''),
-                    ),
-                    (
-                        'OpTree(NoneIsLeaf)',
-                        ('optree.tree_flatten_with_path(x, none_is_leaf=True)', ''),
-                    ),
-                    ('JAX XLA', ('jax.tree_util.tree_flatten_with_path(x)', '')),
-                    ('DM-Tree', ('dm_tree.flatten_with_path(x)', '')),
-                ],
-            ),
-        ),
-        (
-            'Tree Copy',
-            OrderedDict(
-                [
-                    (
-                        'OpTree(default)',
-                        ('optree.tree_unflatten(*optree.tree_flatten(x)[::-1])', ''),
-                    ),
-                    (
-                        'OpTree(NoneIsNode)',
-                        (
-                            'optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=False)[::-1])',
-                            '',
-                        ),
-                    ),
-                    (
-                        'OpTree(NoneIsLeaf)',
-                        (
-                            'optree.tree_unflatten(*optree.tree_flatten(x, none_is_leaf=True)[::-1])',
-                            '',
-                        ),
-                    ),
-                    (
-                        'JAX XLA',
-                        ('jax.tree_util.tree_unflatten(*jax.tree_util.tree_flatten(x)[::-1])', ''),
-                    ),
-                    (
-                        'PyTorch',
-                        (
-                            'torch_utils_pytree.tree_unflatten(*torch_utils_pytree.tree_flatten(x))',
-                            '',
-                        ),
-                    ),
-                    (
-                        'DM-Tree',
-                        ('dm_tree.unflatten_as(x, dm_tree.flatten(x))', ''),
-                    ),
-                ],
-            ),
-        ),
-        (
-            'Tree Map',
-            OrderedDict(
-                [
-                    ('OpTree(default)', ('optree.tree_map(fn1, x)', '')),
-                    ('OpTree(NoneIsNode)', ('optree.tree_map(fn1, x, none_is_leaf=False)', '')),
-                    ('OpTree(NoneIsLeaf)', ('optree.tree_map(fn1, x, none_is_leaf=True)', '')),
-                    ('JAX XLA', ('jax.tree_util.tree_map(fn1, x)', '')),
-                    ('PyTorch', ('torch_utils_pytree.tree_map(fn1, x)', '')),
-                    ('DM-Tree', ('dm_tree.map_structure(fn1, x)', '')),
-                ],
-            ),
-        ),
-        (
-            'Tree Map (nargs)',
-            OrderedDict(
-                [
-                    ('OpTree(default)', ('optree.tree_map(fn3, x, y, z)', '')),
-                    (
-                        'OpTree(NoneIsNode)',
-                        ('optree.tree_map(fn3, x, y, z, none_is_leaf=False)', ''),
-                    ),
-                    (
-                        'OpTree(NoneIsLeaf)',
-                        ('optree.tree_map(fn3, x, y, z, none_is_leaf=True)', ''),
-                    ),
-                    ('JAX XLA', ('jax.tree_util.tree_map(fn3, x, y, z)', '')),
-                    ('DM-Tree', ('dm_tree.map_structure_up_to(x, fn3, x, y, z)', '')),
-                ],
-            ),
-        ),
-        (
-            'Tree Map with Path',
-            OrderedDict(
-                [
-                    ('OpTree(default)', ('optree.tree_map_with_path(fnp1, x)', '')),
-                    (
-                        'OpTree(NoneIsNode)',
-                        ('optree.tree_map_with_path(fnp1, x, none_is_leaf=False)', ''),
-                    ),
-                    (
-                        'OpTree(NoneIsLeaf)',
-                        ('optree.tree_map_with_path(fnp1, x, none_is_leaf=True)', ''),
-                    ),
-                    ('JAX XLA', ('jax.tree_util.tree_map_with_path(fnp1, x)', '')),
-                    ('DM-Tree', ('dm_tree.map_structure_with_path(fnp1, x)', '')),
-                ],
-            ),
-        ),
-        (
-            'Tree Map with Path (nargs)',
-            OrderedDict(
-                [
-                    ('OpTree(default)', ('optree.tree_map_with_path(fnp3, x, y, z)', '')),
-                    (
-                        'OpTree(NoneIsNode)',
-                        (
-                            'optree.tree_map_with_path(fnp3, x, y, z, none_is_leaf=False)',
-                            '',
-                        ),
-                    ),
-                    (
-                        'OpTree(NoneIsLeaf)',
-                        (
-                            'optree.tree_map_with_path(fnp3, x, y, z, none_is_leaf=True)',
-                            '',
-                        ),
-                    ),
-                    ('JAX XLA', ('jax.tree_util.tree_map_with_path(fnp3, x, y, z)', '')),
-                    ('DM-Tree', ('dm_tree.map_structure_with_path(fnp3, x, y, z)', '')),
-                ],
-            ),
-        ),
-    ],
-)
 
 
 def cprint(text: str = '') -> None:
@@ -439,58 +514,26 @@ def check(tree: Any) -> None:
     print(flush=True)
 
 
-def timeit(
-    stmt: str,
-    init_stmt: str,
-    number: int,
-    repeat: int = 5,
-    globals: dict[str, Any] | None = None,  # pylint: disable=redefined-builtin
-) -> float:
-    import timeit  # pylint: disable=redefined-outer-name,import-outside-toplevel
-
-    globals = globals or {}
-    init_warmup = f"""
-{INIT.strip()}
-
-{init_stmt.strip()}
-
-for _ in range({number} // 10):
-    {stmt.strip()}
-"""
-
-    times = timeit.repeat(
-        stmt.strip(),
-        setup=init_warmup,
-        globals=globals,
-        number=number,
-        repeat=repeat,
-    )
-    return min(times) / number
-
-
 def compare(  # pylint: disable=too-many-locals
     subject: str,
-    stmts: dict[str, tuple[str, str]],
+    cases: Sequence[BenchmarkCase],
     number: int,
     repeat: int = 5,
     globals: dict[str, Any] | None = None,  # pylint: disable=redefined-builtin
 ) -> dict[str, float]:
     times_us = OrderedDict(
-        [
-            (lib, 10e6 * timeit(stmt, init_stmt, number, repeat=repeat, globals=globals))
-            for lib, (stmt, init_stmt) in stmts.items()
-        ],
+        [(case.name, 10e6 * case.timeit(number, repeat=repeat, globals=globals)) for case in cases],
     )
     base_time = next(iter(times_us.values()))
     best_time = min(times_us.values())
-    speedups = {lib: time / base_time for lib, time in times_us.items()}
-    best_speedups = {lib: time / best_time for lib, time in times_us.items()}
+    speedups = {name: time / base_time for name, time in times_us.items()}
+    best_speedups = {name: time / best_time for name, time in times_us.items()}
     labels = {
-        lib: (cmark if speedup == 1.0 else tie if speedup < 1.1 else ' ')
-        for lib, speedup in best_speedups.items()
+        name: (cmark if speedup == 1.0 else tie if speedup < 1.1 else ' ')
+        for name, speedup in best_speedups.items()
     }
     colors = {
-        lib: (
+        name: (
             'green'
             if speedup == 1.0
             else 'cyan'
@@ -499,18 +542,18 @@ def compare(  # pylint: disable=too-many-locals
             if speedup < 4.0
             else 'red'
         )
-        for lib, speedup in best_speedups.items()
+        for name, speedup in best_speedups.items()
     }
-    attrs = {lib: ('bold',) if color == 'green' else () for lib, color in colors.items()}
+    attrs = {name: ('bold',) if color == 'green' else () for name, color in colors.items()}
 
     cprint(f'### {subject} ###')
-    for lib, (stmt, _) in stmts.items():
-        label = labels[lib]
-        color = colors[lib]
-        attr = attrs[lib]
-        label = colored(label + ' ' + lib, color=color, attrs=attr)
-        time = colored(f'{times_us[lib]:8.2f}μs', attrs=attr)
-        speedup = speedups[lib]
+    for name, stmt, _ in cases:
+        label = labels[name]
+        color = colors[name]
+        attr = attrs[name]
+        label = colored(label + ' ' + name, color=color, attrs=attr)
+        time = colored(f'{times_us[name]:8.2f}μs', attrs=attr)
+        speedup = speedups[name]
         if speedup != 1.0:
             speedup = ' -- ' + colored(f'x{speedup:.2f}'.ljust(6), color=color, attrs=attr)
         else:
@@ -573,10 +616,10 @@ def benchmark(  # pylint: disable=too-many-locals
     z = optree.tree_map(lambda t: (t, None), x)  # pylint: disable=invalid-name
 
     check(x)
-    for subject, stmts in STMTS.items():
+    for subject, cases in BENCHMARK_CASES.items():
         times_us = compare(
             subject,
-            stmts,
+            cases,
             number=number,
             repeat=repeat,
             globals={'x': x, 'y': y, 'z': z},

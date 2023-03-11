@@ -39,7 +39,7 @@ dependencies:
   - pybind11
 
   # Benchmark
-  - pytorch::pytorch >= 1.13, < 1.14.0a0
+  - pytorch::pytorch >= 2.0, < 2.1.0a0
   - pytorch::torchvision
   - pytorch::pytorch-mutex = *=*cpu*
   - jax >= 0.4.6, < 0.5.0a0
