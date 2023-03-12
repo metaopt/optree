@@ -67,7 +67,6 @@ py::object PyTreeSpec::GetType() const {
         default:
             INTERNAL_ERROR();
     }
-    INTERNAL_ERROR();
 }
 
 bool PyTreeSpec::IsLeaf(const bool& strict) const {
@@ -193,12 +192,137 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     return treespec;
 }
 
-std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
-    auto children = std::vector<std::unique_ptr<PyTreeSpec>>{};
-    if (m_traversal.empty()) [[likely]] {
-        return children;
+template <typename Span, typename Stack>
+// NOLINTNEXTLINE[misc-no-recursion]
+ssize_t PyTreeSpec::PathsImpl(Span& paths,
+                              Stack& stack,
+                              const ssize_t& pos,
+                              const ssize_t& depth) const {
+    const Node& root = m_traversal.at(pos);
+    EXPECT_GE(pos + 1, root.num_nodes, "PyTreeSpec::Paths() walked off start of array.");
+
+    ssize_t cur = pos - 1;
+    // NOLINTNEXTLINE[misc-no-recursion]
+    auto recurse = [this, &paths, &stack, &depth](const ssize_t& cur, const py::handle& entry) {
+        stack.emplace_back(entry);
+        const ssize_t num_nodes = PathsImpl(paths, stack, cur, depth + 1);
+        stack.pop_back();
+        return num_nodes;
+    };
+
+    if (root.node_entries) [[unlikely]] {
+        for (ssize_t i = root.arity - 1; i >= 0; --i) {
+            cur -= recurse(cur, GET_ITEM_HANDLE<py::tuple>(root.node_entries, i));
+        }
+    } else [[likely]] {
+        switch (root.kind) {
+            case PyTreeKind::None:
+                break;
+            case PyTreeKind::Leaf: {
+                py::tuple path{depth};
+                for (ssize_t d = 0; d < depth; ++d) {
+                    SET_ITEM<py::tuple>(path, d, stack[d]);
+                }
+                paths.emplace_back(std::move(path));
+                break;
+            }
+
+            case PyTreeKind::Tuple:
+            case PyTreeKind::List:
+            case PyTreeKind::NamedTuple:
+            case PyTreeKind::Deque:
+            case PyTreeKind::StructSequence:
+            case PyTreeKind::Custom: {
+                for (ssize_t i = root.arity - 1; i >= 0; --i) {
+                    cur -= recurse(cur, py::int_(i));
+                }
+                break;
+            }
+
+            case PyTreeKind::Dict:
+            case PyTreeKind::OrderedDict:
+            case PyTreeKind::DefaultDict: {
+                py::list keys;
+                if (root.kind != PyTreeKind::DefaultDict) [[likely]] {
+                    keys = py::reinterpret_borrow<py::list>(root.node_data);
+                } else [[unlikely]] {
+                    keys = GET_ITEM_BORROW<py::tuple>(root.node_data, 1);
+                }
+                for (ssize_t i = root.arity - 1; i >= 0; --i) {
+                    cur -= recurse(cur, GET_ITEM_HANDLE<py::list>(keys, i));
+                }
+                break;
+            }
+
+            default:
+                INTERNAL_ERROR();
+        }
     }
+
+    return root.num_nodes;
+}
+
+std::vector<py::tuple> PyTreeSpec::Paths() const {
+    auto paths = std::vector<py::tuple>{};
+    const ssize_t num_leaves = GetNumLeaves();
+    if (num_leaves == 0) [[unlikely]] {
+        return paths;
+    }
+    const ssize_t num_nodes = GetNumNodes();
+    if (num_nodes == 1 && num_leaves == 1) [[likely]] {
+        paths.emplace_back();
+        return paths;
+    }
+    auto stack = std::vector<py::handle>{};
+    const ssize_t num_nodes_walked = PathsImpl(paths, stack, num_nodes - 1, 0);
+    std::reverse(paths.begin(), paths.end());
+    EXPECT_EQ(num_nodes_walked, num_nodes, "`pos != 0` at end of PyTreeSpec::Paths().");
+    EXPECT_EQ(py::ssize_t_cast(paths.size()), num_leaves, "PyTreeSpec::Paths() mismatched leaves.");
+    return paths;
+}
+
+py::list PyTreeSpec::Entries() const {
+    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
     const Node& root = m_traversal.back();
+    if (root.node_entries) [[unlikely]] {
+        return py::list{root.node_entries};
+    }
+    switch (root.kind) {
+        case PyTreeKind::None:
+        case PyTreeKind::Leaf: {
+            return py::list{};
+        }
+
+        case PyTreeKind::Tuple:
+        case PyTreeKind::List:
+        case PyTreeKind::NamedTuple:
+        case PyTreeKind::Deque:
+        case PyTreeKind::StructSequence:
+        case PyTreeKind::Custom: {
+            auto entries = py::list{root.arity};
+            for (ssize_t i = 0; i < root.arity; ++i) {
+                SET_ITEM<py::list>(entries, i, py::int_(i));
+            }
+            return entries;
+        }
+
+        case PyTreeKind::Dict:
+        case PyTreeKind::OrderedDict: {
+            return py::list{root.node_data};
+        }
+        case PyTreeKind::DefaultDict: {
+            return py::list{GET_ITEM_BORROW<py::tuple>(root.node_data, 1)};
+        }
+
+        default:
+            INTERNAL_ERROR();
+    }
+}
+
+std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
+    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    const Node& root = m_traversal.back();
+    auto children = std::vector<std::unique_ptr<PyTreeSpec>>{};
     children.resize(root.arity);
     ssize_t pos = py::ssize_t_cast(m_traversal.size()) - 1;
     for (ssize_t i = root.arity - 1; i >= 0; --i) {

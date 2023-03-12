@@ -52,8 +52,8 @@ class PyTreeSpec {
  public:
     PyTreeSpec() = default;
 
-    // Flattens a PyTree into a list of leaves and a PyTreeSpec.
-    // Returns references to the flattened objects, which might be temporary objects in the case of
+    // Flatten a PyTree into a list of leaves and a PyTreeSpec.
+    // Return references to the flattened objects, which might be temporary objects in the case of
     // custom PyType handlers.
     static std::pair<std::vector<py::object>, std::unique_ptr<PyTreeSpec>> Flatten(
         const py::handle &tree,
@@ -68,8 +68,8 @@ class PyTreeSpec {
                      const bool &none_is_leaf,
                      const std::string &registry_namespace);
 
-    // Flattens a PyTree into a list of leaves with a list of paths and a PyTreeSpec.
-    // Returns references to the flattened objects, which might be temporary objects in the case of
+    // Flatten a PyTree into a list of leaves with a list of paths and a PyTreeSpec.
+    // Return references to the flattened objects, which might be temporary objects in the case of
     // custom PyType handlers.
     static std::tuple<std::vector<py::object>, std::vector<py::object>, std::unique_ptr<PyTreeSpec>>
     FlattenWithPath(const py::handle &tree,
@@ -85,7 +85,7 @@ class PyTreeSpec {
                              const bool &none_is_leaf,
                              const std::string &registry_namespace);
 
-    // Flattens a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure
+    // Flatten a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure
     // of 'x'. For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeSpec [(*,
     // *), *], the result is the list of leaves [1, (2, 3), {"foo": 4}].
     [[nodiscard]] py::list FlattenUpTo(const py::handle &full_tree) const;
@@ -95,38 +95,46 @@ class PyTreeSpec {
                           const bool &none_is_leaf = false,
                           const std::string &registry_namespace = "");
 
-    // Returns an unflattened PyTree given an iterable of leaves and a PyTreeSpec.
+    // Return an unflattened PyTree given an iterable of leaves and a PyTreeSpec.
     [[nodiscard]] py::object Unflatten(const py::iterable &leaves) const;
 
-    // Composes two PyTreeSpecs, replacing the leaves of this tree with copies of `inner`.
+    // Compose two PyTreeSpecs, replacing the leaves of this tree with copies of `inner`.
     [[nodiscard]] std::unique_ptr<PyTreeSpec> Compose(const PyTreeSpec &inner_treespec) const;
 
-    // Maps a function over a PyTree structure, applying f_leaf to each leaf, and
+    // Map a function over a PyTree structure, applying f_leaf to each leaf, and
     // f_node(children, node_data) to each container node.
     [[nodiscard]] py::object Walk(const py::function &f_node,
                                   const py::handle &f_leaf,
                                   const py::iterable &leaves) const;
 
-    // Returns true if this PyTreeSpec is a prefix of `other`.
+    // Return true if this PyTreeSpec is a prefix of `other`.
     [[nodiscard]] bool IsPrefix(const PyTreeSpec &other, const bool &strict = false) const;
 
-    // Returns true if this PyTreeSpec is a suffix of `other`.
+    // Return true if this PyTreeSpec is a suffix of `other`.
     [[nodiscard]] inline bool IsSuffix(const PyTreeSpec &other, const bool &strict = false) const {
         return other.IsPrefix(*this, strict);
     }
 
+    // Return paths to all leaves in the PyTreeSpec.
+    [[nodiscard]] std::vector<py::tuple> Paths() const;
+
+    // Return one-level entries of the PyTreeSpec to its children.
+    [[nodiscard]] py::list Entries() const;
+
+    // Return the children of the PyTreeSpec.
     [[nodiscard]] std::vector<std::unique_ptr<PyTreeSpec>> Children() const;
 
+    // Test whether this PyTreeSpec represents a leaf.
     [[nodiscard]] bool IsLeaf(const bool &strict = true) const;
 
-    // Makes a Tuple PyTreeSpec out of a vector of PyTreeSpecs.
+    // Make a Tuple PyTreeSpec out of a vector of PyTreeSpecs.
     static std::unique_ptr<PyTreeSpec> Tuple(const std::vector<PyTreeSpec> &treespecs,
                                              const bool &none_is_leaf);
 
-    // Makes a PyTreeSpec representing a leaf node.
+    // Make a PyTreeSpec representing a leaf node.
     static std::unique_ptr<PyTreeSpec> Leaf(const bool &none_is_leaf);
 
-    // Makes a PyTreeSpec representing a `None` node.
+    // Make a PyTreeSpec representing a `None` node.
     static std::unique_ptr<PyTreeSpec> None(const bool &none_is_leaf);
 
     [[nodiscard]] ssize_t GetNumLeaves() const;
@@ -206,11 +214,11 @@ class PyTreeSpec {
 
     [[nodiscard]] std::string ToString() const;
 
-    // Transforms the PyTreeSpec into a picklable object.
+    // Transform the PyTreeSpec into a picklable object.
     // Used to implement `PyTreeSpec.__getstate__`.
     [[nodiscard]] py::object ToPicklable() const;
 
-    // Transforms the object returned by `ToPicklable()` back to PyTreeSpec.
+    // Transform the object returned by `ToPicklable()` back to PyTreeSpec.
     // Used to implement `PyTreeSpec.__setstate__`.
     static PyTreeSpec FromPicklable(const py::object &picklable);
 
@@ -260,7 +268,7 @@ class PyTreeSpec {
     // Helper that manufactures an instance of a node given its children.
     static py::object MakeNode(const Node &node, const absl::Span<py::object> &children);
 
-    // Computes the node kind of a given Python object.
+    // Compute the node kind of a given Python object.
     template <bool NoneIsLeaf>
     static PyTreeKind GetKind(const py::handle &handle,
                               PyTreeTypeRegistry::Registration const **custom,
@@ -289,6 +297,12 @@ class PyTreeSpec {
 
     template <typename Span>
     py::object UnflattenImpl(const Span &leaves) const;
+
+    template <typename Span, typename Stack>
+    [[nodiscard]] ssize_t PathsImpl(Span &paths,   // NOLINT[runtime/references]
+                                    Stack &stack,  // NOLINT[runtime/references]
+                                    const ssize_t &pos,
+                                    const ssize_t &depth) const;
 
     static PyTreeSpec FromPicklableImpl(const py::object &picklable);
 };

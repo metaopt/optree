@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add methods `PyTreeSpec.paths` and `PyTreeSpec.entries` by [@XuehaiPan](https://github.com/XuehaiPan) in [#43](https://github.com/metaopt/optree/pull/43).
 - Allow tree-map with mixed inputs of ordered and unordered dictionaries by [@XuehaiPan](https://github.com/XuehaiPan) in [#42](https://github.com/metaopt/optree/pull/42).
 - Add more utility functions for `namedtuple` and `PyStructSequence` type by [@XuehaiPan](https://github.com/XuehaiPan) in [#41](https://github.com/metaopt/optree/pull/41).
 - Add methods `PyTreeSpec.is_prefix` and `PyTreeSpec.is_suffix` and function `tree_broadcast_prefix` by [@XuehaiPan](https://github.com/XuehaiPan) in [#40](https://github.com/metaopt/optree/pull/40).

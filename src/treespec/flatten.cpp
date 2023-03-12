@@ -42,7 +42,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
         node.kind = GetKind<NoneIsLeaf>(handle, &node.custom, registry_namespace);
         // NOLINTNEXTLINE[misc-no-recursion]
         auto recurse = [this, &found_custom, &leaf_predicate, &registry_namespace, &leaves, &depth](
-                           py::handle child) {
+                           const py::handle& child) {
             found_custom |= FlattenIntoImpl<NoneIsLeaf>(
                 child, leaves, depth + 1, leaf_predicate, registry_namespace);
         };
@@ -220,7 +220,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                         &leaves,
                         &paths,
                         &stack,
-                        &depth](py::handle child, py::handle entry) {
+                        &depth](const py::handle& child, const py::handle& entry) {
             stack.emplace_back(entry);
             found_custom |= FlattenIntoWithPathImpl<NoneIsLeaf>(
                 child, leaves, paths, stack, depth + 1, leaf_predicate, registry_namespace);
@@ -422,7 +422,7 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
 
             case PyTreeKind::Leaf:
                 EXPECT_GE(leaf, 0, "Leaf count mismatch.");
-                leaves[leaf] = py::reinterpret_borrow<py::object>(object);
+                SET_ITEM<py::list>(leaves, leaf, object);
                 --leaf;
                 break;
 

@@ -125,6 +125,7 @@ def test_with_namespace():
         )
         assert paths == [()]
         assert leaves == [tree]
+        assert paths == treespec.paths()
         assert str(treespec) == ('PyTreeSpec(*)')
     for namespace in ('', 'undefined'):
         leaves, treespec = optree.tree_flatten(tree, none_is_leaf=True, namespace=namespace)
@@ -135,6 +136,7 @@ def test_with_namespace():
         )
         assert paths == [()]
         assert leaves == [tree]
+        assert paths == treespec.paths()
         assert str(treespec) == ('PyTreeSpec(*, NoneIsLeaf)')
 
     expected_string = "PyTreeSpec(CustomTreeNode(MyAnotherDict[['foo', 'baz']], [CustomTreeNode(MyAnotherDict[['c', 'b', 'a']], [None, *, *]), *]), namespace='namespace')"
@@ -146,6 +148,7 @@ def test_with_namespace():
     )
     assert paths == [('foo', 'b'), ('foo', 'a'), ('baz',)]
     assert leaves == [2, 1, 101]
+    assert paths == treespec.paths()
     assert str(treespec) == expected_string
 
     expected_string = "PyTreeSpec(CustomTreeNode(MyAnotherDict[['foo', 'baz']], [CustomTreeNode(MyAnotherDict[['c', 'b', 'a']], [*, *, *]), *]), NoneIsLeaf, namespace='namespace')"
@@ -157,6 +160,7 @@ def test_with_namespace():
     )
     assert paths == [('foo', 'c'), ('foo', 'b'), ('foo', 'a'), ('baz',)]
     assert leaves == [None, 2, 1, 101]
+    assert paths == treespec.paths()
     assert str(treespec) == expected_string
 
 
@@ -289,6 +293,28 @@ def test_treespec_compose_children(tree, inner_tree, none_is_leaf):
         assert optree.treespec_is_suffix(expected_treespec, treespec, strict=False)
 
 
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+)
+def test_treespec_entries(tree, none_is_leaf):
+    expected_paths, _, treespec = optree.tree_flatten_with_path(tree, none_is_leaf=none_is_leaf)
+    assert optree.treespec_paths(treespec) == expected_paths
+
+    def gen_path(spec, prefix):
+        entries = optree.treespec_entries(spec)
+        children = optree.treespec_children(spec)
+        assert len(entries) == spec.num_children
+        assert len(children) == spec.num_children
+        if spec.is_leaf():
+            yield prefix
+        for entry, child in zip(entries, children):
+            yield from gen_path(child, (*prefix, entry))
+
+    paths = list(gen_path(treespec, ()))
+    assert paths == expected_paths
+
+
 def test_treespec_children():
     treespec = optree.tree_structure(((1, 2, 3), (4,)))
     c0 = optree.tree_structure((0, 0, 0))
@@ -317,6 +343,7 @@ def test_treespec_children():
 )
 def test_treespec_num_children(tree, none_is_leaf):
     treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf)
+    assert treespec.num_children == len(treespec.entries())
     assert treespec.num_children == len(treespec.children())
 
 
@@ -328,6 +355,7 @@ def test_treespec_num_leaves(tree, none_is_leaf):
     leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
     assert treespec.num_leaves == len(leaves)
     assert treespec.num_leaves == len(treespec)
+    assert treespec.num_leaves == len(treespec.paths())
 
 
 @parametrize(
