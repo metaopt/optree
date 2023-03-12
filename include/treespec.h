@@ -118,6 +118,9 @@ class PyTreeSpec {
     // Return paths to all leaves in the PyTreeSpec.
     [[nodiscard]] std::vector<py::tuple> Paths() const;
 
+    // Return one-level entries of the PyTreeSpec to its children.
+    [[nodiscard]] py::list Entries() const;
+
     // Return the children of the PyTreeSpec.
     [[nodiscard]] std::vector<std::unique_ptr<PyTreeSpec>> Children() const;
 

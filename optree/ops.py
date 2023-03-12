@@ -78,6 +78,7 @@ __all__ = [
     'treespec_is_prefix',
     'treespec_is_suffix',
     'treespec_paths',
+    'treespec_entries',
     'treespec_children',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',
@@ -1295,8 +1296,19 @@ def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
     return treespec.paths()
 
 
+def treespec_entries(treespec: PyTreeSpec) -> list[Any]:
+    """Return a list of one-level entries of a treespec to its children.
+
+    See also :func:`treespec_paths`, :func:`treespec_children`, and :meth:`PyTreeSpec.entries`.
+    """
+    return treespec.entries()
+
+
 def treespec_children(treespec: PyTreeSpec) -> list[PyTreeSpec]:
-    """Return a list of treespecs for the children of a treespec."""
+    """Return a list of treespecs for the children of a treespec.
+
+    See also :func:`treespec_paths`, :func:`treespec_entries`, and :meth:`PyTreeSpec.children`.
+    """
     return treespec.children()
 
 

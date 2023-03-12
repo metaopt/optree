@@ -282,6 +282,44 @@ std::vector<py::tuple> PyTreeSpec::Paths() const {
     return paths;
 }
 
+py::list PyTreeSpec::Entries() const {
+    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    const Node& root = m_traversal.back();
+    if (root.node_entries) [[unlikely]] {
+        return py::list{root.node_entries};
+    }
+    switch (root.kind) {
+        case PyTreeKind::None:
+        case PyTreeKind::Leaf: {
+            return py::list{};
+        }
+
+        case PyTreeKind::Tuple:
+        case PyTreeKind::List:
+        case PyTreeKind::NamedTuple:
+        case PyTreeKind::Deque:
+        case PyTreeKind::StructSequence:
+        case PyTreeKind::Custom: {
+            auto entries = py::list{root.arity};
+            for (ssize_t i = 0; i < root.arity; ++i) {
+                SET_ITEM<py::list>(entries, i, py::int_(i));
+            }
+            return entries;
+        }
+
+        case PyTreeKind::Dict:
+        case PyTreeKind::OrderedDict: {
+            return py::list{root.node_data};
+        }
+        case PyTreeKind::DefaultDict: {
+            return py::list{GET_ITEM_BORROW<py::tuple>(root.node_data, 1)};
+        }
+
+        default:
+            INTERNAL_ERROR();
+    }
+}
+
 std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
     EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
     const Node& root = m_traversal.back();
