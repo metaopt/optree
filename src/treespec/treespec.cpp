@@ -18,7 +18,6 @@ limitations under the License.
 #include "include/treespec.h"
 
 #include <Python.h>
-#include <pybind11/pytypes.h>
 #include <structmember.h>  // PyMemberDef
 
 namespace optree {
