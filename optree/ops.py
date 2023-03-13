@@ -669,8 +669,8 @@ def tree_transpose(
     if outer_size == 0 or inner_size == 0:
         raise ValueError('Tree structures must have at least one leaf.')
     if (
-        outer_treespec.namespace != ''
-        and inner_treespec.namespace != ''
+        outer_treespec.namespace
+        and inner_treespec.namespace
         and outer_treespec.namespace != inner_treespec.namespace
     ):
         raise ValueError(

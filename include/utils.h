@@ -348,13 +348,13 @@ inline void AssertExactNamedTuple(const py::handle& object) {
 }
 inline py::tuple NamedTupleGetFields(const py::handle& object) {
     py::handle type;
-    if (PyType_Check(object.ptr())) {
+    if (PyType_Check(object.ptr())) [[unlikely]] {
         type = object;
         if (!IsNamedTupleClass(type)) [[unlikely]] {
             throw py::type_error(absl::StrFormat("Expected a collections.namedtuple type, got %s.",
                                                  py::repr(object)));
         }
-    } else {
+    } else [[likely]] {
         type = object.get_type();
         if (!IsNamedTupleClass(type)) [[unlikely]] {
             throw py::type_error(absl::StrFormat(
@@ -405,13 +405,13 @@ inline void AssertExactStructSequence(const py::handle& object) {
 }
 inline py::tuple StructSequenceGetFields(const py::handle& object) {
     py::handle type;
-    if (PyType_Check(object.ptr())) {
+    if (PyType_Check(object.ptr())) [[unlikely]] {
         type = object;
         if (!IsStructSequenceClass(type)) [[unlikely]] {
             throw py::type_error(
                 absl::StrFormat("Expected a PyStructSequence type, got %s.", py::repr(object)));
         }
-    } else {
+    } else [[likely]] {
         type = object.get_type();
         if (!IsStructSequenceClass(type)) [[unlikely]] {
             throw py::type_error(absl::StrFormat(
