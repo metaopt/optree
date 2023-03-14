@@ -120,6 +120,12 @@ def fn1(x):
 
 def fn3(x, y, z):
     return None
+
+def fnp1(p, x):
+    return None
+
+def fnp3(p, x, y, z):
+    return None
 """
 
 STMTS = OrderedDict(
@@ -176,6 +182,24 @@ STMTS = OrderedDict(
                             'flat, spec = dm_tree.flatten(x), x',
                         ),
                     ),
+                ]
+            ),
+        ),
+        (
+            'Tree Flatten with Path',
+            OrderedDict(
+                [
+                    ('OpTree(default)', ('optree.tree_flatten_with_path(x)', '')),
+                    (
+                        'OpTree(NoneIsNode)',
+                        ('optree.tree_flatten_with_path(x, none_is_leaf=False)', ''),
+                    ),
+                    (
+                        'OpTree(NoneIsLeaf)',
+                        ('optree.tree_flatten_with_path(x, none_is_leaf=True)', ''),
+                    ),
+                    ('JAX XLA', ('jax.tree_util.tree_flatten_with_path(x)', '')),
+                    ('DM-Tree', ('dm_tree.flatten_with_path(x)', '')),
                 ]
             ),
         ),
@@ -247,6 +271,48 @@ STMTS = OrderedDict(
                     ),
                     ('JAX XLA', ('jax.tree_util.tree_map(fn3, x, y, z)', '')),
                     ('DM-Tree', ('dm_tree.map_structure_up_to(x, fn3, x, y, z)', '')),
+                ]
+            ),
+        ),
+        (
+            'Tree Map with Path',
+            OrderedDict(
+                [
+                    ('OpTree(default)', ('optree.tree_map_with_path(fnp1, x)', '')),
+                    (
+                        'OpTree(NoneIsNode)',
+                        ('optree.tree_map_with_path(fnp1, x, none_is_leaf=False)', ''),
+                    ),
+                    (
+                        'OpTree(NoneIsLeaf)',
+                        ('optree.tree_map_with_path(fnp1, x, none_is_leaf=True)', ''),
+                    ),
+                    ('JAX XLA', ('jax.tree_util.tree_map_with_path(fnp1, x)', '')),
+                    ('DM-Tree', ('dm_tree.map_structure_with_path(fnp1, x)', '')),
+                ]
+            ),
+        ),
+        (
+            'Tree Map with Path (nargs)',
+            OrderedDict(
+                [
+                    ('OpTree(default)', ('optree.tree_map_with_path(fnp3, x, y, z)', '')),
+                    (
+                        'OpTree(NoneIsNode)',
+                        (
+                            'optree.tree_map_with_path(fnp3, x, y, z, none_is_leaf=False)',
+                            '',
+                        ),
+                    ),
+                    (
+                        'OpTree(NoneIsLeaf)',
+                        (
+                            'optree.tree_map_with_path(fnp3, x, y, z, none_is_leaf=True)',
+                            '',
+                        ),
+                    ),
+                    ('JAX XLA', ('jax.tree_util.tree_map_with_path(fnp3, x, y, z)', '')),
+                    ('DM-Tree', ('dm_tree.map_structure_with_path(fnp3, x, y, z)', '')),
                 ]
             ),
         ),
