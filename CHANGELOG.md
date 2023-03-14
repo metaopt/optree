@@ -13,6 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+-
+
+### Changed
+
+-
+
+### Fixed
+
+-
+
+### Removed
+
+-
+
+------
+
+## [0.8.0] - 2023-03-14
+
+### Added
+
 - Add methods `PyTreeSpec.paths` and `PyTreeSpec.entries` by [@XuehaiPan](https://github.com/XuehaiPan) in [#43](https://github.com/metaopt/optree/pull/43).
 - Allow tree-map with mixed inputs of ordered and unordered dictionaries by [@XuehaiPan](https://github.com/XuehaiPan) in [#42](https://github.com/metaopt/optree/pull/42).
 - Add more utility functions for `namedtuple` and `PyStructSequence` type by [@XuehaiPan](https://github.com/XuehaiPan) in [#41](https://github.com/metaopt/optree/pull/41).
@@ -28,14 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use more appropriate exception handling (e.g., change `ValueError` to `TypeError` in `structseq_fields`) by [@XuehaiPan](https://github.com/XuehaiPan) in [#41](https://github.com/metaopt/optree/pull/41).
 - Inherit `optree._C.InternalError` from `SystemError` rather than `RuntimeError` by [@XuehaiPan](https://github.com/XuehaiPan) in [#41](https://github.com/metaopt/optree/pull/41).
 - Change keyword argument `initial` to `initializer` for `tree_reduce` to align with `functools.reduce` by [@XuehaiPan](https://github.com/XuehaiPan) in [#39](https://github.com/metaopt/optree/pull/39).
-
-### Fixed
-
--
-
-### Removed
-
--
 
 ------
 
@@ -173,7 +185,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/metaopt/optree/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/metaopt/optree/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/metaopt/optree/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/metaopt/optree/compare/v0.5.0...v0.5.1
