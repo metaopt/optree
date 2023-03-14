@@ -164,7 +164,7 @@ def register_pytree_node(
         raise TypeError(f'Expected a class, got {cls}.')
     if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
         raise TypeError(f'The namespace must be a string, got {namespace}.')
-    if namespace == '':
+    if namespace == '':  # noqa: PLC1901
         raise ValueError('The namespace cannot be an empty string.')
 
     registration_key: type | tuple[str, type]
@@ -258,7 +258,7 @@ def register_pytree_node_class(
     if cls is __GLOBAL_NAMESPACE or isinstance(cls, str):
         if namespace is not None:
             raise ValueError('Cannot specify `namespace` when the first argument is a string.')
-        if cls == '':
+        if cls == '':  # noqa: PLC1901
             raise ValueError('The namespace cannot be an empty string.')
         return functools.partial(register_pytree_node_class, namespace=cls)  # type: ignore[return-value]
 
@@ -266,7 +266,7 @@ def register_pytree_node_class(
         raise ValueError('Must specify `namespace` when the first argument is a class.')
     if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
         raise TypeError(f'The namespace must be a string, got {namespace}')
-    if namespace == '':
+    if namespace == '':  # noqa: PLC1901
         raise ValueError('The namespace cannot be an empty string.')
 
     if cls is None:
@@ -344,7 +344,7 @@ def _pytree_node_registry_get(
     namespace: str = __GLOBAL_NAMESPACE,
 ) -> PyTreeNodeRegistryEntry | None:
     entry: PyTreeNodeRegistryEntry | None = _nodetype_registry.get(cls)
-    if entry is not None or namespace is __GLOBAL_NAMESPACE or namespace == '':
+    if entry is not None or namespace is __GLOBAL_NAMESPACE or namespace == '':  # noqa: PLC1901
         return entry
     return _nodetype_registry.get((namespace, cls))
 
