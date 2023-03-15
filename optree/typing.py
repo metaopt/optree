@@ -154,7 +154,8 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
 
     @_tp_cache
     def __class_getitem__(  # noqa: C901
-        cls, item: T | tuple[T] | tuple[T, str | None]
+        cls,
+        item: T | tuple[T] | tuple[T, str | None],
     ) -> TypeAlias:
         """Instantiate a PyTree type with the given type."""
         if not isinstance(item, tuple):
@@ -162,13 +163,13 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
         if len(item) != 2:
             raise TypeError(
                 f'{cls.__name__}[...] only supports a tuple of 2 items, '
-                f'a parameter and a string of type name. Got {item!r}.'
+                f'a parameter and a string of type name. Got {item!r}.',
             )
         param, name = item
         if name is not None and not isinstance(name, str):
             raise TypeError(
                 f'{cls.__name__}[...] only supports a tuple of 2 items, '
-                f'a parameter and a string of type name. Got {item!r}.'
+                f'a parameter and a string of type name. Got {item!r}.',
             )
 
         if (

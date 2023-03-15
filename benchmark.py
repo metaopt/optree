@@ -86,7 +86,7 @@ def extract(module: nn.Module, unordered: bool) -> Any:
         [
             (name, extract(submodule, unordered=unordered))
             for name, submodule in module.named_children()
-        ]
+        ],
     )
     extracted.update(
         tensors=Tensors(
@@ -140,7 +140,7 @@ STMTS = OrderedDict(
                     ('JAX XLA', ('jax.tree_util.tree_leaves(x)', '')),
                     ('PyTorch', ('torch_utils_pytree.tree_flatten(x)[0]', '')),
                     ('DM-Tree', ('dm_tree.flatten(x)', '')),
-                ]
+                ],
             ),
         ),
         (
@@ -182,7 +182,7 @@ STMTS = OrderedDict(
                             'flat, spec = dm_tree.flatten(x), x',
                         ),
                     ),
-                ]
+                ],
             ),
         ),
         (
@@ -200,7 +200,7 @@ STMTS = OrderedDict(
                     ),
                     ('JAX XLA', ('jax.tree_util.tree_flatten_with_path(x)', '')),
                     ('DM-Tree', ('dm_tree.flatten_with_path(x)', '')),
-                ]
+                ],
             ),
         ),
         (
@@ -240,7 +240,7 @@ STMTS = OrderedDict(
                         'DM-Tree',
                         ('dm_tree.unflatten_as(x, dm_tree.flatten(x))', ''),
                     ),
-                ]
+                ],
             ),
         ),
         (
@@ -253,7 +253,7 @@ STMTS = OrderedDict(
                     ('JAX XLA', ('jax.tree_util.tree_map(fn1, x)', '')),
                     ('PyTorch', ('torch_utils_pytree.tree_map(fn1, x)', '')),
                     ('DM-Tree', ('dm_tree.map_structure(fn1, x)', '')),
-                ]
+                ],
             ),
         ),
         (
@@ -271,7 +271,7 @@ STMTS = OrderedDict(
                     ),
                     ('JAX XLA', ('jax.tree_util.tree_map(fn3, x, y, z)', '')),
                     ('DM-Tree', ('dm_tree.map_structure_up_to(x, fn3, x, y, z)', '')),
-                ]
+                ],
             ),
         ),
         (
@@ -289,7 +289,7 @@ STMTS = OrderedDict(
                     ),
                     ('JAX XLA', ('jax.tree_util.tree_map_with_path(fnp1, x)', '')),
                     ('DM-Tree', ('dm_tree.map_structure_with_path(fnp1, x)', '')),
-                ]
+                ],
             ),
         ),
         (
@@ -313,10 +313,10 @@ STMTS = OrderedDict(
                     ),
                     ('JAX XLA', ('jax.tree_util.tree_map_with_path(fnp3, x, y, z)', '')),
                     ('DM-Tree', ('dm_tree.map_structure_with_path(fnp3, x, y, z)', '')),
-                ]
+                ],
             ),
         ),
-    ]
+    ],
 )
 
 
@@ -355,19 +355,19 @@ def check(tree: Any) -> None:
     print('### Check ###')
     if optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree:
         cprint(
-            f'{CMARK} COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree'
+            f'{CMARK} COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) == tree',
         )
     else:
         cprint(
-            f'{XMARK} COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) != tree'
+            f'{XMARK} COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=False)[::-1]) != tree',
         )
     if optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=True)[::-1]) == tree:
         cprint(
-            f'{CMARK} COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=True)[::-1]) == tree'
+            f'{CMARK} COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=True)[::-1]) == tree',
         )
     else:
         cprint(
-            f'{XMARK} COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=True)[::-1]) != tree'
+            f'{XMARK} COPY: optree.tree_unflatten(*optree.tree_flatten(tree, none_is_leaf=True)[::-1]) != tree',
         )
 
     optree_flat = optree.tree_leaves(tree, none_is_leaf=False)
@@ -376,30 +376,30 @@ def check(tree: Any) -> None:
         cprint(
             f'{CMARK} FLATTEN (OpTree vs. JAX XLA): '
             f'optree.tree_leaves(tree, none_is_leaf=False)'
-            f' == jax.tree_util.tree_leaves(tree)'
+            f' == jax.tree_util.tree_leaves(tree)',
         )
     else:
         cprint(
             f'{XMARK} FLATTEN (OpTree vs. JAX XLA): '
             f'optree.tree_leaves(tree, none_is_leaf=False)'
-            f' != jax.tree_util.tree_leaves(tree)'
+            f' != jax.tree_util.tree_leaves(tree)',
         )
 
     optree_flat = optree.tree_leaves(tree, none_is_leaf=True)
     torch_flat = torch_utils_pytree.tree_flatten(tree)[0]
     if len(optree_flat) == len(torch_flat) and all(
-        map(lambda a, b: a is b, optree_flat, torch_flat)
+        map(lambda a, b: a is b, optree_flat, torch_flat),
     ):
         cprint(
             f'{CMARK} FLATTEN (OpTree vs. PyTorch): '
             f'optree.tree_leaves(tree, none_is_leaf=True)'
-            f' == torch_utils_pytree.tree_flatten(tree)[0]'
+            f' == torch_utils_pytree.tree_flatten(tree)[0]',
         )
     else:
         cprint(
             f'{XMARK} FLATTEN (OpTree vs. PyTorch): '
             f'optree.tree_leaves(tree, none_is_leaf=True)'
-            f' != torch_utils_pytree.tree_flatten(tree)[0]'
+            f' != torch_utils_pytree.tree_flatten(tree)[0]',
         )
 
     counter = count()
@@ -410,13 +410,13 @@ def check(tree: Any) -> None:
         cprint(
             f'{CMARK} TREEMAP (OpTree vs. JAX XLA): '
             f'optree.tree_map(fn, tree, none_is_leaf=False)'
-            f' == jax.tree_util.tree_map(fn, tree)'
+            f' == jax.tree_util.tree_map(fn, tree)',
         )
     else:
         cprint(
             f'{XMARK} TREEMAP (OpTree vs. JAX XLA): '
             f'optree.tree_map(fn, tree, none_is_leaf=False)'
-            f' != jax.tree_util.tree_map(fn, tree)'
+            f' != jax.tree_util.tree_map(fn, tree)',
         )
 
     counter = count()
@@ -427,13 +427,13 @@ def check(tree: Any) -> None:
         cprint(
             f'{CMARK} TREEMAP (OpTree vs. PyTorch): '
             f'optree.tree_map(fn, tree, none_is_leaf=True)'
-            f' == torch_utils_pytree.tree_map(fn, tree)'
+            f' == torch_utils_pytree.tree_map(fn, tree)',
         )
     else:
         cprint(
             f'{XMARK} TREEMAP (OpTree vs. PyTorch): '
             f'optree.tree_map(fn, tree, none_is_leaf=True)'
-            f' != torch_utils_pytree.tree_map(fn, tree)'
+            f' != torch_utils_pytree.tree_map(fn, tree)',
         )
 
     print(flush=True)
@@ -479,7 +479,7 @@ def compare(  # pylint: disable=too-many-locals
         [
             (lib, 10e6 * timeit(stmt, init_stmt, number, repeat=repeat, globals=globals))
             for lib, (stmt, init_stmt) in stmts.items()
-        ]
+        ],
     )
     base_time = next(iter(times_us.values()))
     best_time = min(times_us.values())
@@ -553,7 +553,7 @@ def benchmark(  # pylint: disable=too-many-locals
             'Speedup (J / O)',
             'Speedup (P / O)',
             'Speedup (D / O)',
-        ]
+        ],
     )
 
     x = extract(module, unordered=unordered)
@@ -603,7 +603,7 @@ def benchmark(  # pylint: disable=too-many-locals
         .replace('|  ', '|')
         .replace('|--', '|')
         .replace('nan', 'N/A')
-        .replace('N/A    |', '   N/A |')
+        .replace('N/A    |', '   N/A |'),
     )
     print(flush=True)
     return df
@@ -612,7 +612,9 @@ def benchmark(  # pylint: disable=too-many-locals
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--unordered', action='store_true', help='whether to use `dict` rather than `OrderedDict`'
+        '--unordered',
+        action='store_true',
+        help='whether to use `dict` rather than `OrderedDict`',
     )
     parser.add_argument(
         '--number',
@@ -649,7 +651,7 @@ def main() -> None:
             'Speedup (J / O)',
             'Speedup (P / O)',
             'Speedup (D / O)',
-        ]
+        ],
     )
     for name, module_factory in (
         ('TinyMLP', tiny_mlp),
@@ -677,7 +679,7 @@ def main() -> None:
             .replace('|  ', '|')
             .replace('|--', '|')
             .replace('nan', 'N/A')
-            .replace('N/A    |', 'N/A |')
+            .replace('N/A    |', 'N/A |'),
         )
         print(flush=True)
 

@@ -291,14 +291,14 @@ def _dict_flatten(dct: dict[KT, VT]) -> tuple[tuple[VT, ...], list[KT], tuple[KT
 
 
 def _ordereddict_flatten(
-    dct: OrderedDict[KT, VT]
+    dct: OrderedDict[KT, VT],
 ) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
     keys, values = unzip2(dct.items())
     return values, list(keys), keys
 
 
 def _defaultdict_flatten(
-    dct: defaultdict[KT, VT]
+    dct: defaultdict[KT, VT],
 ) -> tuple[tuple[VT, ...], tuple[Callable[[], VT] | None, list[KT]], tuple[KT, ...]]:
     values, keys, entries = _dict_flatten(dct)
     return values, (dct.default_factory, list(keys)), entries

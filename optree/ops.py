@@ -675,7 +675,7 @@ def tree_transpose(
     ):
         raise ValueError(
             f'Tree structures must have the same namespace. '
-            f'Got {outer_treespec.namespace!r} vs. {inner_treespec.namespace!r}.'
+            f'Got {outer_treespec.namespace!r} vs. {inner_treespec.namespace!r}.',
         )
 
     leaves, treespec = tree_flatten(
@@ -1461,7 +1461,9 @@ def treespec_none(*, none_is_leaf: bool = False) -> PyTreeSpec:
 
 
 def treespec_tuple(
-    treespecs: Iterable[PyTreeSpec] = (), *, none_is_leaf: bool = False
+    treespecs: Iterable[PyTreeSpec] = (),
+    *,
+    none_is_leaf: bool = False,
 ) -> PyTreeSpec:
     """Make a tuple treespec from a list of child treespecs.
 
@@ -1517,7 +1519,7 @@ def flatten_one_level(
         elif len(flattened) != 3:
             raise RuntimeError(
                 f'PyTree custom flatten function for type {node_type} should return a 2- or 3-tuple, '
-                f'got {len(flattened)}.'
+                f'got {len(flattened)}.',
             )
         children, metadata, entries = flattened
         children = list(children)
@@ -1525,7 +1527,7 @@ def flatten_one_level(
         if len(children) != len(entries):
             raise RuntimeError(
                 f'PyTree custom flatten function for type {node_type} returned inconsistent '
-                f'number of children ({len(children)}) and number of entries ({len(entries)}).'
+                f'number of children ({len(children)}) and number of entries ({len(entries)}).',
             )
         return children, metadata, entries
 
@@ -1555,7 +1557,7 @@ def prefix_errors(
             is_leaf,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
-        )
+        ),
     )
 
 
@@ -1574,7 +1576,7 @@ def _prefix_error(
 ) -> Iterable[Callable[[str], ValueError]]:
     # A leaf is a valid prefix of any tree
     if treespec_is_strict_leaf(
-        tree_structure(prefix_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+        tree_structure(prefix_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace),
     ):
         return
 
@@ -1596,7 +1598,7 @@ def _prefix_error(
             f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
             f'    {type(prefix_tree)}\n'
             f'but at the same key path the full pytree has a subtree of different type\n'
-            f'    {type(full_tree)}.'.format(name=name)
+            f'    {type(full_tree)}.'.format(name=name),
         )
         return  # don't look for more errors in this subtree
 
@@ -1604,10 +1606,14 @@ def _prefix_error(
     # prefix_tree and full_tree have the same type at this point, and because prefix_tree is not a
     # leaf, each can be flattened once):
     prefix_tree_children, prefix_tree_metadata, _ = flatten_one_level(
-        prefix_tree, none_is_leaf=none_is_leaf, namespace=namespace
+        prefix_tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
     full_tree_children, full_tree_metadata, _ = flatten_one_level(
-        full_tree, none_is_leaf=none_is_leaf, namespace=namespace
+        full_tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
     # Special handling for directory types
     if both_standard_dict:
@@ -1641,7 +1647,7 @@ def _prefix_error(
                 f'but at the same key path the full pytree has a subtree of type\n'
                 f'    {full_tree_type}\n'
                 f'but with {len(full_tree_keys)} key(s)\n'
-                f'    {full_tree_keys}{key_difference}'.format(name=name)
+                f'    {full_tree_keys}{key_difference}'.format(name=name),
             )
             return  # don't look for more errors in this subtree
 
@@ -1653,7 +1659,7 @@ def _prefix_error(
             f'    {prefix_tree_type}\n'
             f'with {len(prefix_tree_children)} children, '
             f'but at the same key path the full pytree has a subtree of the same '
-            f'type but with {len(full_tree_children)} children.'.format(name=name)
+            f'type but with {len(full_tree_children)} children.'.format(name=name),
         )
         return  # don't look for more errors in this subtree
 
@@ -1673,7 +1679,7 @@ def _prefix_error(
                 difflib.ndiff(
                     prefix_tree_metadata_repr.splitlines(),
                     full_tree_metadata_repr.splitlines(),
-                )
+                ),
             ),
             prefix='    ',
         )
@@ -1688,7 +1694,7 @@ def _prefix_error(
             f'type but with metadata\n'
             f'    {full_tree_metadata_repr}\n'
             f'so the diff in the metadata at these pytree nodes is\n'
-            f'{metadata_diff}'.format(name=name)
+            f'{metadata_diff}'.format(name=name),
         )
         return  # don't look for more errors in this subtree
 
