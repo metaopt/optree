@@ -224,7 +224,7 @@ class PyTreeSpec {
 
     // Transform the object returned by `ToPicklable()` back to PyTreeSpec.
     // Used to implement `PyTreeSpec.__setstate__`.
-    static PyTreeSpec FromPicklable(const py::object &picklable);
+    static std::unique_ptr<PyTreeSpec> FromPicklable(const py::object &picklable);
 
  private:
     struct Node {
@@ -311,7 +311,7 @@ class PyTreeSpec {
                                     const ssize_t &pos,
                                     const ssize_t &depth) const;
 
-    static PyTreeSpec FromPicklableImpl(const py::object &picklable);
+    static std::unique_ptr<PyTreeSpec> FromPicklableImpl(const py::object &picklable);
 };
 
 }  // namespace optree

@@ -716,23 +716,23 @@ py::object PyTreeSpec::ToPicklable() const {
 
 // NOLINTBEGIN[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-/*static*/ PyTreeSpec PyTreeSpec::FromPicklableImpl(const py::object& picklable) {
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklableImpl(const py::object& picklable) {
     auto state = py::reinterpret_steal<py::tuple>(picklable);
     if (state.size() != 3) [[unlikely]] {
         throw std::runtime_error("Malformed pickled PyTreeSpec.");
     }
     bool none_is_leaf = false;
     std::string registry_namespace;
-    PyTreeSpec treespec;
-    treespec.m_none_is_leaf = none_is_leaf = state[1].cast<bool>();
-    treespec.m_namespace = registry_namespace = state[2].cast<std::string>();
+    auto out = std::make_unique<PyTreeSpec>();
+    out->m_none_is_leaf = none_is_leaf = state[1].cast<bool>();
+    out->m_namespace = registry_namespace = state[2].cast<std::string>();
     auto node_states = py::reinterpret_borrow<py::tuple>(state[0]);
     for (const auto& item : node_states) {
         auto t = item.cast<py::tuple>();
         if (t.size() != 7) [[unlikely]] {
             throw std::runtime_error("Malformed pickled PyTreeSpec.");
         }
-        Node& node = treespec.m_traversal.emplace_back();
+        Node& node = out->m_traversal.emplace_back();
         node.kind = static_cast<PyTreeKind>(t[0].cast<ssize_t>());
         node.arity = t[1].cast<ssize_t>();
         switch (node.kind) {
@@ -789,11 +789,11 @@ py::object PyTreeSpec::ToPicklable() const {
         node.num_leaves = t[5].cast<ssize_t>();
         node.num_nodes = t[6].cast<ssize_t>();
     }
-    return treespec;
+    return out;
 }
 // NOLINTEND[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
 
-/*static*/ PyTreeSpec PyTreeSpec::FromPicklable(const py::object& picklable) {
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklable(const py::object& picklable) {
     return FromPicklableImpl(picklable);
 }
 
