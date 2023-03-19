@@ -389,6 +389,90 @@ def test_tree_map_with_path_none_is_leaf():
     )
 
 
+def test_tree_map_key_order():
+    tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
+    leaves = []
+
+    def add_leaves(x):
+        leaves.append(x)
+        return x
+
+    mapped = optree.tree_map(add_leaves, tree)
+    assert mapped == tree
+    assert list(mapped.keys()) == list(tree.keys())
+    assert list(mapped.values()) == list(tree.values())
+    assert list(mapped.items()) == list(tree.items())
+    assert leaves == [1, 2, 3, 4]
+
+
+def test_tree_map_with_path_key_order():
+    tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
+    paths = []
+    leaves = []
+
+    def add_leaves(p, x):
+        paths.append(p)
+        leaves.append(x)
+        return p, x
+
+    mapped = optree.tree_map_with_path(add_leaves, tree)
+    expected = {
+        'b': (('b',), 2),
+        'a': (('a',), 1),
+        'c': (('c',), 3),
+        'd': None,
+        'e': (('e',), 4),
+    }
+    assert mapped == expected
+    assert list(mapped.keys()) == list(expected.keys())
+    assert list(mapped.values()) == list(expected.values())
+    assert list(mapped.items()) == list(expected.items())
+    assert paths == [('a',), ('b',), ('c',), ('e',)]
+    assert leaves == [1, 2, 3, 4]
+
+
+def test_tree_map_key_order_none_is_leaf():
+    tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
+    leaves = []
+
+    def add_leaves(x):
+        leaves.append(x)
+        return x
+
+    mapped = optree.tree_map(add_leaves, tree, none_is_leaf=True)
+    assert mapped == tree
+    assert list(mapped.keys()) == list(tree.keys())
+    assert list(mapped.values()) == list(tree.values())
+    assert list(mapped.items()) == list(tree.items())
+    assert leaves == [1, 2, 3, None, 4]
+
+
+def test_tree_map_with_path_key_order_none_is_leaf():
+    tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
+    paths = []
+    leaves = []
+
+    def add_leaves(p, x):
+        paths.append(p)
+        leaves.append(x)
+        return p, x
+
+    mapped = optree.tree_map_with_path(add_leaves, tree, none_is_leaf=True)
+    expected = {
+        'b': (('b',), 2),
+        'a': (('a',), 1),
+        'c': (('c',), 3),
+        'd': (('d',), None),
+        'e': (('e',), 4),
+    }
+    assert mapped == expected
+    assert list(mapped.keys()) == list(expected.keys())
+    assert list(mapped.values()) == list(expected.values())
+    assert list(mapped.items()) == list(expected.items())
+    assert paths == [('a',), ('b',), ('c',), ('d',), ('e',)]
+    assert leaves == [1, 2, 3, None, 4]
+
+
 def test_tree_map_with_is_leaf_none():
     x = ((1, 2, None), (3, 4, 5))
     out = optree.tree_map(lambda *xs: tuple(xs), x, none_is_leaf=False)
@@ -484,6 +568,84 @@ def test_tree_map_with_path_inplace():
     out = optree.tree_map_with_path_(fn_, x, y)
     assert out is x
     assert x == ((Counter(4), Counter(2), None), (Counter(13), Counter(25), Counter(29)))
+
+
+def test_tree_map_inplace_key_order():
+    tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
+    expected = tree.copy()
+    leaves = []
+
+    def add_leaves(x):
+        leaves.append(x)
+        return x
+
+    mapped = optree.tree_map_(add_leaves, tree)
+    assert mapped is tree
+    assert mapped == expected
+    assert list(mapped.keys()) == list(expected.keys())
+    assert list(mapped.values()) == list(expected.values())
+    assert list(mapped.items()) == list(expected.items())
+    assert leaves == [1, 2, 3, 4]
+
+
+def test_tree_map_with_path_inplace_key_order():
+    tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
+    expected = tree.copy()
+    paths = []
+    leaves = []
+
+    def add_leaves(p, x):
+        paths.append(p)
+        leaves.append(x)
+        return p, x
+
+    mapped = optree.tree_map_with_path_(add_leaves, tree)
+    assert mapped is tree
+    assert mapped == expected
+    assert list(mapped.keys()) == list(expected.keys())
+    assert list(mapped.values()) == list(expected.values())
+    assert list(mapped.items()) == list(expected.items())
+    assert paths == [('a',), ('b',), ('c',), ('e',)]
+    assert leaves == [1, 2, 3, 4]
+
+
+def test_tree_map_inplace_key_order_none_is_leaf():
+    tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
+    expected = tree.copy()
+    leaves = []
+
+    def add_leaves(x):
+        leaves.append(x)
+        return x
+
+    mapped = optree.tree_map_(add_leaves, tree, none_is_leaf=True)
+    assert mapped is tree
+    assert mapped == expected
+    assert list(mapped.keys()) == list(expected.keys())
+    assert list(mapped.values()) == list(expected.values())
+    assert list(mapped.items()) == list(expected.items())
+    assert leaves == [1, 2, 3, None, 4]
+
+
+def test_tree_map_with_path_inplace_key_order_none_is_leaf():
+    tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
+    expected = tree.copy()
+    paths = []
+    leaves = []
+
+    def add_leaves(p, x):
+        paths.append(p)
+        leaves.append(x)
+        return p, x
+
+    mapped = optree.tree_map_with_path_(add_leaves, tree, none_is_leaf=True)
+    assert mapped is tree
+    assert mapped == expected
+    assert list(mapped.keys()) == list(expected.keys())
+    assert list(mapped.values()) == list(expected.values())
+    assert list(mapped.items()) == list(expected.items())
+    assert paths == [('a',), ('b',), ('c',), ('d',), ('e',)]
+    assert leaves == [1, 2, 3, None, 4]
 
 
 @parametrize(tree=TREES)
