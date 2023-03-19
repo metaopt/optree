@@ -59,14 +59,16 @@ class PyTreeSpec {
         const py::handle &tree,
         const std::optional<py::function> &leaf_predicate = std::nullopt,
         const bool &none_is_leaf = false,
-        const std::string &registry_namespace = "");
+        const std::string &registry_namespace = "",
+        const bool &unflatten_preserve_dict_order = false);
 
     // Recursive helper used to implement Flatten().
     bool FlattenInto(const py::handle &handle,
                      std::vector<py::object> &leaves,  // NOLINT[runtime/references]
                      const std::optional<py::function> &leaf_predicate,
                      const bool &none_is_leaf,
-                     const std::string &registry_namespace);
+                     const std::string &registry_namespace,
+                     const bool &unflatten_preserve_dict_order);
 
     // Flatten a PyTree into a list of leaves with a list of paths and a PyTreeSpec.
     // Return references to the flattened objects, which might be temporary objects in the case of
@@ -75,7 +77,8 @@ class PyTreeSpec {
     FlattenWithPath(const py::handle &tree,
                     const std::optional<py::function> &leaf_predicate = std::nullopt,
                     const bool &none_is_leaf = false,
-                    const std::string &registry_namespace = "");
+                    const std::string &registry_namespace = "",
+                    const bool &unflatten_preserve_dict_order = false);
 
     // Recursive helper used to implement FlattenWithPath().
     bool FlattenIntoWithPath(const py::handle &handle,
@@ -83,7 +86,8 @@ class PyTreeSpec {
                              std::vector<py::object> &paths,   // NOLINT[runtime/references]
                              const std::optional<py::function> &leaf_predicate,
                              const bool &none_is_leaf,
-                             const std::string &registry_namespace);
+                             const std::string &registry_namespace,
+                             const bool &unflatten_preserve_dict_order);
 
     // Flatten a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure
     // of 'x'. For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeSpec [(*,
@@ -253,6 +257,9 @@ class PyTreeSpec {
 
         // Number of leaf and interior nodes in the subtree rooted at this node.
         ssize_t num_nodes = 0;
+
+        // For a Dict or DefaultDict, contains the keys in insertion order.
+        py::object ordered_keys;
     };
 
     // Nodes, in a post-order traversal. We use an ordered traversal to minimize allocations, and
@@ -274,14 +281,14 @@ class PyTreeSpec {
                               PyTreeTypeRegistry::Registration const **custom,
                               const std::string &registry_namespace);
 
-    template <bool NoneIsLeaf, typename Span>
+    template <bool NoneIsLeaf, bool UnflattenPreserveDictOrder, typename Span>
     bool FlattenIntoImpl(const py::handle &handle,
                          Span &leaves,  // NOLINT[runtime/references]
                          const ssize_t &depth,
                          const std::optional<py::function> &leaf_predicate,
                          const std::string &registry_namespace);
 
-    template <bool NoneIsLeaf, typename Span, typename Stack>
+    template <bool NoneIsLeaf, bool UnflattenPreserveDictOrder, typename Span, typename Stack>
     bool FlattenIntoWithPathImpl(const py::handle &handle,
                                  Span &leaves,  // NOLINT[runtime/references]
                                  Span &paths,   // NOLINT[runtime/references]

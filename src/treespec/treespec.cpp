@@ -404,6 +404,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
     return out;
 }
 
+// NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ py::object PyTreeSpec::MakeNode(const PyTreeSpec::Node& node,
                                            const absl::Span<py::object>& children) {
     EXPECT_EQ(py::ssize_t_cast(children.size()), node.arity, "Node arity did not match.");
@@ -427,7 +428,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
             if (node.kind == PyTreeKind::StructSequence) [[unlikely]] {
                 return node.node_data(std::move(tuple));
             }
-            return std::move(tuple);
+            return tuple;
         }
 
         case PyTreeKind::List:
@@ -439,16 +440,21 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
             if (node.kind == PyTreeKind::Deque) [[unlikely]] {
                 return PyDequeTypeObject(list, py::arg("maxlen") = node.node_data);
             }
-            return std::move(list);
+            return list;
         }
 
         case PyTreeKind::Dict: {
             py::dict dict;
             auto keys = py::reinterpret_borrow<py::list>(node.node_data);
+            if (node.ordered_keys) [[unlikely]] {
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    dict[GET_ITEM_HANDLE<py::list>(node.ordered_keys, i)] = py::none();
+                }
+            }
             for (ssize_t i = 0; i < node.arity; ++i) {
                 dict[GET_ITEM_HANDLE<py::list>(keys, i)] = std::move(children[i]);
             }
-            return std::move(dict);
+            return dict;
         }
 
         case PyTreeKind::OrderedDict: {
@@ -467,6 +473,11 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
             py::dict dict;
             py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
             py::list keys = GET_ITEM_BORROW<py::tuple>(node.node_data, 1);
+            if (node.ordered_keys) [[unlikely]] {
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    dict[GET_ITEM_HANDLE<py::list>(node.ordered_keys, i)] = py::none();
+                }
+            }
             for (ssize_t i = 0; i < node.arity; ++i) {
                 dict[GET_ITEM_HANDLE<py::list>(keys, i)] = std::move(children[i]);
             }

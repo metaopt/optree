@@ -19,7 +19,7 @@ limitations under the License.
 
 namespace optree {
 
-template <bool NoneIsLeaf, typename Span>
+template <bool NoneIsLeaf, bool UnflattenPreserveDictOrder, typename Span>
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                                  Span& leaves,
@@ -43,7 +43,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
         // NOLINTNEXTLINE[misc-no-recursion]
         auto recurse = [this, &found_custom, &leaf_predicate, &registry_namespace, &leaves, &depth](
                            const py::handle& child) {
-            found_custom |= FlattenIntoImpl<NoneIsLeaf>(
+            found_custom |= FlattenIntoImpl<NoneIsLeaf, UnflattenPreserveDictOrder>(
                 child, leaves, depth + 1, leaf_predicate, registry_namespace);
         };
         switch (node.kind) {
@@ -76,11 +76,12 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
                 auto dict = py::reinterpret_borrow<py::dict>(handle);
-                py::list keys;
-                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
-                    keys = DictKeys(dict);
-                } else [[likely]] {
-                    keys = SortedDictKeys(dict);
+                py::list keys = DictKeys(dict);
+                if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
+                    if (UnflattenPreserveDictOrder) [[unlikely]] {
+                        node.ordered_keys = keys.attr("copy")();
+                    }
+                    TotalOrderSort(keys);
                 }
                 for (const py::handle& key : keys) {
                     recurse(dict[key]);
@@ -166,11 +167,24 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
                              std::vector<py::object>& leaves,
                              const std::optional<py::function>& leaf_predicate,
                              const bool& none_is_leaf,
-                             const std::string& registry_namespace) {
+                             const std::string& registry_namespace,
+                             const bool& unflatten_preserve_dict_order) {
     if (none_is_leaf) [[unlikely]] {
-        return FlattenIntoImpl<NONE_IS_LEAF>(handle, leaves, 0, leaf_predicate, registry_namespace);
+        if (unflatten_preserve_dict_order) [[unlikely]] {
+            return FlattenIntoImpl<NONE_IS_LEAF, /*UnflattenPreserveDictOrder=*/true>(
+                handle, leaves, 0, leaf_predicate, registry_namespace);
+        } else [[likely]] {
+            return FlattenIntoImpl<NONE_IS_LEAF, /*UnflattenPreserveDictOrder=*/false>(
+                handle, leaves, 0, leaf_predicate, registry_namespace);
+        }
     } else [[likely]] {
-        return FlattenIntoImpl<NONE_IS_NODE>(handle, leaves, 0, leaf_predicate, registry_namespace);
+        if (unflatten_preserve_dict_order) [[unlikely]] {
+            return FlattenIntoImpl<NONE_IS_NODE, /*UnflattenPreserveDictOrder=*/true>(
+                handle, leaves, 0, leaf_predicate, registry_namespace);
+        } else [[likely]] {
+            return FlattenIntoImpl<NONE_IS_NODE, /*UnflattenPreserveDictOrder=*/false>(
+                handle, leaves, 0, leaf_predicate, registry_namespace);
+        }
     }
 }
 
@@ -178,18 +192,23 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
     const py::handle& tree,
     const std::optional<py::function>& leaf_predicate,
     const bool& none_is_leaf,
-    const std::string& registry_namespace) {
+    const std::string& registry_namespace,
+    const bool& unflatten_preserve_dict_order) {
     std::vector<py::object> leaves;
     auto treespec = std::make_unique<PyTreeSpec>();
     treespec->m_none_is_leaf = none_is_leaf;
-    if (treespec->FlattenInto(tree, leaves, leaf_predicate, none_is_leaf, registry_namespace))
-        [[unlikely]] {
+    if (treespec->FlattenInto(tree,
+                              leaves,
+                              leaf_predicate,
+                              none_is_leaf,
+                              registry_namespace,
+                              unflatten_preserve_dict_order)) [[unlikely]] {
         treespec->m_namespace = registry_namespace;
     }
     return std::make_pair(std::move(leaves), std::move(treespec));
 }
 
-template <bool NoneIsLeaf, typename Span, typename Stack>
+template <bool NoneIsLeaf, bool UnflattenPreserveDictOrder, typename Span, typename Stack>
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                                          Span& leaves,
@@ -222,7 +241,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                         &stack,
                         &depth](const py::handle& child, const py::handle& entry) {
             stack.emplace_back(entry);
-            found_custom |= FlattenIntoWithPathImpl<NoneIsLeaf>(
+            found_custom |= FlattenIntoWithPathImpl<NoneIsLeaf, UnflattenPreserveDictOrder>(
                 child, leaves, paths, stack, depth + 1, leaf_predicate, registry_namespace);
             stack.pop_back();
         };
@@ -262,11 +281,12 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
                 auto dict = py::reinterpret_borrow<py::dict>(handle);
-                py::list keys;
-                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
-                    keys = DictKeys(dict);
-                } else [[likely]] {
-                    keys = SortedDictKeys(dict);
+                py::list keys = DictKeys(dict);
+                if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
+                    if (UnflattenPreserveDictOrder) [[unlikely]] {
+                        node.ordered_keys = keys.attr("copy")();
+                    }
+                    TotalOrderSort(keys);
                 }
                 for (const py::handle& key : keys) {
                     recurse(dict[key], key);
@@ -368,14 +388,25 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
                                      std::vector<py::object>& paths,
                                      const std::optional<py::function>& leaf_predicate,
                                      const bool& none_is_leaf,
-                                     const std::string& registry_namespace) {
+                                     const std::string& registry_namespace,
+                                     const bool& unflatten_preserve_dict_order) {
     auto stack = std::vector<py::handle>{};
     if (none_is_leaf) [[unlikely]] {
-        return FlattenIntoWithPathImpl<NONE_IS_LEAF>(
-            handle, leaves, paths, stack, 0, leaf_predicate, registry_namespace);
+        if (unflatten_preserve_dict_order) [[unlikely]] {
+            return FlattenIntoWithPathImpl<NONE_IS_LEAF, /*UnflattenPreserveDictOrder=*/true>(
+                handle, leaves, paths, stack, 0, leaf_predicate, registry_namespace);
+        } else [[likely]] {
+            return FlattenIntoWithPathImpl<NONE_IS_LEAF, /*UnflattenPreserveDictOrder=*/false>(
+                handle, leaves, paths, stack, 0, leaf_predicate, registry_namespace);
+        }
     } else [[likely]] {
-        return FlattenIntoWithPathImpl<NONE_IS_NODE>(
-            handle, leaves, paths, stack, 0, leaf_predicate, registry_namespace);
+        if (unflatten_preserve_dict_order) [[unlikely]] {
+            return FlattenIntoWithPathImpl<NONE_IS_NODE, /*UnflattenPreserveDictOrder=*/true>(
+                handle, leaves, paths, stack, 0, leaf_predicate, registry_namespace);
+        } else [[likely]] {
+            return FlattenIntoWithPathImpl<NONE_IS_NODE, /*UnflattenPreserveDictOrder=*/false>(
+                handle, leaves, paths, stack, 0, leaf_predicate, registry_namespace);
+        }
     }
 }
 
@@ -383,13 +414,19 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
 PyTreeSpec::FlattenWithPath(const py::handle& tree,
                             const std::optional<py::function>& leaf_predicate,
                             const bool& none_is_leaf,
-                            const std::string& registry_namespace) {
+                            const std::string& registry_namespace,
+                            const bool& unflatten_preserve_dict_order) {
     std::vector<py::object> leaves;
     std::vector<py::object> paths;
     auto treespec = std::make_unique<PyTreeSpec>();
     treespec->m_none_is_leaf = none_is_leaf;
-    if (treespec->FlattenIntoWithPath(
-            tree, leaves, paths, leaf_predicate, none_is_leaf, registry_namespace)) [[unlikely]] {
+    if (treespec->FlattenIntoWithPath(tree,
+                                      leaves,
+                                      paths,
+                                      leaf_predicate,
+                                      none_is_leaf,
+                                      registry_namespace,
+                                      unflatten_preserve_dict_order)) [[unlikely]] {
         treespec->m_namespace = registry_namespace;
     }
     return std::make_tuple(std::move(paths), std::move(leaves), std::move(treespec));
