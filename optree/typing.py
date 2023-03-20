@@ -153,7 +153,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
     """
 
     @_tp_cache
-    def __class_getitem__(  # noqa: C901
+    def __class_getitem__(
         cls,
         item: T | tuple[T] | tuple[T, str | None],
     ) -> TypeAlias:

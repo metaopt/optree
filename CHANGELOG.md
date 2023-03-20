@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--
+- Change keyword argument `initializer` back to `initial` for `tree_reduce` to align with `functools.reduce` C implementation by [@XuehaiPan](https://github.com/XuehaiPan) in [#47](https://github.com/metaopt/optree/pull/47).
 
 ### Fixed
 

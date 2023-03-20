@@ -895,7 +895,7 @@ def tree_reduce(
 def tree_reduce(
     func: Callable[[T, T], T],
     tree: PyTree[T],
-    initializer: T = __MISSING,
+    initial: T = __MISSING,
     *,
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -907,7 +907,7 @@ def tree_reduce(
 def tree_reduce(
     func,
     tree,
-    initializer=__MISSING,
+    initial=__MISSING,
     *,
     is_leaf=None,
     none_is_leaf=False,
@@ -929,8 +929,8 @@ def tree_reduce(
     Args:
         func (callable): A function that takes two arguments and returns a value of the same type.
         tree (pytree): A pytree to be traversed.
-        initializer (object, optional): An initial value to be used for the reduction. If not
-            provided, the first leaf value is used as the initial value.
+        initial (object, optional): An initial value to be used for the reduction. If not provided,
+            the first leaf value is used as the initial value.
         is_leaf (callable, optional): An optionally specified function that will be called at each
             flattening step. It should return a boolean, with :data:`True` stopping the traversal
             and the whole subtree being treated as a leaf, and :data:`False` indicating the
@@ -946,9 +946,9 @@ def tree_reduce(
         The result of reducing the leaves of the pytree using ``func``.
     """  # pylint: disable=line-too-long
     leaves = tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
-    if initializer is __MISSING:
+    if initial is __MISSING:
         return functools.reduce(func, leaves)
-    return functools.reduce(func, leaves, initializer)
+    return functools.reduce(func, leaves, initial)
 
 
 def tree_sum(
