@@ -18,6 +18,7 @@
 import copy
 import functools
 import itertools
+import pickle
 import re
 from collections import OrderedDict, defaultdict, deque
 
@@ -129,6 +130,11 @@ def test_flatten_dict_order():
     assert leaves == [1, 2, 3, 4]
     assert str(treespec) == r"PyTreeSpec({'a': *, 'b': *, 'c': {'e': *, 'f': None, 'g': *}})"
     restored_tree = optree.tree_unflatten(treespec, leaves)
+    assert list(restored_tree) == ['b', 'a', 'c']
+
+    restored_treespec = pickle.loads(pickle.dumps(treespec))
+    assert str(restored_treespec) == str(treespec)
+    restored_tree = optree.tree_unflatten(restored_treespec, leaves)
     assert list(restored_tree) == ['b', 'a', 'c']
 
 

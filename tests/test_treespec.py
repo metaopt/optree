@@ -17,6 +17,7 @@
 
 import itertools
 import pickle
+from collections import defaultdict
 
 import pytest
 
@@ -178,6 +179,10 @@ def test_treespec_pickle_round_trip(tree, none_is_leaf, namespace):
     else:
         actual = pickle.loads(pickle.dumps(expected))
         assert actual == expected
+        if expected.type is dict or expected.type is defaultdict:
+            assert list(optree.tree_unflatten(actual, range(len(actual)))) == list(
+                optree.tree_unflatten(expected, range(len(expected)))
+            )
 
 
 @parametrize(

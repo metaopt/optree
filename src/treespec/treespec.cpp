@@ -709,7 +709,8 @@ py::object PyTreeSpec::ToPicklable() const {
                                            node.node_entries ? node.node_entries : py::none(),
                                            node.custom != nullptr ? node.custom->type : py::none(),
                                            node.num_leaves,
-                                           node.num_nodes));
+                                           node.num_nodes,
+                                           node.ordered_keys ? node.ordered_keys : py::none()));
     }
     return py::make_tuple(std::move(node_states), py::bool_(m_none_is_leaf), py::str(m_namespace));
 }
@@ -729,11 +730,27 @@ py::object PyTreeSpec::ToPicklable() const {
     auto node_states = py::reinterpret_borrow<py::tuple>(state[0]);
     for (const auto& item : node_states) {
         auto t = item.cast<py::tuple>();
-        if (t.size() != 7) [[unlikely]] {
-            throw std::runtime_error("Malformed pickled PyTreeSpec.");
-        }
         Node& node = out->m_traversal.emplace_back();
         node.kind = static_cast<PyTreeKind>(t[0].cast<ssize_t>());
+        if (t.size() != 7) [[unlikely]] {
+            if (t.size() == 8) [[likely]] {
+                if (t[7].is_none()) [[likely]] {
+                    if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict)
+                        [[unlikely]] {
+                        throw std::runtime_error("Malformed pickled PyTreeSpec.");
+                    }
+                } else [[unlikely]] {
+                    if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict)
+                        [[likely]] {
+                        node.ordered_keys = t[7].cast<py::list>();
+                    } else [[unlikely]] {
+                        throw std::runtime_error("Malformed pickled PyTreeSpec.");
+                    }
+                }
+            } else [[unlikely]] {
+                throw std::runtime_error("Malformed pickled PyTreeSpec.");
+            }
+        }
         node.arity = t[1].cast<ssize_t>();
         switch (node.kind) {
             case PyTreeKind::Leaf:
