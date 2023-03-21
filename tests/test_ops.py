@@ -129,7 +129,7 @@ def test_flatten_dict_order():
     assert leaves == [1, 2, 3, 4]
     assert str(treespec) == r"PyTreeSpec({'a': *, 'b': *, 'c': {'e': *, 'f': None, 'g': *}})"
     restored_tree = optree.tree_unflatten(treespec, leaves)
-    assert list(restored_tree) == ['a', 'b', 'c']
+    assert list(restored_tree) == ['b', 'a', 'c']
 
 
 def test_walk():

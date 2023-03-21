@@ -33,14 +33,12 @@ def flatten(
     leaf_predicate: Callable[[T], bool] | None = None,
     node_is_leaf: bool = False,
     namespace: str = '',
-    unflatten_preserve_dict_order: bool = False,
 ) -> builtins.tuple[list[T], PyTreeSpec]: ...
 def flatten_with_path(
     tree: PyTree[T],
     leaf_predicate: Callable[[T], bool] | None = None,
     node_is_leaf: bool = False,
     namespace: str = '',
-    unflatten_preserve_dict_order: bool = False,
 ) -> builtins.tuple[list[builtins.tuple[Any, ...]], list[T], PyTreeSpec]: ...
 def all_leaves(iterable: Iterable[T], node_is_leaf: bool = False, namespace: str = '') -> bool: ...
 def leaf(node_is_leaf: bool = False) -> PyTreeSpec: ...
