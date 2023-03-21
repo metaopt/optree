@@ -485,17 +485,7 @@ This behavior is also applied to [`collections.defaultdict`](https://docs.python
 ([1, 2, 3], PyTreeSpec({'a': [*, *], 'b': [*]}))
 ```
 
-**`tree_unflatten` does not preserve the same key ordering as the original pytree passed to `tree_flatten`.**
-While unflattening and reconstructing a new pytree via the tree specification, the key ordering of the output dictionaries is also sorted.
-This means flattening a pytree and then unflattening it back will change the key order.
-
-```python
->>> leaves, treespec = optree.tree_flatten({'b': [3], 'a': [1, 2]})
->>> optree.tree_unflatten(treespec, leaves)
-{'a': [1, 2], 'b': [3]}
-```
-
-If users want to always keep the values in the insertion order in `tree_unflatten`, they should use [`collections.OrderedDict`](https://docs.python.org/3/library/collections.html#collections.OrderedDict), which will take the order of keys under consideration:
+If users want to keep the values in the insertion order in pytree traversal, they should use [`collections.OrderedDict`](https://docs.python.org/3/library/collections.html#collections.OrderedDict), which will take the order of keys under consideration:
 
 ```python
 >>> OrderedDict([('a', [1, 2]), ('b', [3])]) == OrderedDict([('b', [3]), ('a', [1, 2])])
@@ -506,16 +496,31 @@ False
 ([3, 1, 2], PyTreeSpec(OrderedDict([('b', [*]), ('a', [*, *])])))
 ```
 
-Since OpTree v0.9.0, the `tree_map` and `tree_map_with_path` functions will preserve the original key ordering in the output pytree.
+Since OpTree v0.9.0, the key order of the reconstructed output dictionaries from `tree_unflatten` is guaranteed to be consistent with the key order of the input dictionaries in `tree_flatten`.
 
 ```python
 >>> leaves, treespec = optree.tree_flatten({'b': [3], 'a': [1, 2]})
+>>> leaves, treespec
+([1, 2, 3], PyTreeSpec({'a': [*, *], 'b': [*]}))
 >>> optree.tree_unflatten(treespec, leaves)
-{'a': [1, 2], 'b': [3]}
+{'b': [3], 'a': [1, 2]}
 >>> optree.tree_map(lambda x: x, {'b': [3], 'a': [1, 2]})
 {'b': [3], 'a': [1, 2]}
 >>> optree.tree_map(lambda x: x + 1, {'b': [3], 'a': [1, 2]})
 {'b': [4], 'a': [2, 3]}
+```
+
+This property is also preserved during serialization/deserialization.
+
+```python
+>>> leaves, treespec = optree.tree_flatten({'b': [3], 'a': [1, 2]})
+>>> leaves, treespec
+([1, 2, 3], PyTreeSpec({'a': [*, *], 'b': [*]}))
+>>> restored_treespec = pickle.loads(pickle.dumps(treespec))
+>>> optree.tree_unflatten(treespec, leaves)
+{'b': [3], 'a': [1, 2]}
+>>> optree.tree_unflatten(restored_treespec, leaves)
+{'b': [3], 'a': [1, 2]}
 ```
 
 > Note that there are no restrictions on the `dict` to require the keys are comparable (sortable).
