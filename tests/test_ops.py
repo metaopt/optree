@@ -125,15 +125,21 @@ def test_flatten_dict_order():
     assert optree.tree_leaves({'a': 1, 2: 2, 3.0: 3}) == [3, 2, 1]
     assert optree.tree_leaves({2: 2, 3.0: 3}) == [2, 3]
 
+    sorted_treespec = optree.tree_structure({'a': 1, 'b': 2, 'c': {'e': 3, 'f': None, 'g': 4}})
+
     tree = {'b': 2, 'a': 1, 'c': {'f': None, 'e': 3, 'g': 4}}
     leaves, treespec = optree.tree_flatten(tree)
+    assert treespec == sorted_treespec
     assert leaves == [1, 2, 3, 4]
     assert str(treespec) == r"PyTreeSpec({'a': *, 'b': *, 'c': {'e': *, 'f': None, 'g': *}})"
     restored_tree = optree.tree_unflatten(treespec, leaves)
     assert list(restored_tree) == ['b', 'a', 'c']
 
     restored_treespec = pickle.loads(pickle.dumps(treespec))
+    assert restored_treespec == treespec
+    assert restored_treespec == sorted_treespec
     assert str(restored_treespec) == str(treespec)
+    assert str(restored_treespec) == str(sorted_treespec)
     restored_tree = optree.tree_unflatten(restored_treespec, leaves)
     assert list(restored_tree) == ['b', 'a', 'c']
 
