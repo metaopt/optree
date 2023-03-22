@@ -49,7 +49,7 @@ class InternalError : public std::logic_error {
 
 }  // namespace optree
 
-#define INTERNAL_ERROR1(message) throw InternalError(message, FILE_RELPATH, __LINE__)
+#define INTERNAL_ERROR1(message) throw optree::InternalError(message, FILE_RELPATH, __LINE__)
 #define INTERNAL_ERROR0() INTERNAL_ERROR1("Unreachable code.")
 #define INTERNAL_ERROR(...) /* NOLINTNEXTLINE[whitespace/parens] */ \
     VFUNC2(__0 __VA_OPT__(, ) __VA_ARGS__, INTERNAL_ERROR1, INTERNAL_ERROR0)(__VA_ARGS__)

@@ -128,8 +128,7 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
             &PyTreeSpec::GetType,
             "The type of the current node. Return None if the current node is a leaf.")
         .def("unflatten",
-             static_cast<py::object (PyTreeSpec::*)(const py::iterable&) const>(
-                 &PyTreeSpec::Unflatten),
+             &PyTreeSpec::Unflatten,
              "Reconstruct a pytree from the leaves.",
              py::arg("leaves"))
         .def("flatten_up_to",
@@ -209,7 +208,8 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
         .def("__len__", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
         .def(py::pickle([](const PyTreeSpec& t) { return t.ToPicklable(); },
                         [](const py::object& o) { return PyTreeSpec::FromPicklable(o); }),
-             "Serialization support for PyTreeSpec.");
+             "Serialization support for PyTreeSpec.",
+             py::arg("state"));
 
 #ifdef Py_TPFLAGS_IMMUTABLETYPE
     reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_flags |=

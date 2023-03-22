@@ -220,7 +220,7 @@ class PyTreeSpec {
 
     // Transform the object returned by `ToPicklable()` back to PyTreeSpec.
     // Used to implement `PyTreeSpec.__setstate__`.
-    static PyTreeSpec FromPicklable(const py::object &picklable);
+    static std::unique_ptr<PyTreeSpec> FromPicklable(const py::object &picklable);
 
  private:
     struct Node {
@@ -253,6 +253,9 @@ class PyTreeSpec {
 
         // Number of leaf and interior nodes in the subtree rooted at this node.
         ssize_t num_nodes = 0;
+
+        // For a Dict or DefaultDict, contains the keys in insertion order.
+        py::object ordered_keys;
     };
 
     // Nodes, in a post-order traversal. We use an ordered traversal to minimize allocations, and
@@ -304,7 +307,7 @@ class PyTreeSpec {
                                     const ssize_t &pos,
                                     const ssize_t &depth) const;
 
-    static PyTreeSpec FromPicklableImpl(const py::object &picklable);
+    static std::unique_ptr<PyTreeSpec> FromPicklableImpl(const py::object &picklable);
 };
 
 }  // namespace optree

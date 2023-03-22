@@ -76,11 +76,10 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
                 auto dict = py::reinterpret_borrow<py::dict>(handle);
-                py::list keys;
-                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
-                    keys = DictKeys(dict);
-                } else [[likely]] {
-                    keys = SortedDictKeys(dict);
+                py::list keys = DictKeys(dict);
+                if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
+                    node.ordered_keys = keys.attr("copy")();
+                    TotalOrderSort(keys);
                 }
                 for (const py::handle& key : keys) {
                     recurse(dict[key]);
@@ -262,11 +261,10 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
                 auto dict = py::reinterpret_borrow<py::dict>(handle);
-                py::list keys;
-                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
-                    keys = DictKeys(dict);
-                } else [[likely]] {
-                    keys = SortedDictKeys(dict);
+                py::list keys = DictKeys(dict);
+                if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
+                    node.ordered_keys = keys.attr("copy")();
+                    TotalOrderSort(keys);
                 }
                 for (const py::handle& key : keys) {
                     recurse(dict[key], key);

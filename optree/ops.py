@@ -467,7 +467,7 @@ def tree_map(
         ``func(x, *xs)`` where ``x`` is the value at the corresponding leaf in ``tree`` and ``xs``
         is the tuple of values at corresponding nodes in ``rests``.
     """
-    leaves, treespec = tree_flatten(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
     flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
     flat_results = map(func, *flat_args)
     return treespec.unflatten(flat_results)
@@ -508,7 +508,7 @@ def tree_map_(
         ``func(x, *xs)`` (not the return value) where ``x`` is the value at the corresponding leaf
         in ``tree`` and ``xs`` is the tuple of values at values at corresponding nodes in ``rests``.
     """
-    leaves, treespec = tree_flatten(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
     flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
     flat_results = map(func, *flat_args)
     deque(flat_results, maxlen=0)  # consume and exhaust the iterable
@@ -560,12 +560,7 @@ def tree_map_with_path(
         ``func(p, x, *xs)`` where ``(p, x)`` are the path and value at the corresponding leaf in
         ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
     """
-    paths, leaves, treespec = tree_flatten_with_path(
-        tree,
-        is_leaf,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
+    paths, leaves, treespec = _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)
     flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
     flat_results = map(func, paths, *flat_args)
     return treespec.unflatten(flat_results)
@@ -608,12 +603,7 @@ def tree_map_with_path_(
         corresponding leaf in ``tree`` and ``xs`` is the tuple of values at values at corresponding
         nodes in ``rests``.
     """
-    paths, leaves, treespec = tree_flatten_with_path(
-        tree,
-        is_leaf,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
+    paths, leaves, treespec = _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)
     flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
     flat_results = map(func, paths, *flat_args)
     deque(flat_results, maxlen=0)  # consume and exhaust the iterable

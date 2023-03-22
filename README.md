@@ -475,7 +475,7 @@ OrderedDict([
 The built-in Python dictionary (i.e., [`builtins.dict`](https://docs.python.org/3/library/stdtypes.html#dict)) is an unordered mapping that holds the keys and values.
 The leaves of a dictionary are the values. Although since Python 3.6, the built-in dictionary is insertion ordered ([PEP 468](https://peps.python.org/pep-0468)).
 The dictionary equality operator (`==`) does not check for key ordering.
-To ensure that "equal `dict`" implies "equal ordering of leaves", the order of values of the dictionary is sorted by the keys.
+To ensure [referential transparency](https://en.wikipedia.org/wiki/Referential_transparency) that "equal `dict`" implies "equal ordering of leaves", the order of values of the dictionary is sorted by the keys.
 This behavior is also applied to [`collections.defaultdict`](https://docs.python.org/3/library/collections.html#collections.defaultdict).
 
 ```python
@@ -485,22 +485,7 @@ This behavior is also applied to [`collections.defaultdict`](https://docs.python
 ([1, 2, 3], PyTreeSpec({'a': [*, *], 'b': [*]}))
 ```
 
-Note that there are no restrictions on the `dict` to require the keys are comparable (sortable).
-There can be multiple types of keys in the dictionary.
-The keys are sorted in ascending order by `key=lambda k: k` first if capable otherwise fallback to `key=lambda k: (k.__class__.__qualname__, k)`. This handles most cases.
-
-```python
->>> sorted({1: 2, 1.5: 1}.keys())
-[1, 1.5]
->>> sorted({'a': 3, 1: 2, 1.5: 1}.keys())
-Traceback (most recent call last):
-    ...
-TypeError: '<' not supported between instances of 'int' and 'str'
->>> sorted({'a': 3, 1: 2, 1.5: 1}.keys(), key=lambda k: (k.__class__.__qualname__, k))
-[1.5, 1, 'a']
-```
-
-If users want to keep the values in the insertion order, they should use [`collections.OrderedDict`](https://docs.python.org/3/library/collections.html#collections.OrderedDict), which will take the order of keys under consideration:
+If users want to keep the values in the insertion order in pytree traversal, they should use [`collections.OrderedDict`](https://docs.python.org/3/library/collections.html#collections.OrderedDict), which will take the order of keys under consideration:
 
 ```python
 >>> OrderedDict([('a', [1, 2]), ('b', [3])]) == OrderedDict([('b', [3]), ('a', [1, 2])])
@@ -510,6 +495,48 @@ False
 >>> optree.tree_flatten(OrderedDict([('b', [3]), ('a', [1, 2])]))
 ([3, 1, 2], PyTreeSpec(OrderedDict([('b', [*]), ('a', [*, *])])))
 ```
+
+Since OpTree v0.9.0, the key order of the reconstructed output dictionaries from `tree_unflatten` is guaranteed to be consistent with the key order of the input dictionaries in `tree_flatten`.
+
+```python
+>>> leaves, treespec = optree.tree_flatten({'b': [3], 'a': [1, 2]})
+>>> leaves, treespec
+([1, 2, 3], PyTreeSpec({'a': [*, *], 'b': [*]}))
+>>> optree.tree_unflatten(treespec, leaves)
+{'b': [3], 'a': [1, 2]}
+>>> optree.tree_map(lambda x: x, {'b': [3], 'a': [1, 2]})
+{'b': [3], 'a': [1, 2]}
+>>> optree.tree_map(lambda x: x + 1, {'b': [3], 'a': [1, 2]})
+{'b': [4], 'a': [2, 3]}
+```
+
+This property is also preserved during serialization/deserialization.
+
+```python
+>>> leaves, treespec = optree.tree_flatten({'b': [3], 'a': [1, 2]})
+>>> leaves, treespec
+([1, 2, 3], PyTreeSpec({'a': [*, *], 'b': [*]}))
+>>> restored_treespec = pickle.loads(pickle.dumps(treespec))
+>>> optree.tree_unflatten(treespec, leaves)
+{'b': [3], 'a': [1, 2]}
+>>> optree.tree_unflatten(restored_treespec, leaves)
+{'b': [3], 'a': [1, 2]}
+```
+
+> Note that there are no restrictions on the `dict` to require the keys are comparable (sortable).
+> There can be multiple types of keys in the dictionary.
+> The keys are sorted in ascending order by `key=lambda k: k` first if capable otherwise fallback to `key=lambda k: (k.__class__.__qualname__, k)`. This handles most cases.
+>
+> ```python
+> >>> sorted({1: 2, 1.5: 1}.keys())
+> [1, 1.5]
+> >>> sorted({'a': 3, 1: 2, 1.5: 1}.keys())
+> Traceback (most recent call last):
+>     ...
+> TypeError: '<' not supported between instances of 'int' and 'str'
+> >>> sorted({'a': 3, 1: 2, 1.5: 1}.keys(), key=lambda k: (k.__class__.__qualname__, k))
+> [1.5, 1, 'a']
+> ```
 
 --------------------------------------------------------------------------------
 

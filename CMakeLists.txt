@@ -17,7 +17,7 @@ cmake_minimum_required(VERSION 3.11)  # for FetchContent
 project(optree LANGUAGES CXX)
 
 include(FetchContent)
-set(PYBIND11_VERSION v2.10.3)
+set(PYBIND11_VERSION v2.10.4)
 set(ABSEIL_CPP_VERSION 20230125.1)
 set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/third-party")
 
