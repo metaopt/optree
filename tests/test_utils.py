@@ -29,7 +29,8 @@ def test_total_order_sorted():
     assert total_order_sorted([1, 5, 4, '20', '3']) == [1, 4, 5, '20', '3']
     assert total_order_sorted([1, 5, 4.5, '20', '3']) == [4.5, 1, 5, '20', '3']
     assert total_order_sorted(
-        {1: 1, 5: 2, 4.5: 3, '20': 4, '3': 5}.items(), key=lambda kv: kv[0]
+        {1: 1, 5: 2, 4.5: 3, '20': 4, '3': 5}.items(),
+        key=lambda kv: kv[0],
     ) == [(4.5, 3), (1, 1), (5, 2), ('20', 4), ('3', 5)]
 
     class NonSortable:

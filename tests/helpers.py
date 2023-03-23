@@ -74,7 +74,7 @@ optree.register_pytree_node(
 
 
 @optree.register_pytree_node_class(
-    namespace=optree.registry.__GLOBAL_NAMESPACE  # pylint: disable=protected-access
+    namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
 )
 class Vector2D:
     def __init__(self, x, y):

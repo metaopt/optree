@@ -141,7 +141,6 @@ target-version = "py37"
 line-length = 100
 show-source = true
 src = ["optree", "tests"]
-extend-exclude = ["tests"]
 select = [
     "E", "W",  # pycodestyle
     "F",       # pyflakes
@@ -204,6 +203,13 @@ typing-modules = ["optree.typing"]
 ]
 "benchmark.py" = [
     "PLW2901",  # redefined-loop-name
+]
+"tests/**/*.py" = [
+    "ANN",   # flake8-annotations
+    "S",     # flake8-bandit
+    "BLE",   # flake8-blind-except
+    "SIM",   # flake8-simplify
+    "PL",    # pylint
 ]
 
 [tool.ruff.flake8-annotations]

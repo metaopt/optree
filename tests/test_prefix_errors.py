@@ -16,6 +16,7 @@
 # pylint: disable=missing-function-docstring,invalid-name,implicit-str-concat
 
 import re
+import textwrap
 from collections import OrderedDict, defaultdict, deque
 
 import pytest
@@ -40,7 +41,12 @@ def test_different_types():
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different types at key path\n' '    in_axes tree root'
+        textwrap.dedent(
+            """
+            pytree structure error: different types at key path
+                in_axes tree root
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -57,7 +63,12 @@ def test_different_types():
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different types at key path\n' '    in_axes tree root'
+        textwrap.dedent(
+            """
+            pytree structure error: different types at key path
+                in_axes tree root
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -77,7 +88,14 @@ def test_different_types_nested():
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
     (e,) = optree.prefix_errors(lhs, rhs)
-    expected = re.escape('pytree structure error: different types at key path\n' '    in_axes[0]')
+    expected = re.escape(
+        textwrap.dedent(
+            """
+            pytree structure error: different types at key path
+                in_axes[0]
+            """,
+        ).strip(),
+    )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
 
@@ -88,10 +106,24 @@ def test_different_types_multiple():
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
     e1, e2 = optree.prefix_errors(lhs, rhs)
-    expected = re.escape('pytree structure error: different types at key path\n' '    in_axes[0]')
+    expected = re.escape(
+        textwrap.dedent(
+            """
+            pytree structure error: different types at key path
+                in_axes[0]
+            """,
+        ).strip(),
+    )
     with pytest.raises(ValueError, match=expected):
         raise e1('in_axes')
-    expected = re.escape('pytree structure error: different types at key path\n' '    in_axes[1]')
+    expected = re.escape(
+        textwrap.dedent(
+            """
+            pytree structure error: different types at key path
+                in_axes[1]
+            """,
+        ).strip(),
+    )
     with pytest.raises(ValueError, match=expected):
         raise e2('in_axes')
 
@@ -99,14 +131,19 @@ def test_different_types_multiple():
 def test_different_num_children():
     lhs, rhs = (1,), (2, 3)
     with pytest.raises(
-        ValueError, match=r'tuple arity mismatch; expected: \d+, got: \d+; tuple: .*\.'
+        ValueError,
+        match=r'tuple arity mismatch; expected: \d+, got: \d+; tuple: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different numbers of pytree children at key path\n'
-        '    in_axes tree root'
+        textwrap.dedent(
+            """
+            pytree structure error: different numbers of pytree children at key path
+                in_axes tree root
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -115,14 +152,19 @@ def test_different_num_children():
 def test_different_num_children_nested():
     lhs, rhs = [[1]], [[2, 3]]
     with pytest.raises(
-        ValueError, match=r'list arity mismatch; expected: \d+, got: \d+; list: .*\.'
+        ValueError,
+        match=r'list arity mismatch; expected: \d+, got: \d+; list: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different numbers of pytree children at key path\n'
-        '    in_axes[0]'
+        textwrap.dedent(
+            """
+            pytree structure error: different numbers of pytree children at key path
+                in_axes[0]
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -131,20 +173,29 @@ def test_different_num_children_nested():
 def test_different_num_children_multiple():
     lhs, rhs = [[1], [2]], [[3, 4], [5, 6]]
     with pytest.raises(
-        ValueError, match=r'list arity mismatch; expected: \d+, got: \d+; list: .*\.'
+        ValueError,
+        match=r'list arity mismatch; expected: \d+, got: \d+; list: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
 
     e1, e2 = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different numbers of pytree children at key path\n'
-        '    in_axes[0]'
+        textwrap.dedent(
+            """
+            pytree structure error: different numbers of pytree children at key path
+                in_axes[0]
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e1('in_axes')
     expected = re.escape(
-        'pytree structure error: different numbers of pytree children at key path\n'
-        '    in_axes[1]'
+        textwrap.dedent(
+            """
+            pytree structure error: different numbers of pytree children at key path
+                in_axes[1]
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e2('in_axes')
@@ -160,7 +211,12 @@ def test_different_metadata():
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different pytree keys at key path\n' '    in_axes tree root'
+        textwrap.dedent(
+            """
+            pytree structure error: different pytree keys at key path
+                in_axes tree root
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -174,7 +230,12 @@ def test_different_metadata():
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different pytree keys at key path\n' '    in_axes tree root'
+        textwrap.dedent(
+            """
+            pytree structure error: different pytree keys at key path
+                in_axes tree root
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -208,7 +269,12 @@ def test_different_metadata():
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different pytree metadata at key path\n' '    in_axes tree root'
+        textwrap.dedent(
+            """
+            pytree structure error: different pytree metadata at key path
+                in_axes tree root
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -224,7 +290,12 @@ def test_different_metadata_nested():
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different pytree keys at key path\n' '    in_axes[0]'
+        textwrap.dedent(
+            """
+            pytree structure error: different pytree keys at key path
+                in_axes[0]
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -240,12 +311,22 @@ def test_different_metadata_multiple():
 
     e1, e2 = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different pytree keys at key path\n' '    in_axes[0]'
+        textwrap.dedent(
+            """
+            pytree structure error: different pytree keys at key path
+                in_axes[0]
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e1('in_axes')
     expected = re.escape(
-        'pytree structure error: different pytree keys at key path\n' '    in_axes[1]'
+        textwrap.dedent(
+            """
+            pytree structure error: different pytree keys at key path
+                in_axes[1]
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e2('in_axes')
@@ -258,7 +339,12 @@ def test_namedtuple():
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different types at key path\n' '    in_axes.bar[1]'
+        textwrap.dedent(
+            """
+            pytree structure error: different types at key path
+                in_axes.bar[1]
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -271,7 +357,12 @@ def test_structseq():
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
-        'pytree structure error: different types at key path\n' '    in_axes.tm_mon[1]'
+        textwrap.dedent(
+            """
+            pytree structure error: different types at key path
+                in_axes.tm_mon[1]
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -280,7 +371,12 @@ def test_structseq():
 def test_fallback_keypath():
     (e,) = optree.prefix_errors(Vector2D(1, [2]), Vector2D(3, 4))
     expected = re.escape(
-        'pytree structure error: different types at key path\n' '    in_axes[<flat index 1>]'
+        textwrap.dedent(
+            """
+            pytree structure error: different types at key path
+                in_axes[<flat index 1>]
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -298,15 +394,24 @@ def test_no_errors():
 def test_different_structure_no_children():
     (e,) = optree.prefix_errors((), ([],))
     expected = re.escape(
-        'pytree structure error: different numbers of pytree children at key path\n'
-        '    in_axes tree root'
+        textwrap.dedent(
+            """
+            pytree structure error: different numbers of pytree children at key path
+                in_axes tree root
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
 
     (e,) = optree.prefix_errors({}, {'a': []})
     expected = re.escape(
-        'pytree structure error: different pytree keys at key path\n' '    in_axes tree root'
+        textwrap.dedent(
+            """
+            pytree structure error: different pytree keys at key path
+                in_axes tree root
+            """,
+        ).strip(),
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
@@ -334,11 +439,13 @@ def test_key_path():
         1 + sequence_key_path
 
     with pytest.raises(
-        TypeError, match=re.escape("unsupported operand type(s) for +: 'KeyPath' and 'int'")
+        TypeError,
+        match=re.escape("unsupported operand type(s) for +: 'KeyPath' and 'int'"),
     ):
         root + 1
     with pytest.raises(
-        TypeError, match=re.escape("unsupported operand type(s) for +: 'int' and 'KeyPath'")
+        TypeError,
+        match=re.escape("unsupported operand type(s) for +: 'int' and 'KeyPath'"),
     ):
         1 + root
 
@@ -368,7 +475,12 @@ def test_key_path():
     assert (namedtuple_key_path + fallback_key_path).pprint() == '.attr[<flat index 1>]'
     assert (fallback_key_path + namedtuple_key_path).pprint() == '[<flat index 1>].attr'
     assert sequence_key_path + dict_key_path + namedtuple_key_path + fallback_key_path == KeyPath(
-        (sequence_key_path, dict_key_path, namedtuple_key_path, fallback_key_path)
+        (
+            sequence_key_path,
+            dict_key_path,
+            namedtuple_key_path,
+            fallback_key_path,
+        ),
     )
     assert (
         sequence_key_path + dict_key_path + namedtuple_key_path + fallback_key_path

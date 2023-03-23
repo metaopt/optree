@@ -46,46 +46,50 @@ def dummy_func(*args, **kwargs):  # pylint: disable=unused-argument
 dummy_partial_func = functools.partial(dummy_func, a=1)
 
 
-def is_tuple(t):
-    return isinstance(t, tuple)
+def is_tuple(tup):
+    return isinstance(tup, tuple)
 
 
-def is_list(l):
-    return isinstance(l, list)
+def is_list(lst):
+    return isinstance(lst, list)
 
 
-def is_none(n):
-    return n is None
+def is_none(none):
+    return none is None
 
 
-def always(o):  # pylint: disable=unused-argument
+def always(obj):  # pylint: disable=unused-argument
     return True
 
 
-def never(o):  # pylint: disable=unused-argument
+def never(obj):  # pylint: disable=unused-argument
     return False
 
 
 def test_max_depth():
-    l = [1]
+    lst = [1]
     for _ in range(optree.MAX_RECURSION_DEPTH - 1):
-        l = [l]
-    optree.tree_flatten(l)
-    optree.tree_flatten_with_path(l)
+        lst = [lst]
+    optree.tree_flatten(lst)
+    optree.tree_flatten_with_path(lst)
 
-    l = [l]
+    lst = [lst]
     with pytest.raises(
-        RecursionError, match='Maximum recursion depth exceeded during flattening the tree.'
+        RecursionError,
+        match='Maximum recursion depth exceeded during flattening the tree.',
     ):
-        optree.tree_flatten(l)
+        optree.tree_flatten(lst)
     with pytest.raises(
-        RecursionError, match='Maximum recursion depth exceeded during flattening the tree.'
+        RecursionError,
+        match='Maximum recursion depth exceeded during flattening the tree.',
     ):
-        optree.tree_flatten_with_path(l)
+        optree.tree_flatten_with_path(lst)
 
 
 @parametrize(
-    tree=list(TREES + LEAVES), none_is_leaf=[False, True], namespace=['', 'undefined', 'namespace']
+    tree=list(TREES + LEAVES),
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
 )
 def test_round_trip(tree, none_is_leaf, namespace):
     leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
@@ -94,7 +98,9 @@ def test_round_trip(tree, none_is_leaf, namespace):
 
 
 @parametrize(
-    tree=list(TREES + LEAVES), none_is_leaf=[False, True], namespace=['', 'undefined', 'namespace']
+    tree=list(TREES + LEAVES),
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
 )
 def test_round_trip_with_flatten_up_to(tree, none_is_leaf, namespace):
     _, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
@@ -234,7 +240,7 @@ def test_walk():
 def test_flatten_up_to():
     _, treespec = optree.tree_flatten([(1, 2), None, CustomTuple(foo=3, bar=7)])
     subtrees = treespec.flatten_up_to(
-        [({'foo': 7}, (3, 4)), None, CustomTuple(foo=(11, 9), bar=None)]
+        [({'foo': 7}, (3, 4)), None, CustomTuple(foo=(11, 9), bar=None)],
     )
     assert subtrees == [{'foo': 7}, (3, 4), (11, 9), None]
 
@@ -242,7 +248,7 @@ def test_flatten_up_to():
 def test_flatten_up_to_none_is_leaf():
     _, treespec = optree.tree_flatten([(1, 2), None, CustomTuple(foo=3, bar=7)], none_is_leaf=True)
     subtrees = treespec.flatten_up_to(
-        [({'foo': 7}, (3, 4)), None, CustomTuple(foo=(11, 9), bar=None)]
+        [({'foo': 7}, (3, 4)), None, CustomTuple(foo=(11, 9), bar=None)],
     )
     assert subtrees == [{'foo': 7}, (3, 4), None, (11, 9), None]
 
@@ -251,7 +257,7 @@ def test_flatten_up_to_none_is_leaf():
     leaves_fn=[
         optree.tree_leaves,
         lambda tree, is_leaf: optree.tree_flatten(tree, is_leaf)[0],
-    ]
+    ],
 )
 def test_flatten_is_leaf(leaves_fn):
     x = [(1, 2), (3, 4), (5, 6)]
@@ -277,7 +283,7 @@ def test_flatten_is_leaf(leaves_fn):
     structure_fn=[
         optree.tree_structure,
         lambda tree, is_leaf: optree.tree_flatten(tree, is_leaf)[1],
-    ]
+    ],
 )
 def test_structure_is_leaf(structure_fn):
     x = [(1, 2), (3, 4), (5, 6)]
@@ -300,8 +306,8 @@ def test_structure_is_leaf(structure_fn):
         itertools.chain(
             zip(TREES, TREE_PATHS[False], itertools.repeat(False)),
             zip(TREES, TREE_PATHS[True], itertools.repeat(True)),
-        )
-    )
+        ),
+    ),
 )
 def test_paths(data):
     tree, expected_paths, none_is_leaf = data
@@ -332,7 +338,10 @@ def test_paths(data):
 )
 def test_round_trip_is_leaf(tree, is_leaf, none_is_leaf, namespace):
     subtrees, treespec = optree.tree_flatten(
-        tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace
+        tree,
+        is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
     actual = optree.tree_unflatten(treespec, subtrees)
     assert actual == tree
@@ -506,7 +515,11 @@ def test_tree_map_with_is_leaf_none_is_leaf():
     x = ((1, 2, None), [3, 4, 5])
     y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
     out = optree.tree_map(
-        lambda *xs: tuple(xs), x, y, is_leaf=lambda n: isinstance(n, list), none_is_leaf=True
+        lambda *xs: tuple(xs),
+        x,
+        y,
+        is_leaf=lambda n: isinstance(n, list),
+        none_is_leaf=True,
     )
     assert out == (((1, [3]), (2, None), (None, 4)), (([3, 4, 5], ({'foo': 'bar'}, 7, [5, 6]))))
 
@@ -671,7 +684,9 @@ def test_tree_transpose(tree):
         return
     with pytest.raises(ValueError, match='Tree structures must have the same none_is_leaf value.'):
         optree.tree_transpose(
-            outer_treespec, optree.tree_structure([1, 1, 1], none_is_leaf=True), nested
+            outer_treespec,
+            optree.tree_structure([1, 1, 1], none_is_leaf=True),
+            nested,
         )
     actual = optree.tree_transpose(outer_treespec, inner_treespec, nested)
     assert actual == [tree, tree, tree]
@@ -698,7 +713,9 @@ def test_tree_transpose_with_custom_object():
     inner_treespec = optree.tree_structure([1, 2])
     expected = [FlatCache({'a': 3, 'b': 5}), FlatCache({'a': 4, 'b': 6})]
     actual = optree.tree_transpose(
-        outer_treespec, inner_treespec, FlatCache({'a': [3, 4], 'b': [5, 6]})
+        outer_treespec,
+        inner_treespec,
+        FlatCache({'a': [3, 4], 'b': [5, 6]}),
     )
     assert actual == expected
 
@@ -706,13 +723,14 @@ def test_tree_transpose_with_custom_object():
 def test_tree_transpose_with_custom_namespace():
     outer_treespec = optree.tree_structure(MyAnotherDict({'a': 1, 'b': 2}), namespace='namespace')
     inner_treespec = optree.tree_structure(
-        MyAnotherDict({'c': 1, 'd': 2, 'e': 3}), namespace='namespace'
+        MyAnotherDict({'c': 1, 'd': 2, 'e': 3}),
+        namespace='namespace',
     )
     nested = MyAnotherDict(
         {
             'a': MyAnotherDict({'c': 1, 'd': 2, 'e': 3}),
             'b': MyAnotherDict({'c': 4, 'd': 5, 'e': 6}),
-        }
+        },
     )
     actual = optree.tree_transpose(outer_treespec, inner_treespec, nested)
     assert actual == MyAnotherDict(
@@ -720,7 +738,7 @@ def test_tree_transpose_with_custom_namespace():
             'c': MyAnotherDict({'a': 1, 'b': 4}),
             'd': MyAnotherDict({'a': 2, 'b': 5}),
             'e': MyAnotherDict({'a': 3, 'b': 6}),
-        }
+        },
     )
 
 
@@ -731,20 +749,22 @@ def test_tree_transpose_mismatch_namespace():
 
     outer_treespec = optree.tree_structure(MyAnotherDict({'a': 1, 'b': 2}), namespace='namespace')
     inner_treespec = optree.tree_structure(
-        MyExtraDict({'c': 1, 'd': 2, 'e': 3}), namespace='subnamespace'
+        MyExtraDict({'c': 1, 'd': 2, 'e': 3}),
+        namespace='subnamespace',
     )
     nested = MyAnotherDict(
         {
             'a': MyExtraDict({'c': 1, 'd': 2, 'e': 3}),
             'b': MyExtraDict({'c': 4, 'd': 5, 'e': 6}),
-        }
+        },
     )
     with pytest.raises(ValueError, match='Tree structures must have the same namespace.'):
         optree.tree_transpose(outer_treespec, inner_treespec, nested)
 
     optree.register_pytree_node_class(MyExtraDict, namespace='namespace')
     inner_treespec = optree.tree_structure(
-        MyExtraDict({'c': 1, 'd': 2, 'e': 3}), namespace='namespace'
+        MyExtraDict({'c': 1, 'd': 2, 'e': 3}),
+        namespace='namespace',
     )
     actual = optree.tree_transpose(outer_treespec, inner_treespec, nested)
     assert actual == MyExtraDict(
@@ -752,7 +772,7 @@ def test_tree_transpose_mismatch_namespace():
             'c': MyAnotherDict({'a': 1, 'b': 4}),
             'd': MyAnotherDict({'a': 2, 'b': 5}),
             'e': MyAnotherDict({'a': 3, 'b': 6}),
-        }
+        },
     )
 
 
@@ -760,7 +780,8 @@ def test_tree_broadcast_prefix():
     assert optree.tree_broadcast_prefix(1, [1, 2, 3]) == [1, 1, 1]
     assert optree.tree_broadcast_prefix([1, 2, 3], [1, 2, 3]) == [1, 2, 3]
     with pytest.raises(
-        ValueError, match=re.escape('list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].')
+        ValueError,
+        match=re.escape('list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].'),
     ):
         optree.tree_broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
     assert optree.tree_broadcast_prefix([1, 2, 3], [1, 2, (3, 4)]) == [1, 2, (3, 3)]
@@ -770,7 +791,9 @@ def test_tree_broadcast_prefix():
         {'a': 3, 'b': 3, 'c': (None, 3)},
     ]
     assert optree.tree_broadcast_prefix(
-        [1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True
+        [1, 2, 3],
+        [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}],
+        none_is_leaf=True,
     ) == [1, 2, {'a': 3, 'b': 3, 'c': (3, 3)}]
 
 
@@ -778,7 +801,8 @@ def test_broadcast_prefix():
     assert optree.broadcast_prefix(1, [1, 2, 3]) == [1, 1, 1]
     assert optree.broadcast_prefix([1, 2, 3], [1, 2, 3]) == [1, 2, 3]
     with pytest.raises(
-        ValueError, match=re.escape('list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].')
+        ValueError,
+        match=re.escape('list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].'),
     ):
         optree.broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
     assert optree.broadcast_prefix([1, 2, 3], [1, 2, (3, 4)]) == [1, 2, 3, 3]
@@ -790,7 +814,9 @@ def test_broadcast_prefix():
         3,
     ]
     assert optree.broadcast_prefix(
-        [1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True
+        [1, 2, 3],
+        [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}],
+        none_is_leaf=True,
     ) == [1, 2, 3, 3, 3, 3]
 
 
@@ -810,13 +836,18 @@ def test_tree_reduce():
     assert optree.tree_reduce(lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3}) == 3
     assert (
         optree.tree_reduce(
-            lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True
+            lambda x, y: x and y,
+            {'x': 1, 'y': (2, None), 'z': 3},
+            none_is_leaf=True,
         )
         is None
     )
     assert (
         optree.tree_reduce(
-            lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3}, False, none_is_leaf=True
+            lambda x, y: x and y,
+            {'x': 1, 'y': (2, None), 'z': 3},
+            False,
+            none_is_leaf=True,
         )
         is False
     )
@@ -826,13 +857,16 @@ def test_tree_sum():
     assert optree.tree_sum({'x': 1, 'y': (2, 3)}) == 6
     assert optree.tree_sum({'x': 1, 'y': (2, None), 'z': 3}) == 6
     with pytest.raises(
-        TypeError, match=re.escape("unsupported operand type(s) for +: 'int' and 'NoneType'")
+        TypeError,
+        match=re.escape("unsupported operand type(s) for +: 'int' and 'NoneType'"),
     ):
         optree.tree_sum({'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
     assert optree.tree_sum({'x': 'a', 'y': ('b', None), 'z': 'c'}, start='') == 'abc'
     assert optree.tree_sum({'x': b'a', 'y': (b'b', None), 'z': b'c'}, start=b'') == b'abc'
     assert optree.tree_sum(
-        {'x': [1], 'y': ([2], [None]), 'z': [3]}, start=[], is_leaf=lambda x: isinstance(x, list)
+        {'x': [1], 'y': ([2], [None]), 'z': [3]},
+        start=[],
+        is_leaf=lambda x: isinstance(x, list),
     ) == [1, 2, None, 3]
 
 
@@ -893,7 +927,7 @@ def test_tree_any():
 
 
 @parametrize(tree=TREES, none_is_leaf=[False, True], namespace=['', 'undefined', 'namespace'])
-def test_flatten_one_level(tree, none_is_leaf, namespace):
+def test_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
     stack = [tree]
     actual_leaves = []
     expected_leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
@@ -902,7 +936,7 @@ def test_flatten_one_level(tree, none_is_leaf, namespace):
         counter = Counter()
         expected_children, one_level_treespec = optree.tree_flatten(
             node,
-            is_leaf=lambda x: counter.increment() > 1,
+            is_leaf=lambda x: counter.increment() > 1,  # noqa: B023
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
@@ -910,13 +944,16 @@ def test_flatten_one_level(tree, none_is_leaf, namespace):
         if one_level_treespec.is_leaf():
             assert expected_children == [node]
             with pytest.raises(
-                ValueError, match=re.escape(f'Cannot flatten leaf-type: {node_type}.')
+                ValueError,
+                match=re.escape(f'Cannot flatten leaf-type: {node_type}.'),
             ):
                 optree.ops.flatten_one_level(node, none_is_leaf=none_is_leaf, namespace=namespace)
             actual_leaves.append(node)
         else:
             children, metadata, entries = optree.ops.flatten_one_level(
-                node, none_is_leaf=none_is_leaf, namespace=namespace
+                node,
+                none_is_leaf=none_is_leaf,
+                namespace=namespace,
             )
             assert children == expected_children
             if node_type in (list, tuple, type(None)):

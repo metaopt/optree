@@ -124,7 +124,7 @@ def test_namedtuple_fields():
         TypeError,
         match=re.escape(
             r'Expected an instance of collections.namedtuple type, '
-            r'got time.struct_time(tm_year=0, tm_mon=1, tm_mday=2, tm_hour=3, tm_min=4, tm_sec=5, tm_wday=6, tm_yday=7, tm_isdst=8).'
+            r'got time.struct_time(tm_year=0, tm_mon=1, tm_mday=2, tm_hour=3, tm_min=4, tm_sec=5, tm_wday=6, tm_yday=7, tm_isdst=8).',
         ),
     ):
         optree.namedtuple_fields(time.struct_time(range(9)))
@@ -221,7 +221,7 @@ def test_structseq_fields():
     with pytest.raises(
         TypeError,
         match=re.escape(
-            r'Expected an instance of PyStructSequence type, got CustomTuple(foo=1, bar=2).'
+            r'Expected an instance of PyStructSequence type, got CustomTuple(foo=1, bar=2).',
         ),
     ):
         optree.structseq_fields(CustomTuple(1, 2))

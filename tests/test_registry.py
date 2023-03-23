@@ -25,7 +25,8 @@ import optree
 
 def test_register_pytree_node_class_with_no_namespace():
     with pytest.raises(
-        ValueError, match='Must specify `namespace` when the first argument is a class.'
+        ValueError,
+        match='Must specify `namespace` when the first argument is a class.',
     ):
 
         @optree.register_pytree_node_class
@@ -40,7 +41,8 @@ def test_register_pytree_node_class_with_no_namespace():
 
 def test_register_pytree_node_class_with_duplicate_namespace():
     with pytest.raises(
-        ValueError, match='Cannot specify `namespace` when the first argument is a string.'
+        ValueError,
+        match='Cannot specify `namespace` when the first argument is a string.',
     ):
 
         @optree.register_pytree_node_class('mylist', namespace='mylist')
@@ -62,7 +64,10 @@ def test_register_pytree_node_with_non_class():
 
     with pytest.raises(TypeError, match='Expected a class'):
         optree.register_pytree_node(
-            1, lambda s: (sorted(s), None, None), lambda _, s: set(s), namespace='non-class'
+            1,
+            lambda s: (sorted(s), None, None),
+            lambda _, s: set(s),
+            namespace='non-class',
         )
 
 
@@ -86,11 +91,13 @@ def test_register_pytree_node_class_with_duplicate_registrations():
             return cls(children)
 
     with pytest.raises(
-        ValueError, match=r"PyTree type.*is already registered in namespace 'mylist1'\."
+        ValueError,
+        match=r"PyTree type.*is already registered in namespace 'mylist1'\.",
     ):
         optree.register_pytree_node_class(MyList1, namespace='mylist1')
     with pytest.raises(
-        ValueError, match=r"PyTree type.*is already registered in namespace 'mylist2'\."
+        ValueError,
+        match=r"PyTree type.*is already registered in namespace 'mylist2'\.",
     ):
         optree.register_pytree_node_class(MyList2, namespace='mylist2')
 
@@ -101,7 +108,7 @@ def test_register_pytree_node_with_invalid_namespace():
     with pytest.raises(TypeError, match='The namespace must be a string'):
 
         @optree.register_pytree_node_class(namespace=1)
-        class MyList(UserList):
+        class MyList1(UserList):
             def tree_flatten(self):
                 return self.data, None, None
 
@@ -112,7 +119,7 @@ def test_register_pytree_node_with_invalid_namespace():
     with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
 
         @optree.register_pytree_node_class('')
-        class MyList(UserList):
+        class MyList2(UserList):
             def tree_flatten(self):
                 return self.data, None, None
 
@@ -123,7 +130,7 @@ def test_register_pytree_node_with_invalid_namespace():
     with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
 
         @optree.register_pytree_node_class(namespace='')
-        class MyList(UserList):
+        class MyList3(UserList):
             def tree_flatten(self):
                 return self.data, None, None
 
@@ -133,12 +140,18 @@ def test_register_pytree_node_with_invalid_namespace():
 
     with pytest.raises(TypeError, match='The namespace must be a string'):
         optree.register_pytree_node(
-            set, lambda s: (sorted(s), None, None), lambda _, s: set(s), namespace=1
+            set,
+            lambda s: (sorted(s), None, None),
+            lambda _, s: set(s),
+            namespace=1,
         )
 
     with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
         optree.register_pytree_node(
-            set, lambda s: (sorted(s), None, None), lambda _, s: set(s), namespace=''
+            set,
+            lambda s: (sorted(s), None, None),
+            lambda _, s: set(s),
+            namespace='',
         )
 
 
@@ -171,8 +184,8 @@ def test_register_pytree_node_duplicate_builtin_namespace():
     ):
         optree.register_pytree_node(
             list,
-            lambda l: (l, None, None),
-            lambda _, l: l,
+            lambda lst: (lst, None, None),
+            lambda _, lst: lst,
             namespace=optree.registry.__GLOBAL_NAMESPACE,
         )
     with pytest.raises(
@@ -181,8 +194,8 @@ def test_register_pytree_node_duplicate_builtin_namespace():
     ):
         optree.register_pytree_node(
             list,
-            lambda l: (l, None, None),
-            lambda _, l: l,
+            lambda lst: (lst, None, None),
+            lambda _, lst: lst,
             namespace='list',
         )
 
@@ -194,7 +207,7 @@ def test_register_pytree_node_namedtuple():
         match=re.escape(
             r"PyTree type <class 'test_registry.mytuple1'> is a subclass of `collections.namedtuple`, "
             r'which is already registered in the global namespace. '
-            r'Override it with custom flatten/unflatten functions.'
+            r'Override it with custom flatten/unflatten functions.',
         ),
     ):
         optree.register_pytree_node(
@@ -206,7 +219,7 @@ def test_register_pytree_node_namedtuple():
     with pytest.raises(
         ValueError,
         match=re.escape(
-            r"PyTree type <class 'test_registry.mytuple1'> is already registered in the global namespace."
+            r"PyTree type <class 'test_registry.mytuple1'> is already registered in the global namespace.",
         ),
     ):
         optree.register_pytree_node(
@@ -228,7 +241,7 @@ def test_register_pytree_node_namedtuple():
         match=re.escape(
             r"PyTree type <class 'test_registry.mytuple2'> is a subclass of `collections.namedtuple`, "
             r'which is already registered in the global namespace. '
-            r"Override it with custom flatten/unflatten functions in namespace 'mytuple'."
+            r"Override it with custom flatten/unflatten functions in namespace 'mytuple'.",
         ),
     ):
         optree.register_pytree_node(
@@ -326,13 +339,13 @@ def test_flatten_with_wrong_number_of_returns():
 def test_pytree_node_registry_get():
     handler = optree.register_pytree_node.get(list)
     assert handler is not None
-    l = [1, 2, 3]
-    assert handler.to_iterable(l)[:2] == (l, None)
+    lst = [1, 2, 3]
+    assert handler.to_iterable(lst)[:2] == (lst, None)
 
     handler = optree.register_pytree_node.get(list, namespace='any')
     assert handler is not None
-    l = [1, 2, 3]
-    assert handler.to_iterable(l)[:2] == (l, None)
+    lst = [1, 2, 3]
+    assert handler.to_iterable(lst)[:2] == (lst, None)
 
     handler = optree.register_pytree_node.get(set)
     assert handler is None

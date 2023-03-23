@@ -105,8 +105,8 @@ def test_treespec_rich_compare(tree, none_is_leaf, namespace):
         itertools.chain(
             zip(TREES, TREE_STRINGS[False], itertools.repeat(False)),
             zip(TREES, TREE_STRINGS[True], itertools.repeat(True)),
-        )
-    )
+        ),
+    ),
 )
 def test_treespec_string_representation(data):
     tree, correct_string, none_is_leaf = data
@@ -122,7 +122,9 @@ def test_with_namespace():
         assert leaves == [tree]
         assert str(treespec) == ('PyTreeSpec(*)')
         paths, leaves, treespec = optree.tree_flatten_with_path(
-            tree, none_is_leaf=False, namespace=namespace
+            tree,
+            none_is_leaf=False,
+            namespace=namespace,
         )
         assert paths == [()]
         assert leaves == [tree]
@@ -133,7 +135,9 @@ def test_with_namespace():
         assert leaves == [tree]
         assert str(treespec) == ('PyTreeSpec(*, NoneIsLeaf)')
         paths, leaves, treespec = optree.tree_flatten_with_path(
-            tree, none_is_leaf=True, namespace=namespace
+            tree,
+            none_is_leaf=True,
+            namespace=namespace,
         )
         assert paths == [()]
         assert leaves == [tree]
@@ -145,7 +149,9 @@ def test_with_namespace():
     assert leaves == [2, 1, 101]
     assert str(treespec) == expected_string
     paths, leaves, treespec = optree.tree_flatten_with_path(
-        tree, none_is_leaf=False, namespace='namespace'
+        tree,
+        none_is_leaf=False,
+        namespace='namespace',
     )
     assert paths == [('foo', 'b'), ('foo', 'a'), ('baz',)]
     assert leaves == [2, 1, 101]
@@ -157,7 +163,9 @@ def test_with_namespace():
     assert leaves == [None, 2, 1, 101]
     assert str(treespec) == expected_string
     paths, leaves, treespec = optree.tree_flatten_with_path(
-        tree, none_is_leaf=True, namespace='namespace'
+        tree,
+        none_is_leaf=True,
+        namespace='namespace',
     )
     assert paths == [('foo', 'c'), ('foo', 'b'), ('foo', 'a'), ('baz',)]
     assert leaves == [None, 2, 1, 101]
@@ -181,7 +189,7 @@ def test_treespec_pickle_round_trip(tree, none_is_leaf, namespace):
         assert actual == expected
         if expected.type is dict or expected.type is defaultdict:
             assert list(optree.tree_unflatten(actual, range(len(actual)))) == list(
-                optree.tree_unflatten(expected, range(len(expected)))
+                optree.tree_unflatten(expected, range(len(expected))),
             )
 
 
@@ -402,13 +410,15 @@ def test_treespec_tuple_from_children(none_is_leaf):
 )
 def test_treespec_tuple_compares_equal(none_is_leaf):
     actual = optree.treespec_tuple(
-        (optree.tree_structure(3, none_is_leaf=none_is_leaf),), none_is_leaf=none_is_leaf
+        (optree.tree_structure(3, none_is_leaf=none_is_leaf),),
+        none_is_leaf=none_is_leaf,
     )
     expected = optree.tree_structure((3,), none_is_leaf=none_is_leaf)
     assert actual == expected
 
     actual = optree.treespec_tuple(
-        (optree.tree_structure(None, none_is_leaf=none_is_leaf),), none_is_leaf=none_is_leaf
+        (optree.tree_structure(None, none_is_leaf=none_is_leaf),),
+        none_is_leaf=none_is_leaf,
     )
     expected = optree.tree_structure((None,), none_is_leaf=none_is_leaf)
     assert actual == expected
@@ -460,7 +470,8 @@ def test_treespec_leaf_none():
     assert optree.treespec_leaf(none_is_leaf=True) == optree.tree_structure(1, none_is_leaf=True)
     assert optree.treespec_leaf(none_is_leaf=True) == optree.tree_structure(None, none_is_leaf=True)
     assert optree.treespec_leaf(none_is_leaf=True) != optree.tree_structure(
-        None, none_is_leaf=False
+        None,
+        none_is_leaf=False,
     )
     assert optree.treespec_leaf(none_is_leaf=True) == optree.treespec_none(none_is_leaf=True)
     assert optree.treespec_leaf(none_is_leaf=True) != optree.treespec_none(none_is_leaf=False)
