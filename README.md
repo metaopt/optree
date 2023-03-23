@@ -496,7 +496,7 @@ False
 ([3, 1, 2], PyTreeSpec(OrderedDict([('b', [*]), ('a', [*, *])])))
 ```
 
-Since OpTree v0.9.0, the key order of the reconstructed output dictionaries from `tree_unflatten` is guaranteed to be consistent with the key order of the input dictionaries in `tree_flatten`.
+**Since OpTree v0.9.0, the key order of the reconstructed output dictionaries from `tree_unflatten` is guaranteed to be consistent with the key order of the input dictionaries in `tree_flatten`.**
 
 ```python
 >>> leaves, treespec = optree.tree_flatten({'b': [3], 'a': [1, 2]})
@@ -525,7 +525,7 @@ This property is also preserved during serialization/deserialization.
 
 > Note that there are no restrictions on the `dict` to require the keys are comparable (sortable).
 > There can be multiple types of keys in the dictionary.
-> The keys are sorted in ascending order by `key=lambda k: k` first if capable otherwise fallback to `key=lambda k: (k.__class__.__qualname__, k)`. This handles most cases.
+> The keys are sorted in ascending order by `key=lambda k: k` first if capable otherwise fallback to `key=lambda k: (f'{k.__class__.__module__}.{k.__class__.__qualname__}', k)`. This handles most cases.
 >
 > ```python
 > >>> sorted({1: 2, 1.5: 1}.keys())
@@ -534,7 +534,7 @@ This property is also preserved during serialization/deserialization.
 > Traceback (most recent call last):
 >     ...
 > TypeError: '<' not supported between instances of 'int' and 'str'
-> >>> sorted({'a': 3, 1: 2, 1.5: 1}.keys(), key=lambda k: (k.__class__.__qualname__, k))
+> >>> sorted({'a': 3, 1: 2, 1.5: 1}.keys(), key=lambda k: (f'{k.__class__.__module__}.{k.__class__.__qualname__}', k))
 > [1.5, 1, 'a']
 > ```
 
