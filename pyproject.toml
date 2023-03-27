@@ -136,6 +136,9 @@ convention = "google"
 [tool.doc8]
 max-line-length = 500
 
+[tool.codespell]
+ignore-words = "docs/source/spelling_wordlist.txt"
+
 [tool.ruff]
 target-version = "py37"
 line-length = 100
