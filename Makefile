@@ -9,7 +9,7 @@ CXX_FILES      = $(shell find $(SOURCE_FOLDERS) -type f -name "*.h" -o -name "*.
 COMMIT_HASH    = $(shell git log -1 --format=%h)
 PATH           := $(HOME)/go/bin:$(PATH)
 PYTHON         ?= $(shell command -v python3 || command -v python)
-CLANG_FORMAT   ?= $(shell command -v clang-format-14 || command -v clang-format)
+CLANG_FORMAT   ?= $(shell command -v clang-format-17 || command -v clang-format)
 PYTESTOPTS     ?=
 OPTREE_CXX_WERROR ?= ON
 
@@ -99,8 +99,8 @@ cpplint-install:
 	$(call check_pip_install,cpplint)
 
 clang-format-install:
-	command -v clang-format-14 || command -v clang-format || \
-	sudo apt-get install -y clang-format-14 || \
+	command -v clang-format-17 || command -v clang-format || \
+	sudo apt-get install -y clang-format-17 || \
 	sudo apt-get install -y clang-format
 
 clang-tidy-install:
