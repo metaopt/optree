@@ -278,22 +278,23 @@ inline void AssertExact<py::dict>(const py::handle& object) {
 }
 
 inline void AssertExactOrderedDict(const py::handle& object) {
-    if (!object.get_type().is(PyOrderedDictTypeObject)) [[unlikely]] {
+    if (!py::type::handle_of(object).is(PyOrderedDictTypeObject)) [[unlikely]] {
         throw py::value_error(absl::StrFormat(
             "Expected an instance of collections.OrderedDict, got %s.", py::repr(object)));
     }
 }
 
 inline void AssertExactDefaultDict(const py::handle& object) {
-    if (!object.get_type().is(PyDefaultDictTypeObject)) [[unlikely]] {
+    if (!py::type::handle_of(object).is(PyDefaultDictTypeObject)) [[unlikely]] {
         throw py::value_error(absl::StrFormat(
             "Expected an instance of collections.defaultdict, got %s.", py::repr(object)));
     }
 }
 
 inline void AssertExactStandardDict(const py::handle& object) {
-    if (!(PyDict_CheckExact(object.ptr()) || object.get_type().is(PyOrderedDictTypeObject) ||
-          object.get_type().is(PyDefaultDictTypeObject))) [[unlikely]] {
+    if (!(PyDict_CheckExact(object.ptr()) ||
+          py::type::handle_of(object).is(PyOrderedDictTypeObject) ||
+          py::type::handle_of(object).is(PyDefaultDictTypeObject))) [[unlikely]] {
         throw py::value_error(
             absl::StrFormat("Expected an instance of "
                             "dict, collections.OrderedDict, or collections.defaultdict, "
@@ -303,7 +304,7 @@ inline void AssertExactStandardDict(const py::handle& object) {
 }
 
 inline void AssertExactDeque(const py::handle& object) {
-    if (!object.get_type().is(PyDequeTypeObject)) [[unlikely]] {
+    if (!py::type::handle_of(object).is(PyDequeTypeObject)) [[unlikely]] {
         throw py::value_error(absl::StrFormat("Expected an instance of collections.deque, got %s.",
                                               py::repr(object)));
     }
@@ -334,10 +335,10 @@ inline bool IsNamedTupleClass(const py::handle& type) {
     return PyType_Check(type.ptr()) && IsNamedTupleClassImpl(type);
 }
 inline bool IsNamedTupleInstance(const py::handle& object) {
-    return IsNamedTupleClass(object.get_type());
+    return IsNamedTupleClass(py::type::handle_of(object));
 }
 inline bool IsNamedTuple(const py::handle& object) {
-    py::handle type = (PyType_Check(object.ptr()) ? object : object.get_type());
+    py::handle type = (PyType_Check(object.ptr()) ? object : py::type::handle_of(object));
     return IsNamedTupleClass(type);
 }
 inline void AssertExactNamedTuple(const py::handle& object) {
@@ -355,7 +356,7 @@ inline py::tuple NamedTupleGetFields(const py::handle& object) {
                                                  py::repr(object)));
         }
     } else [[likely]] {
-        type = object.get_type();
+        type = py::type::handle_of(object);
         if (!IsNamedTupleClass(type)) [[unlikely]] {
             throw py::type_error(absl::StrFormat(
                 "Expected an instance of collections.namedtuple type, got %s.", py::repr(object)));
@@ -391,10 +392,10 @@ inline bool IsStructSequenceClass(const py::handle& type) {
     return PyType_Check(type.ptr()) && IsStructSequenceClassImpl(type);
 }
 inline bool IsStructSequenceInstance(const py::handle& object) {
-    return IsStructSequenceClass(object.get_type());
+    return IsStructSequenceClass(py::type::handle_of(object));
 }
 inline bool IsStructSequence(const py::handle& object) {
-    py::handle type = (PyType_Check(object.ptr()) ? object : object.get_type());
+    py::handle type = (PyType_Check(object.ptr()) ? object : py::type::handle_of(object));
     return IsStructSequenceClass(type);
 }
 inline void AssertExactStructSequence(const py::handle& object) {
@@ -412,7 +413,7 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
                 absl::StrFormat("Expected a PyStructSequence type, got %s.", py::repr(object)));
         }
     } else [[likely]] {
-        type = object.get_type();
+        type = py::type::handle_of(object);
         if (!IsStructSequenceClass(type)) [[unlikely]] {
             throw py::type_error(absl::StrFormat(
                 "Expected an instance of PyStructSequence type, got %s.", py::repr(object)));
@@ -442,7 +443,7 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
             try {
                 // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
                 auto sort_key_fn = py::cpp_function([](const py::object& o) {
-                    py::handle t = o.get_type();
+                    py::handle t = py::type::handle_of(o);
                     py::str qualname{absl::StrFormat(
                         "%s.%s",
                         static_cast<std::string>(py::getattr(t, "__module__").cast<py::str>()),

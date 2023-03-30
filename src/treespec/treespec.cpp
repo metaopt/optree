@@ -502,7 +502,7 @@ template <bool NoneIsLeaf>
                                           PyTreeTypeRegistry::Registration const** custom,
                                           const std::string& registry_namespace) {
     const PyTreeTypeRegistry::Registration* registration =
-        PyTreeTypeRegistry::Lookup<NoneIsLeaf>(handle.get_type(), registry_namespace);
+        PyTreeTypeRegistry::Lookup<NoneIsLeaf>(py::type::handle_of(handle), registry_namespace);
     if (registration) [[likely]] {
         if (registration->kind == PyTreeKind::Custom) [[unlikely]] {
             *custom = registration;

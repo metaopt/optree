@@ -120,7 +120,7 @@ def test_with_namespace():
     for namespace in ('', 'undefined'):
         leaves, treespec = optree.tree_flatten(tree, none_is_leaf=False, namespace=namespace)
         assert leaves == [tree]
-        assert str(treespec) == ('PyTreeSpec(*)')
+        assert str(treespec) == 'PyTreeSpec(*)'
         paths, leaves, treespec = optree.tree_flatten_with_path(
             tree,
             none_is_leaf=False,
@@ -129,11 +129,11 @@ def test_with_namespace():
         assert paths == [()]
         assert leaves == [tree]
         assert paths == treespec.paths()
-        assert str(treespec) == ('PyTreeSpec(*)')
+        assert str(treespec) == 'PyTreeSpec(*)'
     for namespace in ('', 'undefined'):
         leaves, treespec = optree.tree_flatten(tree, none_is_leaf=True, namespace=namespace)
         assert leaves == [tree]
-        assert str(treespec) == ('PyTreeSpec(*, NoneIsLeaf)')
+        assert str(treespec) == 'PyTreeSpec(*, NoneIsLeaf)'
         paths, leaves, treespec = optree.tree_flatten_with_path(
             tree,
             none_is_leaf=True,
@@ -142,7 +142,7 @@ def test_with_namespace():
         assert paths == [()]
         assert leaves == [tree]
         assert paths == treespec.paths()
-        assert str(treespec) == ('PyTreeSpec(*, NoneIsLeaf)')
+        assert str(treespec) == 'PyTreeSpec(*, NoneIsLeaf)'
 
     expected_string = "PyTreeSpec(CustomTreeNode(MyAnotherDict[['foo', 'baz']], [CustomTreeNode(MyAnotherDict[['c', 'b', 'a']], [None, *, *]), *]), namespace='namespace')"
     leaves, treespec = optree.tree_flatten(tree, none_is_leaf=False, namespace='namespace')

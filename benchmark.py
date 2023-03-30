@@ -529,18 +529,14 @@ def compare(  # pylint: disable=too-many-locals
     speedups = {name: time / base_time for name, time in times_us.items()}
     best_speedups = {name: time / best_time for name, time in times_us.items()}
     labels = {
-        name: (cmark if speedup == 1.0 else tie if speedup < 1.1 else ' ')
+        name: cmark if speedup == 1.0 else (tie if speedup < 1.1 else ' ')
         for name, speedup in best_speedups.items()
     }
     colors = {
         name: (
             'green'
             if speedup == 1.0
-            else 'cyan'
-            if speedup < 1.1
-            else 'yellow'
-            if speedup < 4.0
-            else 'red'
+            else ('cyan' if speedup < 1.1 else ('yellow' if speedup < 4.0 else 'red'))
         )
         for name, speedup in best_speedups.items()
     }

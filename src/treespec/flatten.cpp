@@ -98,7 +98,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             case PyTreeKind::StructSequence: {
                 auto tuple = py::reinterpret_borrow<py::tuple>(handle);
                 node.arity = GET_SIZE<py::tuple>(tuple);
-                node.node_data = py::reinterpret_borrow<py::object>(tuple.get_type());
+                node.node_data = py::reinterpret_borrow<py::object>(py::type::handle_of(tuple));
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::tuple>(tuple, i));
                 }
@@ -283,7 +283,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             case PyTreeKind::StructSequence: {
                 auto tuple = py::reinterpret_borrow<py::tuple>(handle);
                 node.arity = GET_SIZE<py::tuple>(tuple);
-                node.node_data = py::reinterpret_borrow<py::object>(tuple.get_type());
+                node.node_data = py::reinterpret_borrow<py::object>(py::type::handle_of(tuple));
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::tuple>(tuple, i), py::int_(i));
                 }
@@ -506,11 +506,11 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                         GET_SIZE<py::tuple>(tuple),
                         py::repr(object)));
                 }
-                if (object.get_type().not_equal(node.node_data)) [[unlikely]] {
+                if (py::type::handle_of(object).not_equal(node.node_data)) [[unlikely]] {
                     throw py::value_error(absl::StrFormat(
                         "namedtuple type mismatch; expected type: %s, got type: %s; tuple: %s.",
                         py::repr(node.node_data),
-                        py::repr(object.get_type()),
+                        py::repr(py::type::handle_of(object)),
                         py::repr(object)));
                 }
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -545,12 +545,12 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
                         GET_SIZE<py::tuple>(tuple),
                         py::repr(object)));
                 }
-                if (object.get_type().not_equal(node.node_data)) [[unlikely]] {
+                if (py::type::handle_of(object).not_equal(node.node_data)) [[unlikely]] {
                     throw py::value_error(
                         absl::StrFormat("PyStructSequence type mismatch; "
                                         "expected type: %s, got type: %s; tuple: %s.",
                                         py::repr(node.node_data),
-                                        py::repr(object.get_type()),
+                                        py::repr(py::type::handle_of(object)),
                                         py::repr(object)));
                 }
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -562,17 +562,17 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
             case PyTreeKind::Custom: {
                 const PyTreeTypeRegistry::Registration* registration = nullptr;
                 if (m_none_is_leaf) [[unlikely]] {
-                    registration =
-                        PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(object.get_type(), m_namespace);
+                    registration = PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(
+                        py::type::handle_of(object), m_namespace);
                 } else [[likely]] {
-                    registration =
-                        PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(object.get_type(), m_namespace);
+                    registration = PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(
+                        py::type::handle_of(object), m_namespace);
                 }
                 if (registration != node.custom) [[unlikely]] {
                     throw py::value_error(absl::StrFormat(
                         "Custom node type mismatch; expected type: %s, got type: %s; value: %s.",
                         py::repr(node.custom->type),
-                        py::repr(object.get_type()),
+                        py::repr(py::type::handle_of(object)),
                         py::repr(object)));
                 }
                 py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(object));
