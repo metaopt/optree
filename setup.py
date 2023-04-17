@@ -107,8 +107,6 @@ try:
     setup(
         name='optree',
         version=version.__version__,
-        package_data={'sharedlib': ['*.so', '*.pyd']},
-        include_package_data=True,
         cmdclass={'build_ext': cmake_build_ext},
         ext_modules=[CMakeExtension('optree._C', source_dir=HERE)],
     )

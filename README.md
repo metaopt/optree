@@ -67,7 +67,7 @@ cd optree
 pip3 install .
 ```
 
-Compiling from the source requires Python 3.7+, a compiler (`gcc` / `clang` / `icc` / `cl.exe`) supports C++20 and a `cmake` installation.
+Compiling from the source requires Python 3.7+, a compiler (`gcc` / `clang` / `icc` / `cl.exe`) that supports C++20 and a `cmake` installation.
 
 --------------------------------------------------------------------------------
 
@@ -122,7 +122,7 @@ OpTree out-of-box supports the following Python container types in the registry:
 which are considered non-leaf nodes in the tree.
 Python objects that the type is not registered will be treated as leaf nodes.
 The registration lookup uses the `is` operator to determine whether the type is matched.
-So subclasses will need to explicitly register in the registry, otherwise, an object of that type will be considered as a leaf.
+So subclasses will need to explicitly register in the registry, otherwise, an object of that type will be considered a leaf.
 The [`NoneType`](https://docs.python.org/3/library/constants.html#None) is a special case discussed in section [`None` is non-leaf Node vs. `None` is Leaf](#none-is-non-leaf-node-vs-none-is-leaf).
 
 #### Registering a Container-like Custom Type as Non-leaf Nodes
@@ -523,7 +523,7 @@ This property is also preserved during serialization/deserialization.
 {'b': [3], 'a': [1, 2]}
 ```
 
-> Note that there are no restrictions on the `dict` to require the keys are comparable (sortable).
+> Note that there are no restrictions on the `dict` to require the keys to be comparable (sortable).
 > There can be multiple types of keys in the dictionary.
 > The keys are sorted in ascending order by `key=lambda k: k` first if capable otherwise fallback to `key=lambda k: (f'{k.__class__.__module__}.{k.__class__.__qualname__}', k)`. This handles most cases.
 >

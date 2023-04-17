@@ -67,19 +67,25 @@ lint = [
     "cpplint",
     "pre-commit",
 ]
-test = ['pytest', 'pytest-cov', 'pytest-xdist']
+test = ["pytest", "pytest-cov", "pytest-xdist"]
 benchmark = [
-    'jax[cpu] >= 0.4.6, < 0.5.0a0',
-    'torch >= 2.0, < 2.1.0a0',
-    'torchvision',
-    'dm-tree >= 0.1, < 0.2.0a0',
-    'pandas',
-    'tabulate',
-    'termcolor',
+    "jax[cpu] >= 0.4.6, < 0.5.0a0",
+    "torch >= 2.0, < 2.1.0a0",
+    "torchvision",
+    "dm-tree >= 0.1, < 0.2.0a0",
+    "pandas",
+    "tabulate",
+    "termcolor",
 ]
+
+[tool.setuptools]
+include-package-data = true
 
 [tool.setuptools.packages.find]
 include = ["optree", "optree.*"]
+
+[tool.setuptools.package-data]
+optree = ['*.so', '*.pyd']
 
 # Wheel builder ################################################################
 # Reference: https://cibuildwheel.readthedocs.io
