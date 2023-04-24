@@ -83,8 +83,7 @@ def register_pytree_node(
     Returns:
         The same type as the input ``cls``.
 
-    Example::
-
+    Examples:
         >>> # Registry a Python type with lambda functions
         >>> register_pytree_node(
         ...     set,
