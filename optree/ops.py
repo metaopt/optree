@@ -883,11 +883,11 @@ def tree_reduce(
 
 @overload
 def tree_reduce(
-    func: Callable[[T, T], T],
-    tree: PyTree[T],
+    func: Callable[[T, S], T],
+    tree: PyTree[S],
     initial: T = __MISSING,
     *,
-    is_leaf: Callable[[T], bool] | None = None,
+    is_leaf: Callable[[S], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> T:  # pragma: no cover
