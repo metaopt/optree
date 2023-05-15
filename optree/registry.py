@@ -499,7 +499,7 @@ class GetitemKeyPathEntry(KeyPathEntry):
 
     def pprint(self) -> str:
         """Pretty name of the key path entry."""
-        return f'[{repr(self.key)}]'
+        return f'[{self.key!r}]'
 
 
 class AttributeKeyPathEntry(KeyPathEntry):
