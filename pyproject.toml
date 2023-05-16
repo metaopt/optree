@@ -171,7 +171,6 @@ select = [
     "RET",     # flake8-return
     "SIM",     # flake8-simplify
     "TID",     # flake8-tidy-imports
-    "PL",      # pylint
     "RUF",     # ruff
 ]
 ignore = [
@@ -210,15 +209,11 @@ typing-modules = ["optree.typing"]
 "setup.py" = [
     "ANN",   # flake8-annotations
 ]
-"benchmark.py" = [
-    "PLW2901",  # redefined-loop-name
-]
 "tests/**/*.py" = [
     "ANN",   # flake8-annotations
     "S",     # flake8-bandit
     "BLE",   # flake8-blind-except
     "SIM",   # flake8-simplify
-    "PL",    # pylint
 ]
 
 [tool.ruff.flake8-annotations]
@@ -231,9 +226,6 @@ inline-quotes = "single"
 
 [tool.ruff.flake8-tidy-imports]
 ban-relative-imports = "all"
-
-[tool.ruff.pylint]
-allow-magic-value-types = ["int", "str", "float"]
 
 [tool.pytest.ini_options]
 filterwarnings = ["error"]
