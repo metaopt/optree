@@ -38,8 +38,8 @@ from typing import (
     Union,
 )
 from typing_extensions import OrderedDict  # Generic OrderedDict: Python 3.7.2+
-from typing_extensions import Protocol  # Python 3.8+
 from typing_extensions import TypeAlias  # Python 3.10+
+from typing_extensions import Protocol, runtime_checkable  # Python 3.8+
 
 from optree import _C
 
@@ -99,6 +99,7 @@ _MetaData = TypeVar('_MetaData', bound=Hashable)
 MetaData = Optional[_MetaData]
 
 
+@runtime_checkable
 class CustomTreeNode(Protocol[T]):
     """The abstract base class for custom pytree nodes."""
 
