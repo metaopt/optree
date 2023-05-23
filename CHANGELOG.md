@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--
+- Use `py::type::handle_of(obj)` rather than deprecated `obj.get_type()` by [@XuehaiPan](https://github.com/XuehaiPan) in [#49](https://github.com/metaopt/optree/pull/49).
+- Bump `abseil-cpp` version to 20230125.3 by [@XuehaiPan](https://github.com/XuehaiPan) in [#57](https://github.com/metaopt/optree/pull/57).
 
 ### Fixed
 

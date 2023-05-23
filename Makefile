@@ -116,9 +116,9 @@ addlicense-install: go-install
 # Tests
 
 pytest: pytest-install
-	cd tests && $(PYTHON) -c 'import $(PROJECT_NAME)' && \
+	cd tests && $(PYTHON) -c 'import $(PROJECT_PATH)' && \
 	$(PYTHON) -m pytest --verbose --color=yes --durations=0 \
-		--cov="$(PROJECT_NAME)" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
+		--cov="$(PROJECT_PATH)" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
 		$(PYTESTOPTS) .
 
 test: pytest
@@ -132,7 +132,7 @@ flake8: flake8-install
 	$(PYTHON) -m flake8 --doctests --count --show-source --statistics
 
 py-format: py-format-install
-	$(PYTHON) -m isort --project $(PROJECT_NAME) --check $(PYTHON_FILES) && \
+	$(PYTHON) -m isort --project $(PROJECT_PATH) --check $(PYTHON_FILES) && \
 	$(PYTHON) -m black --check $(PYTHON_FILES)
 
 ruff: ruff-install
@@ -142,7 +142,7 @@ ruff-fix: ruff-install
 	$(PYTHON) -m ruff check . --fix --exit-non-zero-on-fix
 
 mypy: mypy-install
-	$(PYTHON) -m mypy $(PROJECT_PATH)
+	$(PYTHON) -m mypy $(PROJECT_PATH) --install-types --non-interactive
 
 xdoctest: xdoctest-install
 	$(PYTHON) -m xdoctest $(PROJECT_PATH)
@@ -199,7 +199,7 @@ clean-docs:
 lint: ruff flake8 py-format mypy pylint doctest clang-format clang-tidy cpplint addlicense docstyle spelling
 
 format: py-format-install ruff-install clang-format-install addlicense-install
-	$(PYTHON) -m isort --project $(PROJECT_NAME) $(PYTHON_FILES)
+	$(PYTHON) -m isort --project $(PROJECT_PATH) $(PYTHON_FILES)
 	$(PYTHON) -m black $(PYTHON_FILES)
 	$(PYTHON) -m ruff check . --fix --exit-zero
 	$(CLANG_FORMAT) -style=file -i $(CXX_FILES)
