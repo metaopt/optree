@@ -17,16 +17,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+-
+-
+
+### Fixed
+
+-
+
+### Removed
+
+-
+
+------
+
+## [0.9.1] - 2023-05-23
+
+### Changed
+
 - Use `py::type::handle_of(obj)` rather than deprecated `obj.get_type()` by [@XuehaiPan](https://github.com/XuehaiPan) in [#49](https://github.com/metaopt/optree/pull/49).
 - Bump `abseil-cpp` version to 20230125.3 by [@XuehaiPan](https://github.com/XuehaiPan) in [#57](https://github.com/metaopt/optree/pull/57).
 
 ### Fixed
 
 - Add `@runtime_checkable` decorator for `CustomTreeNode` protocol class by [@XuehaiPan](https://github.com/XuehaiPan) in [#56](https://github.com/metaopt/optree/pull/56).
-
-### Removed
-
--
 
 ------
 
@@ -198,7 +211,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/metaopt/optree/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/metaopt/optree/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/metaopt/optree/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/metaopt/optree/compare/v0.6.0...v0.7.0
