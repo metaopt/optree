@@ -47,7 +47,7 @@ def total_order_sorted(
         else:
 
             def key_fn(x: T) -> tuple[str, Any]:
-                y = key(x)  # type: ignore[misc]
+                y = key(x)
                 # pylint: disable-next=consider-using-f-string
                 return ('{0.__module__}.{0.__qualname__}'.format(y.__class__), y)
 
