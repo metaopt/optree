@@ -36,7 +36,7 @@ def parametrize(**argvalues) -> pytest.mark.parametrize:
     return pytest.mark.parametrize(arguments, argvalues, ids=ids)
 
 
-CustomTuple = namedtuple('CustomTuple', ('foo', 'bar'))
+CustomTuple = namedtuple('CustomTuple', ('foo', 'bar'))  # noqa: PYI024
 
 
 class CustomNamedTupleSubclass(CustomTuple):
