@@ -201,7 +201,7 @@ def test_register_pytree_node_duplicate_builtin_namespace():
 
 
 def test_register_pytree_node_namedtuple():
-    mytuple1 = namedtuple('mytuple1', ['a', 'b', 'c'])
+    mytuple1 = namedtuple('mytuple1', ['a', 'b', 'c'])  # noqa: PYI024
     with pytest.warns(
         UserWarning,
         match=re.escape(
@@ -235,7 +235,7 @@ def test_register_pytree_node_namedtuple():
     assert str(treespec1) == 'PyTreeSpec(CustomTreeNode(mytuple1[None], [*, *, *]))'
     assert tree1 == optree.tree_unflatten(treespec1, leaves1)
 
-    mytuple2 = namedtuple('mytuple2', ['a', 'b', 'c'])
+    mytuple2 = namedtuple('mytuple2', ['a', 'b', 'c'])  # noqa: PYI024
     with pytest.warns(
         UserWarning,
         match=re.escape(

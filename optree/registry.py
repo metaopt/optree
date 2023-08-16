@@ -22,6 +22,7 @@ from collections import OrderedDict, defaultdict, deque
 from operator import methodcaller
 from threading import Lock
 from typing import Any, Callable, Iterable, NamedTuple, Sequence, overload
+from typing_extensions import Self  # Python 3.11+
 
 from optree import _C
 from optree.typing import KT, VT, CustomTreeNode, FlattenFunc, PyTree, T, UnflattenFunc
@@ -424,7 +425,7 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
     args: tuple[Any, ...]
     keywords: dict[str, Any]
 
-    def __new__(cls, func: Callable[..., Any], *args: Any, **keywords: Any) -> Partial:
+    def __new__(cls, func: Callable[..., Any], *args: Any, **keywords: Any) -> Self:
         """Create a new :class:`Partial` instance."""
         # In Python 3.10+, if func is itself a functools.partial instance, functools.partial.__new__
         # would merge the arguments of this Partial instance with the arguments of the func. We box
@@ -451,7 +452,7 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
         cls,
         func: Callable[..., Any],
         args: tuple[tuple[Any, ...], dict[str, Any]],
-    ) -> Partial:
+    ) -> Self:
         """Unflatten the children and auxiliary data into a :class:`Partial` instance."""
         return cls(func, *args[0], **args[1])
 

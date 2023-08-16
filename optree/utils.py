@@ -42,14 +42,14 @@ def total_order_sorted(
 
             def key_fn(x: T) -> tuple[str, Any]:
                 # pylint: disable-next=consider-using-f-string
-                return ('{0.__module__}.{0.__qualname__}'.format(x.__class__), x)
+                return (f'{x.__class__.__module__}.{x.__class__.__qualname__}', x)
 
         else:
 
             def key_fn(x: T) -> tuple[str, Any]:
                 y = key(x)
                 # pylint: disable-next=consider-using-f-string
-                return ('{0.__module__}.{0.__qualname__}'.format(y.__class__), y)
+                return (f'{y.__class__.__module__}.{y.__class__.__qualname__}', y)
 
         try:
             # Add `{obj.__class__.__module__}.{obj.__class__.__qualname__}` to the key order to make
