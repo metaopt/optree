@@ -208,7 +208,12 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
     ssize_t start_num_nodes = py::ssize_t_cast(m_traversal.size());
     ssize_t start_num_leaves = py::ssize_t_cast(leaves.size());
     if (leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) [[unlikely]] {
+        py::tuple path{depth};
+        for (ssize_t d = 0; d < depth; ++d) {
+            SET_ITEM<py::tuple>(path, d, stack[d]);
+        }
         leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
+        paths.emplace_back(std::move(path));
     } else [[likely]] {
         node.kind = GetKind<NoneIsLeaf>(handle, &node.custom, registry_namespace);
         // NOLINTNEXTLINE[misc-no-recursion]

@@ -336,6 +336,42 @@ def test_paths(data):
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
 )
+def test_paths_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
+    expected_leaves, expected_treespec = optree.tree_flatten(
+        tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    paths, leaves, treespec = optree.tree_flatten_with_path(
+        tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    treespec_paths = optree.treespec_paths(treespec)
+    assert len(paths) == len(leaves)
+    assert leaves == expected_leaves
+    assert treespec == expected_treespec
+    assert len(treespec_paths) == len(leaves)
+    assert paths == treespec_paths
+    paths = optree.tree_paths(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    assert len(paths) == len(leaves)
+    assert paths == treespec_paths
+
+
+@parametrize(
+    tree=TREES,
+    is_leaf=[
+        is_tuple,
+        is_list,
+        is_none,
+        always,
+        never,
+    ],
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
 def test_round_trip_is_leaf(tree, is_leaf, none_is_leaf, namespace):
     subtrees, treespec = optree.tree_flatten(
         tree,
