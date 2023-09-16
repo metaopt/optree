@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- Fix empty paths when flatten with custom `is_leaf` function by [@XuehaiPan](https://github.com/XuehaiPan) in [#76](https://github.com/metaopt/optree/pull/76).
 
 ### Removed
 
