@@ -17,16 +17,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+-
+
+### Fixed
+
+-
+
+### Removed
+
+-
+
+------
+
+## [0.9.2] - 2023-09-18
+
+### Changed
+
 - Bump `pybind11` version to 2.11.1 and add initial Python 3.12 support by [@XuehaiPan](https://github.com/XuehaiPan) in [#78](https://github.com/metaopt/optree/pull/78).
 - Bump `abseil-cpp` version to 20230802.0 by [@XuehaiPan](https://github.com/XuehaiPan) in [#79](https://github.com/metaopt/optree/pull/79).
 
 ### Fixed
 
 - Fix empty paths when flatten with custom `is_leaf` function by [@XuehaiPan](https://github.com/XuehaiPan) in [#76](https://github.com/metaopt/optree/pull/76).
-
-### Removed
-
--
 
 ------
 
@@ -211,7 +223,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/metaopt/optree/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/metaopt/optree/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/metaopt/optree/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/metaopt/optree/compare/v0.7.0...v0.8.0

@@ -14,7 +14,7 @@
 # ==============================================================================
 """OpTree: Optimized PyTree Utilities."""
 
-__version__ = '0.9.1'
+__version__ = '0.9.2'
 __license__ = 'Apache License, Version 2.0'
 __author__ = 'OpTree Contributors'
 __release__ = False
