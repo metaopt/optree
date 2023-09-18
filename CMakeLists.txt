@@ -125,7 +125,7 @@ endif()
 
 system(
     STRIP OUTPUT_VARIABLE PYTHON_VERSION
-    COMMAND "${PYTHON_EXECUTABLE}" -c "print(__import__('platform').python_version())"
+    COMMAND "${PYTHON_EXECUTABLE}" -c "print('.'.join(map(str, __import__('sys').version_info[:3])))"
 )
 
 message(STATUS "Use Python version: ${PYTHON_VERSION}")
