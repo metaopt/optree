@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Bump `pybind11` version to 2.11.1 and add initial Python 3.12 support by [@XuehaiPan](https://github.com/XuehaiPan) in [#78](https://github.com/metaopt/optree/pull/78).
 - Bump `abseil-cpp` version to 20230802.0 by [@XuehaiPan](https://github.com/XuehaiPan) in [#79](https://github.com/metaopt/optree/pull/79).
 
 ### Fixed

@@ -907,16 +907,16 @@ def test_tree_sum():
 
 
 def test_tree_max():
-    with pytest.raises(ValueError, match=re.escape('max() arg is an empty sequence')):
+    with pytest.raises(ValueError, match='empty'):
         optree.tree_max({})
     assert optree.tree_max({}, default=0) == 0
     assert optree.tree_max({'x': 0, 'y': (2, 1)}) == 2
     assert optree.tree_max({'x': 0, 'y': (2, 1)}, key=lambda x: -x) == 0
-    with pytest.raises(ValueError, match=re.escape('max() arg is an empty sequence')):
+    with pytest.raises(ValueError, match='empty'):
         optree.tree_max({'a': None})
     assert optree.tree_max({'a': None}, default=0) == 0
     assert optree.tree_max({'a': None}, none_is_leaf=True) is None
-    with pytest.raises(ValueError, match=re.escape('max() arg is an empty sequence')):
+    with pytest.raises(ValueError, match='empty'):
         optree.tree_max(None)
     assert optree.tree_max(None, default=0) == 0
     assert optree.tree_max(None, none_is_leaf=True) is None
@@ -926,16 +926,16 @@ def test_tree_max():
 
 
 def test_tree_min():
-    with pytest.raises(ValueError, match=re.escape('min() arg is an empty sequence')):
+    with pytest.raises(ValueError, match='empty'):
         optree.tree_min({})
     assert optree.tree_min({}, default=0) == 0
     assert optree.tree_min({'x': 0, 'y': (2, 1)}) == 0
     assert optree.tree_min({'x': 0, 'y': (2, 1)}, key=lambda x: -x) == 2
-    with pytest.raises(ValueError, match=re.escape('min() arg is an empty sequence')):
+    with pytest.raises(ValueError, match='empty'):
         optree.tree_min({'a': None})
     assert optree.tree_min({'a': None}, default=0) == 0
     assert optree.tree_min({'a': None}, none_is_leaf=True) is None
-    with pytest.raises(ValueError, match=re.escape('min() arg is an empty sequence')):
+    with pytest.raises(ValueError, match='empty'):
         optree.tree_min(None)
     assert optree.tree_min(None, default=0) == 0
     assert optree.tree_min(None, none_is_leaf=True) is None
