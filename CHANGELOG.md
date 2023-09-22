@@ -13,11 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
+- Allow passing third-party dependency version from environment variable by [@XuehaiPan](https://github.com/XuehaiPan) in [#80](https://github.com/metaopt/optree/pull/80).
 
 ### Changed
 
--
+- Bump `abseil-cpp` version to 20230802.1 by [@XuehaiPan](https://github.com/XuehaiPan) in [#80](https://github.com/metaopt/optree/pull/80).
 
 ### Fixed
 
