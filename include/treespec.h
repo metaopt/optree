@@ -17,6 +17,7 @@ limitations under the License.
 
 #pragma once
 
+#include <absl/container/flat_hash_set.h>
 #include <absl/container/inlined_vector.h>
 #include <absl/hash/hash.h>
 #include <pybind11/pybind11.h>
@@ -25,6 +26,7 @@ limitations under the License.
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -212,6 +214,7 @@ class PyTreeSpec {
         return h;
     }
 
+    // Return a string representation of the PyTreeSpec.
     [[nodiscard]] std::string ToString() const;
 
     // Transform the PyTreeSpec into a picklable object.
@@ -268,6 +271,10 @@ class PyTreeSpec {
     // The registry namespace used to resolve the custom pytree node types.
     std::string m_namespace;
 
+    // A set of (treespec, thread_id) pairs that are currently being represented as strings.
+    inline static absl::flat_hash_set<std::pair<const PyTreeSpec *, std::thread::id>>
+        sm_repr_running{};
+
     // Helper that manufactures an instance of a node given its children.
     static py::object MakeNode(const Node &node, const absl::Span<py::object> &children);
 
@@ -306,6 +313,8 @@ class PyTreeSpec {
                                     Stack &stack,  // NOLINT[runtime/references]
                                     const ssize_t &pos,
                                     const ssize_t &depth) const;
+
+    [[nodiscard]] std::string ToStringImpl() const;
 
     static std::unique_ptr<PyTreeSpec> FromPicklableImpl(const py::object &picklable);
 };

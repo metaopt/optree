@@ -529,7 +529,7 @@ template PyTreeKind PyTreeSpec::GetKind<NONE_IS_LEAF>(const py::handle&,
                                                       const std::string&);
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-std::string PyTreeSpec::ToString() const {
+std::string PyTreeSpec::ToStringImpl() const {
     auto agenda = std::vector<std::string>{};
     for (const Node& node : m_traversal) {
         EXPECT_GE(py::ssize_t_cast(agenda.size()), node.arity, "Too few elements for container.");
@@ -695,6 +695,23 @@ std::string PyTreeSpec::ToString() const {
         (m_namespace.empty() ? ""
                              : absl::StrFormat(", namespace=%s", py::repr(py::str(m_namespace)))),
         ")");
+}
+
+std::string PyTreeSpec::ToString() const {
+    std::pair<const PyTreeSpec*, std::thread::id> indent{this, std::this_thread::get_id()};
+    if (sm_repr_running.contains(indent)) {
+        return "...";
+    }
+
+    sm_repr_running.insert(indent);
+    try {
+        std::string representation = ToStringImpl();
+        sm_repr_running.erase(indent);
+        return representation;
+    } catch (...) {
+        sm_repr_running.erase(indent);
+        throw;
+    }
 }
 
 py::object PyTreeSpec::ToPicklable() const {
