@@ -114,6 +114,64 @@ def test_treespec_string_representation(data):
     assert str(treespec) == correct_string
 
 
+def test_treespec_self_referential():
+    class Holder:
+        def __init__(self, value):
+            self.value = value
+
+        def __eq__(self, other):
+            return isinstance(other, Holder) and self.value == other.value
+
+        def __hash__(self):
+            return hash(self.value)
+
+        def __repr__(self):
+            return f'Holder({self.value!r})'
+
+    key = Holder('a')
+
+    hashes = set()
+    treespec = optree.tree_structure({key: 0})
+    assert str(treespec) == "PyTreeSpec({Holder('a'): *})"
+    assert hash(treespec) == hash(treespec)
+    hashes.add(hash(treespec))
+
+    key.value = 'b'
+    assert str(treespec) == "PyTreeSpec({Holder('b'): *})"
+    assert hash(treespec) == hash(treespec)
+    assert hash(treespec) not in hashes
+    hashes.add(hash(treespec))
+
+    key.value = treespec
+    assert str(treespec) == 'PyTreeSpec({Holder(...): *})'
+    assert hash(treespec) == hash(treespec)
+    assert hash(treespec) not in hashes
+    hashes.add(hash(treespec))
+
+    key.value = ('a', treespec, treespec)
+    assert str(treespec) == "PyTreeSpec({Holder(('a', ..., ...)): *})"
+    assert hash(treespec) == hash(treespec)
+    assert hash(treespec) not in hashes
+    hashes.add(hash(treespec))
+
+    other = optree.tree_structure({Holder(treespec): 1})
+    assert str(other) == "PyTreeSpec({Holder(PyTreeSpec({Holder(('a', ..., ...)): *})): *})"
+    assert hash(other) == hash(other)
+    assert hash(other) not in hashes
+    hashes.add(hash(other))
+
+    key.value = other
+    assert str(treespec) == 'PyTreeSpec({Holder(PyTreeSpec({Holder(...): *})): *})'
+    assert str(other) == 'PyTreeSpec({Holder(PyTreeSpec({Holder(...): *})): *})'
+    assert hash(treespec) == hash(treespec)
+    assert hash(treespec) not in hashes
+    hashes.add(hash(treespec))
+    assert hash(other) == hash(other)
+    assert hash(treespec) == hash(other)
+    with pytest.raises(RecursionError):
+        assert treespec != other
+
+
 def test_with_namespace():
     tree = NAMESPACED_TREE
 
