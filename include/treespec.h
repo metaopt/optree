@@ -26,7 +26,7 @@ limitations under the License.
 #include <optional>
 #include <stdexcept>
 #include <string>
-#include <thread>
+#include <thread>  // NOLINT[build/c++11]
 #include <tuple>
 #include <utility>
 #include <vector>
