@@ -457,11 +457,11 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
                     // The keys remain in the insertion order.
                     PyErr_Clear();
                 } else [[unlikely]] {
-                    throw;
+                    std::rethrow_exception(std::current_exception());
                 }
             }
         } else [[unlikely]] {
-            throw;
+            std::rethrow_exception(std::current_exception());
         }
     }
 }

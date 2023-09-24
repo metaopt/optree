@@ -710,7 +710,7 @@ std::string PyTreeSpec::ToString() const {
         return representation;
     } catch (...) {
         sm_repr_running.erase(indent);
-        throw;
+        std::rethrow_exception(std::current_exception());
     }
 }
 

@@ -227,7 +227,7 @@ class PyTreeSpec {
             return hash;
         } catch (...) {
             sm_hash_running.erase(indent);
-            throw;
+            std::rethrow_exception(std::current_exception());
         }
     }
 
