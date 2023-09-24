@@ -17,6 +17,7 @@ limitations under the License.
 
 #pragma once
 
+#include <absl/container/flat_hash_set.h>
 #include <absl/container/inlined_vector.h>
 #include <absl/hash/hash.h>
 #include <pybind11/pybind11.h>
@@ -25,6 +26,7 @@ limitations under the License.
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <thread>  // NOLINT[build/c++11]
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -156,6 +158,7 @@ class PyTreeSpec {
     inline bool operator>(const PyTreeSpec &other) const { return IsSuffix(other, true); }
     inline bool operator>=(const PyTreeSpec &other) const { return IsSuffix(other, false); }
 
+    // Return the hash value of the PyTreeSpec.
     template <typename H>
     friend H AbslHashValue(H h, const Node &n) {
         ssize_t data_hash = 0;
@@ -201,17 +204,34 @@ class PyTreeSpec {
                 INTERNAL_ERROR();
         }
 
-        h = H::combine(
+        return H::combine(
             std::move(h), n.kind, n.arity, n.custom, n.num_leaves, n.num_nodes, data_hash);
-        return h;
+    }
+
+    template <typename H>
+    friend H AbslHashValueImpl(H h, const PyTreeSpec &t) {
+        return H::combine(std::move(h), t.m_traversal, t.m_none_is_leaf, t.m_namespace);
     }
 
     template <typename H>
     friend H AbslHashValue(H h, const PyTreeSpec &t) {
-        h = H::combine(std::move(h), t.m_traversal, t.m_none_is_leaf, t.m_namespace);
-        return h;
+        std::pair<const PyTreeSpec *, std::thread::id> indent{&t, std::this_thread::get_id()};
+        if (sm_hash_running.contains(indent)) {
+            return h;
+        }
+
+        sm_hash_running.insert(indent);
+        try {
+            H hash = AbslHashValueImpl(std::move(h), t);
+            sm_hash_running.erase(indent);
+            return hash;
+        } catch (...) {
+            sm_hash_running.erase(indent);
+            std::rethrow_exception(std::current_exception());
+        }
     }
 
+    // Return a string representation of the PyTreeSpec.
     [[nodiscard]] std::string ToString() const;
 
     // Transform the PyTreeSpec into a picklable object.
@@ -268,6 +288,14 @@ class PyTreeSpec {
     // The registry namespace used to resolve the custom pytree node types.
     std::string m_namespace;
 
+    // A set of (treespec, thread_id) pairs that are currently being represented as strings.
+    inline static absl::flat_hash_set<std::pair<const PyTreeSpec *, std::thread::id>>
+        sm_repr_running{};
+
+    // A set of (treespec, thread_id) pairs that are currently being hashed.
+    inline static absl::flat_hash_set<std::pair<const PyTreeSpec *, std::thread::id>>
+        sm_hash_running{};
+
     // Helper that manufactures an instance of a node given its children.
     static py::object MakeNode(const Node &node, const absl::Span<py::object> &children);
 
@@ -306,6 +334,8 @@ class PyTreeSpec {
                                     Stack &stack,  // NOLINT[runtime/references]
                                     const ssize_t &pos,
                                     const ssize_t &depth) const;
+
+    [[nodiscard]] std::string ToStringImpl() const;
 
     static std::unique_ptr<PyTreeSpec> FromPicklableImpl(const py::object &picklable);
 };

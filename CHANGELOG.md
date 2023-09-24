@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- Memorize ongoing `repr` / `hash` calls to resolve infinite recursion under self-referential case by [@XuehaiPan](https://github.com/XuehaiPan) and [@JieRen98](https://github.com/JieRen98) in [#82](https://github.com/metaopt/optree/pull/82).
 
 ### Removed
 
