@@ -29,6 +29,5 @@ target_link_libraries(
     _C
     PUBLIC
     absl::flat_hash_map
-    absl::flat_hash_set
     absl::str_format
 )

@@ -17,7 +17,6 @@ limitations under the License.
 
 #pragma once
 
-#include <absl/container/flat_hash_set.h>
 #include <absl/hash/hash.h>
 #include <pybind11/pybind11.h>
 
@@ -27,6 +26,7 @@ limitations under the License.
 #include <string>
 #include <thread>  // NOLINT[build/c++11]
 #include <tuple>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -287,14 +287,6 @@ class PyTreeSpec {
     // The registry namespace used to resolve the custom pytree node types.
     std::string m_namespace;
 
-    // A set of (treespec, thread_id) pairs that are currently being represented as strings.
-    inline static absl::flat_hash_set<std::pair<const PyTreeSpec *, std::thread::id>>
-        sm_repr_running{};
-
-    // A set of (treespec, thread_id) pairs that are currently being hashed.
-    inline static absl::flat_hash_set<std::pair<const PyTreeSpec *, std::thread::id>>
-        sm_hash_running{};
-
     // Helper that manufactures an instance of a node given its children.
     static py::object MakeNode(const Node &node,
                                const py::object *children,
@@ -339,6 +331,22 @@ class PyTreeSpec {
     [[nodiscard]] std::string ToStringImpl() const;
 
     static std::unique_ptr<PyTreeSpec> FromPicklableImpl(const py::object &picklable);
+
+    class ThreadIndentTypeHash {
+     public:
+        using is_transparent = void;
+        size_t operator()(const std::pair<const PyTreeSpec *, std::thread::id> &p) const;
+    };
+
+    // A set of (treespec, thread_id) pairs that are currently being represented as strings.
+    inline static std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
+                                     ThreadIndentTypeHash>
+        sm_repr_running{};
+
+    // A set of (treespec, thread_id) pairs that are currently being hashed.
+    inline static std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
+                                     ThreadIndentTypeHash>
+        sm_hash_running{};
 };
 
 }  // namespace optree

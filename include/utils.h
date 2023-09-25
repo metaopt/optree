@@ -31,12 +31,26 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-constexpr bool NONE_IS_LEAF = true;
-constexpr bool NONE_IS_NODE = false;
-
 namespace py = pybind11;
 using size_t = py::size_t;
 using ssize_t = py::ssize_t;
+
+// boost::hash_combine
+template <class T>
+inline void HashCombine(size_t& seed, const T& v) {  // NOLINT[runtime/references]
+    std::hash<T> hasher;
+    // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
+    seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+}
+template <class T>
+inline void HashCombine(ssize_t& seed, const T& v) {  // NOLINT[runtime/references]
+    std::hash<T> hasher;
+    // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
+    seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+}
+
+constexpr bool NONE_IS_LEAF = true;
+constexpr bool NONE_IS_NODE = false;
 
 #define PyCollectionsModule (ImportCollections())
 #define PyOrderedDictTypeObject (ImportOrderedDict())

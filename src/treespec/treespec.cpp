@@ -842,4 +842,12 @@ py::object PyTreeSpec::ToPicklable() const {
     return FromPicklableImpl(picklable);
 }
 
+size_t PyTreeSpec::ThreadIndentTypeHash::operator()(
+    const std::pair<const PyTreeSpec*, std::thread::id>& p) const {
+    size_t seed = 0;
+    HashCombine(seed, p.first);
+    HashCombine(seed, p.second);
+    return seed;
+}
+
 }  // namespace optree
