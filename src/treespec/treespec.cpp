@@ -539,6 +539,85 @@ template PyTreeKind PyTreeSpec::GetKind<NONE_IS_LEAF>(const py::handle&,
                                                       PyTreeTypeRegistry::Registration const**,
                                                       const std::string&);
 
+/*static*/ void PyTreeSpec::HashCombineNode(ssize_t& seed, const PyTreeSpec::Node& node) {
+    ssize_t data_hash = 0;
+    switch (node.kind) {
+        case PyTreeKind::Custom:
+            // We don't hash node_data custom node types since they may not hashable.
+            break;
+        case PyTreeKind::Leaf:
+        case PyTreeKind::None:
+        case PyTreeKind::Tuple:
+        case PyTreeKind::List:
+        case PyTreeKind::NamedTuple:
+        case PyTreeKind::Deque:
+        case PyTreeKind::StructSequence:
+            data_hash = py::hash(node.node_data ? node.node_data : py::none());
+            break;
+        case PyTreeKind::Dict:
+        case PyTreeKind::OrderedDict:
+        case PyTreeKind::DefaultDict: {
+            py::list keys;
+            if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
+                EXPECT_EQ(
+                    GET_SIZE<py::tuple>(node.node_data), 2, "Number of auxiliary data mismatch.");
+                py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
+                keys =
+                    py::reinterpret_borrow<py::list>(GET_ITEM_BORROW<py::tuple>(node.node_data, 1));
+                EXPECT_EQ(GET_SIZE<py::list>(keys),
+                          node.arity,
+                          "Number of keys and entries does not match.");
+                data_hash = py::hash(default_factory);
+            } else [[likely]] {
+                EXPECT_EQ(GET_SIZE<py::list>(node.node_data),
+                          node.arity,
+                          "Number of keys and entries does not match.");
+                keys = py::reinterpret_borrow<py::list>(node.node_data);
+            }
+            for (const py::handle&& key : keys) {
+                HashCombine(data_hash, py::hash(key));
+            }
+            break;
+        }
+        default:
+            INTERNAL_ERROR();
+    }
+
+    HashCombine(seed, node.kind);
+    HashCombine(seed, node.arity);
+    HashCombine(seed, node.custom);
+    HashCombine(seed, node.num_leaves);
+    HashCombine(seed, node.num_nodes);
+    HashCombine(seed, data_hash);
+}
+
+ssize_t PyTreeSpec::HashValueImpl() const {
+    ssize_t seed = 0;
+    for (const Node& node : m_traversal) {
+        HashCombineNode(seed, node);
+    }
+    HashCombine(seed, m_none_is_leaf);
+    HashCombine(seed, m_namespace);
+    return seed;
+}
+
+ssize_t PyTreeSpec::HashValue() const {
+    std::pair<const PyTreeSpec*, std::thread::id> indent{this, std::this_thread::get_id()};
+    if (sm_hash_running.contains(indent)) {
+        return 0;
+    }
+
+    sm_hash_running.insert(indent);
+    try {
+        ssize_t result = HashValueImpl();
+        sm_hash_running.erase(indent);
+        return result;
+    } catch (...) {
+        sm_hash_running.erase(indent);
+        std::rethrow_exception(std::current_exception());
+    }
+}
+
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 std::string PyTreeSpec::ToStringImpl() const {
     auto agenda = std::vector<std::string>{};

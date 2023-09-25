@@ -201,10 +201,7 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
             "Test for this treespec is a suffix of another object.",
             py::is_operator(),
             py::arg("other"))
-        .def(
-            "__hash__",
-            [](const PyTreeSpec& t) { return absl::HashOf(t); },
-            "Return the hash of the treespec.")
+        .def("__hash__", &PyTreeSpec::HashValue, "Return the hash of the treespec.")
         .def("__len__", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
         .def(py::pickle([](const PyTreeSpec& t) { return t.ToPicklable(); },
                         [](const py::object& o) { return PyTreeSpec::FromPicklable(o); }),

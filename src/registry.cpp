@@ -143,15 +143,15 @@ template <bool NoneIsLeaf>
 /*static*/ const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup(
     const py::handle& type, const std::string& registry_namespace) {
     PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
-    auto it = registry->m_registrations.find(type);
+    auto it = registry->m_registrations.find(py::reinterpret_borrow<py::object>(type));
     if (it != registry->m_registrations.end()) [[likely]] {
         return it->second.get();
     }
     if (registry_namespace.empty()) [[likely]] {
         return nullptr;
     } else [[unlikely]] {
-        auto named_it =
-            registry->m_named_registrations.find(std::make_pair(registry_namespace, type));
+        auto named_it = registry->m_named_registrations.find(
+            std::make_pair(registry_namespace, py::reinterpret_borrow<py::object>(type)));
         return named_it != registry->m_named_registrations.end() ? named_it->second.get() : nullptr;
     }
 }
@@ -162,10 +162,10 @@ template const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup<NONE
     const py::handle&, const std::string&);
 
 size_t PyTreeTypeRegistry::TypeHash::operator()(const py::object& t) const {
-    return absl::HashOf(t.ptr());
+    return std::hash<PyObject*>{}(t.ptr());
 }
 size_t PyTreeTypeRegistry::TypeHash::operator()(const py::handle& t) const {
-    return absl::HashOf(t.ptr());
+    return std::hash<PyObject*>{}(t.ptr());
 }
 
 bool PyTreeTypeRegistry::TypeEq::operator()(const py::object& a, const py::object& b) const {
@@ -174,14 +174,26 @@ bool PyTreeTypeRegistry::TypeEq::operator()(const py::object& a, const py::objec
 bool PyTreeTypeRegistry::TypeEq::operator()(const py::object& a, const py::handle& b) const {
     return a.ptr() == b.ptr();
 }
+bool PyTreeTypeRegistry::TypeEq::operator()(const py::handle& a, const py::object& b) const {
+    return a.ptr() == b.ptr();
+}
+bool PyTreeTypeRegistry::TypeEq::operator()(const py::handle& a, const py::handle& b) const {
+    return a.ptr() == b.ptr();
+}
 
 size_t PyTreeTypeRegistry::NamedTypeHash::operator()(
     const std::pair<std::string, py::object>& p) const {
-    return absl::HashOf(std::make_pair(p.first, p.second.ptr()));
+    size_t seed = 0;
+    HashCombine(seed, p.first);
+    HashCombine(seed, p.second.ptr());
+    return seed;
 }
 size_t PyTreeTypeRegistry::NamedTypeHash::operator()(
     const std::pair<std::string, py::handle>& p) const {
-    return absl::HashOf(std::make_pair(p.first, p.second.ptr()));
+    size_t seed = 0;
+    HashCombine(seed, p.first);
+    HashCombine(seed, p.second.ptr());
+    return seed;
 }
 
 bool PyTreeTypeRegistry::NamedTypeEq::operator()(
@@ -191,6 +203,16 @@ bool PyTreeTypeRegistry::NamedTypeEq::operator()(
 }
 bool PyTreeTypeRegistry::NamedTypeEq::operator()(
     const std::pair<std::string, py::object>& a,
+    const std::pair<std::string, py::handle>& b) const {
+    return a.first == b.first && a.second.ptr() == b.second.ptr();
+}
+bool PyTreeTypeRegistry::NamedTypeEq::operator()(
+    const std::pair<std::string, py::handle>& a,
+    const std::pair<std::string, py::object>& b) const {
+    return a.first == b.first && a.second.ptr() == b.second.ptr();
+}
+bool PyTreeTypeRegistry::NamedTypeEq::operator()(
+    const std::pair<std::string, py::handle>& a,
     const std::pair<std::string, py::handle>& b) const {
     return a.first == b.first && a.second.ptr() == b.second.ptr();
 }
