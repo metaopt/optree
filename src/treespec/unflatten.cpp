@@ -21,7 +21,7 @@ namespace optree {
 
 template <typename Span>
 py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
-    auto agenda = absl::InlinedVector<py::object, 4>{};
+    auto agenda = reserved_vector<py::object>(4);
     auto it = leaves.begin();
     ssize_t leaf_count = 0;
     for (const Node& node : m_traversal) {

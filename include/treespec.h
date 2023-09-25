@@ -18,7 +18,6 @@ limitations under the License.
 #pragma once
 
 #include <absl/container/flat_hash_set.h>
-#include <absl/container/inlined_vector.h>
 #include <absl/hash/hash.h>
 #include <pybind11/pybind11.h>
 
@@ -280,7 +279,7 @@ class PyTreeSpec {
 
     // Nodes, in a post-order traversal. We use an ordered traversal to minimize allocations, and
     // post-order corresponds to the order we need to rebuild the tree structure.
-    absl::InlinedVector<Node, 1> m_traversal;
+    std::vector<Node> m_traversal;
 
     // Whether to treat `None` as a leaf. If false, `None` is a non-leaf node with arity 0.
     bool m_none_is_leaf = false;
