@@ -172,7 +172,9 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     const ssize_t num_inner_nodes = inner_treespec.GetNumNodes();
     for (const Node& node : m_traversal) {
         if (node.kind == PyTreeKind::Leaf) [[likely]] {
-            absl::c_copy(inner_treespec.m_traversal, std::back_inserter(treespec->m_traversal));
+            std::copy(inner_treespec.m_traversal.begin(),
+                      inner_treespec.m_traversal.end(),
+                      std::back_inserter(treespec->m_traversal));
         } else [[unlikely]] {
             Node new_node{node};
             new_node.num_leaves = node.num_leaves * num_inner_leaves;
@@ -363,7 +365,9 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
     auto out = std::make_unique<PyTreeSpec>();
     ssize_t num_leaves = 0;
     for (const PyTreeSpec& treespec : treespecs) {
-        absl::c_copy(treespec.m_traversal, std::back_inserter(out->m_traversal));
+        std::copy(treespec.m_traversal.begin(),
+                  treespec.m_traversal.end(),
+                  std::back_inserter(out->m_traversal));
         num_leaves += treespec.GetNumLeaves();
     }
     Node node;
