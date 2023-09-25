@@ -297,7 +297,9 @@ class PyTreeSpec {
         sm_hash_running{};
 
     // Helper that manufactures an instance of a node given its children.
-    static py::object MakeNode(const Node &node, const absl::Span<py::object> &children);
+    static py::object MakeNode(const Node &node,
+                               const py::object *children,
+                               const size_t &num_children);
 
     // Compute the node kind of a given Python object.
     template <bool NoneIsLeaf>

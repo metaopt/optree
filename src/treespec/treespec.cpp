@@ -406,8 +406,9 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ py::object PyTreeSpec::MakeNode(const PyTreeSpec::Node& node,
-                                           const absl::Span<py::object>& children) {
-    EXPECT_EQ(py::ssize_t_cast(children.size()), node.arity, "Node arity did not match.");
+                                           const py::object* children,
+                                           const size_t& num_children) {
+    EXPECT_EQ(py::ssize_t_cast(num_children), node.arity, "Node arity did not match.");
     switch (node.kind) {
         case PyTreeKind::Leaf:
             INTERNAL_ERROR("MakeNode not implemented for leaves.");
@@ -420,6 +421,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
         case PyTreeKind::StructSequence: {
             py::tuple tuple{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
                 SET_ITEM<py::tuple>(tuple, i, children[i]);
             }
             if (node.kind == PyTreeKind::NamedTuple) [[unlikely]] {
@@ -435,6 +437,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
         case PyTreeKind::Deque: {
             py::list list{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
                 SET_ITEM<py::list>(list, i, children[i]);
             }
             if (node.kind == PyTreeKind::Deque) [[unlikely]] {
@@ -452,7 +455,8 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
                 }
             }
             for (ssize_t i = 0; i < node.arity; ++i) {
-                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = std::move(children[i]);
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = children[i];
             }
             return dict;
         }
@@ -464,7 +468,8 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
                 SET_ITEM<py::list>(
                     items,
                     i,
-                    py::make_tuple(GET_ITEM_HANDLE<py::list>(keys, i), std::move(children[i])));
+                    // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                    py::make_tuple(GET_ITEM_HANDLE<py::list>(keys, i), children[i]));
             }
             return PyOrderedDictTypeObject(items);
         }
@@ -479,7 +484,8 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
                 }
             }
             for (ssize_t i = 0; i < node.arity; ++i) {
-                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = std::move(children[i]);
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = children[i];
             }
             return PyDefaultDictTypeObject(default_factory, dict);
         }
@@ -487,6 +493,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
         case PyTreeKind::Custom: {
             py::tuple tuple{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
                 SET_ITEM<py::tuple>(tuple, i, children[i]);
             }
             return node.custom->from_iterable(node.node_data, tuple);

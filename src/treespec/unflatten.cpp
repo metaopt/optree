@@ -56,11 +56,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
             case PyTreeKind::StructSequence:
             case PyTreeKind::Custom: {
                 const ssize_t size = py::ssize_t_cast(agenda.size());
-                absl::Span<py::object> span;
-                if (node.arity > 0) [[likely]] {
-                    span = absl::Span<py::object>(&agenda[size - node.arity], node.arity);
-                }
-                py::object out = MakeNode(node, span);
+                py::object out = MakeNode(node, &agenda[size - node.arity], node.arity);
                 agenda.resize(size - node.arity);
                 agenda.emplace_back(std::move(out));
                 break;
