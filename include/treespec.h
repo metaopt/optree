@@ -37,7 +37,7 @@ namespace optree {
 
 // The maximum depth of a pytree.
 #ifdef _WIN32
-constexpr ssize_t MAX_RECURSION_DEPTH = 2500;
+constexpr ssize_t MAX_RECURSION_DEPTH = 2000;
 #else
 constexpr ssize_t MAX_RECURSION_DEPTH = 5000;
 #endif
