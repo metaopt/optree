@@ -33,10 +33,10 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
             case PyTreeKind::Leaf: {
                 if (node.kind == PyTreeKind::Leaf || m_none_is_leaf) [[likely]] {
                     if (it == leaves.end()) [[unlikely]] {
-                        throw py::value_error(absl::StrFormat(
-                            "Too few leaves for PyTreeSpec; expected: %ld, got: %ld.",
-                            GetNumLeaves(),
-                            leaf_count));
+                        std::stringstream ss;
+                        ss << "Too few leaves for PyTreeSpec; expected: " << GetNumLeaves()
+                           << ", got: " << leaf_count << ".";
+                        throw py::value_error(ss.str());
                     }
                     agenda.emplace_back(py::reinterpret_borrow<py::object>(*it));
                     ++it;
@@ -67,8 +67,9 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
         }
     }
     if (it != leaves.end()) [[unlikely]] {
-        throw py::value_error(
-            absl::StrFormat("Too many leaves for PyTreeSpec; expected: %ld.", GetNumLeaves()));
+        std::stringstream ss;
+        ss << "Too many leaves for PyTreeSpec; expected: " << GetNumLeaves() << ".";
+        throw py::value_error(ss.str());
     }
     EXPECT_EQ(agenda.size(), 1, "PyTreeSpec traversal did not yield a singleton.");
     return std::move(agenda.back());
