@@ -17,8 +17,7 @@ limitations under the License.
 
 #pragma once
 
-#include <absl/strings/str_format.h>
-
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
@@ -39,12 +38,13 @@ class InternalError : public std::logic_error {
  public:
     explicit InternalError(const std::string& msg) : std::logic_error(msg) {}
     InternalError(const std::string& msg, const std::string& file, const size_t& lineno)
-        : InternalError(absl::StrFormat(
-              "%s (at file %s:%lu)\n\n%s",
-              msg,
-              file,
-              lineno,
-              "Please file a bug report at https://github.com/metaopt/optree/issues.")) {}
+        : InternalError([&msg, &file, &lineno]() {
+              std::stringstream ss;
+              ss << msg << " (at file " << file << ":" << lineno << ")";
+              ss << std::endl << std::endl;
+              ss << "Please file a bug report at https://github.com/metaopt/optree/issues.";
+              return ss.str();
+          }()) {}
 };
 
 }  // namespace optree

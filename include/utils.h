@@ -18,25 +18,38 @@ limitations under the License.
 #pragma once
 
 #include <Python.h>
-#include <absl/strings/str_format.h>
-#include <absl/strings/str_join.h>
 #include <pybind11/pybind11.h>
 #include <structmember.h>  // PyMemberDef
 
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
 
-constexpr bool NONE_IS_LEAF = true;
-constexpr bool NONE_IS_NODE = false;
-
 namespace py = pybind11;
 using size_t = py::size_t;
 using ssize_t = py::ssize_t;
+
+// boost::hash_combine
+template <class T>
+inline void HashCombine(size_t& seed, const T& v) {  // NOLINT[runtime/references]
+    std::hash<T> hasher;
+    // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
+    seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+}
+template <class T>
+inline void HashCombine(ssize_t& seed, const T& v) {  // NOLINT[runtime/references]
+    std::hash<T> hasher;
+    // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
+    seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+}
+
+constexpr bool NONE_IS_LEAF = true;
+constexpr bool NONE_IS_NODE = false;
 
 #define PyCollectionsModule (ImportCollections())
 #define PyOrderedDictTypeObject (ImportOrderedDict())
@@ -251,43 +264,45 @@ inline void SET_ITEM<py::list>(const py::handle& container,
 template <typename PyType>
 inline void AssertExact(const py::handle& object) {
     if (!py::isinstance<PyType>(object)) [[unlikely]] {
-        throw py::value_error(absl::StrFormat(
-            "Expected an instance of %s, got %s.", typeid(PyType).name(), py::repr(object)));
+        std::stringstream ss;
+        ss << "Expected an instance of " << typeid(PyType).name() << ", got "
+           << static_cast<std::string>(py::repr(object)) << ".";
+        throw py::value_error(ss.str());
     }
 }
 template <>
 inline void AssertExact<py::list>(const py::handle& object) {
     if (!PyList_CheckExact(object.ptr())) [[unlikely]] {
-        throw py::value_error(
-            absl::StrFormat("Expected an instance of list, got %s.", py::repr(object)));
+        throw py::value_error("Expected an instance of list, got " +
+                              static_cast<std::string>(py::repr(object)) + ".");
     }
 }
 template <>
 inline void AssertExact<py::tuple>(const py::handle& object) {
     if (!PyTuple_CheckExact(object.ptr())) [[unlikely]] {
-        throw py::value_error(
-            absl::StrFormat("Expected an instance of tuple, got %s.", py::repr(object)));
+        throw py::value_error("Expected an instance of tuple, got " +
+                              static_cast<std::string>(py::repr(object)) + ".");
     }
 }
 template <>
 inline void AssertExact<py::dict>(const py::handle& object) {
     if (!PyDict_CheckExact(object.ptr())) [[unlikely]] {
-        throw py::value_error(
-            absl::StrFormat("Expected an instance of dict, got %s.", py::repr(object)));
+        throw py::value_error("Expected an instance of dict, got " +
+                              static_cast<std::string>(py::repr(object)) + ".");
     }
 }
 
 inline void AssertExactOrderedDict(const py::handle& object) {
     if (!py::type::handle_of(object).is(PyOrderedDictTypeObject)) [[unlikely]] {
-        throw py::value_error(absl::StrFormat(
-            "Expected an instance of collections.OrderedDict, got %s.", py::repr(object)));
+        throw py::value_error("Expected an instance of collections.OrderedDict, got " +
+                              static_cast<std::string>(py::repr(object)) + ".");
     }
 }
 
 inline void AssertExactDefaultDict(const py::handle& object) {
     if (!py::type::handle_of(object).is(PyDefaultDictTypeObject)) [[unlikely]] {
-        throw py::value_error(absl::StrFormat(
-            "Expected an instance of collections.defaultdict, got %s.", py::repr(object)));
+        throw py::value_error("Expected an instance of collections.defaultdict, got " +
+                              static_cast<std::string>(py::repr(object)) + ".");
     }
 }
 
@@ -296,17 +311,17 @@ inline void AssertExactStandardDict(const py::handle& object) {
           py::type::handle_of(object).is(PyOrderedDictTypeObject) ||
           py::type::handle_of(object).is(PyDefaultDictTypeObject))) [[unlikely]] {
         throw py::value_error(
-            absl::StrFormat("Expected an instance of "
-                            "dict, collections.OrderedDict, or collections.defaultdict, "
-                            "got %s.",
-                            py::repr(object)));
+            "Expected an instance of "
+            "dict, collections.OrderedDict, or collections.defaultdict, "
+            "got " +
+            static_cast<std::string>(py::repr(object)) + ".");
     }
 }
 
 inline void AssertExactDeque(const py::handle& object) {
     if (!py::type::handle_of(object).is(PyDequeTypeObject)) [[unlikely]] {
-        throw py::value_error(absl::StrFormat("Expected an instance of collections.deque, got %s.",
-                                              py::repr(object)));
+        throw py::value_error("Expected an instance of collections.deque, got " +
+                              static_cast<std::string>(py::repr(object)) + ".");
     }
 }
 
@@ -343,8 +358,8 @@ inline bool IsNamedTuple(const py::handle& object) {
 }
 inline void AssertExactNamedTuple(const py::handle& object) {
     if (!IsNamedTupleInstance(object)) [[unlikely]] {
-        throw py::value_error(absl::StrFormat(
-            "Expected an instance of collections.namedtuple, got %s.", py::repr(object)));
+        throw py::value_error("Expected an instance of collections.namedtuple, got " +
+                              static_cast<std::string>(py::repr(object)) + ".");
     }
 }
 inline py::tuple NamedTupleGetFields(const py::handle& object) {
@@ -352,14 +367,14 @@ inline py::tuple NamedTupleGetFields(const py::handle& object) {
     if (PyType_Check(object.ptr())) [[unlikely]] {
         type = object;
         if (!IsNamedTupleClass(type)) [[unlikely]] {
-            throw py::type_error(absl::StrFormat("Expected a collections.namedtuple type, got %s.",
-                                                 py::repr(object)));
+            throw py::type_error("Expected a collections.namedtuple type, got " +
+                                 static_cast<std::string>(py::repr(object)) + ".");
         }
     } else [[likely]] {
         type = py::type::handle_of(object);
         if (!IsNamedTupleClass(type)) [[unlikely]] {
-            throw py::type_error(absl::StrFormat(
-                "Expected an instance of collections.namedtuple type, got %s.", py::repr(object)));
+            throw py::type_error("Expected an instance of collections.namedtuple type, got " +
+                                 static_cast<std::string>(py::repr(object)) + ".");
         }
     }
     return py::getattr(type, "_fields");
@@ -400,8 +415,8 @@ inline bool IsStructSequence(const py::handle& object) {
 }
 inline void AssertExactStructSequence(const py::handle& object) {
     if (!IsStructSequenceInstance(object)) [[unlikely]] {
-        throw py::value_error(absl::StrFormat(
-            "Expected an instance of PyStructSequence type, got %s.", py::repr(object)));
+        throw py::value_error("Expected an instance of PyStructSequence type, got " +
+                              static_cast<std::string>(py::repr(object)) + ".");
     }
 }
 inline py::tuple StructSequenceGetFields(const py::handle& object) {
@@ -409,14 +424,14 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
     if (PyType_Check(object.ptr())) [[unlikely]] {
         type = object;
         if (!IsStructSequenceClass(type)) [[unlikely]] {
-            throw py::type_error(
-                absl::StrFormat("Expected a PyStructSequence type, got %s.", py::repr(object)));
+            throw py::type_error("Expected a PyStructSequence type, got " +
+                                 static_cast<std::string>(py::repr(object)) + ".");
         }
     } else [[likely]] {
         type = py::type::handle_of(object);
         if (!IsStructSequenceClass(type)) [[unlikely]] {
-            throw py::type_error(absl::StrFormat(
-                "Expected an instance of PyStructSequence type, got %s.", py::repr(object)));
+            throw py::type_error("Expected an instance of PyStructSequence type, got " +
+                                 static_cast<std::string>(py::repr(object)) + ".");
         }
     }
 
@@ -444,10 +459,10 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
                 // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
                 auto sort_key_fn = py::cpp_function([](const py::object& o) {
                     py::handle t = py::type::handle_of(o);
-                    py::str qualname{absl::StrFormat(
-                        "%s.%s",
-                        static_cast<std::string>(py::getattr(t, "__module__").cast<py::str>()),
-                        static_cast<std::string>(py::getattr(t, "__qualname__").cast<py::str>()))};
+                    py::str qualname{
+                        static_cast<std::string>(py::getattr(t, "__module__").cast<py::str>()) +
+                        "." +
+                        static_cast<std::string>(py::getattr(t, "__qualname__").cast<py::str>())};
                     return py::make_tuple(qualname, o);
                 });
                 list.attr("sort")(py::arg("key") = sort_key_fn);

@@ -17,9 +17,6 @@ limitations under the License.
 
 #pragma once
 
-#include <absl/container/flat_hash_set.h>
-#include <absl/container/inlined_vector.h>
-#include <absl/hash/hash.h>
 #include <pybind11/pybind11.h>
 
 #include <memory>
@@ -28,6 +25,7 @@ limitations under the License.
 #include <string>
 #include <thread>  // NOLINT[build/c++11]
 #include <tuple>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -39,7 +37,7 @@ namespace optree {
 
 // The maximum depth of a pytree.
 #ifdef _WIN32
-constexpr ssize_t MAX_RECURSION_DEPTH = 2500;
+constexpr ssize_t MAX_RECURSION_DEPTH = 2000;
 #else
 constexpr ssize_t MAX_RECURSION_DEPTH = 5000;
 #endif
@@ -159,77 +157,7 @@ class PyTreeSpec {
     inline bool operator>=(const PyTreeSpec &other) const { return IsSuffix(other, false); }
 
     // Return the hash value of the PyTreeSpec.
-    template <typename H>
-    friend H AbslHashValue(H h, const Node &n) {
-        ssize_t data_hash = 0;
-        switch (n.kind) {
-            case PyTreeKind::Custom:
-                // We don't hash node_data custom node types since they may not hashable.
-                break;
-            case PyTreeKind::Leaf:
-            case PyTreeKind::None:
-            case PyTreeKind::Tuple:
-            case PyTreeKind::List:
-            case PyTreeKind::NamedTuple:
-            case PyTreeKind::Deque:
-            case PyTreeKind::StructSequence:
-                data_hash = py::hash(n.node_data ? n.node_data : py::none());
-                break;
-            case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
-                py::list keys;
-                if (n.kind == PyTreeKind::DefaultDict) [[unlikely]] {
-                    EXPECT_EQ(
-                        GET_SIZE<py::tuple>(n.node_data), 2, "Number of auxiliary data mismatch.");
-                    py::object default_factory = GET_ITEM_BORROW<py::tuple>(n.node_data, 0);
-                    keys = py::reinterpret_borrow<py::list>(
-                        GET_ITEM_BORROW<py::tuple>(n.node_data, 1));
-                    EXPECT_EQ(GET_SIZE<py::list>(keys),
-                              n.arity,
-                              "Number of keys and entries does not match.");
-                    data_hash = py::hash(default_factory);
-                } else [[likely]] {
-                    EXPECT_EQ(GET_SIZE<py::list>(n.node_data),
-                              n.arity,
-                              "Number of keys and entries does not match.");
-                    keys = py::reinterpret_borrow<py::list>(n.node_data);
-                }
-                for (const py::handle &&key : keys) {
-                    data_hash = py::ssize_t_cast(absl::HashOf(data_hash, py::hash(key)));
-                }
-                break;
-            }
-            default:
-                INTERNAL_ERROR();
-        }
-
-        return H::combine(
-            std::move(h), n.kind, n.arity, n.custom, n.num_leaves, n.num_nodes, data_hash);
-    }
-
-    template <typename H>
-    friend H AbslHashValueImpl(H h, const PyTreeSpec &t) {
-        return H::combine(std::move(h), t.m_traversal, t.m_none_is_leaf, t.m_namespace);
-    }
-
-    template <typename H>
-    friend H AbslHashValue(H h, const PyTreeSpec &t) {
-        std::pair<const PyTreeSpec *, std::thread::id> indent{&t, std::this_thread::get_id()};
-        if (sm_hash_running.contains(indent)) {
-            return h;
-        }
-
-        sm_hash_running.insert(indent);
-        try {
-            H hash = AbslHashValueImpl(std::move(h), t);
-            sm_hash_running.erase(indent);
-            return hash;
-        } catch (...) {
-            sm_hash_running.erase(indent);
-            std::rethrow_exception(std::current_exception());
-        }
-    }
+    [[nodiscard]] ssize_t HashValue() const;
 
     // Return a string representation of the PyTreeSpec.
     [[nodiscard]] std::string ToString() const;
@@ -280,7 +208,7 @@ class PyTreeSpec {
 
     // Nodes, in a post-order traversal. We use an ordered traversal to minimize allocations, and
     // post-order corresponds to the order we need to rebuild the tree structure.
-    absl::InlinedVector<Node, 1> m_traversal;
+    std::vector<Node> m_traversal;
 
     // Whether to treat `None` as a leaf. If false, `None` is a non-leaf node with arity 0.
     bool m_none_is_leaf = false;
@@ -288,16 +216,10 @@ class PyTreeSpec {
     // The registry namespace used to resolve the custom pytree node types.
     std::string m_namespace;
 
-    // A set of (treespec, thread_id) pairs that are currently being represented as strings.
-    inline static absl::flat_hash_set<std::pair<const PyTreeSpec *, std::thread::id>>
-        sm_repr_running{};
-
-    // A set of (treespec, thread_id) pairs that are currently being hashed.
-    inline static absl::flat_hash_set<std::pair<const PyTreeSpec *, std::thread::id>>
-        sm_hash_running{};
-
     // Helper that manufactures an instance of a node given its children.
-    static py::object MakeNode(const Node &node, const absl::Span<py::object> &children);
+    static py::object MakeNode(const Node &node,
+                               const py::object *children,
+                               const size_t &num_children);
 
     // Compute the node kind of a given Python object.
     template <bool NoneIsLeaf>
@@ -335,9 +257,30 @@ class PyTreeSpec {
                                     const ssize_t &pos,
                                     const ssize_t &depth) const;
 
+    // Get the hash value of the node.
+    static void HashCombineNode(ssize_t &seed, const Node &node);  // NOLINT[runtime/references]
+
+    [[nodiscard]] ssize_t HashValueImpl() const;
+
     [[nodiscard]] std::string ToStringImpl() const;
 
     static std::unique_ptr<PyTreeSpec> FromPicklableImpl(const py::object &picklable);
+
+    class ThreadIndentTypeHash {
+     public:
+        using is_transparent = void;
+        size_t operator()(const std::pair<const PyTreeSpec *, std::thread::id> &p) const;
+    };
+
+    // A set of (treespec, thread_id) pairs that are currently being represented as strings.
+    inline static std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
+                                     ThreadIndentTypeHash>
+        sm_repr_running{};
+
+    // A set of (treespec, thread_id) pairs that are currently being hashed.
+    inline static std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
+                                     ThreadIndentTypeHash>
+        sm_hash_running{};
 };
 
 }  // namespace optree

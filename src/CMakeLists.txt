@@ -24,11 +24,3 @@ set(
 )
 
 pybind11_add_module(_C MODULE THIN_LTO "${optree_csrc}")
-
-target_link_libraries(
-    _C
-    PUBLIC
-    absl::flat_hash_map
-    absl::flat_hash_set
-    absl::str_format
-)

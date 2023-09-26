@@ -21,7 +21,7 @@ namespace optree {
 
 template <typename Span>
 py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
-    auto agenda = absl::InlinedVector<py::object, 4>{};
+    auto agenda = reserved_vector<py::object>(4);
     auto it = leaves.begin();
     ssize_t leaf_count = 0;
     for (const Node& node : m_traversal) {
@@ -33,10 +33,10 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
             case PyTreeKind::Leaf: {
                 if (node.kind == PyTreeKind::Leaf || m_none_is_leaf) [[likely]] {
                     if (it == leaves.end()) [[unlikely]] {
-                        throw py::value_error(absl::StrFormat(
-                            "Too few leaves for PyTreeSpec; expected: %ld, got: %ld.",
-                            GetNumLeaves(),
-                            leaf_count));
+                        std::stringstream ss;
+                        ss << "Too few leaves for PyTreeSpec; expected: " << GetNumLeaves()
+                           << ", got: " << leaf_count << ".";
+                        throw py::value_error(ss.str());
                     }
                     agenda.emplace_back(py::reinterpret_borrow<py::object>(*it));
                     ++it;
@@ -56,11 +56,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
             case PyTreeKind::StructSequence:
             case PyTreeKind::Custom: {
                 const ssize_t size = py::ssize_t_cast(agenda.size());
-                absl::Span<py::object> span;
-                if (node.arity > 0) [[likely]] {
-                    span = absl::Span<py::object>(&agenda[size - node.arity], node.arity);
-                }
-                py::object out = MakeNode(node, span);
+                py::object out = MakeNode(node, &agenda[size - node.arity], node.arity);
                 agenda.resize(size - node.arity);
                 agenda.emplace_back(std::move(out));
                 break;
@@ -71,8 +67,9 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
         }
     }
     if (it != leaves.end()) [[unlikely]] {
-        throw py::value_error(
-            absl::StrFormat("Too many leaves for PyTreeSpec; expected: %ld.", GetNumLeaves()));
+        std::stringstream ss;
+        ss << "Too many leaves for PyTreeSpec; expected: " << GetNumLeaves() << ".";
+        throw py::value_error(ss.str());
     }
     EXPECT_EQ(agenda.size(), 1, "PyTreeSpec traversal did not yield a singleton.");
     return std::move(agenda.back());

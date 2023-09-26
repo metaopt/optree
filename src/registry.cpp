@@ -30,8 +30,8 @@ template <bool NoneIsLeaf>
             registration->kind = kind;
             registration->type = type;
             EXPECT(registry.m_registrations.emplace(type, std::move(registration)).second,
-                   absl::StrFormat("PyTree type %s is already registered in the global namespace.",
-                                   py::repr(type)));
+                   "PyTree type " + static_cast<std::string>(py::repr(type)) +
+                       " is already registered in the global namespace.");
         };
         if (!NoneIsLeaf) {
             add_builtin_type(Py_TYPE(Py_None), PyTreeKind::None);
@@ -68,61 +68,61 @@ template <bool NoneIsLeaf>
     registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
     if (registry_namespace.empty()) [[unlikely]] {
         if (!registry->m_registrations.emplace(cls, std::move(registration)).second) [[unlikely]] {
-            throw py::value_error(absl::StrFormat(
-                "PyTree type %s is already registered in the global namespace.", py::repr(cls)));
+            throw py::value_error("PyTree type " + static_cast<std::string>(py::repr(cls)) +
+                                  " is already registered in the global namespace.");
         }
         if (IsNamedTupleClass(cls)) [[unlikely]] {
-            PyErr_WarnEx(
-                PyExc_UserWarning,
-                absl::StrFormat("PyTree type %s is a subclass of `collections.namedtuple`, "
-                                "which is already registered in the global namespace. "
-                                "Override it with custom flatten/unflatten functions.",
-                                py::repr(cls))
-                    .c_str(),
-                /*stack_level=*/2);
+            PyErr_WarnEx(PyExc_UserWarning,
+                         ("PyTree type " + static_cast<std::string>(py::repr(cls)) +
+                          " is a subclass of `collections.namedtuple`, "
+                          "which is already registered in the global namespace. "
+                          "Override it with custom flatten/unflatten functions.")
+                             .c_str(),
+                         /*stack_level=*/2);
         }
         if (IsStructSequenceClass(cls)) [[unlikely]] {
             PyErr_WarnEx(PyExc_UserWarning,
-                         absl::StrFormat("PyTree type %s is a class of `PyStructSequence`, "
-                                         "which is already registered in the global namespace. "
-                                         "Override it with custom flatten/unflatten functions.",
-                                         py::repr(cls))
+                         ("PyTree type " + static_cast<std::string>(py::repr(cls)) +
+                          " is a class of `PyStructSequence`, "
+                          "which is already registered in the global namespace. "
+                          "Override it with custom flatten/unflatten functions.")
                              .c_str(),
                          /*stack_level=*/2);
         }
     } else [[likely]] {
         if (registry->m_registrations.find(cls) != registry->m_registrations.end()) [[unlikely]] {
-            throw py::value_error(absl::StrFormat(
-                "PyTree type %s is already registered in the global namespace.", py::repr(cls)));
+            throw py::value_error("PyTree type " + static_cast<std::string>(py::repr(cls)) +
+                                  " is already registered in the global namespace.");
         }
         if (!registry->m_named_registrations
                  .emplace(std::make_pair(registry_namespace, cls), std::move(registration))
                  .second) [[unlikely]] {
-            throw py::value_error(
-                absl::StrFormat("PyTree type %s is already registered in namespace %s.",
-                                py::repr(cls),
-                                py::repr(py::str(registry_namespace))));
+            std::stringstream ss;
+            ss << "PyTree type " << static_cast<std::string>(py::repr(cls))
+               << " is already registered in namespace "
+               << static_cast<std::string>(py::repr(py::str(registry_namespace))) << ".";
+            throw py::value_error(ss.str());
         }
         if (IsNamedTupleClass(cls)) [[unlikely]] {
+            std::stringstream ss;
+            ss << "PyTree type " << static_cast<std::string>(py::repr(cls))
+               << " is a subclass of `collections.namedtuple`, "
+                  "which is already registered in the global namespace. "
+                  "Override it with custom flatten/unflatten functions in namespace "
+               << static_cast<std::string>(py::repr(py::str(registry_namespace))) << ".";
             PyErr_WarnEx(PyExc_UserWarning,
-                         absl::StrFormat(
-                             "PyTree type %s is a subclass of `collections.namedtuple`, "
-                             "which is already registered in the global namespace. "
-                             "Override it with custom flatten/unflatten functions in namespace %s.",
-                             py::repr(cls),
-                             py::repr(py::str(registry_namespace)))
-                             .c_str(),
+                         ss.str().c_str(),
                          /*stack_level=*/2);
         }
         if (IsStructSequenceClass(cls)) [[unlikely]] {
+            std::stringstream ss;
+            ss << "PyTree type " << static_cast<std::string>(py::repr(cls))
+               << " is a class of `PyStructSequence`, "
+                  "which is already registered in the global namespace. "
+                  "Override it with custom flatten/unflatten functions in namespace "
+               << static_cast<std::string>(py::repr(py::str(registry_namespace))) << ".";
             PyErr_WarnEx(PyExc_UserWarning,
-                         absl::StrFormat(
-                             "PyTree type %s is a class of `PyStructSequence`, "
-                             "which is already registered in the global namespace. "
-                             "Override it with custom flatten/unflatten functions in namespace %s.",
-                             py::repr(cls),
-                             py::repr(py::str(registry_namespace)))
-                             .c_str(),
+                         ss.str().c_str(),
                          /*stack_level=*/2);
         }
     }
@@ -143,15 +143,15 @@ template <bool NoneIsLeaf>
 /*static*/ const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup(
     const py::handle& type, const std::string& registry_namespace) {
     PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
-    auto it = registry->m_registrations.find(type);
+    auto it = registry->m_registrations.find(py::reinterpret_borrow<py::object>(type));
     if (it != registry->m_registrations.end()) [[likely]] {
         return it->second.get();
     }
     if (registry_namespace.empty()) [[likely]] {
         return nullptr;
     } else [[unlikely]] {
-        auto named_it =
-            registry->m_named_registrations.find(std::make_pair(registry_namespace, type));
+        auto named_it = registry->m_named_registrations.find(
+            std::make_pair(registry_namespace, py::reinterpret_borrow<py::object>(type)));
         return named_it != registry->m_named_registrations.end() ? named_it->second.get() : nullptr;
     }
 }
@@ -162,10 +162,10 @@ template const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup<NONE
     const py::handle&, const std::string&);
 
 size_t PyTreeTypeRegistry::TypeHash::operator()(const py::object& t) const {
-    return absl::HashOf(t.ptr());
+    return std::hash<PyObject*>{}(t.ptr());
 }
 size_t PyTreeTypeRegistry::TypeHash::operator()(const py::handle& t) const {
-    return absl::HashOf(t.ptr());
+    return std::hash<PyObject*>{}(t.ptr());
 }
 
 bool PyTreeTypeRegistry::TypeEq::operator()(const py::object& a, const py::object& b) const {
@@ -174,14 +174,26 @@ bool PyTreeTypeRegistry::TypeEq::operator()(const py::object& a, const py::objec
 bool PyTreeTypeRegistry::TypeEq::operator()(const py::object& a, const py::handle& b) const {
     return a.ptr() == b.ptr();
 }
+bool PyTreeTypeRegistry::TypeEq::operator()(const py::handle& a, const py::object& b) const {
+    return a.ptr() == b.ptr();
+}
+bool PyTreeTypeRegistry::TypeEq::operator()(const py::handle& a, const py::handle& b) const {
+    return a.ptr() == b.ptr();
+}
 
 size_t PyTreeTypeRegistry::NamedTypeHash::operator()(
     const std::pair<std::string, py::object>& p) const {
-    return absl::HashOf(std::make_pair(p.first, p.second.ptr()));
+    size_t seed = 0;
+    HashCombine(seed, p.first);
+    HashCombine(seed, p.second.ptr());
+    return seed;
 }
 size_t PyTreeTypeRegistry::NamedTypeHash::operator()(
     const std::pair<std::string, py::handle>& p) const {
-    return absl::HashOf(std::make_pair(p.first, p.second.ptr()));
+    size_t seed = 0;
+    HashCombine(seed, p.first);
+    HashCombine(seed, p.second.ptr());
+    return seed;
 }
 
 bool PyTreeTypeRegistry::NamedTypeEq::operator()(
@@ -191,6 +203,16 @@ bool PyTreeTypeRegistry::NamedTypeEq::operator()(
 }
 bool PyTreeTypeRegistry::NamedTypeEq::operator()(
     const std::pair<std::string, py::object>& a,
+    const std::pair<std::string, py::handle>& b) const {
+    return a.first == b.first && a.second.ptr() == b.second.ptr();
+}
+bool PyTreeTypeRegistry::NamedTypeEq::operator()(
+    const std::pair<std::string, py::handle>& a,
+    const std::pair<std::string, py::object>& b) const {
+    return a.first == b.first && a.second.ptr() == b.second.ptr();
+}
+bool PyTreeTypeRegistry::NamedTypeEq::operator()(
+    const std::pair<std::string, py::handle>& a,
     const std::pair<std::string, py::handle>& b) const {
     return a.first == b.first && a.second.ptr() == b.second.ptr();
 }

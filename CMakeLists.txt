@@ -22,14 +22,8 @@ set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/third-party")
 if(NOT DEFINED PYBIND11_VERSION AND NOT "$ENV{PYBIND11_VERSION}" STREQUAL "")
     set(PYBIND11_VERSION "$ENV{PYBIND11_VERSION}")
 endif()
-if(NOT DEFINED ABSEIL_CPP_VERSION AND NOT "$ENV{ABSEIL_CPP_VERSION}" STREQUAL "")
-    set(ABSEIL_CPP_VERSION "$ENV{ABSEIL_CPP_VERSION}")
-endif()
 if(NOT PYBIND11_VERSION)
     set(PYBIND11_VERSION v2.11.1)
-endif()
-if(NOT ABSEIL_CPP_VERSION)
-    set(ABSEIL_CPP_VERSION 20230802.1)
 endif()
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -187,25 +181,6 @@ if("${PYBIND11_CMAKE_DIR}" STREQUAL "")
 else()
     message(STATUS "Detected Pybind11 CMake directory: \"${PYBIND11_CMAKE_DIR}\"")
     find_package(pybind11 CONFIG PATHS "${PYBIND11_CMAKE_DIR}")
-endif()
-
-# Include abseil-cpp
-set(ABSL_PROPAGATE_CXX_STD ON)
-set(ABSL_BUILD_TESTING OFF)
-FetchContent_Declare(
-    abseilcpp
-    GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
-    GIT_TAG "${ABSEIL_CPP_VERSION}"
-    GIT_SHALLOW TRUE
-    SOURCE_DIR "${THIRD_PARTY_DIR}/abseil-cpp"
-    BINARY_DIR "${THIRD_PARTY_DIR}/.cmake/abseil-cpp/build"
-    STAMP_DIR "${THIRD_PARTY_DIR}/.cmake/abseil-cpp/stamp"
-)
-FetchContent_GetProperties(abseilcpp)
-
-if(NOT abseilcpp_POPULATED)
-    message(STATUS "Populating Git repository abseil-cpp@${ABSEIL_CPP_VERSION} to third-party/abseil-cpp...")
-    FetchContent_MakeAvailable(abseilcpp)
 endif()
 
 include_directories("${CMAKE_SOURCE_DIR}")

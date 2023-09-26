@@ -152,10 +152,11 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     }
     if (!m_namespace.empty() && !inner_treespec.m_namespace.empty() &&
         m_namespace != inner_treespec.m_namespace) [[unlikely]] {
-        throw py::value_error(
-            absl::StrFormat("PyTreeSpecs must have the same namespace. Got %s vs. %s.",
-                            py::repr(py::str(m_namespace)),
-                            py::repr(py::str(inner_treespec.m_namespace))));
+        std::stringstream ss;
+        ss << "PyTreeSpecs must have the same namespace. Got "
+           << static_cast<std::string>(py::repr(py::str(m_namespace))) << " vs. "
+           << static_cast<std::string>(py::repr(py::str(inner_treespec.m_namespace))) << ".";
+        throw py::value_error(ss.str());
     }
 
     auto treespec = std::make_unique<PyTreeSpec>();
@@ -172,7 +173,9 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     const ssize_t num_inner_nodes = inner_treespec.GetNumNodes();
     for (const Node& node : m_traversal) {
         if (node.kind == PyTreeKind::Leaf) [[likely]] {
-            absl::c_copy(inner_treespec.m_traversal, std::back_inserter(treespec->m_traversal));
+            std::copy(inner_treespec.m_traversal.begin(),
+                      inner_treespec.m_traversal.end(),
+                      std::back_inserter(treespec->m_traversal));
         } else [[unlikely]] {
             Node new_node{node};
             new_node.num_leaves = node.num_leaves * num_inner_leaves;
@@ -345,17 +348,18 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
     std::string registry_namespace;
     for (const PyTreeSpec& treespec : treespecs) {
         if (treespec.m_none_is_leaf != none_is_leaf) [[unlikely]] {
-            throw py::value_error(absl::StrFormat("Expected treespecs with `node_is_leaf=%s`.",
-                                                  (none_is_leaf ? "True" : "False")));
+            throw py::value_error(none_is_leaf ? "Expected treespecs with `node_is_leaf=True`."
+                                               : "Expected treespecs with `node_is_leaf=False`.");
         }
         if (!treespec.m_namespace.empty()) [[unlikely]] {
             if (registry_namespace.empty()) [[likely]] {
                 registry_namespace = treespec.m_namespace;
             } else if (registry_namespace != treespec.m_namespace) [[unlikely]] {
-                throw py::value_error(
-                    absl::StrFormat("Expected treespecs with the same namespace. Got %s vs. %s.",
-                                    py::repr(py::str(registry_namespace)),
-                                    py::repr(py::str(treespec.m_namespace))));
+                std::stringstream ss;
+                ss << "Expected treespecs with the same namespace. Got "
+                   << static_cast<std::string>(py::repr(py::str(registry_namespace))) << " vs. "
+                   << static_cast<std::string>(py::repr(py::str(treespec.m_namespace))) << ".";
+                throw py::value_error(ss.str());
             }
         }
     }
@@ -363,7 +367,9 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
     auto out = std::make_unique<PyTreeSpec>();
     ssize_t num_leaves = 0;
     for (const PyTreeSpec& treespec : treespecs) {
-        absl::c_copy(treespec.m_traversal, std::back_inserter(out->m_traversal));
+        std::copy(treespec.m_traversal.begin(),
+                  treespec.m_traversal.end(),
+                  std::back_inserter(out->m_traversal));
         num_leaves += treespec.GetNumLeaves();
     }
     Node node;
@@ -406,8 +412,9 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ py::object PyTreeSpec::MakeNode(const PyTreeSpec::Node& node,
-                                           const absl::Span<py::object>& children) {
-    EXPECT_EQ(py::ssize_t_cast(children.size()), node.arity, "Node arity did not match.");
+                                           const py::object* children,
+                                           const size_t& num_children) {
+    EXPECT_EQ(py::ssize_t_cast(num_children), node.arity, "Node arity did not match.");
     switch (node.kind) {
         case PyTreeKind::Leaf:
             INTERNAL_ERROR("MakeNode not implemented for leaves.");
@@ -420,6 +427,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
         case PyTreeKind::StructSequence: {
             py::tuple tuple{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
                 SET_ITEM<py::tuple>(tuple, i, children[i]);
             }
             if (node.kind == PyTreeKind::NamedTuple) [[unlikely]] {
@@ -435,6 +443,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
         case PyTreeKind::Deque: {
             py::list list{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
                 SET_ITEM<py::list>(list, i, children[i]);
             }
             if (node.kind == PyTreeKind::Deque) [[unlikely]] {
@@ -452,7 +461,8 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
                 }
             }
             for (ssize_t i = 0; i < node.arity; ++i) {
-                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = std::move(children[i]);
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = children[i];
             }
             return dict;
         }
@@ -464,7 +474,8 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
                 SET_ITEM<py::list>(
                     items,
                     i,
-                    py::make_tuple(GET_ITEM_HANDLE<py::list>(keys, i), std::move(children[i])));
+                    // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                    py::make_tuple(GET_ITEM_HANDLE<py::list>(keys, i), children[i]));
             }
             return PyOrderedDictTypeObject(items);
         }
@@ -479,7 +490,8 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
                 }
             }
             for (ssize_t i = 0; i < node.arity; ++i) {
-                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = std::move(children[i]);
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = children[i];
             }
             return PyDefaultDictTypeObject(default_factory, dict);
         }
@@ -487,6 +499,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
         case PyTreeKind::Custom: {
             py::tuple tuple{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
                 SET_ITEM<py::tuple>(tuple, i, children[i]);
             }
             return node.custom->from_iterable(node.node_data, tuple);
@@ -528,58 +541,144 @@ template PyTreeKind PyTreeSpec::GetKind<NONE_IS_LEAF>(const py::handle&,
                                                       PyTreeTypeRegistry::Registration const**,
                                                       const std::string&);
 
+/*static*/ void PyTreeSpec::HashCombineNode(ssize_t& seed, const PyTreeSpec::Node& node) {
+    ssize_t data_hash = 0;
+    switch (node.kind) {
+        case PyTreeKind::Custom:
+            // We don't hash node_data custom node types since they may not hashable.
+            break;
+        case PyTreeKind::Leaf:
+        case PyTreeKind::None:
+        case PyTreeKind::Tuple:
+        case PyTreeKind::List:
+        case PyTreeKind::NamedTuple:
+        case PyTreeKind::Deque:
+        case PyTreeKind::StructSequence:
+            data_hash = py::hash(node.node_data ? node.node_data : py::none());
+            break;
+        case PyTreeKind::Dict:
+        case PyTreeKind::OrderedDict:
+        case PyTreeKind::DefaultDict: {
+            py::list keys;
+            if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
+                EXPECT_EQ(
+                    GET_SIZE<py::tuple>(node.node_data), 2, "Number of auxiliary data mismatch.");
+                py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
+                keys =
+                    py::reinterpret_borrow<py::list>(GET_ITEM_BORROW<py::tuple>(node.node_data, 1));
+                EXPECT_EQ(GET_SIZE<py::list>(keys),
+                          node.arity,
+                          "Number of keys and entries does not match.");
+                data_hash = py::hash(default_factory);
+            } else [[likely]] {
+                EXPECT_EQ(GET_SIZE<py::list>(node.node_data),
+                          node.arity,
+                          "Number of keys and entries does not match.");
+                keys = py::reinterpret_borrow<py::list>(node.node_data);
+            }
+            for (const py::handle&& key : keys) {
+                HashCombine(data_hash, py::hash(key));
+            }
+            break;
+        }
+        default:
+            INTERNAL_ERROR();
+    }
+
+    HashCombine(seed, node.kind);
+    HashCombine(seed, node.arity);
+    HashCombine(seed, node.custom);
+    HashCombine(seed, node.num_leaves);
+    HashCombine(seed, node.num_nodes);
+    HashCombine(seed, data_hash);
+}
+
+ssize_t PyTreeSpec::HashValueImpl() const {
+    ssize_t seed = 0;
+    for (const Node& node : m_traversal) {
+        HashCombineNode(seed, node);
+    }
+    HashCombine(seed, m_none_is_leaf);
+    HashCombine(seed, m_namespace);
+    return seed;
+}
+
+ssize_t PyTreeSpec::HashValue() const {
+    std::pair<const PyTreeSpec*, std::thread::id> indent{this, std::this_thread::get_id()};
+    if (sm_hash_running.contains(indent)) [[unlikely]] {
+        return 0;
+    }
+
+    sm_hash_running.insert(indent);
+    try {
+        ssize_t result = HashValueImpl();
+        sm_hash_running.erase(indent);
+        return result;
+    } catch (...) {
+        sm_hash_running.erase(indent);
+        std::rethrow_exception(std::current_exception());
+    }
+}
+
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 std::string PyTreeSpec::ToStringImpl() const {
     auto agenda = std::vector<std::string>{};
     for (const Node& node : m_traversal) {
         EXPECT_GE(py::ssize_t_cast(agenda.size()), node.arity, "Too few elements for container.");
 
-        std::string children = absl::StrJoin(agenda.end() - node.arity, agenda.end(), ", ");
-        std::string representation;
+        std::stringstream children_sstream;
+        {
+            bool first = true;
+            for (auto it = agenda.end() - node.arity; it != agenda.end(); ++it) {
+                if (!first) [[likely]] {
+                    children_sstream << ", ";
+                }
+                children_sstream << *it;
+                first = false;
+            }
+        }
+        std::string children = children_sstream.str();
+
+        std::stringstream sstream;
         switch (node.kind) {
             case PyTreeKind::Leaf:
                 agenda.emplace_back("*");
                 continue;
 
             case PyTreeKind::None:
-                representation = "None";
+                sstream << "None";
                 break;
 
-            case PyTreeKind::Tuple:
+            case PyTreeKind::Tuple: {
+                sstream << "(" << children;
                 // Tuples with only one element must have a trailing comma.
                 if (node.arity == 1) [[unlikely]] {
-                    children += ",";
+                    sstream << ",";
                 }
-                representation = absl::StrCat("(", children, ")");
+                sstream << ")";
                 break;
+            }
 
             case PyTreeKind::List:
-            case PyTreeKind::Deque:
-                representation = absl::StrCat("[", children, "]");
-                if (node.kind == PyTreeKind::Deque) [[unlikely]] {
-                    if (node.node_data.is_none()) [[likely]] {
-                        representation = absl::StrCat("deque(", representation, ")");
-                    } else [[unlikely]] {
-                        representation = absl::StrFormat(
-                            "deque(%s, maxlen=%s)", representation, py::str(node.node_data));
-                    }
-                }
+                sstream << "[" << children << "]";
                 break;
 
             case PyTreeKind::Dict: {
                 EXPECT_EQ(GET_SIZE<py::list>(node.node_data),
                           node.arity,
                           "Number of keys and entries does not match.");
-                representation = "{";
-                std::string separator;
+                sstream << "{";
+                bool first = true;
                 auto child_iter = agenda.end() - node.arity;
                 for (const py::handle& key : node.node_data) {
-                    absl::StrAppendFormat(
-                        &representation, "%s%s: %s", separator, py::repr(key), *child_iter);
+                    if (!first) [[likely]] {
+                        sstream << ", ";
+                    }
+                    sstream << static_cast<std::string>(py::repr(key)) << ": " << *child_iter;
                     ++child_iter;
-                    separator = ", ";
+                    first = false;
                 }
-                representation += "}";
+                sstream << "}";
                 break;
             }
 
@@ -590,20 +689,18 @@ std::string PyTreeSpec::ToStringImpl() const {
                           node.arity,
                           "Number of fields and entries does not match.");
                 std::string kind = static_cast<std::string>(py::str(py::getattr(type, "__name__")));
-                representation = absl::StrFormat("%s(", kind);
-                std::string separator;
+                sstream << kind << "(";
+                bool first = true;
                 auto child_iter = agenda.end() - node.arity;
                 for (const py::handle& field : fields) {
-                    absl::StrAppendFormat(
-                        &representation,
-                        "%s%s=%s",
-                        separator,
-                        static_cast<std::string>(py::reinterpret_borrow<py::str>(field)),
-                        *child_iter);
+                    if (!first) [[likely]] {
+                        sstream << ", ";
+                    }
+                    sstream << static_cast<std::string>(py::str(field)) << "=" << *child_iter;
                     ++child_iter;
-                    separator = ", ";
+                    first = false;
                 }
-                representation += ")";
+                sstream << ")";
                 break;
             }
 
@@ -611,16 +708,19 @@ std::string PyTreeSpec::ToStringImpl() const {
                 EXPECT_EQ(GET_SIZE<py::list>(node.node_data),
                           node.arity,
                           "Number of keys and entries does not match.");
-                representation = absl::StrFormat("OrderedDict([");
-                std::string separator;
+                sstream << "OrderedDict([";
+                bool first = true;
                 auto child_iter = agenda.end() - node.arity;
                 for (const py::handle& key : node.node_data) {
-                    absl::StrAppendFormat(
-                        &representation, "%s(%s, %s)", separator, py::repr(key), *child_iter);
+                    if (!first) [[likely]] {
+                        sstream << ", ";
+                    }
+                    sstream << "(" << static_cast<std::string>(py::repr(key)) << ", " << *child_iter
+                            << ")";
                     ++child_iter;
-                    separator = ", ";
+                    first = false;
                 }
-                representation += "])";
+                sstream << "])";
                 break;
             }
 
@@ -633,16 +733,28 @@ std::string PyTreeSpec::ToStringImpl() const {
                 EXPECT_EQ(GET_SIZE<py::list>(keys),
                           node.arity,
                           "Number of keys and entries does not match.");
-                representation = absl::StrFormat("defaultdict(%s, {", py::repr(default_factory));
-                std::string separator;
+                sstream << "defaultdict(" << static_cast<std::string>(py::repr(default_factory))
+                        << ", {";
+                bool first = true;
                 auto child_iter = agenda.end() - node.arity;
                 for (const py::handle& key : keys) {
-                    absl::StrAppendFormat(
-                        &representation, "%s%s: %s", separator, py::repr(key), *child_iter);
+                    if (!first) [[likely]] {
+                        sstream << ", ";
+                    }
+                    sstream << static_cast<std::string>(py::repr(key)) << ": " << *child_iter;
                     ++child_iter;
-                    separator = ", ";
+                    first = false;
                 }
-                representation += "})";
+                sstream << "})";
+                break;
+            }
+
+            case PyTreeKind::Deque: {
+                sstream << "deque([" << children << "]";
+                if (!node.node_data.is_none()) [[unlikely]] {
+                    sstream << ", maxlen=" << static_cast<std::string>(py::str(node.node_data));
+                }
+                sstream << ")";
                 break;
             }
 
@@ -650,32 +762,30 @@ std::string PyTreeSpec::ToStringImpl() const {
                 py::object type = node.node_data;
                 auto* members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
                 std::string kind = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_name;
-                representation = absl::StrFormat("%s(", kind);
-                std::string separator;
+                sstream << kind << "(";
+                bool first = true;
                 auto child_iter = agenda.end() - node.arity;
                 for (ssize_t i = 0; i < node.arity; ++i) {
-                    absl::StrAppendFormat(
-                        &representation,
-                        "%s%s=%s",
-                        separator,
-                        members[i].name,  // NOLINT[cppcoreguidelines-pro-bounds-pointer-arithmetic]
-                        *child_iter);
+                    if (!first) [[likely]] {
+                        sstream << ", ";
+                    }
+                    // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                    sstream << members[i].name << "=" << *child_iter;
                     ++child_iter;
-                    separator = ", ";
+                    first = false;
                 }
-                representation += ")";
+                sstream << ")";
                 break;
             }
 
             case PyTreeKind::Custom: {
-                py::object type = node.custom->type;
-                std::string kind = static_cast<std::string>(py::str(py::getattr(type, "__name__")));
-                std::string data;
+                std::string kind =
+                    static_cast<std::string>(py::str(py::getattr(node.custom->type, "__name__")));
+                sstream << "CustomTreeNode(" << kind << "[";
                 if (node.node_data) [[likely]] {
-                    data = absl::StrFormat("[%s]", py::repr(node.node_data));
+                    sstream << static_cast<std::string>(py::repr(node.node_data));
                 }
-                representation =
-                    absl::StrFormat("CustomTreeNode(%s%s, [%s])", kind, data, children);
+                sstream << "], [" << children << "])";
                 break;
             }
 
@@ -684,22 +794,25 @@ std::string PyTreeSpec::ToStringImpl() const {
         }
 
         agenda.erase(agenda.end() - node.arity, agenda.end());
-        agenda.push_back(std::move(representation));
+        agenda.push_back(sstream.str());
     }
 
     EXPECT_EQ(agenda.size(), 1, "PyTreeSpec traversal did not yield a singleton.");
-    return absl::StrCat(
-        "PyTreeSpec(",
-        agenda.back(),
-        (m_none_is_leaf ? ", NoneIsLeaf" : ""),
-        (m_namespace.empty() ? ""
-                             : absl::StrFormat(", namespace=%s", py::repr(py::str(m_namespace)))),
-        ")");
+    std::stringstream ss;
+    ss << "PyTreeSpec(" << agenda.back();
+    if (m_none_is_leaf) [[unlikely]] {
+        ss << ", NoneIsLeaf";
+    }
+    if (!m_namespace.empty()) [[unlikely]] {
+        ss << ", namespace=" << static_cast<std::string>(py::repr(py::str(m_namespace)));
+    }
+    ss << ")";
+    return ss.str();
 }
 
 std::string PyTreeSpec::ToString() const {
     std::pair<const PyTreeSpec*, std::thread::id> indent{this, std::this_thread::get_id()};
-    if (sm_repr_running.contains(indent)) {
+    if (sm_repr_running.contains(indent)) [[unlikely]] {
         return "...";
     }
 
@@ -814,8 +927,8 @@ py::object PyTreeSpec::ToPicklable() const {
                 }
             }
             if (node.custom == nullptr) [[unlikely]] {
-                throw std::runtime_error(absl::StrFormat(
-                    "Unknown custom type in pickled PyTreeSpec: %s.", py::repr(t[4])));
+                throw std::runtime_error("Unknown custom type in pickled PyTreeSpec: " +
+                                         static_cast<std::string>(py::repr(t[4])) + ".");
             }
         } else if (!t[3].is_none() || !t[4].is_none()) [[unlikely]] {
             throw std::runtime_error("Malformed pickled PyTreeSpec.");
@@ -829,6 +942,14 @@ py::object PyTreeSpec::ToPicklable() const {
 
 /*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklable(const py::object& picklable) {
     return FromPicklableImpl(picklable);
+}
+
+size_t PyTreeSpec::ThreadIndentTypeHash::operator()(
+    const std::pair<const PyTreeSpec*, std::thread::id>& p) const {
+    size_t seed = 0;
+    HashCombine(seed, p.first);
+    HashCombine(seed, p.second);
+    return seed;
 }
 
 }  // namespace optree

@@ -17,12 +17,11 @@ limitations under the License.
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-#include <absl/hash/hash.h>
 #include <pybind11/pybind11.h>
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 
 #include "include/exceptions.h"
@@ -109,6 +108,8 @@ class PyTreeTypeRegistry {
         using is_transparent = void;
         bool operator()(const py::object &a, const py::object &b) const;
         bool operator()(const py::object &a, const py::handle &b) const;
+        bool operator()(const py::handle &a, const py::object &b) const;
+        bool operator()(const py::handle &a, const py::handle &b) const;
     };
 
     class NamedTypeHash {
@@ -124,14 +125,17 @@ class PyTreeTypeRegistry {
                         const std::pair<std::string, py::object> &b) const;
         bool operator()(const std::pair<std::string, py::object> &a,
                         const std::pair<std::string, py::handle> &b) const;
+        bool operator()(const std::pair<std::string, py::handle> &a,
+                        const std::pair<std::string, py::object> &b) const;
+        bool operator()(const std::pair<std::string, py::handle> &a,
+                        const std::pair<std::string, py::handle> &b) const;
     };
 
-    absl::flat_hash_map<py::object, std::unique_ptr<Registration>, TypeHash, TypeEq>
-        m_registrations;
-    absl::flat_hash_map<std::pair<std::string, py::object>,
-                        std::unique_ptr<Registration>,
-                        NamedTypeHash,
-                        NamedTypeEq>
+    std::unordered_map<py::object, std::unique_ptr<Registration>, TypeHash, TypeEq> m_registrations;
+    std::unordered_map<std::pair<std::string, py::object>,
+                       std::unique_ptr<Registration>,
+                       NamedTypeHash,
+                       NamedTypeEq>
         m_named_registrations;
 };
 

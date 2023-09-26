@@ -2,7 +2,6 @@
 # NOTE: there must be no spaces before the '-', so put the comma last.
 InheritParentConfig: true
 Checks: '
-abseil-*,
 bugprone-*,
 -bugprone-easily-swappable-parameters,
 clang-analyzer-*,
