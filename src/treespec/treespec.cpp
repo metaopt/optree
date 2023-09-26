@@ -605,7 +605,7 @@ ssize_t PyTreeSpec::HashValueImpl() const {
 
 ssize_t PyTreeSpec::HashValue() const {
     std::pair<const PyTreeSpec*, std::thread::id> indent{this, std::this_thread::get_id()};
-    if (sm_hash_running.contains(indent)) {
+    if (sm_hash_running.contains(indent)) [[unlikely]] {
         return 0;
     }
 
@@ -800,10 +800,10 @@ std::string PyTreeSpec::ToStringImpl() const {
     EXPECT_EQ(agenda.size(), 1, "PyTreeSpec traversal did not yield a singleton.");
     std::stringstream ss;
     ss << "PyTreeSpec(" << agenda.back();
-    if (m_none_is_leaf) {
+    if (m_none_is_leaf) [[unlikely]] {
         ss << ", NoneIsLeaf";
     }
-    if (!m_namespace.empty()) {
+    if (!m_namespace.empty()) [[unlikely]] {
         ss << ", namespace=" << static_cast<std::string>(py::repr(py::str(m_namespace)));
     }
     ss << ")";
@@ -812,7 +812,7 @@ std::string PyTreeSpec::ToStringImpl() const {
 
 std::string PyTreeSpec::ToString() const {
     std::pair<const PyTreeSpec*, std::thread::id> indent{this, std::this_thread::get_id()};
-    if (sm_repr_running.contains(indent)) {
+    if (sm_repr_running.contains(indent)) [[unlikely]] {
         return "...";
     }
 
