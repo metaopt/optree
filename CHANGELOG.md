@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Decrease the `MAX_RECURSION_DEPTH` to 2000 on Windows by [@XuehaiPan](https://github.com/XuehaiPan) in [#85](https://github.com/metaopt/optree/pull/85).
 - Bump `abseil-cpp` version to 20230802.1 by [@XuehaiPan](https://github.com/XuehaiPan) in [#80](https://github.com/metaopt/optree/pull/80).
 
 ### Fixed
@@ -25,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
--
+- Remove dependence on `abseil-cpp` by [@XuehaiPan](https://github.com/XuehaiPan) in [#85](https://github.com/metaopt/optree/pull/85).
 
 ------
 
