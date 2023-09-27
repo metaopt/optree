@@ -605,7 +605,7 @@ ssize_t PyTreeSpec::HashValueImpl() const {
 
 ssize_t PyTreeSpec::HashValue() const {
     std::pair<const PyTreeSpec*, std::thread::id> indent{this, std::this_thread::get_id()};
-    if (sm_hash_running.contains(indent)) [[unlikely]] {
+    if (sm_hash_running.find(indent) != sm_hash_running.end()) [[unlikely]] {
         return 0;
     }
 
@@ -812,7 +812,7 @@ std::string PyTreeSpec::ToStringImpl() const {
 
 std::string PyTreeSpec::ToString() const {
     std::pair<const PyTreeSpec*, std::thread::id> indent{this, std::this_thread::get_id()};
-    if (sm_repr_running.contains(indent)) [[unlikely]] {
+    if (sm_repr_running.find(indent) != sm_repr_running.end()) [[unlikely]] {
         return "...";
     }
 
