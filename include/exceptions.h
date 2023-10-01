@@ -38,12 +38,12 @@ class InternalError : public std::logic_error {
  public:
     explicit InternalError(const std::string& msg) : std::logic_error(msg) {}
     InternalError(const std::string& msg, const std::string& file, const size_t& lineno)
-        : InternalError([&msg, &file, &lineno]() {
-              std::stringstream ss;
-              ss << msg << " (at file " << file << ":" << lineno << ")";
-              ss << std::endl << std::endl;
-              ss << "Please file a bug report at https://github.com/metaopt/optree/issues.";
-              return ss.str();
+        : InternalError([&msg, &file, &lineno]() -> std::string {
+              std::ostringstream oss{};
+              oss << msg << " (at file " << file << ":" << lineno << ")";
+              oss << std::endl << std::endl;
+              oss << "Please file a bug report at https://github.com/metaopt/optree/issues.";
+              return oss.str();
           }()) {}
 };
 

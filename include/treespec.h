@@ -208,13 +208,13 @@ class PyTreeSpec {
 
     // Nodes, in a post-order traversal. We use an ordered traversal to minimize allocations, and
     // post-order corresponds to the order we need to rebuild the tree structure.
-    std::vector<Node> m_traversal;
+    std::vector<Node> m_traversal = reserved_vector<Node>(1);
 
     // Whether to treat `None` as a leaf. If false, `None` is a non-leaf node with arity 0.
     bool m_none_is_leaf = false;
 
     // The registry namespace used to resolve the custom pytree node types.
-    std::string m_namespace;
+    std::string m_namespace{};
 
     // Helper that manufactures an instance of a node given its children.
     static py::object MakeNode(const Node &node,
