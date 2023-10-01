@@ -150,6 +150,20 @@ def test_flatten_dict_order():
     assert list(restored_tree) == ['b', 'a', 'c']
 
 
+@parametrize(
+    tree=list(TREES + LEAVES),
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
+def test_tree_unflatten_mismatch_number_of_leaves(tree, none_is_leaf, namespace):
+    leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+    if len(leaves) > 0:
+        with pytest.raises(ValueError, match='Too few leaves for PyTreeSpec.'):
+            optree.tree_unflatten(treespec, leaves[:-1])
+    with pytest.raises(ValueError, match='Too many leaves for PyTreeSpec.'):
+        optree.tree_unflatten(treespec, (*leaves, 0))
+
+
 def test_walk():
     tree = {'b': 2, 'a': 1, 'c': {'f': None, 'e': 3, 'g': 4}}
     #          tree
