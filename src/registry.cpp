@@ -97,32 +97,32 @@ template <bool NoneIsLeaf>
         if (!registry->m_named_registrations
                  .emplace(std::make_pair(registry_namespace, cls), std::move(registration))
                  .second) [[unlikely]] {
-            std::stringstream ss;
-            ss << "PyTree type " << static_cast<std::string>(py::repr(cls))
-               << " is already registered in namespace "
-               << static_cast<std::string>(py::repr(py::str(registry_namespace))) << ".";
-            throw py::value_error(ss.str());
+            std::ostringstream oss{};
+            oss << "PyTree type " << static_cast<std::string>(py::repr(cls))
+                << " is already registered in namespace "
+                << static_cast<std::string>(py::repr(py::str(registry_namespace))) << ".";
+            throw py::value_error(oss.str());
         }
         if (IsNamedTupleClass(cls)) [[unlikely]] {
-            std::stringstream ss;
-            ss << "PyTree type " << static_cast<std::string>(py::repr(cls))
-               << " is a subclass of `collections.namedtuple`, "
-                  "which is already registered in the global namespace. "
-                  "Override it with custom flatten/unflatten functions in namespace "
-               << static_cast<std::string>(py::repr(py::str(registry_namespace))) << ".";
+            std::ostringstream oss{};
+            oss << "PyTree type " << static_cast<std::string>(py::repr(cls))
+                << " is a subclass of `collections.namedtuple`, "
+                   "which is already registered in the global namespace. "
+                   "Override it with custom flatten/unflatten functions in namespace "
+                << static_cast<std::string>(py::repr(py::str(registry_namespace))) << ".";
             PyErr_WarnEx(PyExc_UserWarning,
-                         ss.str().c_str(),
+                         oss.str().c_str(),
                          /*stack_level=*/2);
         }
         if (IsStructSequenceClass(cls)) [[unlikely]] {
-            std::stringstream ss;
-            ss << "PyTree type " << static_cast<std::string>(py::repr(cls))
-               << " is a class of `PyStructSequence`, "
-                  "which is already registered in the global namespace. "
-                  "Override it with custom flatten/unflatten functions in namespace "
-               << static_cast<std::string>(py::repr(py::str(registry_namespace))) << ".";
+            std::ostringstream oss{};
+            oss << "PyTree type " << static_cast<std::string>(py::repr(cls))
+                << " is a class of `PyStructSequence`, "
+                   "which is already registered in the global namespace. "
+                   "Override it with custom flatten/unflatten functions in namespace "
+                << static_cast<std::string>(py::repr(py::str(registry_namespace))) << ".";
             PyErr_WarnEx(PyExc_UserWarning,
-                         ss.str().c_str(),
+                         oss.str().c_str(),
                          /*stack_level=*/2);
         }
     }

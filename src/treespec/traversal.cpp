@@ -22,7 +22,7 @@ namespace optree {
 py::object PyTreeSpec::Walk(const py::function& f_node,
                             const py::handle& f_leaf,
                             const py::iterable& leaves) const {
-    auto agenda = std::vector<py::object>{};
+    auto agenda = reserved_vector<py::object>(4);
     auto it = leaves.begin();
     const bool f_leaf_identity = f_leaf.is_none();
     for (const Node& node : m_traversal) {

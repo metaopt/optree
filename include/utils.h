@@ -37,13 +37,13 @@ using ssize_t = py::ssize_t;
 // boost::hash_combine
 template <class T>
 inline void HashCombine(size_t& seed, const T& v) {  // NOLINT[runtime/references]
-    std::hash<T> hasher;
+    std::hash<T> hasher{};
     // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
     seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
 }
 template <class T>
 inline void HashCombine(ssize_t& seed, const T& v) {  // NOLINT[runtime/references]
-    std::hash<T> hasher;
+    std::hash<T> hasher{};
     // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
     seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
 }
@@ -86,7 +86,7 @@ inline const py::object& ImportDeque() {
 
 template <typename T>
 inline std::vector<T> reserved_vector(const size_t& size) {
-    std::vector<T> v;
+    std::vector<T> v{};
     v.reserve(size);
     return v;
 }
@@ -264,10 +264,10 @@ inline void SET_ITEM<py::list>(const py::handle& container,
 template <typename PyType>
 inline void AssertExact(const py::handle& object) {
     if (!py::isinstance<PyType>(object)) [[unlikely]] {
-        std::stringstream ss;
-        ss << "Expected an instance of " << typeid(PyType).name() << ", got "
-           << static_cast<std::string>(py::repr(object)) << ".";
-        throw py::value_error(ss.str());
+        std::ostringstream oss{};
+        oss << "Expected an instance of " << typeid(PyType).name() << ", got "
+            << static_cast<std::string>(py::repr(object)) << ".";
+        throw py::value_error(oss.str());
     }
 }
 template <>
