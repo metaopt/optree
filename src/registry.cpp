@@ -24,7 +24,7 @@ template <bool NoneIsLeaf>
     static PyTreeTypeRegistry singleton{[]() {
         PyTreeTypeRegistry registry;
 
-        auto add_builtin_type = [&](PyTypeObject* type_obj, PyTreeKind kind) {
+        auto add_builtin_type = [&registry](PyTypeObject* type_obj, PyTreeKind kind) -> void {
             auto type = py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(type_obj));
             auto registration = std::make_unique<Registration>();
             registration->kind = kind;

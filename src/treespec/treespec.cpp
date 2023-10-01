@@ -206,7 +206,8 @@ ssize_t PyTreeSpec::PathsImpl(Span& paths,
 
     ssize_t cur = pos - 1;
     // NOLINTNEXTLINE[misc-no-recursion]
-    auto recurse = [this, &paths, &stack, &depth](const ssize_t& cur, const py::handle& entry) {
+    auto recurse = [this, &paths, &stack, &depth](const ssize_t& cur,
+                                                  const py::handle& entry) -> ssize_t {
         stack.emplace_back(entry);
         const ssize_t num_nodes = PathsImpl(paths, stack, cur, depth + 1);
         stack.pop_back();
