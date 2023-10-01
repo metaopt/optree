@@ -90,7 +90,9 @@ PyTreeSpec Functions
     treespec_is_suffix
     treespec_paths
     treespec_entries
+    treespec_entry
     treespec_children
+    treespec_child
     treespec_is_leaf
     treespec_is_strict_leaf
     treespec_leaf
@@ -101,7 +103,9 @@ PyTreeSpec Functions
 .. autofunction:: treespec_is_suffix
 .. autofunction:: treespec_paths
 .. autofunction:: treespec_entries
+.. autofunction:: treespec_entry
 .. autofunction:: treespec_children
+.. autofunction:: treespec_child
 .. autofunction:: treespec_is_leaf
 .. autofunction:: treespec_is_strict_leaf
 .. autofunction:: treespec_leaf
