@@ -17,6 +17,7 @@
 
 import itertools
 import pickle
+import re
 from collections import defaultdict
 
 import pytest
@@ -51,7 +52,11 @@ def test_treespec_equal_hash():
             assert hash(treespec1_none_is_leaf) != hash(treespec2)
 
 
-@parametrize(tree=TREES, none_is_leaf=[False, True], namespace=['', 'undefined', 'namespace'])
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
 def test_treespec_rich_compare(tree, none_is_leaf, namespace):
     count = itertools.count()
 
@@ -231,7 +236,11 @@ def test_with_namespace():
     assert str(treespec) == expected_string
 
 
-@parametrize(tree=TREES, none_is_leaf=[False, True], namespace=['', 'undefined', 'namespace'])
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
 def test_treespec_pickle_round_trip(tree, none_is_leaf, namespace):
     expected = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
     try:
@@ -254,9 +263,10 @@ def test_treespec_pickle_round_trip(tree, none_is_leaf, namespace):
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_type(tree, none_is_leaf):
-    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf)
+def test_treespec_type(tree, none_is_leaf, namespace):
+    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
     if treespec.is_leaf():
         assert treespec.type is None
     else:
@@ -293,13 +303,28 @@ def test_treespec_with_empty_dict_string_representation():
         {'a': '*', 'b': ('*', '*')},
     ],
     none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_compose_children(tree, inner_tree, none_is_leaf):
-    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf)
-    inner_treespec = optree.tree_structure(inner_tree, none_is_leaf=none_is_leaf)
-    expected_treespec = optree.tree_structure(
-        optree.tree_map(lambda _: inner_tree, tree, none_is_leaf=none_is_leaf),
+def test_treespec_compose_children(tree, inner_tree, none_is_leaf, namespace):
+    treespec = optree.tree_structure(
+        tree,
         none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    inner_treespec = optree.tree_structure(
+        inner_tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    expected_treespec = optree.tree_structure(
+        optree.tree_map(
+            lambda _: inner_tree,
+            tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        ),
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
     composed_treespec = treespec.compose(inner_treespec)
     expected_leaves = treespec.num_leaves * inner_treespec.num_leaves
@@ -310,7 +335,11 @@ def test_treespec_compose_children(tree, inner_tree, none_is_leaf):
     assert composed_treespec.num_nodes == expected_nodes
     leaves = [1] * expected_leaves
     composed = optree.tree_unflatten(composed_treespec, leaves)
-    assert leaves == optree.tree_leaves(composed, none_is_leaf=none_is_leaf)
+    assert leaves == optree.tree_leaves(
+        composed,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
     if 'FlatCache' in str(treespec):
         return
@@ -324,7 +353,11 @@ def test_treespec_compose_children(tree, inner_tree, none_is_leaf):
             assert composed_child == expected_child
             stack.append((composed_child.children(), expected_child.children()))
 
-    assert composed_treespec == optree.tree_structure(composed, none_is_leaf=none_is_leaf)
+    assert composed_treespec == optree.tree_structure(
+        composed,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
     if treespec == expected_treespec:
         assert not (treespec != expected_treespec)
@@ -367,9 +400,14 @@ def test_treespec_compose_children(tree, inner_tree, none_is_leaf):
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_entries(tree, none_is_leaf):
-    expected_paths, _, treespec = optree.tree_flatten_with_path(tree, none_is_leaf=none_is_leaf)
+def test_treespec_entries(tree, none_is_leaf, namespace):
+    expected_paths, _, treespec = optree.tree_flatten_with_path(
+        tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
     assert optree.treespec_paths(treespec) == expected_paths
 
     def gen_path(spec, prefix):
@@ -384,6 +422,50 @@ def test_treespec_entries(tree, none_is_leaf):
 
     paths = list(gen_path(treespec, ()))
     assert paths == expected_paths
+
+
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
+def test_treespec_entry(tree, none_is_leaf, namespace):
+    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+    if treespec.type is None or treespec.type is type(None):
+        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
+            optree.treespec_entry(treespec, 0)
+        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
+            optree.treespec_entry(treespec, -1)
+        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
+            optree.treespec_entry(treespec, 1)
+    if treespec.is_leaf(strict=False):
+        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
+            optree.treespec_entry(treespec, 0)
+        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
+            optree.treespec_entry(treespec, -1)
+        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
+            optree.treespec_entry(treespec, 1)
+    expected_entries = optree.treespec_entries(treespec)
+    for i, entry in enumerate(expected_entries):
+        assert entry == optree.treespec_entry(treespec, i)
+        assert entry == optree.treespec_entry(treespec, i - len(expected_entries))
+        assert optree.treespec_entry(treespec, i) == optree.treespec_entry(treespec, i)
+        assert optree.treespec_entry(treespec, i - len(expected_entries)) == optree.treespec_entry(
+            treespec,
+            i - len(expected_entries),
+        )
+        assert optree.treespec_entry(treespec, i) == optree.treespec_entry(
+            treespec,
+            i - len(expected_entries),
+        )
+    with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
+        optree.treespec_entry(treespec, len(expected_entries))
+    with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
+        optree.treespec_entry(treespec, -len(expected_entries) - 1)
+
+    assert expected_entries == [
+        optree.treespec_entry(treespec, i) for i in range(len(expected_entries))
+    ]
 
 
 def test_treespec_children():
@@ -411,9 +493,54 @@ def test_treespec_children():
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_num_children(tree, none_is_leaf):
-    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf)
+def test_treespec_child(tree, none_is_leaf, namespace):
+    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+    if treespec.type is None or treespec.type is type(None):
+        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
+            optree.treespec_child(treespec, 0)
+        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
+            optree.treespec_child(treespec, -1)
+        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
+            optree.treespec_child(treespec, 1)
+    if treespec.is_leaf(strict=False):
+        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
+            optree.treespec_child(treespec, 0)
+        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
+            optree.treespec_child(treespec, -1)
+        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
+            optree.treespec_child(treespec, 1)
+    expected_children = optree.treespec_children(treespec)
+    for i, child in enumerate(expected_children):
+        assert child == optree.treespec_child(treespec, i)
+        assert child == optree.treespec_child(treespec, i - len(expected_children))
+        assert optree.treespec_child(treespec, i) == optree.treespec_child(treespec, i)
+        assert optree.treespec_child(treespec, i - len(expected_children)) == optree.treespec_child(
+            treespec,
+            i - len(expected_children),
+        )
+        assert optree.treespec_child(treespec, i) == optree.treespec_child(
+            treespec,
+            i - len(expected_children),
+        )
+    with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
+        optree.treespec_child(treespec, len(expected_children))
+    with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
+        optree.treespec_child(treespec, -len(expected_children) - 1)
+
+    assert expected_children == [
+        optree.treespec_child(treespec, i) for i in range(len(expected_children))
+    ]
+
+
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
+def test_treespec_num_children(tree, none_is_leaf, namespace):
+    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
     assert treespec.num_children == len(treespec.entries())
     assert treespec.num_children == len(treespec.children())
 
@@ -421,9 +548,10 @@ def test_treespec_num_children(tree, none_is_leaf):
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_num_leaves(tree, none_is_leaf):
-    leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
+def test_treespec_num_leaves(tree, none_is_leaf, namespace):
+    leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
     assert treespec.num_leaves == len(leaves)
     assert treespec.num_leaves == len(treespec)
     assert treespec.num_leaves == len(treespec.paths())
@@ -432,9 +560,10 @@ def test_treespec_num_leaves(tree, none_is_leaf):
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_num_nodes(tree, none_is_leaf):
-    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf)
+def test_treespec_num_nodes(tree, none_is_leaf, namespace):
+    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
     nodes = []
     stack = [treespec]
     while stack:
