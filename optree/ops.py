@@ -79,7 +79,9 @@ __all__ = [
     'treespec_is_suffix',
     'treespec_paths',
     'treespec_entries',
+    'treespec_entry',
     'treespec_children',
+    'treespec_child',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',
     'treespec_leaf',
@@ -1289,17 +1291,35 @@ def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
 def treespec_entries(treespec: PyTreeSpec) -> list[Any]:
     """Return a list of one-level entries of a treespec to its children.
 
-    See also :func:`treespec_paths`, :func:`treespec_children`, and :meth:`PyTreeSpec.entries`.
+    See also :func:`treespec_entry`, :func:`treespec_paths`, :func:`treespec_children`,
+    and :meth:`PyTreeSpec.entries`.
     """
     return treespec.entries()
+
+
+def treespec_entry(treespec: PyTreeSpec, index: int) -> Any:
+    """Return the entry of a treespec at the given index.
+
+    See also :func:`treespec_entries`, :func:`treespec_children`, and :meth:`PyTreeSpec.entry`.
+    """
+    return treespec.entry(index)
 
 
 def treespec_children(treespec: PyTreeSpec) -> list[PyTreeSpec]:
     """Return a list of treespecs for the children of a treespec.
 
-    See also :func:`treespec_paths`, :func:`treespec_entries`, and :meth:`PyTreeSpec.children`.
+    See also :func:`treespec_child`, :func:`treespec_paths`, :func:`treespec_entries`,
+    and :meth:`PyTreeSpec.children`.
     """
     return treespec.children()
+
+
+def treespec_child(treespec: PyTreeSpec, index: int) -> PyTreeSpec:
+    """Return the treespec of the child of a treespec at the given index.
+
+    See also :func:`treespec_children`, :func:`treespec_entries`, and :meth:`PyTreeSpec.child`.
+    """
+    return treespec.child(index)
 
 
 def treespec_is_leaf(treespec: PyTreeSpec) -> bool:
