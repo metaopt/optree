@@ -17,9 +17,6 @@ limitations under the License.
 
 #include "include/treespec.h"
 
-#include <Python.h>
-#include <structmember.h>  // PyMemberDef
-
 namespace optree {
 
 ssize_t PyTreeSpec::GetNumLeaves() const {

@@ -18,8 +18,12 @@ limitations under the License.
 #pragma once
 
 #include <Python.h>
+
+#if PY_VERSION_HEX < 0x30C00F0  // Python 3.12.0
+#include <structmember.h>       // PyMemberDef
+#endif
+
 #include <pybind11/pybind11.h>
-#include <structmember.h>  // PyMemberDef
 
 #include <memory>
 #include <optional>
