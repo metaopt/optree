@@ -159,7 +159,12 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
              py::arg("strict") = true)
         .def("paths", &PyTreeSpec::Paths, "Return a list of paths to the leaves of the treespec.")
         .def("entries", &PyTreeSpec::Entries, "Return a list of one-level entries to the children.")
+        .def("entry", &PyTreeSpec::Entry, "Return the entry at the given index.", py::arg("index"))
         .def("children", &PyTreeSpec::Children, "Return a list of treespecs for the children.")
+        .def("child",
+             &PyTreeSpec::Child,
+             "Return the treespec for the child at the given index.",
+             py::arg("index"))
         .def("is_leaf",
              &PyTreeSpec::IsLeaf,
              "Test whether the current node is a leaf.",

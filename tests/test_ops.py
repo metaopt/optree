@@ -150,6 +150,20 @@ def test_flatten_dict_order():
     assert list(restored_tree) == ['b', 'a', 'c']
 
 
+@parametrize(
+    tree=list(TREES + LEAVES),
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
+def test_tree_unflatten_mismatch_number_of_leaves(tree, none_is_leaf, namespace):
+    leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+    if len(leaves) > 0:
+        with pytest.raises(ValueError, match='Too few leaves for PyTreeSpec.'):
+            optree.tree_unflatten(treespec, leaves[:-1])
+    with pytest.raises(ValueError, match='Too many leaves for PyTreeSpec.'):
+        optree.tree_unflatten(treespec, (*leaves, 0))
+
+
 def test_walk():
     tree = {'b': 2, 'a': 1, 'c': {'f': None, 'e': 3, 'g': 4}}
     #          tree
@@ -383,7 +397,11 @@ def test_round_trip_is_leaf(tree, is_leaf, none_is_leaf, namespace):
     assert actual == tree
 
 
-@parametrize(tree=TREES, none_is_leaf=[False, True], namespace=['', 'undefined', 'namespace'])
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
 def test_all_leaves_with_trees(tree, none_is_leaf, namespace):
     leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
     assert optree.all_leaves(leaves, none_is_leaf=none_is_leaf, namespace=namespace)
@@ -391,9 +409,13 @@ def test_all_leaves_with_trees(tree, none_is_leaf, namespace):
         assert not optree.all_leaves([tree], none_is_leaf=none_is_leaf, namespace=namespace)
 
 
-@parametrize(leaf=LEAVES, none_is_leaf=[False, True])
-def test_all_leaves_with_leaves(leaf, none_is_leaf):
-    assert optree.all_leaves([leaf], none_is_leaf=none_is_leaf)
+@parametrize(
+    leaf=LEAVES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
+def test_all_leaves_with_leaves(leaf, none_is_leaf, namespace):
+    assert optree.all_leaves([leaf], none_is_leaf=none_is_leaf, namespace=namespace)
 
 
 @parametrize(
@@ -709,11 +731,28 @@ def test_tree_map_with_path_inplace_key_order_none_is_leaf():
     assert leaves == [1, 2, 3, None, 4]
 
 
-@parametrize(tree=TREES)
-def test_tree_transpose(tree):
-    outer_treespec = optree.tree_structure(tree)
-    inner_treespec = optree.tree_structure([1, 1, 1])
-    nested = optree.tree_map(lambda x: [x, x, x], tree)
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
+def test_tree_transpose(tree, none_is_leaf, namespace):
+    outer_treespec = optree.tree_structure(
+        tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    inner_treespec = optree.tree_structure(
+        [1, 1, 1],
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    nested = optree.tree_map(
+        lambda x: [x, x, x],
+        tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
     if outer_treespec.num_leaves == 0:
         with pytest.raises(ValueError, match='Tree structures must have at least one leaf.'):
             optree.tree_transpose(outer_treespec, inner_treespec, nested)
@@ -721,7 +760,11 @@ def test_tree_transpose(tree):
     with pytest.raises(ValueError, match='Tree structures must have the same none_is_leaf value.'):
         optree.tree_transpose(
             outer_treespec,
-            optree.tree_structure([1, 1, 1], none_is_leaf=True),
+            optree.tree_structure(
+                [1, 1, 1],
+                none_is_leaf=not none_is_leaf,
+                namespace=namespace,
+            ),
             nested,
         )
     actual = optree.tree_transpose(outer_treespec, inner_treespec, nested)
@@ -962,7 +1005,11 @@ def test_tree_any():
     assert not optree.tree_any(None, none_is_leaf=True)
 
 
-@parametrize(tree=TREES, none_is_leaf=[False, True], namespace=['', 'undefined', 'namespace'])
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
 def test_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
     stack = [tree]
     actual_leaves = []

@@ -121,8 +121,14 @@ class PyTreeSpec {
     // Return one-level entries of the PyTreeSpec to its children.
     [[nodiscard]] py::list Entries() const;
 
+    // Return the one-level entry at the given index of the PyTreeSpec.
+    [[nodiscard]] py::object Entry(ssize_t index) const;
+
     // Return the children of the PyTreeSpec.
     [[nodiscard]] std::vector<std::unique_ptr<PyTreeSpec>> Children() const;
+
+    // Return the child at the given index of the PyTreeSpec.
+    [[nodiscard]] std::unique_ptr<PyTreeSpec> Child(ssize_t index) const;
 
     // Test whether this PyTreeSpec represents a leaf.
     [[nodiscard]] bool IsLeaf(const bool &strict = true) const;
