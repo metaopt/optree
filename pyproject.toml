@@ -105,7 +105,7 @@ test-command = """make -C "{project}" test PYTHON=python"""
 safe = true
 line-length = 100
 skip-string-normalization = true
-target-version = ["py37", "py38", "py39", "py310", "py311"]
+target-version = ["py37", "py38", "py39", "py310", "py311", "py312"]
 
 [tool.isort]
 atomic = true
