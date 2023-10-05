@@ -400,7 +400,7 @@ PyTreeSpec::FlattenWithPath(const py::handle& tree,
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
+py::list PyTreeSpec::FlattenUpTo(const py::handle& full_tree) const {
     const ssize_t num_leaves = GetNumLeaves();
 
     auto agenda = reserved_vector<py::object>(4);
@@ -627,10 +627,6 @@ py::list PyTreeSpec::FlattenUpToImpl(const py::handle& full_tree) const {
         throw py::value_error(oss.str());
     }
     return leaves;
-}
-
-py::list PyTreeSpec::FlattenUpTo(const py::handle& full_tree) const {
-    return FlattenUpToImpl(full_tree);
 }
 
 template <bool NoneIsLeaf>

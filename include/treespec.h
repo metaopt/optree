@@ -249,8 +249,6 @@ class PyTreeSpec {
                                  const std::optional<py::function> &leaf_predicate,
                                  const std::string &registry_namespace);
 
-    [[nodiscard]] py::list FlattenUpToImpl(const py::handle &full_tree) const;
-
     template <bool NoneIsLeaf>
     static bool AllLeavesImpl(const py::iterable &iterable, const std::string &registry_namespace);
 

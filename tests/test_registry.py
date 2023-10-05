@@ -340,12 +340,12 @@ def test_pytree_node_registry_get():
     handler = optree.register_pytree_node.get(list)
     assert handler is not None
     lst = [1, 2, 3]
-    assert handler.to_iterable(lst)[:2] == (lst, None)
+    assert tuple(handler.to_iterable(lst))[:2] == (lst, None)
 
     handler = optree.register_pytree_node.get(list, namespace='any')
     assert handler is not None
     lst = [1, 2, 3]
-    assert handler.to_iterable(lst)[:2] == (lst, None)
+    assert tuple(handler.to_iterable(lst))[:2] == (lst, None)
 
     handler = optree.register_pytree_node.get(set)
     assert handler is None

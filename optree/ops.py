@@ -65,10 +65,10 @@ __all__ = [
     'tree_map_',
     'tree_map_with_path',
     'tree_map_with_path_',
+    'tree_replace_nones',
     'tree_transpose',
     'tree_broadcast_prefix',
     'broadcast_prefix',
-    'tree_replace_nones',
     'tree_reduce',
     'tree_sum',
     'tree_max',
@@ -525,7 +525,7 @@ def tree_map_with_path(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTree[U]:
-    """Map a multi-input function over pytree args to produce a new pytree.
+    """Map a multi-input function over pytree args as well as the tree paths to produce a new pytree.
 
     See also :func:`tree_map`, :func:`tree_map_`, and :func:`tree_map_with_path_`.
 
@@ -612,6 +612,35 @@ def tree_map_with_path_(
     return tree
 
 
+def tree_replace_nones(sentinel: Any, tree: PyTree[T] | None, namespace: str = '') -> PyTree[T]:
+    """Replace :data:`None` in ``tree`` with ``sentinel``.
+
+    See also :func:`tree_flatten` and :func:`tree_map`.
+
+    >>> tree_replace_nones(0, {'a': 1, 'b': None, 'c': (2, None)})
+    {'a': 1, 'b': 0, 'c': (2, 0)}
+    >>> tree_replace_nones(0, None)
+    0
+
+    Args:
+        sentinel (object): The value to replace :data:`None` with.
+        tree (pytree): A pytree to be transformed.
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        A new pytree with the same structure as ``tree`` but with :data:`None` replaced.
+    """
+    if tree is None:
+        return sentinel
+    return tree_map(
+        lambda x: x if x is not None else sentinel,
+        tree,
+        none_is_leaf=True,
+        namespace=namespace,
+    )
+
+
 def tree_transpose(
     outer_treespec: PyTreeSpec,
     inner_treespec: PyTreeSpec,
@@ -672,7 +701,7 @@ def tree_transpose(
 
     leaves, treespec = tree_flatten(
         tree,
-        is_leaf,
+        is_leaf=is_leaf,
         none_is_leaf=outer_treespec.none_is_leaf,
         namespace=outer_treespec.namespace or inner_treespec.namespace,
     )
@@ -708,24 +737,24 @@ def tree_broadcast_prefix(
     from ``prefix_tree``. The number of replicas is determined by the corresponding subtree in
     ``full_tree``.
 
-    >>> tree_broadcast_prefix(1, [1, 2, 3])
+    >>> tree_broadcast_prefix(1, [2, 3, 4])
     [1, 1, 1]
-    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, 3])
+    >>> tree_broadcast_prefix([1, 2, 3], [4, 5, 6])
     [1, 2, 3]
-    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
+    >>> tree_broadcast_prefix([1, 2, 3], [4, 5, 6, 7])
     Traceback (most recent call last):
         ...
-    ValueError: list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].
-    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, (3, 4)])
+    ValueError: list arity mismatch; expected: 3, got: 4; list: [4, 5, 6, 7].
+    >>> tree_broadcast_prefix([1, 2, 3], [4, 5, (6, 7)])
     [1, 2, (3, 3)]
-    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}])
+    >>> tree_broadcast_prefix([1, 2, 3], [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}])
     [1, 2, {'a': 3, 'b': 3, 'c': (None, 3)}]
-    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True)
+    >>> tree_broadcast_prefix([1, 2, 3], [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}], none_is_leaf=True)
     [1, 2, {'a': 3, 'b': 3, 'c': (3, 3)}]
 
     Args:
-        prefix_tree (pytree): A pytree with the same structure as a prefix of ``full_tree``.
-        full_tree (pytree): A pytree with the same structure as a suffix of ``prefix_tree``.
+        prefix_tree (pytree): A pytree with the prefix structure of ``full_tree``.
+        full_tree (pytree): A pytree with the suffix structure of ``prefix_tree``.
         is_leaf (callable, optional): An optionally specified function that will be called at each
             flattening step. It should return a boolean, with :data:`True` stopping the traversal
             and the whole subtree being treated as a leaf, and :data:`False` indicating the
@@ -744,7 +773,7 @@ def tree_broadcast_prefix(
     def broadcast_leaves(x: T, subtree: PyTree[S]) -> PyTree[T]:
         subtreespec = tree_structure(
             subtree,
-            is_leaf,  # type: ignore[arg-type]
+            is_leaf=is_leaf,  # type: ignore[arg-type]
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
@@ -752,7 +781,13 @@ def tree_broadcast_prefix(
 
     # If prefix_tree is not a tree prefix of full_tree, this code can raise a ValueError;
     # use prefix_errors to find disagreements and raise more precise error messages.
-    # prefix_errors = prefix_errors(prefix_tree, full_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    # errors = prefix_errors(
+    #     prefix_tree,
+    #     full_tree,
+    #     is_leaf=is_leaf,
+    #     none_is_leaf=none_is_leaf,
+    #     namespace=namespace,
+    # )
     return tree_map(
         broadcast_leaves,  # type: ignore[arg-type]
         prefix_tree,
@@ -782,24 +817,24 @@ def broadcast_prefix(
     replicated from ``prefix_tree``. The number of replicas is determined by the corresponding
     subtree in ``full_tree``.
 
-    >>> broadcast_prefix(1, [1, 2, 3])
+    >>> broadcast_prefix(1, [2, 3, 4])
     [1, 1, 1]
-    >>> broadcast_prefix([1, 2, 3], [1, 2, 3])
+    >>> broadcast_prefix([1, 2, 3], [4, 5, 6])
     [1, 2, 3]
-    >>> broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
+    >>> broadcast_prefix([1, 2, 3], [4, 5, 6, 7])
     Traceback (most recent call last):
         ...
-    ValueError: list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].
-    >>> broadcast_prefix([1, 2, 3], [1, 2, (3, 4)])
+    ValueError: list arity mismatch; expected: 3, got: 4; list: [4, 5, 6, 7].
+    >>> broadcast_prefix([1, 2, 3], [4, 5, (6, 7)])
     [1, 2, 3, 3]
-    >>> broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}])
+    >>> broadcast_prefix([1, 2, 3], [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}])
     [1, 2, 3, 3, 3]
-    >>> broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True)
+    >>> broadcast_prefix([1, 2, 3], [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}], none_is_leaf=True)
     [1, 2, 3, 3, 3, 3]
 
     Args:
-        prefix_tree (pytree): A pytree with the same structure as a prefix of ``full_tree``.
-        full_tree (pytree): A pytree with the same structure as a suffix of ``prefix_tree``.
+        prefix_tree (pytree): A pytree with the prefix structure of ``full_tree``.
+        full_tree (pytree): A pytree with the suffix structure of ``prefix_tree``.
         is_leaf (callable, optional): An optionally specified function that will be called at each
             flattening step. It should return a boolean, with :data:`True` stopping the traversal
             and the whole subtree being treated as a leaf, and :data:`False` indicating the
@@ -819,7 +854,7 @@ def broadcast_prefix(
     def add_leaves(x: T, subtree: PyTree[S]) -> None:
         subtreespec = tree_structure(
             subtree,
-            is_leaf,  # type: ignore[arg-type]
+            is_leaf=is_leaf,  # type: ignore[arg-type]
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
@@ -827,7 +862,13 @@ def broadcast_prefix(
 
     # If prefix_tree is not a tree prefix of full_tree, this code can raise a ValueError;
     # use prefix_errors to find disagreements and raise more precise error messages.
-    # prefix_errors = prefix_errors(prefix_tree, full_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    # errors = prefix_errors(
+    #     prefix_tree,
+    #     full_tree,
+    #     is_leaf=is_leaf,
+    #     none_is_leaf=none_is_leaf,
+    #     namespace=namespace,
+    # )
     tree_map_(
         add_leaves,
         prefix_tree,
@@ -839,36 +880,14 @@ def broadcast_prefix(
     return result
 
 
-def tree_replace_nones(sentinel: Any, tree: PyTree[T] | None, namespace: str = '') -> PyTree[T]:
-    """Replace :data:`None` in ``tree`` with ``sentinel``.
-
-    See also :func:`tree_flatten` and :func:`tree_map`.
-
-    >>> tree_replace_nones(0, {'a': 1, 'b': None, 'c': (2, None)})
-    {'a': 1, 'b': 0, 'c': (2, 0)}
-    >>> tree_replace_nones(0, None)
-    0
-
-    Args:
-        sentinel (object): The value to replace :data:`None` with.
-        tree (pytree): A pytree to be transformed.
-        namespace (str, optional): The registry namespace used for custom pytree node types.
-            (default: :const:`''`, i.e., the global namespace)
-
-    Returns:
-        A new pytree with the same structure as ``tree`` but with :data:`None` replaced.
-    """
-    if tree is None:
-        return sentinel
-    return tree_map(
-        lambda x: x if x is not None else sentinel,
-        tree,
-        none_is_leaf=True,
-        namespace=namespace,
-    )
+# pylint: disable-next=missing-class-docstring,too-few-public-methods
+class MissingSentinel:  # pragma: no cover
+    def __repr__(self) -> str:
+        return '<MISSING>'
 
 
-__MISSING: T = object()  # type: ignore[valid-type]
+__MISSING: T = MissingSentinel()  # type: ignore[valid-type]
+del MissingSentinel
 
 
 @overload
@@ -937,7 +956,7 @@ def tree_reduce(
     Returns:
         The result of reducing the leaves of the pytree using ``func``.
     """  # pylint: disable=line-too-long
-    leaves = tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    leaves = tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     if initial is __MISSING:
         return functools.reduce(func, leaves)
     return functools.reduce(func, leaves, initial)
@@ -985,7 +1004,7 @@ def tree_sum(
     Returns:
         The total sum of ``start`` and leaf values in ``tree``.
     """
-    leaves = tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    leaves = tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     # sum() rejects string values for `start` parameter
     if isinstance(start, str):
         return ''.join([start, *leaves])  # type: ignore[list-item,return-value]
@@ -1071,7 +1090,7 @@ def tree_max(tree, *, default=__MISSING, key=None, is_leaf=None, none_is_leaf=Fa
     Returns:
         The maximum leaf value in ``tree``.
     """
-    leaves = tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    leaves = tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     if default is __MISSING:
         if key is None:  # special handling for Python 3.7
             return max(leaves)
@@ -1158,7 +1177,7 @@ def tree_min(tree, *, default=__MISSING, key=None, is_leaf=None, none_is_leaf=Fa
     Returns:
         The minimum leaf value in ``tree``.
     """
-    leaves = tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    leaves = tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     if default is __MISSING:
         if key is None:  # special handling for Python 3.7
             return min(leaves)
@@ -1209,7 +1228,14 @@ def tree_all(
         :data:`True` if all leaves in ``tree`` are true, or if ``tree`` is empty.
         Otherwise, :data:`False`.
     """
-    return all(tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace))  # type: ignore[arg-type]
+    return all(
+        tree_leaves(
+            tree,  # type: ignore[arg-type]
+            is_leaf=is_leaf,  # type: ignore[arg-type]
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        ),
+    )
 
 
 def tree_any(
@@ -1253,7 +1279,14 @@ def tree_any(
         :data:`True` if any leaves in ``tree`` are true, otherwise, :data:`False`. If ``tree`` is
         empty, return :data:`False`.
     """
-    return any(tree_leaves(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace))  # type: ignore[arg-type]
+    return any(
+        tree_leaves(
+            tree,  # type: ignore[arg-type]
+            is_leaf=is_leaf,  # type: ignore[arg-type]
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        ),
+    )
 
 
 def treespec_is_prefix(
@@ -1523,7 +1556,7 @@ def flatten_one_level(
     node_type = type(tree)
     handler = register_pytree_node.get(node_type, namespace=namespace)  # type: ignore[attr-defined]
     if handler:
-        flattened = handler.to_iterable(tree)
+        flattened = tuple(handler.to_iterable(tree))
         if len(flattened) == 2:
             flattened = (*flattened, None)
         elif len(flattened) != 3:
@@ -1564,7 +1597,7 @@ def prefix_errors(
             KeyPath(),
             prefix_tree,
             full_tree,
-            is_leaf,
+            is_leaf=is_leaf,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         ),
@@ -1710,8 +1743,18 @@ def _prefix_error(
 
     # If the root types and numbers of children agree, there must be an error in a subtree,
     # so recurse:
-    keys = _child_keys(prefix_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
-    keys_ = _child_keys(full_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)  # type: ignore[arg-type]
+    keys = _child_keys(
+        prefix_tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    keys_ = _child_keys(
+        full_tree,
+        is_leaf=is_leaf,  # type: ignore[arg-type]
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
     assert keys == keys_ or (
         # Special handling for directory types already done in the keys check above
         both_standard_dict
@@ -1722,7 +1765,7 @@ def _prefix_error(
             key_path + k,
             cast(PyTree[T], t1),
             cast(PyTree[S], t2),
-            is_leaf,
+            is_leaf=is_leaf,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
@@ -1735,7 +1778,7 @@ def _child_keys(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> list[KeyPathEntry]:
-    treespec = tree_structure(tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    treespec = tree_structure(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     assert not treespec_is_strict_leaf(treespec), 'treespec must be a non-leaf node'
 
     handler = register_keypaths.get(type(tree))  # type: ignore[attr-defined]

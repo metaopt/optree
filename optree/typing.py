@@ -259,7 +259,13 @@ class PyTreeTypeVar:
         return self
 
 
-FlattenFunc = Callable[[CustomTreeNode[T]], Tuple[Children[T], MetaData]]
+FlattenFunc = Callable[
+    [CustomTreeNode[T]],
+    Union[
+        Tuple[Children[T], MetaData],
+        Tuple[Children[T], MetaData, Optional[Iterable[Any]]],
+    ],
+]
 UnflattenFunc = Callable[[MetaData, Children[T]], CustomTreeNode[T]]
 
 
