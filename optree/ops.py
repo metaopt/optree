@@ -60,6 +60,7 @@ __all__ = [
     'tree_leaves',
     'tree_structure',
     'tree_paths',
+    'tree_is_leaf',
     'all_leaves',
     'tree_map',
     'tree_map_',
@@ -364,6 +365,44 @@ def tree_paths(
     return _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)[0]
 
 
+def tree_is_leaf(
+    tree: PyTree[T],
+    is_leaf: Callable[[T], bool] | None = None,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> bool:
+    """Test whether the given object is a leaf node.
+
+    See also :func:`tree_flatten`, :func:`tree_leaves`, and :func:`all_leaves`.
+
+    >>> tree_is_leaf(1)
+    True
+    >>> tree_is_leaf(None)
+    False
+    >>> tree_is_leaf(None, none_is_leaf=True)
+    True
+    >>> tree_is_leaf({'a': 1, 'b': (2, 3)})
+    False
+
+    Args:
+        tree (pytree): A pytree to check if it is a leaf node.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than a leaf. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        A boolean indicating if all elements in the input iterable are leaves.
+    """
+    return _C.is_leaf(tree, is_leaf, none_is_leaf, namespace)
+
+
 def all_leaves(
     iterable: Iterable[T],
     is_leaf: Callable[[T], bool] | None = None,
@@ -373,7 +412,7 @@ def all_leaves(
 ) -> bool:
     """Test whether all elements in the given iterable are all leaves.
 
-    See also :func:`tree_flatten` and :func:`tree_leaves`.
+    See also :func:`tree_flatten`, :func:`tree_leaves`, and :func:`tree_is_leaf`.
 
     >>> tree = {'a': [1, 2, 3]}
     >>> all_leaves(tree_leaves(tree))
@@ -400,6 +439,10 @@ def all_leaves(
 
     Args:
         iterable (iterable): A iterable of leaves.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
             :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
             treespec rather than a leaf. (default: :data:`False`)
@@ -409,14 +452,7 @@ def all_leaves(
     Returns:
         A boolean indicating if all elements in the input iterable are leaves.
     """
-    if is_leaf is None:
-        return _C.all_leaves(iterable, none_is_leaf, namespace)
-
-    nodes = list(iterable)
-    if all(map(is_leaf, nodes)):
-        return True
-    leaves = tree_leaves(nodes, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)  # type: ignore[arg-type]
-    return len(nodes) == len(leaves) and all(map(lambda a, b: a is b, nodes, leaves))
+    return _C.all_leaves(iterable, is_leaf, none_is_leaf, namespace)
 
 
 def tree_map(
@@ -1585,9 +1621,7 @@ def _prefix_error(
     namespace: str = '',
 ) -> Iterable[Callable[[str], ValueError]]:
     # A leaf is a valid prefix of any tree
-    if treespec_is_strict_leaf(
-        tree_structure(prefix_tree, is_leaf, none_is_leaf=none_is_leaf, namespace=namespace),
-    ):
+    if tree_is_leaf(prefix_tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace):
         return
 
     # The subtrees may disagree because their roots are of different types:

@@ -29,6 +29,7 @@ Tree Manipulation Functions
     tree_leaves
     tree_structure
     tree_paths
+    tree_is_leaf
     all_leaves
     tree_map
     tree_map_
@@ -46,6 +47,7 @@ Tree Manipulation Functions
 .. autofunction:: tree_leaves
 .. autofunction:: tree_structure
 .. autofunction:: tree_paths
+.. autofunction:: tree_is_leaf
 .. autofunction:: all_leaves
 .. autofunction:: tree_map
 .. autofunction:: tree_map_

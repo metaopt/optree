@@ -90,8 +90,15 @@ class PyTreeSpec {
     // *), *], the result is the list of leaves [1, (2, 3), {"foo": 4}].
     [[nodiscard]] py::list FlattenUpTo(const py::handle &full_tree) const;
 
-    // Tests whether the given list is a flat list of leaves.
+    // Test whether the given object is a leaf node.
+    static bool ObjectIsLeaf(const py::handle &handle,
+                             const std::optional<py::function> &leaf_predicate,
+                             const bool &none_is_leaf = false,
+                             const std::string &registry_namespace = "");
+
+    // Test whether all elements in the given iterable are all leaves.
     static bool AllLeaves(const py::iterable &iterable,
+                          const std::optional<py::function> &leaf_predicate,
                           const bool &none_is_leaf = false,
                           const std::string &registry_namespace = "");
 
@@ -252,7 +259,14 @@ class PyTreeSpec {
     [[nodiscard]] py::list FlattenUpToImpl(const py::handle &full_tree) const;
 
     template <bool NoneIsLeaf>
-    static bool AllLeavesImpl(const py::iterable &iterable, const std::string &registry_namespace);
+    static bool ObjectIsLeafImpl(const py::handle &handle,
+                                 const std::optional<py::function> &leaf_predicate,
+                                 const std::string &registry_namespace);
+
+    template <bool NoneIsLeaf>
+    static bool AllLeavesImpl(const py::iterable &iterable,
+                              const std::optional<py::function> &leaf_predicate,
+                              const std::string &registry_namespace);
 
     template <typename Span>
     py::object UnflattenImpl(const Span &leaves) const;
