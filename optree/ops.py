@@ -400,7 +400,7 @@ def tree_is_leaf(
     Returns:
         A boolean indicating if all elements in the input iterable are leaves.
     """
-    return _C.is_leaf(tree, is_leaf, none_is_leaf, namespace)
+    return _C.is_leaf(tree, is_leaf, none_is_leaf, namespace)  # type: ignore[arg-type]
 
 
 def all_leaves(
