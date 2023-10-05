@@ -630,10 +630,34 @@ py::list PyTreeSpec::FlattenUpTo(const py::handle& full_tree) const {
 }
 
 template <bool NoneIsLeaf>
+/*static*/ bool PyTreeSpec::ObjectIsLeafImpl(const py::handle& handle,
+                                             const std::optional<py::function>& leaf_predicate,
+                                             const std::string& registry_namespace) {
+    const PyTreeTypeRegistry::Registration* custom = nullptr;
+    return ((leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) ||
+            (GetKind<NoneIsLeaf>(handle, &custom, registry_namespace) == PyTreeKind::Leaf));
+}
+
+/*static*/ bool PyTreeSpec::ObjectIsLeaf(const py::handle& handle,
+                                         const std::optional<py::function>& leaf_predicate,
+                                         const bool& none_is_leaf,
+                                         const std::string& registry_namespace) {
+    if (none_is_leaf) [[unlikely]] {
+        return ObjectIsLeafImpl<NONE_IS_LEAF>(handle, leaf_predicate, registry_namespace);
+    } else [[likely]] {
+        return ObjectIsLeafImpl<NONE_IS_NODE>(handle, leaf_predicate, registry_namespace);
+    }
+}
+
+template <bool NoneIsLeaf>
 /*static*/ bool PyTreeSpec::AllLeavesImpl(const py::iterable& iterable,
+                                          const std::optional<py::function>& leaf_predicate,
                                           const std::string& registry_namespace) {
     const PyTreeTypeRegistry::Registration* custom = nullptr;
     for (const py::handle& h : iterable) {
+        if (leaf_predicate && (*leaf_predicate)(h).cast<bool>()) [[unlikely]] {
+            continue;
+        }
         if (GetKind<NoneIsLeaf>(h, &custom, registry_namespace) != PyTreeKind::Leaf) [[unlikely]] {
             return false;
         }
@@ -642,12 +666,13 @@ template <bool NoneIsLeaf>
 }
 
 /*static*/ bool PyTreeSpec::AllLeaves(const py::iterable& iterable,
+                                      const std::optional<py::function>& leaf_predicate,
                                       const bool& none_is_leaf,
                                       const std::string& registry_namespace) {
     if (none_is_leaf) [[unlikely]] {
-        return AllLeavesImpl<NONE_IS_LEAF>(iterable, registry_namespace);
+        return AllLeavesImpl<NONE_IS_LEAF>(iterable, leaf_predicate, registry_namespace);
     } else [[likely]] {
-        return AllLeavesImpl<NONE_IS_NODE>(iterable, registry_namespace);
+        return AllLeavesImpl<NONE_IS_NODE>(iterable, leaf_predicate, registry_namespace);
     }
 }
 

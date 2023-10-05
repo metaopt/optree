@@ -402,6 +402,71 @@ def test_round_trip_is_leaf(tree, is_leaf, none_is_leaf, namespace):
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
 )
+def test_tree_is_leaf_with_trees(tree, none_is_leaf, namespace):
+    leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+    for leaf in leaves:
+        assert optree.tree_is_leaf(leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+    if [tree] != leaves:
+        assert not optree.tree_is_leaf(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+    else:
+        assert optree.tree_is_leaf(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+
+
+@parametrize(
+    leaf=LEAVES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
+def test_tree_is_leaf_with_leaves(leaf, none_is_leaf, namespace):
+    assert optree.tree_is_leaf(leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+
+
+@parametrize(
+    tree=TREES,
+    is_leaf=[
+        is_tuple,
+        is_none,
+        always,
+        never,
+    ],
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
+def test_tree_is_leaf_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
+    leaves = optree.tree_leaves(
+        tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    for leaf in leaves:
+        assert optree.tree_is_leaf(
+            leaf,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+    if [tree] != leaves:
+        assert not optree.tree_is_leaf(
+            tree,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+    else:
+        assert optree.tree_is_leaf(
+            tree,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+
+
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
 def test_all_leaves_with_trees(tree, none_is_leaf, namespace):
     leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
     assert optree.all_leaves(leaves, none_is_leaf=none_is_leaf, namespace=namespace)
