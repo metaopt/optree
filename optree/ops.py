@@ -65,10 +65,10 @@ __all__ = [
     'tree_map_',
     'tree_map_with_path',
     'tree_map_with_path_',
+    'tree_replace_nones',
     'tree_transpose',
     'tree_broadcast_prefix',
     'broadcast_prefix',
-    'tree_replace_nones',
     'tree_reduce',
     'tree_sum',
     'tree_max',
@@ -525,7 +525,7 @@ def tree_map_with_path(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTree[U]:
-    """Map a multi-input function over pytree args to produce a new pytree.
+    """Map a multi-input function over pytree args as well as the tree paths to produce a new pytree.
 
     See also :func:`tree_map`, :func:`tree_map_`, and :func:`tree_map_with_path_`.
 
@@ -610,6 +610,35 @@ def tree_map_with_path_(
     flat_results = map(func, paths, *flat_args)
     deque(flat_results, maxlen=0)  # consume and exhaust the iterable
     return tree
+
+
+def tree_replace_nones(sentinel: Any, tree: PyTree[T] | None, namespace: str = '') -> PyTree[T]:
+    """Replace :data:`None` in ``tree`` with ``sentinel``.
+
+    See also :func:`tree_flatten` and :func:`tree_map`.
+
+    >>> tree_replace_nones(0, {'a': 1, 'b': None, 'c': (2, None)})
+    {'a': 1, 'b': 0, 'c': (2, 0)}
+    >>> tree_replace_nones(0, None)
+    0
+
+    Args:
+        sentinel (object): The value to replace :data:`None` with.
+        tree (pytree): A pytree to be transformed.
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        A new pytree with the same structure as ``tree`` but with :data:`None` replaced.
+    """
+    if tree is None:
+        return sentinel
+    return tree_map(
+        lambda x: x if x is not None else sentinel,
+        tree,
+        none_is_leaf=True,
+        namespace=namespace,
+    )
 
 
 def tree_transpose(
@@ -708,24 +737,24 @@ def tree_broadcast_prefix(
     from ``prefix_tree``. The number of replicas is determined by the corresponding subtree in
     ``full_tree``.
 
-    >>> tree_broadcast_prefix(1, [1, 2, 3])
+    >>> tree_broadcast_prefix(1, [2, 3, 4])
     [1, 1, 1]
-    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, 3])
+    >>> tree_broadcast_prefix([1, 2, 3], [4, 5, 6])
     [1, 2, 3]
-    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
+    >>> tree_broadcast_prefix([1, 2, 3], [4, 5, 6, 7])
     Traceback (most recent call last):
         ...
-    ValueError: list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].
-    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, (3, 4)])
+    ValueError: list arity mismatch; expected: 3, got: 4; list: [4, 5, 6, 7].
+    >>> tree_broadcast_prefix([1, 2, 3], [4, 5, (6, 7)])
     [1, 2, (3, 3)]
-    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}])
+    >>> tree_broadcast_prefix([1, 2, 3], [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}])
     [1, 2, {'a': 3, 'b': 3, 'c': (None, 3)}]
-    >>> tree_broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True)
+    >>> tree_broadcast_prefix([1, 2, 3], [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}], none_is_leaf=True)
     [1, 2, {'a': 3, 'b': 3, 'c': (3, 3)}]
 
     Args:
-        prefix_tree (pytree): A pytree with the same structure as a prefix of ``full_tree``.
-        full_tree (pytree): A pytree with the same structure as a suffix of ``prefix_tree``.
+        prefix_tree (pytree): A pytree with the prefix structure of ``full_tree``.
+        full_tree (pytree): A pytree with the suffix structure of ``prefix_tree``.
         is_leaf (callable, optional): An optionally specified function that will be called at each
             flattening step. It should return a boolean, with :data:`True` stopping the traversal
             and the whole subtree being treated as a leaf, and :data:`False` indicating the
@@ -782,24 +811,24 @@ def broadcast_prefix(
     replicated from ``prefix_tree``. The number of replicas is determined by the corresponding
     subtree in ``full_tree``.
 
-    >>> broadcast_prefix(1, [1, 2, 3])
+    >>> broadcast_prefix(1, [2, 3, 4])
     [1, 1, 1]
-    >>> broadcast_prefix([1, 2, 3], [1, 2, 3])
+    >>> broadcast_prefix([1, 2, 3], [4, 5, 6])
     [1, 2, 3]
-    >>> broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
+    >>> broadcast_prefix([1, 2, 3], [4, 5, 6, 7])
     Traceback (most recent call last):
         ...
-    ValueError: list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].
-    >>> broadcast_prefix([1, 2, 3], [1, 2, (3, 4)])
+    ValueError: list arity mismatch; expected: 3, got: 4; list: [4, 5, 6, 7].
+    >>> broadcast_prefix([1, 2, 3], [4, 5, (6, 7)])
     [1, 2, 3, 3]
-    >>> broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}])
+    >>> broadcast_prefix([1, 2, 3], [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}])
     [1, 2, 3, 3, 3]
-    >>> broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}], none_is_leaf=True)
+    >>> broadcast_prefix([1, 2, 3], [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}], none_is_leaf=True)
     [1, 2, 3, 3, 3, 3]
 
     Args:
-        prefix_tree (pytree): A pytree with the same structure as a prefix of ``full_tree``.
-        full_tree (pytree): A pytree with the same structure as a suffix of ``prefix_tree``.
+        prefix_tree (pytree): A pytree with the prefix structure of ``full_tree``.
+        full_tree (pytree): A pytree with the suffix structure of ``prefix_tree``.
         is_leaf (callable, optional): An optionally specified function that will be called at each
             flattening step. It should return a boolean, with :data:`True` stopping the traversal
             and the whole subtree being treated as a leaf, and :data:`False` indicating the
@@ -839,36 +868,14 @@ def broadcast_prefix(
     return result
 
 
-def tree_replace_nones(sentinel: Any, tree: PyTree[T] | None, namespace: str = '') -> PyTree[T]:
-    """Replace :data:`None` in ``tree`` with ``sentinel``.
-
-    See also :func:`tree_flatten` and :func:`tree_map`.
-
-    >>> tree_replace_nones(0, {'a': 1, 'b': None, 'c': (2, None)})
-    {'a': 1, 'b': 0, 'c': (2, 0)}
-    >>> tree_replace_nones(0, None)
-    0
-
-    Args:
-        sentinel (object): The value to replace :data:`None` with.
-        tree (pytree): A pytree to be transformed.
-        namespace (str, optional): The registry namespace used for custom pytree node types.
-            (default: :const:`''`, i.e., the global namespace)
-
-    Returns:
-        A new pytree with the same structure as ``tree`` but with :data:`None` replaced.
-    """
-    if tree is None:
-        return sentinel
-    return tree_map(
-        lambda x: x if x is not None else sentinel,
-        tree,
-        none_is_leaf=True,
-        namespace=namespace,
-    )
+# pylint: disable-next=missing-class-docstring,too-few-public-methods
+class MissingSentinel:  # pragma: no cover
+    def __repr__(self) -> str:
+        return '<MISSING>'
 
 
-__MISSING: T = object()  # type: ignore[valid-type]
+__MISSING: T = MissingSentinel()  # type: ignore[valid-type]
+del MissingSentinel
 
 
 @overload
@@ -1523,7 +1530,7 @@ def flatten_one_level(
     node_type = type(tree)
     handler = register_pytree_node.get(node_type, namespace=namespace)  # type: ignore[attr-defined]
     if handler:
-        flattened = handler.to_iterable(tree)
+        flattened = tuple(handler.to_iterable(tree))
         if len(flattened) == 2:
             flattened = (*flattened, None)
         elif len(flattened) != 3:

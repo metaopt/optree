@@ -480,7 +480,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
     EXPECT_EQ(py::ssize_t_cast(num_children), node.arity, "Node arity did not match.");
     switch (node.kind) {
         case PyTreeKind::Leaf:
-            INTERNAL_ERROR("MakeNode not implemented for leaves.");
+            INTERNAL_ERROR("PyTreeSpec::MakeNode() not implemented for leaves.");
 
         case PyTreeKind::None:
             return py::none();

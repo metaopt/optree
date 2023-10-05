@@ -29,23 +29,20 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
             py::ssize_t_cast(agenda.size()), node.arity, "Too few elements for PyTreeSpec node.");
 
         switch (node.kind) {
-            case PyTreeKind::None:
             case PyTreeKind::Leaf: {
-                if (node.kind == PyTreeKind::Leaf || m_none_is_leaf) [[likely]] {
-                    if (it == leaves.end()) [[unlikely]] {
-                        std::ostringstream oss{};
-                        oss << "Too few leaves for PyTreeSpec; expected: " << GetNumLeaves()
-                            << ", got: " << leaf_count << ".";
-                        throw py::value_error(oss.str());
-                    }
-                    agenda.emplace_back(py::reinterpret_borrow<py::object>(*it));
-                    ++it;
-                    ++leaf_count;
-                    break;
+                if (it == leaves.end()) [[unlikely]] {
+                    std::ostringstream oss{};
+                    oss << "Too few leaves for PyTreeSpec; expected: " << GetNumLeaves()
+                        << ", got: " << leaf_count << ".";
+                    throw py::value_error(oss.str());
                 }
-                [[fallthrough]];
+                agenda.emplace_back(py::reinterpret_borrow<py::object>(*it));
+                ++it;
+                ++leaf_count;
+                break;
             }
 
+            case PyTreeKind::None:
             case PyTreeKind::Tuple:
             case PyTreeKind::List:
             case PyTreeKind::Dict:

@@ -44,8 +44,15 @@ class PyTreeNodeRegistryEntry(NamedTuple):
     from_iterable: UnflattenFunc
 
 
-__GLOBAL_NAMESPACE: str = object()  # type: ignore[assignment]
+# pylint: disable-next=missing-class-docstring,too-few-public-methods
+class GlobalNamespace:  # pragma: no cover
+    def __repr__(self) -> str:
+        return '<GLOBAL NAMESPACE>'
+
+
+__GLOBAL_NAMESPACE: str = GlobalNamespace()  # type: ignore[assignment]
 __REGISTRY_LOCK: Lock = Lock()
+del GlobalNamespace
 
 
 def register_pytree_node(
@@ -99,8 +106,8 @@ def register_pytree_node(
         >>> register_pytree_node(
         ...     torch.Tensor,
         ...     flatten_func=lambda tensor: (
-        ...         (tensor.cpu().numpy(),),
-        ...         dict(dtype=tensor.dtype, device=tensor.device, requires_grad=tensor.requires_grad),
+        ...         (tensor.cpu().detach().numpy(),),
+        ...         {'dtype': tensor.dtype, 'device': tensor.device, 'requires_grad': tensor.requires_grad},
         ...     ),
         ...     unflatten_func=lambda metadata, children: torch.tensor(children[0], **metadata),
         ...     namespace='torch2numpy',

@@ -156,8 +156,8 @@ optree.register_pytree_node(
     torch.Tensor,
     # (tensor) -> (children, metadata)
     flatten_func=lambda tensor: (
-        (tensor.cpu().numpy(),),
-        dict(dtype=tensor.dtype, device=tensor.device, requires_grad=tensor.requires_grad),
+        (tensor.cpu().detach().numpy(),),
+        {'dtype': tensor.dtype, 'device': tensor.device, 'requires_grad': tensor.requires_grad},
     ),
     # (metadata, children) -> tensor
     unflatten_func=lambda metadata, children: torch.tensor(children[0], **metadata),

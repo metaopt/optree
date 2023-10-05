@@ -34,10 +34,10 @@ Tree Manipulation Functions
     tree_map_
     tree_map_with_path
     tree_map_with_path_
+    tree_replace_nones
     tree_transpose
     tree_broadcast_prefix
     broadcast_prefix
-    tree_replace_nones
     prefix_errors
 
 .. autofunction:: tree_flatten
@@ -51,10 +51,10 @@ Tree Manipulation Functions
 .. autofunction:: tree_map_
 .. autofunction:: tree_map_with_path
 .. autofunction:: tree_map_with_path_
+.. autofunction:: tree_replace_nones
 .. autofunction:: tree_transpose
 .. autofunction:: tree_broadcast_prefix
 .. autofunction:: broadcast_prefix
-.. autofunction:: tree_replace_nones
 .. autofunction:: prefix_errors
 
 ------
@@ -64,7 +64,6 @@ Tree Reduce Functions
 
 .. autosummary::
 
-    tree_replace_nones
     tree_reduce
     tree_sum
     tree_max
