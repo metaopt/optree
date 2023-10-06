@@ -217,8 +217,6 @@ ssize_t PyTreeSpec::PathsImpl(Span& paths,
         }
     } else [[likely]] {
         switch (root.kind) {
-            case PyTreeKind::None:
-                break;
             case PyTreeKind::Leaf: {
                 py::tuple path{depth};
                 for (ssize_t d = 0; d < depth; ++d) {
@@ -227,6 +225,9 @@ ssize_t PyTreeSpec::PathsImpl(Span& paths,
                 paths.emplace_back(std::move(path));
                 break;
             }
+
+            case PyTreeKind::None:
+                break;
 
             case PyTreeKind::Tuple:
             case PyTreeKind::List:
@@ -288,8 +289,8 @@ py::list PyTreeSpec::Entries() const {
         return py::list{root.node_entries};
     }
     switch (root.kind) {
-        case PyTreeKind::None:
-        case PyTreeKind::Leaf: {
+        case PyTreeKind::Leaf:
+        case PyTreeKind::None: {
             return py::list{};
         }
 
@@ -482,8 +483,9 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
         case PyTreeKind::Leaf:
             INTERNAL_ERROR("PyTreeSpec::MakeNode() not implemented for leaves.");
 
-        case PyTreeKind::None:
+        case PyTreeKind::None: {
             return py::none();
+        }
 
         case PyTreeKind::Tuple:
         case PyTreeKind::NamedTuple:
@@ -610,15 +612,18 @@ template PyTreeKind PyTreeSpec::GetKind<NONE_IS_LEAF>(const py::handle&,
         case PyTreeKind::Custom:
             // We don't hash node_data custom node types since they may not hashable.
             break;
+
         case PyTreeKind::Leaf:
         case PyTreeKind::None:
         case PyTreeKind::Tuple:
         case PyTreeKind::List:
         case PyTreeKind::NamedTuple:
         case PyTreeKind::Deque:
-        case PyTreeKind::StructSequence:
+        case PyTreeKind::StructSequence: {
             data_hash = py::hash(node.node_data ? node.node_data : py::none());
             break;
+        }
+
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
         case PyTreeKind::DefaultDict: {
@@ -639,6 +644,7 @@ template PyTreeKind PyTreeSpec::GetKind<NONE_IS_LEAF>(const py::handle&,
             }
             break;
         }
+
         default:
             INTERNAL_ERROR();
     }
@@ -699,13 +705,15 @@ std::string PyTreeSpec::ToStringImpl() const {
 
         std::ostringstream sstream{};
         switch (node.kind) {
-            case PyTreeKind::Leaf:
+            case PyTreeKind::Leaf: {
                 agenda.emplace_back("*");
                 continue;
+            }
 
-            case PyTreeKind::None:
+            case PyTreeKind::None: {
                 sstream << "None";
                 break;
+            }
 
             case PyTreeKind::Tuple: {
                 sstream << "(" << children;
@@ -717,9 +725,10 @@ std::string PyTreeSpec::ToStringImpl() const {
                 break;
             }
 
-            case PyTreeKind::List:
+            case PyTreeKind::List: {
                 sstream << "[" << children << "]";
                 break;
+            }
 
             case PyTreeKind::Dict: {
                 EXPECT_EQ(GET_SIZE<py::list>(node.node_data),
@@ -944,27 +953,31 @@ py::object PyTreeSpec::ToPicklable() const {
             case PyTreeKind::Leaf:
             case PyTreeKind::None:
             case PyTreeKind::Tuple:
-            case PyTreeKind::List:
+            case PyTreeKind::List: {
                 if (!t[2].is_none()) [[unlikely]] {
                     throw std::runtime_error("Malformed pickled PyTreeSpec.");
                 }
                 break;
+            }
 
             case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict:
+            case PyTreeKind::OrderedDict: {
                 node.node_data = t[2].cast<py::list>();
                 break;
+            }
 
             case PyTreeKind::NamedTuple:
-            case PyTreeKind::StructSequence:
+            case PyTreeKind::StructSequence: {
                 node.node_data = t[2].cast<py::type>();
                 break;
+            }
 
             case PyTreeKind::DefaultDict:
             case PyTreeKind::Deque:
-            case PyTreeKind::Custom:
+            case PyTreeKind::Custom: {
                 node.node_data = t[2];
                 break;
+            }
 
             default:
                 INTERNAL_ERROR();
