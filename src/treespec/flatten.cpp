@@ -434,8 +434,19 @@ py::list PyTreeSpec::FlattenUpTo(const py::handle& full_tree) const {
                 break;
             }
 
-            case PyTreeKind::None:
+            case PyTreeKind::None: {
+                if (m_none_is_leaf) [[unlikely]] {
+                    INTERNAL_ERROR(
+                        "NoneIsLeaf is true, but `GetKind` returned `PyTreeKind::None`.");
+                }
+                if (!object.is_none()) [[likely]] {
+                    std::ostringstream oss{};
+                    oss << "Expected None, got " << static_cast<std::string>(py::repr(object))
+                        << ".";
+                    throw py::value_error(oss.str());
+                }
                 break;
+            }
 
             case PyTreeKind::Tuple: {
                 AssertExact<py::tuple>(object);

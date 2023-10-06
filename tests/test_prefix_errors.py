@@ -36,8 +36,10 @@ from optree.registry import (
 
 def test_different_types():
     lhs, rhs = (1, 2), [1, 2]
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(ValueError, match=r'Expected an instance of tuple, got .*\.'):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -52,6 +54,7 @@ def test_different_types():
         raise e('in_axes')
 
     lhs, rhs = {'a': 1, 'b': 2}, [1, 2]
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(
         ValueError,
         match=(
@@ -60,6 +63,7 @@ def test_different_types():
         ),
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -73,19 +77,25 @@ def test_different_types():
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
 
-    lhs, rhs = {'a': 1, 'b': 2}, OrderedDict({'a': 1, 'b': 2})
+    lhs, rhs = {'a': 1, 'b': 2}, OrderedDict({'a': 1, 'b': [2, 3]})
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert lhs_treespec.is_prefix(rhs_treespec)
     () = optree.prefix_errors(lhs, rhs)
 
-    lhs, rhs = {'a': 1, 'b': 2}, defaultdict(int, {'a': 1, 'b': 2})
+    lhs, rhs = {'a': 1, 'b': 2}, defaultdict(int, {'a': 1, 'b': [2, 3]})
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert lhs_treespec.is_prefix(rhs_treespec)
     () = optree.prefix_errors(lhs, rhs)
 
 
 def test_different_types_nested():
     lhs, rhs = ((1,), (2,)), ([3], (4,))
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(ValueError, match=r'Expected an instance of .*, got .*\.'):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -99,11 +109,40 @@ def test_different_types_nested():
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
 
+    lhs, rhs = {'a': 1, 'b': None}, {'a': 1, 'b': 2}
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
+    with pytest.raises(ValueError, match=r'Expected None, got .*\.'):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
+    expected = re.escape(
+        textwrap.dedent(
+            """
+            pytree structure error: different types at key path
+                in_axes['b']
+            """,
+        ).strip(),
+    )
+    with pytest.raises(ValueError, match=expected):
+        raise e('in_axes')
+
+    lhs, rhs = {'a': 1, 'b': None}, {'a': 1, 'b': 2}
+    lhs_treespec, rhs_treespec = (
+        optree.tree_structure(lhs, none_is_leaf=True),
+        optree.tree_structure(rhs, none_is_leaf=True),
+    )
+    optree.tree_map_(lambda x, y: None, lhs, rhs, none_is_leaf=True)
+    assert lhs_treespec.is_prefix(rhs_treespec)
+    () = optree.prefix_errors(lhs, rhs, none_is_leaf=True)
+
 
 def test_different_types_multiple():
     lhs, rhs = ((1,), (2,)), ([3], [4])
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(ValueError, match=r'Expected an instance of .*, got .*\.'):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     e1, e2 = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -130,11 +169,13 @@ def test_different_types_multiple():
 
 def test_different_num_children():
     lhs, rhs = (1,), (2, 3)
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(
         ValueError,
         match=r'tuple arity mismatch; expected: \d+, got: \d+; tuple: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -151,11 +192,13 @@ def test_different_num_children():
 
 def test_different_num_children_nested():
     lhs, rhs = [[1]], [[2, 3]]
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(
         ValueError,
         match=r'list arity mismatch; expected: \d+, got: \d+; list: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -172,11 +215,13 @@ def test_different_num_children_nested():
 
 def test_different_num_children_multiple():
     lhs, rhs = [[1], [2]], [[3, 4], [5, 6]]
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(
         ValueError,
         match=r'list arity mismatch; expected: \d+, got: \d+; list: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     e1, e2 = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -203,11 +248,13 @@ def test_different_num_children_multiple():
 
 def test_different_metadata():
     lhs, rhs = {1: 2}, {3: 4}
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(
         ValueError,
         match=r'dictionary key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -222,11 +269,13 @@ def test_different_metadata():
         raise e('in_axes')
 
     lhs, rhs = OrderedDict({'a': 1, 'b': 2}), OrderedDict({'a': 3, 'c': 4})
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(
         ValueError,
         match=r'dictionary key mismatch; expected key\(s\): .*, got key\(s\): .*; OrderedDict: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -240,32 +289,44 @@ def test_different_metadata():
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
 
-    lhs, rhs = OrderedDict({'a': 1, 'b': 2}), OrderedDict({'b': 4, 'a': 3})
+    lhs, rhs = OrderedDict({'a': 1, 'b': 2}), OrderedDict({'b': [4, 5], 'a': 3})
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore key ordering
+    assert lhs_treespec.is_prefix(rhs_treespec)
     () = optree.prefix_errors(lhs, rhs)
 
-    lhs, rhs = defaultdict(list, {'a': 1, 'b': 2}), defaultdict(set, {'b': 4, 'a': 3})
+    lhs, rhs = defaultdict(list, {'a': 1, 'b': 2}), defaultdict(set, {'b': [4, 5], 'a': 3})
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore default factory
+    assert lhs_treespec.is_prefix(rhs_treespec)
     () = optree.prefix_errors(lhs, rhs)
 
-    lhs, rhs = {'a': 1, 'b': 2}, defaultdict(list, {'b': 4, 'a': 3})
+    lhs, rhs = {'a': 1, 'b': 2}, defaultdict(list, {'b': [4, 5], 'a': 3})
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore dictionary types
+    assert lhs_treespec.is_prefix(rhs_treespec)
     () = optree.prefix_errors(lhs, rhs)
 
-    lhs, rhs = OrderedDict({'b': 4, 'a': 3}), {'a': 1, 'b': 2}
+    lhs, rhs = OrderedDict({'b': 5, 'a': 4}), {'a': 1, 'b': [2, 3]}
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore dictionary types
+    assert lhs_treespec.is_prefix(rhs_treespec)
     () = optree.prefix_errors(lhs, rhs)
 
-    lhs, rhs = deque([1, 2], maxlen=None), deque([3, 4], maxlen=3)
+    lhs, rhs = deque([1, 2], maxlen=None), deque([3, [4, 5]], maxlen=3)
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore maxlen
+    assert lhs_treespec.is_prefix(rhs_treespec)
     () = optree.prefix_errors(lhs, rhs)
 
     lhs, rhs = FlatCache([None, 1]), FlatCache(1)
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(
         ValueError,
         match=r'Mismatch custom node data; expected: .*, got: .*; value: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -282,11 +343,13 @@ def test_different_metadata():
 
 def test_different_metadata_nested():
     lhs, rhs = [{1: 2}], [{3: 4}]
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(
         ValueError,
         match=r'dictionary key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -303,11 +366,13 @@ def test_different_metadata_nested():
 
 def test_different_metadata_multiple():
     lhs, rhs = [{1: 2}, {3: 4}], [{3: 4}, {5: 6}]
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(
         ValueError,
         match=r'dictionary key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.',
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     e1, e2 = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -334,8 +399,10 @@ def test_different_metadata_multiple():
 
 def test_namedtuple():
     lhs, rhs = CustomTuple(1, [2, [3]]), CustomTuple(4, [5, 6])
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(ValueError):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -352,8 +419,10 @@ def test_namedtuple():
 
 def test_structseq():
     lhs, rhs = TimeStructTime((1, [2, [3]], *range(7))), TimeStructTime((4, [5, 6], *range(7)))
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(ValueError):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
 
     (e,) = optree.prefix_errors(lhs, rhs)
     expected = re.escape(
@@ -388,6 +457,8 @@ def test_no_errors():
         ({'a': 1, 'b': 2}, {'b': (11, 12, 13), 'a': 2}),
     ):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
+        lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
+        assert lhs_treespec.is_prefix(rhs_treespec)
         () = optree.prefix_errors(lhs, rhs)
 
 
