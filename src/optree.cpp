@@ -144,6 +144,10 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
              "Flatten the subtrees in ``full_tree`` up to the structure of this treespec "
              "and return a list of subtrees.",
              py::arg("full_tree"))
+        .def("broadcast_to_common_suffix",
+             &PyTreeSpec::BroadcastToCommonSuffix,
+             "Broadcast to the common suffix of this treespec and other treespec.",
+             py::arg("other"))
         .def("compose",
              &PyTreeSpec::Compose,
              "Compose two treespecs. Constructs the inner treespec as a subtree at each leaf node.",
