@@ -333,7 +333,7 @@ def test_treespec_compose_children(tree, inner_tree, none_is_leaf, namespace):
         inner_treespec.num_nodes * treespec.num_leaves
     )
     assert composed_treespec.num_nodes == expected_nodes
-    leaves = [1] * expected_leaves
+    leaves = list(range(expected_leaves))
     composed = optree.tree_unflatten(composed_treespec, leaves)
     assert leaves == optree.tree_leaves(
         composed,
@@ -569,7 +569,9 @@ def test_treespec_num_nodes(tree, none_is_leaf, namespace):
     while stack:
         spec = stack.pop()
         nodes.append(spec)
-        stack.extend(reversed(spec.children()))
+        children = spec.children()
+        stack.extend(reversed(children))
+        assert spec.num_nodes == sum(child.num_nodes for child in children) + 1
     assert treespec.num_nodes == len(nodes)
 
 
