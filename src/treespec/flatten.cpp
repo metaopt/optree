@@ -56,7 +56,9 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 if (!NoneIsLeaf) {
                     break;
                 }
-                INTERNAL_ERROR("NoneIsLeaf is true, but `GetKind` returned `PyTreeKind::None`.");
+                INTERNAL_ERROR(
+                    "NoneIsLeaf is true, but PyTreeSpec::GetKind() returned "
+                    "`PyTreeKind::None`.");
             }
 
             case PyTreeKind::Tuple: {
@@ -248,7 +250,9 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 if (!NoneIsLeaf) {
                     break;
                 }
-                INTERNAL_ERROR("NoneIsLeaf is true, but `GetKind` returned `PyTreeKind::None`.");
+                INTERNAL_ERROR(
+                    "NoneIsLeaf is true, but PyTreeSpec::GetKind() returned "
+                    "`PyTreeKind::None`.");
             }
 
             case PyTreeKind::Tuple: {
@@ -437,7 +441,8 @@ py::list PyTreeSpec::FlattenUpTo(const py::handle& full_tree) const {
             case PyTreeKind::None: {
                 if (m_none_is_leaf) [[unlikely]] {
                     INTERNAL_ERROR(
-                        "NoneIsLeaf is true, but `GetKind` returned `PyTreeKind::None`.");
+                        "NoneIsLeaf is true, but PyTreeSpec::GetKind() returned "
+                        "`PyTreeKind::None`.");
                 }
                 if (!object.is_none()) [[likely]] {
                     std::ostringstream oss{};

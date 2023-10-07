@@ -1729,7 +1729,7 @@ def _prefix_error(
             return  # don't look for more errors in this subtree
 
         # If the keys agree, we should ensure that the children are in the same order:
-        full_tree_children = [full_tree[k] for k in prefix_tree_keys]
+        full_tree_children = [full_tree[k] for k in prefix_tree_keys]  # type: ignore[index]
 
     if len(prefix_tree_children) != len(full_tree_children):
         yield lambda name: ValueError(
