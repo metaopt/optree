@@ -72,7 +72,7 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
              py::arg("none_is_leaf") = false)
         .def("none",
              &PyTreeSpec::None,
-             "Make a treespec representing a `None` node.",
+             "Make a treespec representing a ``None`` node.",
              py::arg("none_is_leaf") = false)
         .def("tuple",
              &PyTreeSpec::Tuple,
