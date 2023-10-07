@@ -171,7 +171,7 @@ optree.register_pytree_node(
 {'weight': tensor([[1., 1.]], device='cuda:0'), 'bias': tensor([0., 0.])}
 
 # Flatten without specifying the namespace
->>> tree_flatten(tree)  # `torch.Tensor`s are leaf nodes
+>>> optree.tree_flatten(tree)  # `torch.Tensor`s are leaf nodes
 ([tensor([0., 0.]), tensor([[1., 1.]], device='cuda:0')], PyTreeSpec({'bias': *, 'weight': *}))
 
 # Flatten with the namespace

@@ -15,6 +15,7 @@
 
 # pylint: disable=missing-function-docstring,invalid-name,implicit-str-concat
 
+import random
 import re
 import textwrap
 from collections import OrderedDict, defaultdict, deque
@@ -24,7 +25,7 @@ import pytest
 import optree
 
 # pylint: disable-next=wrong-import-order
-from helpers import CustomTuple, FlatCache, TimeStructTime, Vector2D
+from helpers import TREES, CustomTuple, FlatCache, TimeStructTime, Vector2D, parametrize
 from optree.registry import (
     AttributeKeyPathEntry,
     FlattenedKeyPathEntry,
@@ -289,27 +290,33 @@ def test_different_metadata():
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
 
-    lhs, rhs = OrderedDict({'a': 1, 'b': 2}), OrderedDict({'b': [4, 5], 'a': 3})
+    lhs, rhs = OrderedDict({'a': 1, 'b': [2, 3]}), OrderedDict({'b': [5, [6]], 'a': 4})
     lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore key ordering
     assert lhs_treespec.is_prefix(rhs_treespec)
     () = optree.prefix_errors(lhs, rhs)
 
-    lhs, rhs = defaultdict(list, {'a': 1, 'b': 2}), defaultdict(set, {'b': [4, 5], 'a': 3})
+    lhs, rhs = defaultdict(list, {'a': 1, 'b': [2, 3]}), defaultdict(set, {'b': [5, [6]], 'a': 4})
     lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore default factory
     assert lhs_treespec.is_prefix(rhs_treespec)
     () = optree.prefix_errors(lhs, rhs)
 
-    lhs, rhs = {'a': 1, 'b': 2}, defaultdict(list, {'b': [4, 5], 'a': 3})
+    lhs, rhs = {'a': 1, 'b': [2, 3]}, defaultdict(list, {'b': [5, [6]], 'a': 4})
     lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore dictionary types
     assert lhs_treespec.is_prefix(rhs_treespec)
     () = optree.prefix_errors(lhs, rhs)
 
-    lhs, rhs = OrderedDict({'b': 5, 'a': 4}), {'a': 1, 'b': [2, 3]}
+    lhs, rhs = OrderedDict({'b': [2, 3], 'a': 1}), {'a': 4, 'b': [5, 6]}
     lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore dictionary types
+    assert lhs_treespec.is_prefix(rhs_treespec)
+    () = optree.prefix_errors(lhs, rhs)
+
+    lhs, rhs = OrderedDict({'b': [2, 3], 'a': 1}), {'a': 4, 'b': [5, [6]]}
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
+    optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore dictionary types and key ordering
     assert lhs_treespec.is_prefix(rhs_treespec)
     () = optree.prefix_errors(lhs, rhs)
 
@@ -395,6 +402,84 @@ def test_different_metadata_multiple():
     )
     with pytest.raises(ValueError, match=expected):
         raise e2('in_axes')
+
+
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
+def test_standard_dictionary(tree, none_is_leaf, namespace):
+    random.seed(0)
+
+    def build_subtree(x):
+        return random.choice([x, (x,), [x, x], (x, [x]), {'a': x, 'b': [x]}])
+
+    suffix_tree = optree.tree_map(
+        build_subtree,
+        tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    treespec = optree.tree_structure(
+        tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+
+    if 'FlatCache' in str(treespec):
+        return
+
+    def shuffle_dictionary(x):
+        if type(x) in {dict, OrderedDict, defaultdict}:
+            items = list(x.items())
+            random.shuffle(items)
+            dict_type = random.choice([dict, OrderedDict, defaultdict])
+            if dict_type is defaultdict:
+                return defaultdict(getattr(x, 'default_factory', int), items)
+            return dict_type(items)
+        return x
+
+    shuffled_tree = optree.tree_map(
+        shuffle_dictionary,
+        tree,
+        is_leaf=lambda x: type(x) in (dict, OrderedDict, defaultdict),
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    shuffled_treespec = optree.tree_structure(
+        shuffled_tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    shuffled_suffix_tree = optree.tree_map(
+        shuffle_dictionary,
+        suffix_tree,
+        is_leaf=lambda x: type(x) in (dict, OrderedDict, defaultdict),
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    shuffled_suffix_treespec = optree.tree_structure(
+        shuffled_suffix_tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+
+    # Ignore dictionary types and key ordering
+    optree.tree_map_(
+        lambda x, y: None,
+        shuffled_tree,
+        shuffled_suffix_tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    assert shuffled_treespec.is_prefix(shuffled_suffix_treespec)
+    () == optree.prefix_errors(  # noqa: B015
+        shuffled_tree,
+        shuffled_suffix_tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 def test_namedtuple():
