@@ -1666,7 +1666,7 @@ def _prefix_error(
     )
     both_deque = prefix_tree_type is deque and full_tree_type is deque  # type: ignore[comparison-overlap]
     if prefix_tree_type is not full_tree_type and (
-        # Special handling for directory types
+        # Special handling for dictionary types
         not both_standard_dict
     ):
         yield lambda name: ValueError(
@@ -1692,7 +1692,7 @@ def _prefix_error(
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
-    # Special handling for directory types
+    # Special handling for dictionary types
     if both_standard_dict:
         prefix_tree_keys = (
             prefix_tree_metadata
@@ -1728,6 +1728,9 @@ def _prefix_error(
             )
             return  # don't look for more errors in this subtree
 
+        # If the keys agree, we should ensure that the children are in the same order:
+        full_tree_children = [full_tree[k] for k in prefix_tree_keys]  # type: ignore[index]
+
     if len(prefix_tree_children) != len(full_tree_children):
         yield lambda name: ValueError(
             f'pytree structure error: different numbers of pytree children at key path\n'
@@ -1745,7 +1748,7 @@ def _prefix_error(
         prefix_tree_metadata != full_tree_metadata
         and (not both_deque)  # ignore maxlen mismatch for deque
         and (
-            # Special handling for directory types already done in the keys check above
+            # Special handling for dictionary types already done in the keys check above
             not both_standard_dict
         )
     ):
@@ -1790,7 +1793,7 @@ def _prefix_error(
         namespace=namespace,
     )
     assert keys == keys_ or (
-        # Special handling for directory types already done in the keys check above
+        # Special handling for dictionary types already done in the keys check above
         both_standard_dict
     ), f'equal pytree nodes gave different keys: {keys} and {keys_}'
     # pylint: disable-next=invalid-name

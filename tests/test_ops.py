@@ -511,35 +511,58 @@ def test_all_leaves_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
 
 def test_tree_map():
     x = ((1, 2, None), (3, 4, 5))
-    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
     out = optree.tree_map(lambda *xs: tuple(xs), x, y)
-    assert out == (((1, [3]), (2, None), None), ((3, {'foo': 'bar'}), (4, 7), (5, [5, 6])))
+    assert out == (((1, [6]), (2, None), None), ((3, {'foo': 'bar'}), (4, 7), (5, [8, 9])))
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 0]))
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 7.')):
+        optree.tree_map(lambda *xs: tuple(xs), x, y)
 
 
 def test_tree_map_with_path():
     x = ((1, 2, None), (3, 4, 5))
-    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
     out = optree.tree_map_with_path(lambda *xs: tuple(xs), x, y)
     assert out == (
-        (((0, 0), 1, [3]), ((0, 1), 2, None), None),
-        (((1, 0), 3, {'foo': 'bar'}), ((1, 1), 4, 7), ((1, 2), 5, [5, 6])),
+        (((0, 0), 1, [6]), ((0, 1), 2, None), None),
+        (((1, 0), 3, {'foo': 'bar'}), ((1, 1), 4, 7), ((1, 2), 5, [8, 9])),
     )
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 0]))
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 7.')):
+        optree.tree_map_with_path(lambda *xs: tuple(xs), x, y)
 
 
 def test_tree_map_none_is_leaf():
     x = ((1, 2, None), (3, 4, 5))
-    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
     out = optree.tree_map(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
-    assert out == (((1, [3]), (2, None), (None, 4)), ((3, {'foo': 'bar'}), (4, 7), (5, [5, 6])))
+    assert out == (((1, [6]), (2, None), (None, None)), ((3, {'foo': 'bar'}), (4, 7), (5, [8, 9])))
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 0]))
+    out = optree.tree_map(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
+    assert out == (((1, [6]), (2, None), (None, 7)), ((3, {'foo': 'bar'}), (4, 8), (5, [9, 0])))
 
 
 def test_tree_map_with_path_none_is_leaf():
     x = ((1, 2, None), (3, 4, 5))
-    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
     out = optree.tree_map_with_path(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
     assert out == (
-        (((0, 0), 1, [3]), ((0, 1), 2, None), ((0, 2), None, 4)),
-        (((1, 0), 3, {'foo': 'bar'}), ((1, 1), 4, 7), ((1, 2), 5, [5, 6])),
+        (((0, 0), 1, [6]), ((0, 1), 2, None), ((0, 2), None, None)),
+        (((1, 0), 3, {'foo': 'bar'}), ((1, 1), 4, 7), ((1, 2), 5, [8, 9])),
+    )
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 0]))
+    out = optree.tree_map_with_path(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
+    assert out == (
+        (((0, 0), 1, [6]), ((0, 1), 2, None), ((0, 2), None, 7)),
+        (((1, 0), 3, {'foo': 'bar'}), ((1, 1), 4, 8), ((1, 2), 5, [9, 0])),
     )
 
 
@@ -639,12 +662,28 @@ def test_tree_map_with_is_leaf_none():
 
 def test_tree_map_with_is_leaf():
     x = ((1, 2, None), [3, 4, 5])
-    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+    y = (([3], None, None), ({'foo': 'bar'}, 7, [5, 6]))
     out = optree.tree_map(lambda *xs: tuple(xs), x, y, is_leaf=lambda n: isinstance(n, list))
     assert out == (((1, [3]), (2, None), None), (([3, 4, 5], ({'foo': 'bar'}, 7, [5, 6]))))
 
+    x = ((1, 2, None), [3, 4, 5])
+    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 4.')):
+        optree.tree_map(lambda *xs: tuple(xs), x, y, is_leaf=lambda n: isinstance(n, list))
+
 
 def test_tree_map_with_is_leaf_none_is_leaf():
+    x = ((1, 2, None), [3, 4, 5])
+    y = (([3], None, None), ({'foo': 'bar'}, 7, [5, 6]))
+    out = optree.tree_map(
+        lambda *xs: tuple(xs),
+        x,
+        y,
+        is_leaf=lambda n: isinstance(n, list),
+        none_is_leaf=True,
+    )
+    assert out == (((1, [3]), (2, None), (None, None)), (([3, 4, 5], ({'foo': 'bar'}, 7, [5, 6]))))
+
     x = ((1, 2, None), [3, 4, 5])
     y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
     out = optree.tree_map(
@@ -659,46 +698,83 @@ def test_tree_map_with_is_leaf_none_is_leaf():
 
 def test_tree_map_ignore_return():
     x = ((1, 2, None), (3, 4, 5))
-    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+    y = (([3], None, None), ({'foo': 'bar'}, 7, [5, 6]))
 
-    def fn(*xs):
+    def fn1(*xs):
         leaves.append(xs)
         return 0
 
     leaves = []
-    out = optree.tree_map_(fn, x, y)
+    out = optree.tree_map_(fn1, x, y)
     assert out is x
     assert x == ((1, 2, None), (3, 4, 5))
     assert leaves == [(1, [3]), (2, None), (3, {'foo': 'bar'}), (4, 7), (5, [5, 6])]
 
-
-def test_tree_map_with_path_ignore_return():
     x = ((1, 2, None), (3, 4, 5))
     y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
 
-    def fn(p, *xs):
+    def fn2(*xs):
+        leaves.append(xs)
+        return 0
+
+    leaves = []
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 4.')):
+        optree.tree_map_(fn2, x, y)
+
+
+def test_tree_map_with_path_ignore_return():
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([3], None, None), ({'foo': 'bar'}, 7, [5, 6]))
+
+    def fn1(p, *xs):
         if p[1] >= 1:
             leaves.append(xs)
         return 0
 
     leaves = []
-    out = optree.tree_map_with_path_(fn, x, y)
+    out = optree.tree_map_with_path_(fn1, x, y)
     assert out is x
     assert x == ((1, 2, None), (3, 4, 5))
     assert leaves == [(2, None), (4, 7), (5, [5, 6])]
 
-
-def test_tree_map_with_path_ignore_return_none_is_leaf():
     x = ((1, 2, None), (3, 4, 5))
     y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
 
-    def fn(p, *xs):
+    def fn2(p, *xs):
         if p[1] >= 1:
             leaves.append(xs)
         return 0
 
     leaves = []
-    out = optree.tree_map_with_path_(fn, x, y, none_is_leaf=True)
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 4.')):
+        optree.tree_map_with_path_(fn2, x, y)
+
+
+def test_tree_map_with_path_ignore_return_none_is_leaf():
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([3], None, None), ({'foo': 'bar'}, 7, [5, 6]))
+
+    def fn1(p, *xs):
+        if p[1] >= 1:
+            leaves.append(xs)
+        return 0
+
+    leaves = []
+    out = optree.tree_map_with_path_(fn1, x, y, none_is_leaf=True)
+    assert out is x
+    assert x == ((1, 2, None), (3, 4, 5))
+    assert leaves == [(2, None), (None, None), (4, 7), (5, [5, 6])]
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+
+    def fn2(p, *xs):
+        if p[1] >= 1:
+            leaves.append(xs)
+        return 0
+
+    leaves = []
+    out = optree.tree_map_with_path_(fn2, x, y, none_is_leaf=True)
     assert out is x
     assert x == ((1, 2, None), (3, 4, 5))
     assert leaves == [(2, None), (None, 4), (4, 7), (5, [5, 6])]
@@ -706,26 +782,44 @@ def test_tree_map_with_path_ignore_return_none_is_leaf():
 
 def test_tree_map_inplace():
     x = ((Counter(1), Counter(2), None), (Counter(3), Counter(4), Counter(5)))
-    y = ((3, 0, 4), (5, 7, 6))
+    y = ((3, 0, None), (5, 7, 6))
 
-    def fn_(x, y):
-        x.increment(y)
+    def fn1_(xi, yi):
+        xi.increment(yi)
 
-    out = optree.tree_map_(fn_, x, y)
+    out = optree.tree_map_(fn1_, x, y)
     assert out is x
     assert x == ((Counter(4), Counter(2), None), (Counter(8), Counter(11), Counter(11)))
+
+    x = ((Counter(1), Counter(2), None), (Counter(3), Counter(4), Counter(5)))
+    y = ((3, 0, 4), (5, 7, 6))
+
+    def fn2_(xi, yi):
+        xi.increment(yi)
+
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 4.')):
+        optree.tree_map_(fn2_, x, y)
 
 
 def test_tree_map_with_path_inplace():
     x = ((Counter(1), Counter(2), None), (Counter(3), Counter(4), Counter(5)))
-    y = ((3, 0, 4), (5, 7, 6))
+    y = ((3, 0, None), (5, 7, 6))
 
-    def fn_(p, x, y):
-        x.increment(y * (1 + sum(p)))
+    def fn1_(p, xi, yi):
+        xi.increment(yi * (1 + sum(p)))
 
-    out = optree.tree_map_with_path_(fn_, x, y)
+    out = optree.tree_map_with_path_(fn1_, x, y)
     assert out is x
     assert x == ((Counter(4), Counter(2), None), (Counter(13), Counter(25), Counter(29)))
+
+    x = ((Counter(1), Counter(2), None), (Counter(3), Counter(4), Counter(5)))
+    y = ((3, 0, 4), (5, 7, 6))
+
+    def fn2_(p, xi, yi):
+        xi.increment(yi * (1 + sum(p)))
+
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 4.')):
+        optree.tree_map_with_path_(fn2_, x, y)
 
 
 def test_tree_map_inplace_key_order():

@@ -72,7 +72,7 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
              py::arg("none_is_leaf") = false)
         .def("none",
              &PyTreeSpec::None,
-             "Make a treespec representing a `None` node.",
+             "Make a treespec representing a ``None`` node.",
              py::arg("none_is_leaf") = false)
         .def("tuple",
              &PyTreeSpec::Tuple,
@@ -159,12 +159,12 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
              &PyTreeSpec::IsPrefix,
              "Test whether this treespec is a prefix of the given treespec.",
              py::arg("other"),
-             py::arg("strict") = true)
+             py::arg("strict") = false)
         .def("is_suffix",
              &PyTreeSpec::IsSuffix,
              "Test whether this treespec is a suffix of the given treespec.",
              py::arg("other"),
-             py::arg("strict") = true)
+             py::arg("strict") = false)
         .def("paths", &PyTreeSpec::Paths, "Return a list of paths to the leaves of the treespec.")
         .def("entries", &PyTreeSpec::Entries, "Return a list of one-level entries to the children.")
         .def("entry", &PyTreeSpec::Entry, "Return the entry at the given index.", py::arg("index"))

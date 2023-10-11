@@ -88,7 +88,7 @@ bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
     // NOLINTNEXTLINE[readability-qualified-auto]
     for (auto a = m_traversal.begin(); a != m_traversal.end(); ++a, ++b) {
         if (a->kind != b->kind || a->arity != b->arity ||
-            (a->node_data.ptr() == nullptr) != (b->node_data.ptr() == nullptr) ||
+            static_cast<bool>(a->node_data) != static_cast<bool>(b->node_data) ||
             a->custom != b->custom) [[likely]] {
             return false;
         }
@@ -101,6 +101,7 @@ bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
     return true;
 }
 
+// NOLINTNEXTLINE[readability-function-cognitive-complexity]
 bool PyTreeSpec::IsPrefix(const PyTreeSpec& other, const bool& strict) const {
     if (m_none_is_leaf != other.m_none_is_leaf) [[unlikely]] {
         return false;
@@ -114,33 +115,125 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec& other, const bool& strict) const {
     }
 
     bool all_leaves_match = true;
+    std::vector<Node> other_traversal{other.m_traversal.begin(), other.m_traversal.end()};
     // NOLINTNEXTLINE[readability-qualified-auto]
-    auto b = other.m_traversal.rbegin();
+    auto b = other_traversal.rbegin();
     // NOLINTNEXTLINE[readability-qualified-auto]
     for (auto a = m_traversal.rbegin(); a != m_traversal.rend(); ++a, ++b) {
-        if (b == other.m_traversal.rend()) [[unlikely]] {
+        if (b == other_traversal.rend()) [[unlikely]] {
             return false;
         }
         if (a->kind == PyTreeKind::Leaf) [[unlikely]] {
             all_leaves_match &= b->kind == PyTreeKind::Leaf;
             b += b->num_nodes - 1;
-            EXPECT_LT(b, other.m_traversal.rend(), "PyTreeSpec traversal out of range.");
+            EXPECT_LT(b, other_traversal.rend(), "PyTreeSpec traversal out of range.");
             continue;
         }
-        if (a->kind != b->kind || a->arity != b->arity ||
-            (a->node_data.ptr() == nullptr) != (b->node_data.ptr() == nullptr) ||
+        if (a->arity != b->arity ||
+            static_cast<bool>(a->node_data) != static_cast<bool>(b->node_data) ||
             a->custom != b->custom) [[likely]] {
             return false;
         }
-        if (a->node_data && a->node_data.not_equal(b->node_data)) [[likely]] {
-            return false;
+
+        switch (a->kind) {
+            case PyTreeKind::None:
+            case PyTreeKind::Tuple:
+            case PyTreeKind::List:
+            case PyTreeKind::Deque: {
+                if (a->kind != b->kind) [[likely]] {
+                    return false;
+                }
+                break;
+            }
+
+            case PyTreeKind::Dict:
+            case PyTreeKind::OrderedDict:
+            case PyTreeKind::DefaultDict: {
+                if (b->kind != PyTreeKind::Dict && b->kind != PyTreeKind::OrderedDict &&
+                    b->kind != PyTreeKind::DefaultDict) [[likely]] {
+                    return false;
+                }
+                auto expected_keys = py::reinterpret_borrow<py::list>(
+                    a->kind != PyTreeKind::DefaultDict
+                        ? a->node_data
+                        : GET_ITEM_BORROW<py::tuple>(a->node_data, 1));
+                auto other_keys = py::reinterpret_borrow<py::list>(
+                    b->kind != PyTreeKind::DefaultDict
+                        ? b->node_data
+                        : GET_ITEM_BORROW<py::tuple>(b->node_data, 1));
+                py::dict dict{};
+                for (ssize_t i = 0; i < b->arity; ++i) {
+                    dict[GET_ITEM_HANDLE<py::list>(other_keys, i)] = py::int_(i);
+                }
+                if (!DictKeysEqual(expected_keys, dict)) [[likely]] {
+                    return false;
+                }
+                if (expected_keys.not_equal(other_keys)) [[unlikely]] {
+                    auto other_offsets = reserved_vector<ssize_t>(b->arity + 1);
+                    auto other_num_nodes = reserved_vector<ssize_t>(b->arity);
+                    auto other_cur = b + 1;
+                    other_offsets.emplace_back(1);
+                    for (ssize_t j = b->arity - 1; j >= 0; --j) {
+                        ssize_t num_nodes = other_cur->num_nodes;
+                        other_num_nodes.emplace_back(num_nodes);
+                        other_offsets.emplace_back(other_offsets.back() + num_nodes);
+                        other_cur += num_nodes;
+                    }
+                    std::reverse(other_num_nodes.begin(), other_num_nodes.end());
+                    std::reverse(other_offsets.begin(), other_offsets.end());
+                    EXPECT_EQ(
+                        other_offsets.front(), b->num_nodes, "PyTreeSpec traversal out of range.");
+                    auto reordered_index_to_index = std::unordered_map<ssize_t, ssize_t>{};
+                    for (ssize_t i = a->arity - 1; i >= 0; --i) {
+                        py::object key = GET_ITEM_BORROW<py::list>(expected_keys, i);
+                        reordered_index_to_index.emplace(i, dict[key].cast<ssize_t>());
+                    }
+                    auto reordered_other_num_nodes = reserved_vector<ssize_t>(b->arity);
+                    reordered_other_num_nodes.resize(b->arity);
+                    for (const auto& [i, j] : reordered_index_to_index) {
+                        reordered_other_num_nodes[i] = other_num_nodes[j];
+                    }
+                    auto reordered_other_offsets = reserved_vector<ssize_t>(b->arity + 1);
+                    reordered_other_offsets.emplace_back(1);
+                    for (ssize_t i = a->arity - 1; i >= 0; --i) {
+                        reordered_other_offsets.emplace_back(reordered_other_offsets.back() +
+                                                             reordered_other_num_nodes[i]);
+                    }
+                    std::reverse(reordered_other_offsets.begin(), reordered_other_offsets.end());
+                    EXPECT_EQ(reordered_other_offsets.front(),
+                              b->num_nodes,
+                              "PyTreeSpec traversal out of range.");
+                    auto original_b = other.m_traversal.rbegin() + (b - other_traversal.rbegin());
+                    for (const auto& [i, j] : reordered_index_to_index) {
+                        std::copy(original_b + other_offsets[j + 1],
+                                  original_b + other_offsets[j],
+                                  b + reordered_other_offsets[i + 1]);
+                    }
+                }
+                break;
+            }
+
+            case PyTreeKind::NamedTuple:
+            case PyTreeKind::StructSequence:
+            case PyTreeKind::Custom: {
+                if (a->kind != b->kind || (a->node_data && a->node_data.not_equal(b->node_data)))
+                    [[likely]] {
+                    return false;
+                }
+                break;
+            }
+
+            case PyTreeKind::Leaf:
+            default:
+                INTERNAL_ERROR();
         }
+
         if (a->num_nodes > b->num_nodes) [[likely]] {
             return false;
         }
     }
-    EXPECT_EQ(b, other.m_traversal.rend(), "PyTreeSpec traversal did not yield a singleton.");
-    return !strict || !all_leaves_match;
+    EXPECT_EQ(b, other_traversal.rend(), "PyTreeSpec traversal did not yield a singleton.");
+    return (!strict || !all_leaves_match);
 }
 
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
@@ -217,8 +310,6 @@ ssize_t PyTreeSpec::PathsImpl(Span& paths,
         }
     } else [[likely]] {
         switch (root.kind) {
-            case PyTreeKind::None:
-                break;
             case PyTreeKind::Leaf: {
                 py::tuple path{depth};
                 for (ssize_t d = 0; d < depth; ++d) {
@@ -227,6 +318,9 @@ ssize_t PyTreeSpec::PathsImpl(Span& paths,
                 paths.emplace_back(std::move(path));
                 break;
             }
+
+            case PyTreeKind::None:
+                break;
 
             case PyTreeKind::Tuple:
             case PyTreeKind::List:
@@ -288,8 +382,8 @@ py::list PyTreeSpec::Entries() const {
         return py::list{root.node_entries};
     }
     switch (root.kind) {
-        case PyTreeKind::None:
-        case PyTreeKind::Leaf: {
+        case PyTreeKind::Leaf:
+        case PyTreeKind::None: {
             return py::list{};
         }
 
@@ -482,8 +576,9 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
         case PyTreeKind::Leaf:
             INTERNAL_ERROR("PyTreeSpec::MakeNode() not implemented for leaves.");
 
-        case PyTreeKind::None:
+        case PyTreeKind::None: {
             return py::none();
+        }
 
         case PyTreeKind::Tuple:
         case PyTreeKind::NamedTuple:
@@ -610,15 +705,18 @@ template PyTreeKind PyTreeSpec::GetKind<NONE_IS_LEAF>(const py::handle&,
         case PyTreeKind::Custom:
             // We don't hash node_data custom node types since they may not hashable.
             break;
+
         case PyTreeKind::Leaf:
         case PyTreeKind::None:
         case PyTreeKind::Tuple:
         case PyTreeKind::List:
         case PyTreeKind::NamedTuple:
         case PyTreeKind::Deque:
-        case PyTreeKind::StructSequence:
+        case PyTreeKind::StructSequence: {
             data_hash = py::hash(node.node_data ? node.node_data : py::none());
             break;
+        }
+
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
         case PyTreeKind::DefaultDict: {
@@ -639,6 +737,7 @@ template PyTreeKind PyTreeSpec::GetKind<NONE_IS_LEAF>(const py::handle&,
             }
             break;
         }
+
         default:
             INTERNAL_ERROR();
     }
@@ -699,13 +798,15 @@ std::string PyTreeSpec::ToStringImpl() const {
 
         std::ostringstream sstream{};
         switch (node.kind) {
-            case PyTreeKind::Leaf:
+            case PyTreeKind::Leaf: {
                 agenda.emplace_back("*");
                 continue;
+            }
 
-            case PyTreeKind::None:
+            case PyTreeKind::None: {
                 sstream << "None";
                 break;
+            }
 
             case PyTreeKind::Tuple: {
                 sstream << "(" << children;
@@ -717,9 +818,10 @@ std::string PyTreeSpec::ToStringImpl() const {
                 break;
             }
 
-            case PyTreeKind::List:
+            case PyTreeKind::List: {
                 sstream << "[" << children << "]";
                 break;
+            }
 
             case PyTreeKind::Dict: {
                 EXPECT_EQ(GET_SIZE<py::list>(node.node_data),
@@ -944,27 +1046,31 @@ py::object PyTreeSpec::ToPicklable() const {
             case PyTreeKind::Leaf:
             case PyTreeKind::None:
             case PyTreeKind::Tuple:
-            case PyTreeKind::List:
+            case PyTreeKind::List: {
                 if (!t[2].is_none()) [[unlikely]] {
                     throw std::runtime_error("Malformed pickled PyTreeSpec.");
                 }
                 break;
+            }
 
             case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict:
+            case PyTreeKind::OrderedDict: {
                 node.node_data = t[2].cast<py::list>();
                 break;
+            }
 
             case PyTreeKind::NamedTuple:
-            case PyTreeKind::StructSequence:
+            case PyTreeKind::StructSequence: {
                 node.node_data = t[2].cast<py::type>();
                 break;
+            }
 
             case PyTreeKind::DefaultDict:
             case PyTreeKind::Deque:
-            case PyTreeKind::Custom:
+            case PyTreeKind::Custom: {
                 node.node_data = t[2];
                 break;
+            }
 
             default:
                 INTERNAL_ERROR();

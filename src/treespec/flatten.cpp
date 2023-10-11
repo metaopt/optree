@@ -47,14 +47,19 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 child, leaves, depth + 1, leaf_predicate, registry_namespace);
         };
         switch (node.kind) {
-            case PyTreeKind::None:
+            case PyTreeKind::Leaf: {
+                leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
+                break;
+            }
+
+            case PyTreeKind::None: {
                 if (!NoneIsLeaf) {
                     break;
                 }
-                INTERNAL_ERROR("NoneIsLeaf is true, but `GetKind` returned `PyTreeKind::None`.");
-            case PyTreeKind::Leaf:
-                leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
-                break;
+                INTERNAL_ERROR(
+                    "NoneIsLeaf is true, but PyTreeSpec::GetKind() returned "
+                    "`PyTreeKind::None`.");
+            }
 
             case PyTreeKind::Tuple: {
                 node.arity = GET_SIZE<py::tuple>(handle);
@@ -231,11 +236,6 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             stack.pop_back();
         };
         switch (node.kind) {
-            case PyTreeKind::None:
-                if (!NoneIsLeaf) {
-                    break;
-                }
-                INTERNAL_ERROR("NoneIsLeaf is true, but `GetKind` returned `PyTreeKind::None`.");
             case PyTreeKind::Leaf: {
                 py::tuple path{depth};
                 for (ssize_t d = 0; d < depth; ++d) {
@@ -244,6 +244,15 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
                 paths.emplace_back(std::move(path));
                 break;
+            }
+
+            case PyTreeKind::None: {
+                if (!NoneIsLeaf) {
+                    break;
+                }
+                INTERNAL_ERROR(
+                    "NoneIsLeaf is true, but PyTreeSpec::GetKind() returned "
+                    "`PyTreeKind::None`.");
             }
 
             case PyTreeKind::Tuple: {
@@ -422,14 +431,27 @@ py::list PyTreeSpec::FlattenUpTo(const py::handle& full_tree) const {
         ++it;
 
         switch (node.kind) {
-            case PyTreeKind::None:
-                break;
-
-            case PyTreeKind::Leaf:
+            case PyTreeKind::Leaf: {
                 EXPECT_GE(leaf, 0, "Leaf count mismatch.");
                 SET_ITEM<py::list>(leaves, leaf, object);
                 --leaf;
                 break;
+            }
+
+            case PyTreeKind::None: {
+                if (m_none_is_leaf) [[unlikely]] {
+                    INTERNAL_ERROR(
+                        "NoneIsLeaf is true, but PyTreeSpec::GetKind() returned "
+                        "`PyTreeKind::None`.");
+                }
+                if (!object.is_none()) [[likely]] {
+                    std::ostringstream oss{};
+                    oss << "Expected None, got " << static_cast<std::string>(py::repr(object))
+                        << ".";
+                    throw py::value_error(oss.str());
+                }
+                break;
+            }
 
             case PyTreeKind::Tuple: {
                 AssertExact<py::tuple>(object);
