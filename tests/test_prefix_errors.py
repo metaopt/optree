@@ -15,7 +15,6 @@
 
 # pylint: disable=missing-function-docstring,invalid-name,implicit-str-concat
 
-import itertools
 import random
 import re
 import textwrap
@@ -411,17 +410,10 @@ def test_different_metadata_multiple():
     namespace=['', 'undefined', 'namespace'],
 )
 def test_standard_dictionary(tree, none_is_leaf, namespace):
-    count = itertools.count()
+    random.seed(0)
 
     def build_subtree(x):
-        cnt = next(count)
-        if cnt % 4 == 0:
-            return (x,)
-        if cnt % 4 == 1:
-            return [x, x]
-        if cnt % 4 == 2:
-            return (x, [x])
-        return {'a': x, 'b': [x]}
+        return random.choice([x, (x,), [x, x], (x, [x]), {'a': x, 'b': [x]}])
 
     suffix_tree = optree.tree_map(
         build_subtree,
@@ -437,8 +429,6 @@ def test_standard_dictionary(tree, none_is_leaf, namespace):
 
     if 'FlatCache' in str(treespec):
         return
-
-    random.seed(0)
 
     def shuffle_dictionary(x):
         if type(x) in {dict, OrderedDict, defaultdict}:
