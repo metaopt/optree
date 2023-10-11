@@ -28,6 +28,8 @@ MAX_RECURSION_DEPTH: int
 # Set if the type allows subclassing (see CPython's Include/object.h)
 Py_TPFLAGS_BASETYPE: int  # (1UL << 10)
 
+GLIBCXX_USE_CXX11_ABI: bool
+
 def flatten(
     tree: PyTree[T],
     leaf_predicate: Callable[[T], bool] | None = None,
