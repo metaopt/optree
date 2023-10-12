@@ -90,6 +90,10 @@ class PyTreeSpec {
     // *), *], the result is the list of leaves [1, (2, 3), {"foo": 4}].
     [[nodiscard]] py::list FlattenUpTo(const py::handle &full_tree) const;
 
+    // Broadcast to a common suffix of this PyTreeSpec and other PyTreeSpec.
+    [[nodiscard]] std::unique_ptr<PyTreeSpec> BroadcastToCommonSuffix(
+        const PyTreeSpec &other) const;
+
     // Test whether the given object is a leaf node.
     static bool ObjectIsLeaf(const py::handle &handle,
                              const std::optional<py::function> &leaf_predicate,
@@ -229,6 +233,9 @@ class PyTreeSpec {
     // The registry namespace used to resolve the custom pytree node types.
     std::string m_namespace{};
 
+    // Helper that returns the string representation of a node kind.
+    static std::string NodeKindToString(const Node &node);
+
     // Helper that manufactures an instance of a node given its children.
     static py::object MakeNode(const Node &node,
                                const py::object *children,
@@ -255,6 +262,13 @@ class PyTreeSpec {
                                  const ssize_t &depth,
                                  const std::optional<py::function> &leaf_predicate,
                                  const std::string &registry_namespace);
+
+    static std::tuple<ssize_t, ssize_t, ssize_t, ssize_t> BroadcastToCommonSuffixImpl(
+        std::vector<Node> &nodes,  // NOLINT[runtime/references]
+        const std::vector<Node> &traversal,
+        const ssize_t &pos,
+        const std::vector<Node> &other_traversal,
+        const ssize_t &other_pos);
 
     template <bool NoneIsLeaf>
     static bool ObjectIsLeafImpl(const py::handle &handle,

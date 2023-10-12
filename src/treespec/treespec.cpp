@@ -236,6 +236,273 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec& other, const bool& strict) const {
     return (!strict || !all_leaves_match);
 }
 
+// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+/*static*/ std::tuple<ssize_t, ssize_t, ssize_t, ssize_t> PyTreeSpec::BroadcastToCommonSuffixImpl(
+    std::vector<Node>& nodes,
+    const std::vector<Node>& traversal,
+    const ssize_t& pos,
+    const std::vector<Node>& other_traversal,
+    const ssize_t& other_pos) {
+    const Node& root = traversal.at(pos);
+    const Node& other_root = other_traversal.at(other_pos);
+    EXPECT_GE(pos + 1,
+              root.num_nodes,
+              "PyTreeSpec::BroadcastToCommonSuffix() walked off start of array "
+              "for the current PyTreeSpec.");
+    EXPECT_GE(other_pos + 1,
+              other_root.num_nodes,
+              "PyTreeSpec::BroadcastToCommonSuffix() walked off start of array "
+              "for the other PyTreeSpec.");
+
+    ssize_t cur = pos - 1;
+    ssize_t other_cur = other_pos - 1;
+
+    if (root.kind == PyTreeKind::Leaf) [[likely]] {
+        std::copy(other_traversal.rend() - (other_pos + 1),
+                  other_traversal.rend() - (other_pos - other_root.num_nodes + 1),
+                  std::back_inserter(nodes));
+        other_cur -= other_root.num_nodes - 1;
+        return {pos - cur, other_pos - other_cur, other_root.num_nodes, other_root.num_leaves};
+    }
+    if (other_root.kind == PyTreeKind::Leaf) [[likely]] {
+        std::copy(traversal.rend() - (pos + 1),
+                  traversal.rend() - (pos - root.num_nodes + 1),
+                  std::back_inserter(nodes));
+        cur -= root.num_nodes - 1;
+        return {pos - cur, other_pos - other_cur, root.num_nodes, root.num_leaves};
+    }
+    if (root.kind == PyTreeKind::None) [[unlikely]] {
+        if (other_root.kind != PyTreeKind::None) [[unlikely]] {
+            std::ostringstream oss{};
+            oss << "PyTreeSpecs have incompatible node types; expected type: "
+                << NodeKindToString(root) << ", got: " << NodeKindToString(other_root) << ".";
+            throw py::value_error(oss.str());
+        }
+
+        nodes.emplace_back(root);
+        return {pos - cur, other_pos - other_cur, root.num_nodes, root.num_leaves};
+    }
+
+    Node node;
+    node.kind = root.kind;
+    node.arity = root.arity;
+    node.num_leaves = 0;
+    node.num_nodes = 1;
+    node.node_data = root.node_data;
+    node.custom = root.custom;
+    node.ordered_keys = root.ordered_keys;
+    switch (root.kind) {
+        case PyTreeKind::Tuple:
+        case PyTreeKind::List:
+        case PyTreeKind::Deque: {
+            if (root.kind != other_root.kind) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << "PyTreeSpecs have incompatible node types; expected type: "
+                    << NodeKindToString(root) << ", got: " << NodeKindToString(other_root) << ".";
+                throw py::value_error(oss.str());
+            }
+            if (root.arity != other_root.arity) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << NodeKindToString(root) << " arity mismatch; expected: " << root.arity
+                    << ", got: " << other_root.arity << ".";
+                throw py::value_error(oss.str());
+            }
+            break;
+        }
+
+        case PyTreeKind::Dict:
+        case PyTreeKind::OrderedDict:
+        case PyTreeKind::DefaultDict: {
+            if (other_root.kind != PyTreeKind::Dict && other_root.kind != PyTreeKind::OrderedDict &&
+                other_root.kind != PyTreeKind::DefaultDict) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << "PyTreeSpecs have incompatible node types; expected type: "
+                    << NodeKindToString(root) << ", got: " << NodeKindToString(other_root) << ".";
+                throw py::value_error(oss.str());
+            }
+
+            auto expected_keys = py::reinterpret_borrow<py::list>(
+                root.kind != PyTreeKind::DefaultDict
+                    ? root.node_data
+                    : GET_ITEM_BORROW<py::tuple>(root.node_data, 1));
+            auto other_keys = py::reinterpret_borrow<py::list>(
+                other_root.kind != PyTreeKind::DefaultDict
+                    ? other_root.node_data
+                    : GET_ITEM_BORROW<py::tuple>(other_root.node_data, 1));
+            py::dict dict{};
+            for (ssize_t i = 0; i < other_root.arity; ++i) {
+                dict[GET_ITEM_HANDLE<py::list>(other_keys, i)] = py::int_(i);
+            }
+            if (!DictKeysEqual(expected_keys, dict)) [[unlikely]] {
+                TotalOrderSort(other_keys);
+                auto [missing_keys, extra_keys] = DictKeysDifference(expected_keys, dict);
+                std::ostringstream key_difference_sstream{};
+                if (GET_SIZE<py::list>(missing_keys) != 0) [[likely]] {
+                    key_difference_sstream << ", missing key(s): "
+                                           << static_cast<std::string>(py::repr(missing_keys));
+                }
+                if (GET_SIZE<py::list>(extra_keys) != 0) [[likely]] {
+                    key_difference_sstream << ", extra key(s): "
+                                           << static_cast<std::string>(py::repr(extra_keys));
+                }
+                std::ostringstream oss{};
+                oss << "dictionary key mismatch; expected key(s): "
+                    << static_cast<std::string>(py::repr(expected_keys))
+                    << ", got key(s): " + static_cast<std::string>(py::repr(other_keys))
+                    << key_difference_sstream.str() << ".";
+                throw py::value_error(oss.str());
+            }
+
+            size_t start_num_nodes = nodes.size();
+            nodes.emplace_back(std::move(node));
+            auto other_curs = reserved_vector<ssize_t>(other_root.arity);
+            for (ssize_t i = 0; i < other_root.arity; ++i) {
+                other_curs.emplace_back(other_cur);
+                other_cur -= other_traversal.at(other_cur).num_nodes;
+            }
+            std::reverse(other_curs.begin(), other_curs.end());
+            ssize_t last_other_cur = other_cur;
+            for (ssize_t i = root.arity - 1; i >= 0; --i) {
+                py::object key = GET_ITEM_BORROW<py::list>(expected_keys, i);
+                other_cur = other_curs[dict[key].cast<ssize_t>()];
+                auto [num_nodes, other_num_nodes, new_num_nodes, new_num_leaves] =
+                    // NOLINTNEXTLINE[misc-no-recursion]
+                    BroadcastToCommonSuffixImpl(nodes, traversal, cur, other_traversal, other_cur);
+                cur -= num_nodes;
+                nodes[start_num_nodes].num_nodes += new_num_nodes;
+                nodes[start_num_nodes].num_leaves += new_num_leaves;
+            }
+            return {pos - cur,
+                    other_pos - last_other_cur,
+                    nodes[start_num_nodes].num_nodes,
+                    nodes[start_num_nodes].num_leaves};
+        }
+
+        case PyTreeKind::NamedTuple:
+        case PyTreeKind::StructSequence: {
+            if (root.kind != other_root.kind) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << "PyTreeSpecs have incompatible node types; expected type: "
+                    << NodeKindToString(root) << ", got: " << NodeKindToString(other_root) << ".";
+                throw py::value_error(oss.str());
+            }
+            if (root.arity != other_root.arity) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << (root.kind == PyTreeKind::NamedTuple ? "namedtuple" : "PyStructSequence")
+                    << " arity mismatch; expected: " << root.arity << ", got: " << other_root.arity
+                    << ".";
+                throw py::value_error(oss.str());
+            }
+            if (root.node_data.not_equal(other_root.node_data)) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << (root.kind == PyTreeKind::NamedTuple ? "namedtuple" : "PyStructSequence")
+                    << " type mismatch; expected type: " << NodeKindToString(root)
+                    << ", got type: " << NodeKindToString(other_root) << ".";
+                throw py::value_error(oss.str());
+            }
+            break;
+        }
+
+        case PyTreeKind::Custom: {
+            if (root.kind != other_root.kind) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << "PyTreeSpecs have incompatible node types; expected type: "
+                    << NodeKindToString(root) << ", got: " << NodeKindToString(other_root) << ".";
+                throw py::value_error(oss.str());
+            }
+            if (!root.custom->type.is(other_root.custom->type)) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << "Custom node type mismatch; expected type: " << NodeKindToString(root)
+                    << ", got type: " << NodeKindToString(other_root) << ".";
+                throw py::value_error(oss.str());
+            }
+            if (root.arity != other_root.arity) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << "Custom type arity mismatch; expected: " << root.arity
+                    << ", got: " << other_root.arity << ".";
+                throw py::value_error(oss.str());
+            }
+            if (root.node_data.not_equal(other_root.node_data)) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << "Mismatch custom node data; expected: "
+                    << static_cast<std::string>(py::repr(root.node_data))
+                    << ", got: " << static_cast<std::string>(py::repr(other_root.node_data)) << ".";
+                throw py::value_error(oss.str());
+            }
+            break;
+        }
+
+        case PyTreeKind::Leaf:
+        case PyTreeKind::None:
+        default:
+            INTERNAL_ERROR();
+    }
+
+    size_t start_num_nodes = nodes.size();
+    nodes.emplace_back(std::move(node));
+    for (ssize_t i = root.arity - 1; i >= 0; --i) {
+        auto [num_nodes, other_num_nodes, new_num_nodes, new_num_leaves] =
+            // NOLINTNEXTLINE[misc-no-recursion]
+            BroadcastToCommonSuffixImpl(nodes, traversal, cur, other_traversal, other_cur);
+        cur -= num_nodes;
+        other_cur -= other_num_nodes;
+        nodes[start_num_nodes].num_nodes += new_num_nodes;
+        nodes[start_num_nodes].num_leaves += new_num_leaves;
+    }
+    return {pos - cur,
+            other_pos - other_cur,
+            nodes[start_num_nodes].num_nodes,
+            nodes[start_num_nodes].num_leaves};
+}
+
+std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec& other) const {
+    if (m_none_is_leaf != other.m_none_is_leaf) [[unlikely]] {
+        throw py::value_error("PyTreeSpecs must have the same none_is_leaf value.");
+    }
+    if (!m_namespace.empty() && !other.m_namespace.empty() && m_namespace != other.m_namespace)
+        [[unlikely]] {
+        std::ostringstream oss{};
+        oss << "PyTreeSpecs must have the same namespace. Got "
+            << static_cast<std::string>(py::repr(py::str(m_namespace))) << " vs. "
+            << static_cast<std::string>(py::repr(py::str(other.m_namespace))) << ".";
+        throw py::value_error(oss.str());
+    }
+
+    auto treespec = std::make_unique<PyTreeSpec>();
+    treespec->m_none_is_leaf = m_none_is_leaf;
+    if (other.m_namespace.empty()) [[likely]] {
+        treespec->m_namespace = m_namespace;
+    } else [[unlikely]] {
+        treespec->m_namespace = other.m_namespace;
+    }
+
+    const ssize_t num_nodes = GetNumNodes();
+    const ssize_t other_num_nodes = other.GetNumNodes();
+
+    auto [num_nodes_walked, other_num_nodes_walked, new_num_nodes, new_num_leaves] =
+        BroadcastToCommonSuffixImpl(treespec->m_traversal,
+                                    m_traversal,
+                                    num_nodes - 1,
+                                    other.m_traversal,
+                                    other_num_nodes - 1);
+    std::reverse(treespec->m_traversal.begin(), treespec->m_traversal.end());
+    EXPECT_EQ(num_nodes_walked,
+              num_nodes,
+              "`pos != 0` at end of PyTreeSpec::BroadcastToCommonSuffix() "
+              "for the current PyTreeSpec.");
+    EXPECT_EQ(other_num_nodes_walked,
+              other_num_nodes,
+              "`pos != 0` at end of PyTreeSpec::BroadcastToCommonSuffix() "
+              "for the other PyTreeSpec.");
+    EXPECT_EQ(new_num_nodes,
+              treespec->GetNumNodes(),
+              "PyTreeSpec::BroadcastToCommonSuffix() mismatched number of nodes.");
+    EXPECT_EQ(new_num_leaves,
+              treespec->GetNumLeaves(),
+              "PyTreeSpec::BroadcastToCommonSuffix() mismatched number of leaves.");
+    return treespec;
+}
+
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
     if (m_none_is_leaf != inner_treespec.m_none_is_leaf) [[unlikely]] {
         throw py::value_error("PyTreeSpecs must have the same none_is_leaf value.");
@@ -352,7 +619,7 @@ ssize_t PyTreeSpec::PathsImpl(Span& paths,
         }
     }
 
-    return root.num_nodes;
+    return pos - cur;
 }
 
 std::vector<py::tuple> PyTreeSpec::Paths() const {
@@ -565,6 +832,35 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
     out->m_traversal.emplace_back(std::move(node));
     out->m_none_is_leaf = none_is_leaf;
     return out;
+}
+
+/*static*/ std::string PyTreeSpec::NodeKindToString(const Node& node) {
+    switch (node.kind) {
+        case PyTreeKind::Leaf:
+            return "leaf type";
+        case PyTreeKind::None:
+            return "NoneType";
+        case PyTreeKind::Tuple:
+            return "tuple";
+        case PyTreeKind::List:
+            return "list";
+        case PyTreeKind::Dict:
+            return "dict";
+        case PyTreeKind::OrderedDict:
+            return "OrderedDict";
+        case PyTreeKind::DefaultDict:
+            return "defaultdict";
+        case PyTreeKind::NamedTuple:
+        case PyTreeKind::StructSequence:
+            return static_cast<std::string>(py::repr(node.node_data));
+        case PyTreeKind::Deque:
+            return "deque";
+        case PyTreeKind::Custom:
+            EXPECT_NE(node.custom, nullptr, "The custom registration is null.");
+            return static_cast<std::string>(py::repr(node.custom->type));
+        default:
+            INTERNAL_ERROR();
+    }
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]

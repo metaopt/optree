@@ -536,6 +536,50 @@ def test_tree_map_with_path():
         optree.tree_map_with_path(lambda *xs: tuple(xs), x, y)
 
 
+def test_tree_broadcast_map():
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, None), ({'foo': 'bar'}, 8, [9, 10]))
+    out = optree.tree_broadcast_map(lambda *xs: tuple(xs), x, y)
+    assert out == (
+        ([(1, 7)], None, None),
+        ({'foo': (3, 'bar')}, ((4, 8), [(5, 8)]), [(6, 9), (6, 10)]),
+    )
+
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, 8), ({'foo': 'bar'}, 9, [10, 11]))
+    out = optree.tree_broadcast_map(lambda *xs: tuple(xs), x, y)
+    assert out == (
+        ([(1, 7)], None, None),
+        ({'foo': (3, 'bar')}, ((4, 9), [(5, 9)]), [(6, 10), (6, 11)]),
+    )
+
+
+def test_tree_broadcast_map_with_path():
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, None), ({'foo': 'bar'}, 8, [9, 10]))
+    out = optree.tree_broadcast_map_with_path(lambda *xs: tuple(xs), x, y)
+    assert out == (
+        ([((0, 0, 0), 1, 7)], None, None),
+        (
+            {'foo': ((1, 0, 'foo'), 3, 'bar')},
+            (((1, 1, 0), 4, 8), [((1, 1, 1, 0), 5, 8)]),
+            [((1, 2, 0), 6, 9), ((1, 2, 1), 6, 10)],
+        ),
+    )
+
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, 8), ({'foo': 'bar'}, 9, [10, 11]))
+    out = optree.tree_broadcast_map_with_path(lambda *xs: tuple(xs), x, y)
+    assert out == (
+        ([((0, 0, 0), 1, 7)], None, None),
+        (
+            {'foo': ((1, 0, 'foo'), 3, 'bar')},
+            (((1, 1, 0), 4, 9), [((1, 1, 1, 0), 5, 9)]),
+            [((1, 2, 0), 6, 10), ((1, 2, 1), 6, 11)],
+        ),
+    )
+
+
 def test_tree_map_none_is_leaf():
     x = ((1, 2, None), (3, 4, 5))
     y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
@@ -566,6 +610,50 @@ def test_tree_map_with_path_none_is_leaf():
     )
 
 
+def test_tree_broadcast_map_none_is_leaf():
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, None), ({'foo': 'bar'}, 9, [10, 11]))
+    out = optree.tree_broadcast_map(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
+    assert out == (
+        ([(1, 7)], (2, None), (None, None)),
+        ({'foo': (3, 'bar')}, ((4, 9), [(5, 9)]), [(6, 10), (6, 11)]),
+    )
+
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, 8), ({'foo': 'bar'}, 9, [10, 11]))
+    out = optree.tree_broadcast_map(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
+    assert out == (
+        ([(1, 7)], (2, None), (None, 8)),
+        ({'foo': (3, 'bar')}, ((4, 9), [(5, 9)]), [(6, 10), (6, 11)]),
+    )
+
+
+def test_tree_broadcast_map_with_path_none_is_leaf():
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, None), ({'foo': 'bar'}, 9, [10, 11]))
+    out = optree.tree_broadcast_map_with_path(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
+    assert out == (
+        ([((0, 0, 0), 1, 7)], ((0, 1), 2, None), ((0, 2), None, None)),
+        (
+            {'foo': ((1, 0, 'foo'), 3, 'bar')},
+            (((1, 1, 0), 4, 9), [((1, 1, 1, 0), 5, 9)]),
+            [((1, 2, 0), 6, 10), ((1, 2, 1), 6, 11)],
+        ),
+    )
+
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, 8), ({'foo': 'bar'}, 9, [10, 11]))
+    out = optree.tree_broadcast_map_with_path(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
+    assert out == (
+        ([((0, 0, 0), 1, 7)], ((0, 1), 2, None), ((0, 2), None, 8)),
+        (
+            {'foo': ((1, 0, 'foo'), 3, 'bar')},
+            (((1, 1, 0), 4, 9), [((1, 1, 1, 0), 5, 9)]),
+            [((1, 2, 0), 6, 10), ((1, 2, 1), 6, 11)],
+        ),
+    )
+
+
 def test_tree_map_key_order():
     tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
     leaves = []
@@ -574,12 +662,14 @@ def test_tree_map_key_order():
         leaves.append(x)
         return x
 
-    mapped = optree.tree_map(add_leaves, tree)
-    assert mapped == tree
-    assert list(mapped.keys()) == list(tree.keys())
-    assert list(mapped.values()) == list(tree.values())
-    assert list(mapped.items()) == list(tree.items())
-    assert leaves == [1, 2, 3, 4]
+    for tree_map in (optree.tree_map, optree.tree_broadcast_map):
+        leaves.clear()
+        mapped = tree_map(add_leaves, tree)
+        assert mapped == tree
+        assert list(mapped.keys()) == list(tree.keys())
+        assert list(mapped.values()) == list(tree.values())
+        assert list(mapped.items()) == list(tree.items())
+        assert leaves == [1, 2, 3, 4]
 
 
 def test_tree_map_with_path_key_order():
@@ -592,20 +682,23 @@ def test_tree_map_with_path_key_order():
         leaves.append(x)
         return p, x
 
-    mapped = optree.tree_map_with_path(add_leaves, tree)
-    expected = {
-        'b': (('b',), 2),
-        'a': (('a',), 1),
-        'c': (('c',), 3),
-        'd': None,
-        'e': (('e',), 4),
-    }
-    assert mapped == expected
-    assert list(mapped.keys()) == list(expected.keys())
-    assert list(mapped.values()) == list(expected.values())
-    assert list(mapped.items()) == list(expected.items())
-    assert paths == [('a',), ('b',), ('c',), ('e',)]
-    assert leaves == [1, 2, 3, 4]
+    for tree_map_with_path in (optree.tree_map_with_path, optree.tree_broadcast_map_with_path):
+        paths.clear()
+        leaves.clear()
+        mapped = tree_map_with_path(add_leaves, tree)
+        expected = {
+            'b': (('b',), 2),
+            'a': (('a',), 1),
+            'c': (('c',), 3),
+            'd': None,
+            'e': (('e',), 4),
+        }
+        assert mapped == expected
+        assert list(mapped.keys()) == list(expected.keys())
+        assert list(mapped.values()) == list(expected.values())
+        assert list(mapped.items()) == list(expected.items())
+        assert paths == [('a',), ('b',), ('c',), ('e',)]
+        assert leaves == [1, 2, 3, 4]
 
 
 def test_tree_map_key_order_none_is_leaf():
@@ -616,12 +709,14 @@ def test_tree_map_key_order_none_is_leaf():
         leaves.append(x)
         return x
 
-    mapped = optree.tree_map(add_leaves, tree, none_is_leaf=True)
-    assert mapped == tree
-    assert list(mapped.keys()) == list(tree.keys())
-    assert list(mapped.values()) == list(tree.values())
-    assert list(mapped.items()) == list(tree.items())
-    assert leaves == [1, 2, 3, None, 4]
+    for tree_map in (optree.tree_map, optree.tree_broadcast_map):
+        leaves.clear()
+        mapped = tree_map(add_leaves, tree, none_is_leaf=True)
+        assert mapped == tree
+        assert list(mapped.keys()) == list(tree.keys())
+        assert list(mapped.values()) == list(tree.values())
+        assert list(mapped.items()) == list(tree.items())
+        assert leaves == [1, 2, 3, None, 4]
 
 
 def test_tree_map_with_path_key_order_none_is_leaf():
@@ -634,47 +729,51 @@ def test_tree_map_with_path_key_order_none_is_leaf():
         leaves.append(x)
         return p, x
 
-    mapped = optree.tree_map_with_path(add_leaves, tree, none_is_leaf=True)
-    expected = {
-        'b': (('b',), 2),
-        'a': (('a',), 1),
-        'c': (('c',), 3),
-        'd': (('d',), None),
-        'e': (('e',), 4),
-    }
-    assert mapped == expected
-    assert list(mapped.keys()) == list(expected.keys())
-    assert list(mapped.values()) == list(expected.values())
-    assert list(mapped.items()) == list(expected.items())
-    assert paths == [('a',), ('b',), ('c',), ('d',), ('e',)]
-    assert leaves == [1, 2, 3, None, 4]
+    for tree_map_with_path in (optree.tree_map_with_path, optree.tree_broadcast_map_with_path):
+        paths.clear()
+        leaves.clear()
+        mapped = tree_map_with_path(add_leaves, tree, none_is_leaf=True)
+        expected = {
+            'b': (('b',), 2),
+            'a': (('a',), 1),
+            'c': (('c',), 3),
+            'd': (('d',), None),
+            'e': (('e',), 4),
+        }
+        assert mapped == expected
+        assert list(mapped.keys()) == list(expected.keys())
+        assert list(mapped.values()) == list(expected.values())
+        assert list(mapped.items()) == list(expected.items())
+        assert paths == [('a',), ('b',), ('c',), ('d',), ('e',)]
+        assert leaves == [1, 2, 3, None, 4]
 
 
 def test_tree_map_with_is_leaf_none():
     x = ((1, 2, None), (3, 4, 5))
-    out = optree.tree_map(lambda *xs: tuple(xs), x, none_is_leaf=False)
-    assert out == (((1,), (2,), None), ((3,), (4,), (5,)))
-    out = optree.tree_map(lambda *xs: tuple(xs), x, none_is_leaf=True)
-    assert out == (((1,), (2,), (None,)), ((3,), (4,), (5,)))
-    out = optree.tree_map(lambda *xs: tuple(xs), x, is_leaf=lambda x: x is None)
-    assert out == (((1,), (2,), (None,)), ((3,), (4,), (5,)))
+    for tree_map in (optree.tree_map, optree.tree_broadcast_map):
+        out = tree_map(lambda *xs: tuple(xs), x, none_is_leaf=False)
+        assert out == (((1,), (2,), None), ((3,), (4,), (5,)))
+        out = tree_map(lambda *xs: tuple(xs), x, none_is_leaf=True)
+        assert out == (((1,), (2,), (None,)), ((3,), (4,), (5,)))
+        out = tree_map(lambda *xs: tuple(xs), x, is_leaf=lambda x: x is None)
+        assert out == (((1,), (2,), (None,)), ((3,), (4,), (5,)))
 
 
 def test_tree_map_with_is_leaf():
     x = ((1, 2, None), [3, 4, 5])
-    y = (([3], None, None), ({'foo': 'bar'}, 7, [5, 6]))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
     out = optree.tree_map(lambda *xs: tuple(xs), x, y, is_leaf=lambda n: isinstance(n, list))
-    assert out == (((1, [3]), (2, None), None), (([3, 4, 5], ({'foo': 'bar'}, 7, [5, 6]))))
+    assert out == (((1, [6]), (2, None), None), (([3, 4, 5], ({'foo': 'bar'}, 7, [8, 9]))))
 
     x = ((1, 2, None), [3, 4, 5])
-    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
-    with pytest.raises(ValueError, match=re.escape('Expected None, got 4.')):
+    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 0]))
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 7.')):
         optree.tree_map(lambda *xs: tuple(xs), x, y, is_leaf=lambda n: isinstance(n, list))
 
 
 def test_tree_map_with_is_leaf_none_is_leaf():
     x = ((1, 2, None), [3, 4, 5])
-    y = (([3], None, None), ({'foo': 'bar'}, 7, [5, 6]))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
     out = optree.tree_map(
         lambda *xs: tuple(xs),
         x,
@@ -682,10 +781,10 @@ def test_tree_map_with_is_leaf_none_is_leaf():
         is_leaf=lambda n: isinstance(n, list),
         none_is_leaf=True,
     )
-    assert out == (((1, [3]), (2, None), (None, None)), (([3, 4, 5], ({'foo': 'bar'}, 7, [5, 6]))))
+    assert out == (((1, [6]), (2, None), (None, None)), (([3, 4, 5], ({'foo': 'bar'}, 7, [8, 9]))))
 
     x = ((1, 2, None), [3, 4, 5])
-    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 0]))
     out = optree.tree_map(
         lambda *xs: tuple(xs),
         x,
@@ -693,7 +792,65 @@ def test_tree_map_with_is_leaf_none_is_leaf():
         is_leaf=lambda n: isinstance(n, list),
         none_is_leaf=True,
     )
-    assert out == (((1, [3]), (2, None), (None, 4)), (([3, 4, 5], ({'foo': 'bar'}, 7, [5, 6]))))
+    assert out == (((1, [6]), (2, None), (None, 7)), (([3, 4, 5], ({'foo': 'bar'}, 8, [9, 0]))))
+
+
+def test_tree_broadcast_map_with_is_leaf():
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, None), ({'foo': 'bar'}, 8, [9, 10]))
+    out = optree.tree_broadcast_map(
+        lambda *xs: tuple(xs),
+        x,
+        y,
+        is_leaf=lambda n: isinstance(n, list),
+    )
+    assert out == (
+        ((1, [7]), None, None),
+        ({'foo': (3, 'bar')}, ((4, 8), ([5], 8)), (6, [9, 10])),
+    )
+
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, 8), ({'foo': 'bar'}, 9, [10, 11]))
+    out = optree.tree_broadcast_map(
+        lambda *xs: tuple(xs),
+        x,
+        y,
+        is_leaf=lambda n: isinstance(n, list),
+    )
+    assert out == (
+        ((1, [7]), None, None),
+        ({'foo': (3, 'bar')}, ((4, 9), ([5], 9)), (6, [10, 11])),
+    )
+
+
+def test_tree_broadcast_map_with_is_leaf_none_is_leaf():
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, None), ({'foo': 'bar'}, 9, [10, 11]))
+    out = optree.tree_broadcast_map(
+        lambda *xs: tuple(xs),
+        x,
+        y,
+        is_leaf=lambda n: isinstance(n, list),
+        none_is_leaf=True,
+    )
+    assert out == (
+        ((1, [7]), (2, None), (None, None)),
+        ({'foo': (3, 'bar')}, ((4, 9), ([5], 9)), (6, [10, 11])),
+    )
+
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, 8), ({'foo': 'bar'}, 9, [10, 11]))
+    out = optree.tree_broadcast_map(
+        lambda *xs: tuple(xs),
+        x,
+        y,
+        is_leaf=lambda n: isinstance(n, list),
+        none_is_leaf=True,
+    )
+    assert out == (
+        ((1, [7]), (2, None), (None, 8)),
+        ({'foo': (3, 'bar')}, ((4, 9), ([5], 9)), (6, [10, 11])),
+    )
 
 
 def test_tree_map_ignore_return():
@@ -900,6 +1057,16 @@ def test_tree_map_with_path_inplace_key_order_none_is_leaf():
     assert leaves == [1, 2, 3, None, 4]
 
 
+def test_tree_replace_nones():
+    sentinel = object()
+    assert optree.tree_replace_nones(sentinel, {'a': 1, 'b': None, 'c': (2, None)}) == {
+        'a': 1,
+        'b': sentinel,
+        'c': (2, sentinel),
+    }
+    assert optree.tree_replace_nones(sentinel, None) == sentinel
+
+
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
@@ -1025,57 +1192,235 @@ def test_tree_transpose_mismatch_namespace():
 
 
 def test_tree_broadcast_prefix():
-    assert optree.tree_broadcast_prefix(1, [1, 2, 3]) == [1, 1, 1]
-    assert optree.tree_broadcast_prefix([1, 2, 3], [1, 2, 3]) == [1, 2, 3]
+    assert optree.tree_broadcast_prefix(1, [2, 3, 4]) == [1, 1, 1]
+    assert optree.tree_broadcast_prefix([1, 2, 3], [4, 5, 6]) == [1, 2, 3]
     with pytest.raises(
         ValueError,
-        match=re.escape('list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].'),
+        match=re.escape('list arity mismatch; expected: 3, got: 4; list: [4, 5, 6, 7].'),
     ):
-        optree.tree_broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
-    assert optree.tree_broadcast_prefix([1, 2, 3], [1, 2, (3, 4)]) == [1, 2, (3, 3)]
-    assert optree.tree_broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}]) == [
-        1,
-        2,
-        {'a': 3, 'b': 3, 'c': (None, 3)},
-    ]
+        optree.tree_broadcast_prefix([1, 2, 3], [4, 5, 6, 7])
+    assert optree.tree_broadcast_prefix([1, 2, 3], [4, 5, (6, 7)]) == [1, 2, (3, 3)]
     assert optree.tree_broadcast_prefix(
         [1, 2, 3],
-        [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}],
+        [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}],
+    ) == [1, 2, {'a': 3, 'b': 3, 'c': (None, 3)}]
+    assert optree.tree_broadcast_prefix(
+        [1, 2, 3],
+        [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}],
         none_is_leaf=True,
     ) == [1, 2, {'a': 3, 'b': 3, 'c': (3, 3)}]
+    assert optree.tree_broadcast_prefix(
+        [1, OrderedDict(b=3, c=4, a=2)],
+        [(5, 6), {'c': (None, 9), 'a': 7, 'b': 8}],
+    ) == [(1, 1), OrderedDict(b=3, c=(None, 4), a=2)]
+    assert optree.tree_broadcast_prefix(
+        [1, OrderedDict(b=3, c=4, a=2)],
+        [(5, 6), {'c': (None, 9), 'a': 7, 'b': 8}],
+        none_is_leaf=True,
+    ) == [(1, 1), OrderedDict(b=3, c=(4, 4), a=2)]
+    assert optree.tree_broadcast_prefix(
+        [1, {'c': 4, 'b': 3, 'a': 2}],
+        [(5, 6), OrderedDict(b=8, c=(None, 9), a=7)],
+    ) == [(1, 1), {'c': (None, 4), 'b': 3, 'a': 2}]
+    assert optree.tree_broadcast_prefix(
+        [1, {'c': 4, 'b': 3, 'a': 2}],
+        [(5, 6), OrderedDict(b=8, c=(None, 9), a=7)],
+        none_is_leaf=True,
+    ) == [(1, 1), {'c': (4, 4), 'b': 3, 'a': 2}]
 
 
 def test_broadcast_prefix():
-    assert optree.broadcast_prefix(1, [1, 2, 3]) == [1, 1, 1]
-    assert optree.broadcast_prefix([1, 2, 3], [1, 2, 3]) == [1, 2, 3]
+    assert optree.broadcast_prefix(1, [2, 3, 4]) == [1, 1, 1]
+    assert optree.broadcast_prefix([1, 2, 3], [4, 5, 6]) == [1, 2, 3]
     with pytest.raises(
         ValueError,
-        match=re.escape('list arity mismatch; expected: 3, got: 4; list: [1, 2, 3, 4].'),
+        match=re.escape('list arity mismatch; expected: 3, got: 4; list: [4, 5, 6, 7].'),
     ):
-        optree.broadcast_prefix([1, 2, 3], [1, 2, 3, 4])
-    assert optree.broadcast_prefix([1, 2, 3], [1, 2, (3, 4)]) == [1, 2, 3, 3]
-    assert optree.broadcast_prefix([1, 2, 3], [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}]) == [
-        1,
-        2,
-        3,
-        3,
-        3,
-    ]
+        optree.broadcast_prefix([1, 2, 3], [4, 5, 6, 7])
+    assert optree.broadcast_prefix([1, 2, 3], [4, 5, (6, 7)]) == [1, 2, 3, 3]
     assert optree.broadcast_prefix(
         [1, 2, 3],
-        [1, 2, {'a': 3, 'b': 4, 'c': (None, 5)}],
+        [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}],
+    ) == [1, 2, 3, 3, 3]
+    assert optree.broadcast_prefix(
+        [1, 2, 3],
+        [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}],
         none_is_leaf=True,
     ) == [1, 2, 3, 3, 3, 3]
+    assert optree.broadcast_prefix(
+        [1, OrderedDict(b=3, c=4, a=2)],
+        [(5, 6), {'c': (None, 9), 'a': 7, 'b': 8}],
+    ) == [1, 1, 3, 4, 2]
+    assert optree.broadcast_prefix(
+        [1, OrderedDict(b=3, c=4, a=2)],
+        [(5, 6), {'c': (None, 9), 'a': 7, 'b': 8}],
+        none_is_leaf=True,
+    ) == [1, 1, 3, 4, 4, 2]
+    assert optree.broadcast_prefix(
+        [1, {'c': 4, 'b': 3, 'a': 2}],
+        [(5, 6), OrderedDict(b=8, c=(None, 9), a=7)],
+    ) == [1, 1, 2, 3, 4]
+    assert optree.broadcast_prefix(
+        [1, {'c': 4, 'b': 3, 'a': 2}],
+        [(5, 6), OrderedDict(b=8, c=(None, 9), a=7)],
+        none_is_leaf=True,
+    ) == [1, 1, 2, 3, 4, 4]
 
 
-def test_tree_replace_nones():
-    sentinel = object()
-    assert optree.tree_replace_nones(sentinel, {'a': 1, 'b': None, 'c': (2, None)}) == {
-        'a': 1,
-        'b': sentinel,
-        'c': (2, sentinel),
-    }
-    assert optree.tree_replace_nones(sentinel, None) == sentinel
+def test_tree_broadcast_common():
+    assert optree.tree_broadcast_common(1, [2, 3, 4]) == ([1, 1, 1], [2, 3, 4])
+    assert optree.tree_broadcast_common([1, 2, 3], [4, 5, 6]) == ([1, 2, 3], [4, 5, 6])
+    with pytest.raises(
+        ValueError,
+        match=re.escape('list arity mismatch; expected: 3, got: 4.'),
+    ):
+        optree.tree_broadcast_common([1, 2, 3], [1, 2, 3, 4])
+    assert optree.tree_broadcast_common([1, 2, 3], [4, 5, (6, 7)]) == (
+        [1, 2, (3, 3)],
+        [4, 5, (6, 7)],
+    )
+    assert optree.tree_broadcast_common([1, (2, 3), 4], [5, 6, (7, 8)]) == (
+        [1, (2, 3), (4, 4)],
+        [5, (6, 6), (7, 8)],
+    )
+    assert optree.tree_broadcast_common(
+        [1, (2, 3), 4],
+        [5, 6, {'a': 7, 'b': 8, 'c': (None, 9)}],
+    ) == (
+        [1, (2, 3), {'a': 4, 'b': 4, 'c': (None, 4)}],
+        [5, (6, 6), {'a': 7, 'b': 8, 'c': (None, 9)}],
+    )
+    assert optree.tree_broadcast_common(
+        [1, OrderedDict(foo=2, bar=3), 4],
+        [5, 6, {'a': 7, 'b': 8, 'c': (None, 9)}],
+    ) == (
+        [1, OrderedDict(foo=2, bar=3), {'a': 4, 'b': 4, 'c': (None, 4)}],
+        [5, OrderedDict(foo=6, bar=6), {'a': 7, 'b': 8, 'c': (None, 9)}],
+    )
+    assert optree.tree_broadcast_common(
+        [1, OrderedDict(foo=2, bar=3), 4],
+        [5, 6, {'a': 7, 'b': 8, 'c': (None, 9)}],
+        none_is_leaf=True,
+    ) == (
+        [1, OrderedDict(foo=2, bar=3), {'a': 4, 'b': 4, 'c': (4, 4)}],
+        [5, OrderedDict(foo=6, bar=6), {'a': 7, 'b': 8, 'c': (None, 9)}],
+    )
+    assert optree.tree_broadcast_common(
+        [1, OrderedDict(foo=2, bar=3), 4],
+        [5, 6, {'a': 7, 'b': 8, 'c': (None, 9)}],
+        none_is_leaf=True,
+    ) == (
+        [1, OrderedDict(foo=2, bar=3), {'a': 4, 'b': 4, 'c': (4, 4)}],
+        [5, OrderedDict(foo=6, bar=6), {'a': 7, 'b': 8, 'c': (None, 9)}],
+    )
+    assert optree.tree_broadcast_common(
+        [1, OrderedDict(b=4, c=5, a=(2, 3))],
+        [(6, 7), {'c': (None, 0), 'a': 8, 'b': 9}],
+    ) == (
+        [(1, 1), OrderedDict(b=4, c=(None, 5), a=(2, 3))],
+        [(6, 7), {'c': (None, 0), 'a': (8, 8), 'b': 9}],
+    )
+    assert optree.tree_broadcast_common(
+        [1, OrderedDict(b=4, c=5, a=(2, 3))],
+        [(6, 7), {'c': (None, 0), 'a': 8, 'b': 9}],
+        none_is_leaf=True,
+    ) == (
+        [(1, 1), OrderedDict(b=4, c=(5, 5), a=(2, 3))],
+        [(6, 7), {'c': (None, 0), 'a': (8, 8), 'b': 9}],
+    )
+    assert optree.tree_broadcast_common(
+        [1, {'c': (None, 4), 'b': 3, 'a': 2}],
+        [(5, 6), OrderedDict(b=9, c=0, a=(7, 8))],
+    ) == (
+        [(1, 1), {'c': (None, 4), 'b': 3, 'a': (2, 2)}],
+        [(5, 6), OrderedDict(b=9, c=(None, 0), a=(7, 8))],
+    )
+    assert optree.tree_broadcast_common(
+        [1, {'b': 3, 'a': 2, 'c': (None, 4)}],
+        [(5, 6), OrderedDict(b=9, c=0, a=(7, 8))],
+        none_is_leaf=True,
+    ) == (
+        [(1, 1), {'c': (None, 4), 'b': 3, 'a': (2, 2)}],
+        [(5, 6), OrderedDict(b=9, c=(0, 0), a=(7, 8))],
+    )
+
+
+def test_broadcast_common():
+    assert optree.broadcast_common(1, [2, 3, 4]) == ([1, 1, 1], [2, 3, 4])
+    assert optree.broadcast_common([1, 2, 3], [4, 5, 6]) == ([1, 2, 3], [4, 5, 6])
+    with pytest.raises(
+        ValueError,
+        match=re.escape('list arity mismatch; expected: 3, got: 4.'),
+    ):
+        optree.broadcast_common([1, 2, 3], [1, 2, 3, 4])
+    assert optree.broadcast_common([1, 2, 3], [4, 5, (6, 7)]) == (
+        [1, 2, 3, 3],
+        [4, 5, 6, 7],
+    )
+    assert optree.broadcast_common([1, (2, 3), 4], [5, 6, (7, 8)]) == (
+        [1, 2, 3, 4, 4],
+        [5, 6, 6, 7, 8],
+    )
+    assert optree.broadcast_common(
+        [1, (2, 3), 4],
+        [5, 6, {'a': 7, 'b': 8, 'c': (None, 9)}],
+    ) == (
+        [1, 2, 3, 4, 4, 4],
+        [5, 6, 6, 7, 8, 9],
+    )
+    assert optree.broadcast_common(
+        [1, (2, 3), 4],
+        [5, 6, {'a': 7, 'b': 8, 'c': (None, 9)}],
+        none_is_leaf=True,
+    ) == (
+        [1, 2, 3, 4, 4, 4, 4],
+        [5, 6, 6, 7, 8, None, 9],
+    )
+    assert optree.broadcast_common(
+        [1, OrderedDict(foo=2, bar=3), 4],
+        [5, 6, {'a': 7, 'b': 8, 'c': (None, 9)}],
+    ) == (
+        [1, 2, 3, 4, 4, 4],
+        [5, 6, 6, 7, 8, 9],
+    )
+    assert optree.broadcast_common(
+        [1, OrderedDict(foo=2, bar=3), 4],
+        [5, 6, {'a': 7, 'b': 8, 'c': (None, 9)}],
+        none_is_leaf=True,
+    ) == (
+        [1, 2, 3, 4, 4, 4, 4],
+        [5, 6, 6, 7, 8, None, 9],
+    )
+    assert optree.broadcast_common(
+        [1, OrderedDict(b=4, c=5, a=(2, 3))],
+        [(6, 7), {'c': (None, 0), 'a': 8, 'b': 9}],
+    ) == (
+        [1, 1, 4, 5, 2, 3],
+        [6, 7, 9, 0, 8, 8],
+    )
+    assert optree.broadcast_common(
+        [1, OrderedDict(b=4, c=5, a=(2, 3))],
+        [(6, 7), {'c': (None, 0), 'a': 8, 'b': 9}],
+        none_is_leaf=True,
+    ) == (
+        [1, 1, 4, 5, 5, 2, 3],
+        [6, 7, 9, None, 0, 8, 8],
+    )
+    assert optree.broadcast_common(
+        [1, {'c': (None, 4), 'b': 3, 'a': 2}],
+        [(5, 6), OrderedDict(b=9, c=0, a=(7, 8))],
+    ) == (
+        [1, 1, 2, 2, 3, 4],
+        [5, 6, 7, 8, 9, 0],
+    )
+    assert optree.broadcast_common(
+        [1, {'b': 3, 'a': 2, 'c': (None, 4)}],
+        [(5, 6), OrderedDict(b=9, c=0, a=(7, 8))],
+        none_is_leaf=True,
+    ) == (
+        [1, 1, 2, 2, 3, None, 4],
+        [5, 6, 7, 8, 9, 0, 0],
+    )
 
 
 def test_tree_reduce():
