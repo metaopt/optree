@@ -29,6 +29,12 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
     py::register_local_exception<InternalError>(mod, "InternalError", PyExc_SystemError);
     mod.attr("MAX_RECURSION_DEPTH") = py::ssize_t_cast(MAX_RECURSION_DEPTH);
     mod.attr("Py_TPFLAGS_BASETYPE") = py::ssize_t_cast(Py_TPFLAGS_BASETYPE);
+#ifdef _GLIBCXX_USE_CXX11_ABI
+    // NOLINTNEXTLINE[modernize-use-bool-literals]
+    mod.attr("GLIBCXX_USE_CXX11_ABI") = static_cast<bool>(_GLIBCXX_USE_CXX11_ABI);
+#else
+    mod.attr("GLIBCXX_USE_CXX11_ABI") = false;
+#endif
 
     mod.def("register_node",
             &PyTreeTypeRegistry::Register,

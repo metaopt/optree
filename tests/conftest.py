@@ -14,6 +14,8 @@
 # ==============================================================================
 
 import os
+import random
 
 
 os.environ['PYTHONHASHSEED'] = '0'
+random.seed(0)
