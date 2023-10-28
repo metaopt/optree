@@ -251,10 +251,16 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
 #ifdef Py_TPFLAGS_IMMUTABLETYPE
     reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_flags |=
         Py_TPFLAGS_IMMUTABLETYPE;
+    reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())->tp_flags |=
+        Py_TPFLAGS_IMMUTABLETYPE;
 #endif
     if (PyType_Ready(reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())) < 0)
         [[unlikely]] {
         INTERNAL_ERROR("`PyType_Ready(&PyTreeSpec_Type)` failed.");
+    }
+    if (PyType_Ready(reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())) < 0)
+        [[unlikely]] {
+        INTERNAL_ERROR("`PyType_Ready(&PyTreeKind_Type)` failed.");
     }
 }
 
