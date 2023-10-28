@@ -66,6 +66,11 @@ py::object PyTreeSpec::GetType() const {
     }
 }
 
+PyTreeKind PyTreeSpec::GetPyTreeKind() const {
+    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    return m_traversal.back().kind;
+}
+
 bool PyTreeSpec::IsLeaf(const bool& strict) const {
     if (strict) [[likely]] {
         return GetNumNodes() == 1 && GetNumLeaves() == 1;

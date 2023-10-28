@@ -7,6 +7,7 @@ Typing Support
 
     PyTreeSpec
     PyTreeDef
+    PyTreeKind
     PyTree
     PyTreeTypeVar
     CustomTreeNode
@@ -24,17 +25,16 @@ Typing Support
 
 .. autoclass:: PyTreeDef
 
+.. autoclass:: PyTreeKind
+    :members:
+
 .. autoclass:: PyTree
     :members:
-    :undoc-members:
-    :show-inheritance:
 
 .. autofunction:: PyTreeTypeVar
 
 .. autoclass:: CustomTreeNode
     :members:
-    :undoc-members:
-    :show-inheritance:
 
 .. autofunction:: is_namedtuple
 

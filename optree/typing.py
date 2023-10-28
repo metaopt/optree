@@ -42,6 +42,7 @@ from typing_extensions import TypeAlias  # Python 3.10+
 from typing_extensions import Protocol, runtime_checkable  # Python 3.8+
 
 from optree import _C
+from optree._C import PyTreeKind, PyTreeSpec
 
 
 try:
@@ -54,6 +55,7 @@ except ImportError:
 __all__ = [
     'PyTreeSpec',
     'PyTreeDef',
+    'PyTreeKind',
     'PyTree',
     'PyTreeTypeVar',
     'CustomTreeNode',
@@ -84,7 +86,6 @@ __all__ = [
 ]
 
 
-PyTreeSpec = _C.PyTreeSpec
 PyTreeDef = PyTreeSpec  # alias
 
 T = TypeVar('T')
