@@ -36,11 +36,7 @@ limitations under the License.
 namespace optree {
 
 // The maximum depth of a pytree.
-#ifdef _WIN32
 constexpr ssize_t MAX_RECURSION_DEPTH = 2000;
-#else
-constexpr ssize_t MAX_RECURSION_DEPTH = 5000;
-#endif
 
 // A PyTreeSpec describes the tree structure of a PyTree. A PyTree is a tree of Python values, where
 // the interior nodes are tuples, lists, dictionaries, or user-defined containers, and the leaves

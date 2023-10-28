@@ -152,8 +152,12 @@ __all__ = [
     'structseq_fields',
 ]
 
-MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH
-"""Maximum recursion depth for pytree traversal. It is 5000 on Unix-like systems and 2500 on Windows."""
+MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH  # 2000
+"""Maximum recursion depth for pytree traversal. It is 2000.
+
+This limit prevents infinite recursion from causing an overflow of the C stack
+and crashing Python.
+"""
 NONE_IS_NODE: bool = NONE_IS_NODE  # literal constant
 """Literal constant that treats :data:`None` as a pytree non-leaf node."""
 NONE_IS_LEAF: bool = NONE_IS_LEAF  # literal constant
