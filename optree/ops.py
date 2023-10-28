@@ -96,8 +96,12 @@ __all__ = [
     'prefix_errors',
 ]
 
-MAX_RECURSION_DEPTH: int = _C.MAX_RECURSION_DEPTH
-"""Maximum recursion depth for pytree traversal. It is 5000 on Unix-like systems and 2500 on Windows."""
+MAX_RECURSION_DEPTH: int = _C.MAX_RECURSION_DEPTH  # 2000
+"""Maximum recursion depth for pytree traversal. It is 2000.
+
+This limit prevents infinite recursion from causing an overflow of the C stack
+and crashing Python.
+"""
 NONE_IS_NODE: bool = False  # literal constant
 """Literal constant that treats :data:`None` as a pytree non-leaf node."""
 NONE_IS_LEAF: bool = True  # literal constant
