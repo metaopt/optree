@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Set recursion limit to 2000 for all platforms by [@XuehaiPan](https://github.com/XuehaiPan) in [#97](https://github.com/metaopt/optree/pull/97).
 - Make `PyTreeSpec.is_prefix` to be consistent with `PyTreeSpec.flatten_up_to` by [@XuehaiPan](https://github.com/XuehaiPan) in [#94](https://github.com/metaopt/optree/pull/94).
 - Decrease the `MAX_RECURSION_DEPTH` to 2000 on Windows by [@XuehaiPan](https://github.com/XuehaiPan) in [#85](https://github.com/metaopt/optree/pull/85).
 - Bump `abseil-cpp` version to 20230802.1 by [@XuehaiPan](https://github.com/XuehaiPan) in [#80](https://github.com/metaopt/optree/pull/80).
