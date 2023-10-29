@@ -1554,7 +1554,7 @@ def test_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
                 namespace=namespace,
             )
             assert children == expected_children
-            if node_type in (list, tuple, type(None)):
+            if node_type in (type(None), tuple, list):
                 assert metadata is None
                 if node_type is tuple:
                     assert one_level_treespec.kind == optree.PyTreeKind.TUPLE
@@ -1582,6 +1582,8 @@ def test_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
                 assert optree.is_structseq_class(node_type)
                 assert metadata is node_type
                 assert one_level_treespec.kind == optree.PyTreeKind.STRUCTSEQUENCE
+            else:
+                assert one_level_treespec.kind == optree.PyTreeKind.CUSTOM
             assert len(entries) == len(children)
             if hasattr(node, '__getitem__'):
                 for child, entry in zip(children, entries):
