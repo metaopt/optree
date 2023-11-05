@@ -117,6 +117,26 @@ def tree_ravel(
 ) -> tuple[Array, Callable[[Array], ArrayTree]]:
     r"""Ravel (flatten) a pytree of arrays down to a 1D array.
 
+    >>> tree = {
+    ...     'layer1': {
+    ...         'weight': jnp.arange(6, dtype=jnp.float32).reshape((2, 3)),
+    ...         'bias': jnp.arange(2, dtype=jnp.float32).reshape((2,)),
+    ...     },
+    ...     'layer2': {
+    ...         'weight': jnp.arange(2, dtype=jnp.float32).reshape((1, 2)),
+    ...         'bias': jnp.arange(1, dtype=jnp.float32).reshape((1,))
+    ...     },
+    ... }
+    >>> flat, unravel_func = tree_ravel(tree)
+    >>> flat
+    Array([0., 1., 0., 1., 2., 3., 4., 5., 0., 0., 1.], dtype=float32)
+    >>> unravel_func(flat)
+    {'layer1': {'weight': Array([[0., 1., 2.],
+                                 [3., 4., 5.]], dtype=float32),
+                'bias': Array([0., 1.], dtype=float32)},
+     'layer2': {'weight': Array([[0., 1.]], dtype=float32),
+                'bias': Array([0.], dtype=float32)}}
+
     Args:
         tree (pytree): a pytree of arrays and scalars to ravel.
         is_leaf (callable, optional): An optionally specified function that will be called at each

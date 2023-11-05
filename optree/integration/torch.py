@@ -43,6 +43,26 @@ def tree_ravel(
 ) -> tuple[torch.Tensor, Callable[[torch.Tensor], TensorTree]]:
     r"""Ravel (flatten) a pytree of tensors down to a 1D tensor.
 
+    >>> tree = {
+    ...     'layer1': {
+    ...         'weight': torch.arange(6, dtype=torch.float64).reshape((2, 3)),
+    ...         'bias': torch.arange(2, dtype=torch.float64).reshape((2,)),
+    ...     },
+    ...     'layer2': {
+    ...         'weight': torch.arange(2, dtype=torch.float64).reshape((1, 2)),
+    ...         'bias': torch.arange(1, dtype=torch.float64).reshape((1,))
+    ...     },
+    ... }
+    >>> flat, unravel_func = tree_ravel(tree)
+    >>> flat
+    tensor([0., 1., 0., 1., 2., 3., 4., 5., 0., 0., 1.], dtype=torch.float64)
+    >>> unravel_func(flat)
+    {'layer1': {'weight': tensor([[0., 1., 2.],
+                                 [3., 4., 5.]], dtype=torch.float64),
+                'bias': tensor([0., 1.], dtype=torch.float64)},
+     'layer2': {'weight': tensor([[0., 1.]], dtype=torch.float64),
+                'bias': tensor([0.], dtype=torch.float64)}}
+
     Args:
         tree (pytree): a pytree of tensors to ravel.
         is_leaf (callable, optional): An optionally specified function that will be called at each

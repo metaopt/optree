@@ -16,7 +16,7 @@ OpTree: Optimized PyTree Utilities
     api.rst
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
 
     integration.rst
 
