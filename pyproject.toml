@@ -49,6 +49,9 @@ Documentation = "https://optree.readthedocs.io"
 "Bug Report" = "https://github.com/metaopt/optree/issues"
 
 [project.optional-dependencies]
+jax = ["jax"]
+numpy = ["numpy"]
+torch = ["torch"]
 lint = [
     "isort >= 5.11.0",
     "black >= 22.6.0",

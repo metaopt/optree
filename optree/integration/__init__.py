@@ -13,3 +13,31 @@
 # limitations under the License.
 # ==============================================================================
 """Integration with third-party libraries."""
+
+import sys
+from typing import Any
+
+
+current_module = sys.modules[__name__]
+
+
+SUBMODULES = frozenset({'jax', 'numpy', 'torch'})
+
+
+class _LazyModule(type(current_module)):  # pylint: disable=too-few-public-methods
+    def __getattr__(self, name: str) -> Any:  # noqa: N804
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            if name in SUBMODULES:
+                import importlib  # pylint: disable=import-outside-toplevel
+
+                module = importlib.import_module(f'{__name__}.{name}')
+                setattr(self, name, module)
+                return module
+            raise
+
+
+current_module.__class__ = _LazyModule
+
+del sys, Any, current_module, _LazyModule
