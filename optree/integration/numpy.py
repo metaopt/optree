@@ -126,6 +126,12 @@ def _unravel_leaves_single_dtype(
     shapes: tuple[tuple[int, ...]],
     flat: np.ndarray,
 ) -> list[np.ndarray]:
+    if np.shape(flat) != (indices[-1],):
+        raise ValueError(
+            f'The unravel function expected an array of shape {(indices[-1],)}, '
+            f'got shape {np.shape(flat)}.',
+        )
+
     chunks = np.split(flat, indices[:-1])
     return [chunk.reshape(shape) for chunk, shape in safe_zip(chunks, shapes)]
 
@@ -137,11 +143,18 @@ def _unravel_leaves(
     to_dtype: np.dtype,
     flat: np.ndarray,
 ) -> list[np.ndarray]:
-    dtype = np.result_type(flat)
-    if dtype != to_dtype:
+    if np.shape(flat) != (indices[-1],):
         raise ValueError(
-            f'The unravel function given array of dtype {dtype}, but expected dtype {to_dtype}.',
+            f'The unravel function expected an array of shape {(indices[-1],)}, '
+            f'got shape {np.shape(flat)}.',
         )
+    array_dtype = np.result_type(flat)
+    if array_dtype != to_dtype:
+        raise ValueError(
+            f'The unravel function expected an array of dtype {to_dtype}, '
+            f'got dtype {array_dtype}.',
+        )
+
     chunks = np.split(flat, indices[:-1])
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')  # ignore complex-to-real cast warning

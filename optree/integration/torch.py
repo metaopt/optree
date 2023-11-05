@@ -126,6 +126,12 @@ def _unravel_leaves_single_dtype(
     shapes: tuple[tuple[int, ...]],
     flat: torch.Tensor,
 ) -> list[torch.Tensor]:
+    if flat.shape != (sum(sizes),):
+        raise ValueError(
+            f'The unravel function expected an array of shape {(sum(sizes),)}, '
+            f'got shape {flat.shape}.',
+        )
+
     chunks = torch.split(flat, list(sizes))
     return [chunk.reshape(shape) for chunk, shape in safe_zip(chunks, shapes)]
 
@@ -139,10 +145,16 @@ def _unravel_leaves(
 ) -> list[torch.Tensor]:
     if not torch.is_tensor(flat):
         raise ValueError(f'Expected a tensor to unravel, got {type(flat)}.')
+    if flat.shape != (sum(sizes),):
+        raise ValueError(
+            f'The unravel function expected an array of shape {(sum(sizes),)}, '
+            f'got shape {flat.shape}.',
+        )
     if flat.dtype != to_dtype:
         raise ValueError(
-            f'The unravel function given array of dtype {flat.dtype}, but expected dtype {to_dtype}.',
+            f'The unravel function expected a tensor of dtype {to_dtype}, got dtype {flat.dtype}.',
         )
+
     chunks = torch.split(flat, list(sizes))
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')  # ignore complex-to-real cast warning

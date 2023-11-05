@@ -200,6 +200,12 @@ def _unravel_leaves_single_dtype(
     shapes: tuple[tuple[int, ...]],
     flat: Array,
 ) -> list[Array]:
+    if jnp.shape(flat) != (indices[-1],):
+        raise ValueError(
+            f'The unravel function expected an array of shape {(indices[-1],)}, '
+            f'got shape {jnp.shape(flat)}.',
+        )
+
     chunks = jnp.split(flat, indices[:-1])
     return [chunk.reshape(shape) for chunk, shape in safe_zip(chunks, shapes)]
 
@@ -211,11 +217,18 @@ def _unravel_leaves(
     to_dtype: jnp.dtype,
     flat: Array,
 ) -> list[Array]:
-    dtype = dtypes.dtype(flat)
-    if dtype != to_dtype:
+    if jnp.shape(flat) != (indices[-1],):
         raise ValueError(
-            f'The unravel function given array of dtype {dtype}, but expected dtype {to_dtype}.',
+            f'The unravel function expected an array of shape {(indices[-1],)}, '
+            f'got shape {jnp.shape(flat)}.',
         )
+    array_dtype = dtypes.dtype(flat)
+    if array_dtype != to_dtype:
+        raise ValueError(
+            f'The unravel function expected an array of dtype {to_dtype}, '
+            f'got dtype {array_dtype}.',
+        )
+
     chunks = jnp.split(flat, indices[:-1])
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')  # ignore complex-to-real cast warning

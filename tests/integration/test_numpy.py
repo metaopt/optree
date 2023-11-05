@@ -72,12 +72,24 @@ def test_tree_ravel(tree):
         assert leaf.dtype == reconstructed_leaf.dtype
         assert leaf.shape == reconstructed_leaf.shape
 
+    if len(leaves) > 0:
+        with pytest.raises(
+            ValueError,
+            match=r'The unravel function expected an array of shape .*, got .*\.',
+        ):
+            unravel_func(flat.reshape((-1, 1)))
+        with pytest.raises(
+            ValueError,
+            match=r'The unravel function expected an array of shape .*, got .*\.',
+        ):
+            unravel_func(np.concatenate([flat, np.zeros((1,))]))
+
     if all(np.result_type(leaf) == flat.dtype for leaf in leaves):
         unravel_func(flat.astype(np.complex128))
     else:
         with pytest.raises(
             ValueError,
-            match=r'The unravel function given array of dtype .*, but expected dtype .*\.',
+            match=r'The unravel function expected an array of dtype .*, got dtype .*\.',
         ):
             unravel_func(flat.astype(np.complex128))
 
@@ -119,5 +131,17 @@ def test_tree_ravel_single_dtype(tree):
         reconstructed_leaf = np.asarray(reconstructed_leaf)
         assert leaf.dtype == reconstructed_leaf.dtype
         assert leaf.shape == reconstructed_leaf.shape
+
+    if len(leaves) > 0:
+        with pytest.raises(
+            ValueError,
+            match=r'The unravel function expected an array of shape .*, got .*\.',
+        ):
+            unravel_func(flat.reshape((-1, 1)))
+        with pytest.raises(
+            ValueError,
+            match=r'The unravel function expected an array of shape .*, got .*\.',
+        ):
+            unravel_func(np.concatenate([flat, np.zeros((1,))]))
 
     unravel_func(flat.astype(np.complex128))
