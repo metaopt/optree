@@ -20,6 +20,7 @@ import functools
 import itertools
 import warnings
 from typing import Any, Callable
+from typing_extensions import TypeAlias  # Python 3.10+
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -32,8 +33,8 @@ from optree.utils import safe_zip
 __all__ = ['ArrayLikeTree', 'ArrayTree', 'tree_ravel']
 
 
-ArrayLikeTree = PyTreeTypeVar('ArrayLikeTree', ArrayLike)
-ArrayTree = PyTreeTypeVar('ArrayTree', np.ndarray)
+ArrayLikeTree: TypeAlias = PyTreeTypeVar('ArrayLikeTree', ArrayLike)  # type: ignore[valid-type]
+ArrayTree: TypeAlias = PyTreeTypeVar('ArrayTree', np.ndarray)  # type: ignore[valid-type]
 
 
 def tree_ravel(

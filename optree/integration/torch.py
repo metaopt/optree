@@ -19,6 +19,7 @@ from __future__ import annotations
 import functools
 import warnings
 from typing import Any, Callable
+from typing_extensions import TypeAlias  # Python 3.10+
 
 import torch
 
@@ -30,7 +31,7 @@ from optree.utils import safe_zip
 __all__ = ['TensorTree', 'tree_ravel']
 
 
-TensorTree = PyTreeTypeVar('TensorTree', torch.Tensor)
+TensorTree: TypeAlias = PyTreeTypeVar('TensorTree', torch.Tensor)  # type: ignore[valid-type]
 
 
 def tree_ravel(
@@ -125,7 +126,7 @@ def _unravel_leaves_single_dtype(
     shapes: tuple[tuple[int, ...]],
     flat: torch.Tensor,
 ) -> list[torch.Tensor]:
-    chunks = torch.split(flat, sizes)
+    chunks = torch.split(flat, list(sizes))
     return [chunk.reshape(shape) for chunk, shape in safe_zip(chunks, shapes)]
 
 
@@ -142,10 +143,10 @@ def _unravel_leaves(
         raise ValueError(
             f'The unravel function given array of dtype {flat.dtype}, but expected dtype {to_dtype}.',
         )
-    chunks = torch.split(flat, sizes)
+    chunks = torch.split(flat, list(sizes))
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')  # ignore complex-to-real cast warning
         return [
-            chunk.reshape(shape).astype(dtype)
+            chunk.reshape(shape).to(dtype)
             for chunk, shape, dtype in safe_zip(chunks, shapes, from_dtypes)
         ]

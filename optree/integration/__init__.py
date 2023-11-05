@@ -24,7 +24,8 @@ current_module = sys.modules[__name__]
 SUBMODULES = frozenset({'jax', 'numpy', 'torch'})
 
 
-class _LazyModule(type(current_module)):  # pylint: disable=too-few-public-methods
+# pylint: disable-next=too-few-public-methods
+class _LazyModule(type(current_module)):  # type: ignore[misc]
     def __getattribute__(self, name: str) -> Any:  # noqa: N804
         try:
             return super().__getattribute__(name)

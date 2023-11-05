@@ -37,6 +37,7 @@ import itertools
 import warnings
 from types import FunctionType
 from typing import Any, Callable
+from typing_extensions import TypeAlias  # Python 3.10+
 
 import jax.numpy as jnp
 from jax import Array, lax
@@ -51,13 +52,17 @@ from optree.utils import safe_zip, total_order_sorted
 __all__ = ['ArrayLikeTree', 'ArrayTree', 'tree_ravel']
 
 
-ArrayLikeTree = PyTreeTypeVar('ArrayLikeTree', ArrayLike)
-ArrayTree = PyTreeTypeVar('ArrayTree', Array)
+ArrayLikeTree: TypeAlias = PyTreeTypeVar('ArrayLikeTree', ArrayLike)  # type: ignore[valid-type]
+ArrayTree: TypeAlias = PyTreeTypeVar('ArrayTree', Array)  # type: ignore[valid-type]
 
 
 # Vendor from https://github.com/google/jax/blob/jax-v0.4.20/jax/_src/util.py
 class HashablePartial:  # pragma: no cover
     """A hashable version of :class:`functools.partial`."""
+
+    func: FunctionType
+    args: tuple[Any, ...]
+    kwargs: dict[str, Any]
 
     def __init__(self, func: FunctionType | HashablePartial, *args: Any, **kwargs: Any) -> None:
         """Construct a :class:`HashablePartial` instance."""
@@ -69,7 +74,7 @@ class HashablePartial:  # pragma: no cover
             self.args = func.args + args
             self.kwargs = {**func.kwargs, **kwargs}
         elif isinstance(func, FunctionType):
-            self.func = func
+            self.func = func  # type: ignore[assignment]
             self.args = args
             self.kwargs = kwargs
         else:
@@ -78,7 +83,7 @@ class HashablePartial:  # pragma: no cover
     def __eq__(self, other: object) -> bool:
         return (
             type(other) is HashablePartial  # pylint: disable=unidiomatic-typecheck
-            and self.func.__code__ == other.func.__code__
+            and self.func.__code__ == other.func.__code__  # type: ignore[attr-defined]
             and self.args == other.args
             and self.kwargs == other.kwargs
         )
@@ -86,7 +91,7 @@ class HashablePartial:  # pragma: no cover
     def __hash__(self) -> int:
         return hash(
             (
-                self.func.__code__,
+                self.func.__code__,  # type: ignore[attr-defined]
                 self.args,
                 tuple(total_order_sorted(self.kwargs.items(), key=lambda kv: kv[0])),
             ),
@@ -98,7 +103,7 @@ class HashablePartial:  # pragma: no cover
 
 try:  # noqa: SIM105 # pragma: no cover
     # pylint: disable=ungrouped-imports
-    from jax._src.util import HashablePartial  # noqa: F811 # requires jax >= 4.7.0
+    from jax._src.util import HashablePartial  # type: ignore[assignment] # noqa: F811
 except ImportError:  # pragma: no cover
     pass
 
@@ -140,7 +145,7 @@ def tree_ravel(
         namespace=namespace,
     )
     flat, unravel_flat = _ravel_leaves(leaves)
-    return flat, HashablePartial(_unravel_pytree, treespec, unravel_flat)
+    return flat, HashablePartial(_unravel_pytree, treespec, unravel_flat)  # type: ignore[arg-type]
 
 
 ravel_pytree = tree_ravel
@@ -176,7 +181,7 @@ def _ravel_leaves(
         raveled = jnp.concatenate([jnp.ravel(leaf) for leaf in leaves])
         return (
             raveled,
-            HashablePartial(_unravel_leaves_single_dtype, indices, shapes),
+            HashablePartial(_unravel_leaves_single_dtype, indices, shapes),  # type: ignore[arg-type]
         )
 
     # When there is more than one distinct input dtype, we perform type conversions and produce a
@@ -186,7 +191,7 @@ def _ravel_leaves(
     )
     return (
         raveled,
-        HashablePartial(_unravel_leaves, indices, shapes, from_dtypes, to_dtype),
+        HashablePartial(_unravel_leaves, indices, shapes, from_dtypes, to_dtype),  # type: ignore[arg-type]
     )
 
 
