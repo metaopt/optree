@@ -134,7 +134,7 @@ lines_after_imports = 2
 multi_line_output = 3
 
 [tool.mypy]
-python_version = 3.7
+python_version = 3.8
 pretty = true
 show_error_codes = true
 show_error_context = true
