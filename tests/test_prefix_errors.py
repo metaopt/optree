@@ -573,6 +573,19 @@ def test_different_structure_no_children():
         raise e('in_axes')
 
 
+def test_register_keypath():
+    with pytest.raises(TypeError, match=r'Expected a class, got .*\.'):
+        optree.register_keypaths(
+            [],
+            lambda lst: [GetitemKeyPathEntry(i) for i in range(len(lst))],
+        )
+    with pytest.raises(ValueError, match=r'Key path handler for .* has already been registered\.'):
+        optree.register_keypaths(
+            list,
+            lambda lst: [GetitemKeyPathEntry(i) for i in range(len(lst))],
+        )
+
+
 def test_key_path():
     with pytest.raises(NotImplementedError):
         KeyPathEntry('a').pprint()
