@@ -56,7 +56,7 @@ ArrayTree = PyTreeTypeVar('ArrayTree', Array)
 
 
 # Vendor from https://github.com/google/jax/blob/jax-v0.4.20/jax/_src/util.py
-class HashablePartial:
+class HashablePartial:  # pragma: no cover
     """A hashable version of :class:`functools.partial`."""
 
     def __init__(self, func: FunctionType | HashablePartial, *args: Any, **kwargs: Any) -> None:
@@ -96,7 +96,7 @@ class HashablePartial:
         return self.func(*self.args, *args, **self.kwargs, **kwargs)
 
 
-try:  # noqa: SIM105
+try:  # noqa: SIM105 # pragma: no cover
     # pylint: disable=ungrouped-imports
     from jax._src.util import HashablePartial  # noqa: F811 # requires jax >= 4.7.0
 except ImportError:

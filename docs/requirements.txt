@@ -9,6 +9,6 @@ sphinxcontrib-bibtex
 sphinx-autodoc-typehints >= 1.19.2
 docutils
 
-jax[cpu]
+jax[cpu] >= 0.3
 numpy
 torch
