@@ -184,7 +184,7 @@ def register_pytree_node(
     with __REGISTRY_LOCK:
         _C.register_node(cls, flatten_func, unflatten_func, namespace)
         CustomTreeNode.register(cls)  # pylint: disable=no-member
-        _nodetype_registry[registration_key] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
+        _NODETYPE_REGISTRY[registration_key] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
     return cls
 
 
@@ -312,7 +312,7 @@ def _defaultdict_flatten(
 
 
 # pylint: disable=all
-_nodetype_registry: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {
+_NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {
     type(None): PyTreeNodeRegistryEntry(
         lambda none: ((), None),
         lambda _, none: None,  # type: ignore[arg-type,return-value]
@@ -350,10 +350,10 @@ def _pytree_node_registry_get(
     *,
     namespace: str = __GLOBAL_NAMESPACE,
 ) -> PyTreeNodeRegistryEntry | None:
-    entry: PyTreeNodeRegistryEntry | None = _nodetype_registry.get(cls)
+    entry: PyTreeNodeRegistryEntry | None = _NODETYPE_REGISTRY.get(cls)
     if entry is not None or namespace is __GLOBAL_NAMESPACE or namespace == '':
         return entry
-    return _nodetype_registry.get((namespace, cls))
+    return _NODETYPE_REGISTRY.get((namespace, cls))
 
 
 register_pytree_node.get = _pytree_node_registry_get  # type: ignore[attr-defined]
@@ -455,13 +455,14 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
         return (self.args, self.keywords), self.func
 
     @classmethod
-    def tree_unflatten(  # type: ignore[override] # pylint: disable=arguments-renamed
+    def tree_unflatten(  # type: ignore[override]
         cls,
-        func: Callable[..., Any],
-        args: tuple[tuple[Any, ...], dict[str, Any]],
+        metadata: Callable[..., Any],
+        children: tuple[tuple[Any, ...], dict[str, Any]],
     ) -> Self:
         """Unflatten the children and auxiliary data into a :class:`Partial` instance."""
-        return cls(func, *args[0], **args[1])
+        args, keywords = children
+        return cls(metadata, *args, **keywords)
 
 
 class KeyPathEntry(NamedTuple):
@@ -527,7 +528,7 @@ class FlattenedKeyPathEntry(KeyPathEntry):  # fallback
 
 
 KeyPathHandler = Callable[[PyTree], Sequence[KeyPathEntry]]
-_keypath_registry: dict[type[CustomTreeNode], KeyPathHandler] = {}
+_KEYPATH_REGISTRY: dict[type[CustomTreeNode], KeyPathHandler] = {}
 
 
 def register_keypaths(
@@ -535,7 +536,12 @@ def register_keypaths(
     handler: KeyPathHandler,
 ) -> KeyPathHandler:
     """Register a key path handler for a custom pytree node type."""
-    _keypath_registry[cls] = handler
+    if not inspect.isclass(cls):
+        raise TypeError(f'Expected a class, got {cls}.')
+    if cls in _KEYPATH_REGISTRY:
+        raise ValueError(f'Key path handler for {cls} has already been registered.')
+
+    _KEYPATH_REGISTRY[cls] = handler
     return handler
 
 
@@ -546,4 +552,4 @@ register_keypaths(OrderedDict, lambda odct: list(map(GetitemKeyPathEntry, odct))
 register_keypaths(defaultdict, lambda ddct: list(map(GetitemKeyPathEntry, _sorted_keys(ddct))))  # type: ignore[arg-type]
 register_keypaths(deque, lambda dq: list(map(GetitemKeyPathEntry, range(len(dq)))))  # type: ignore[arg-type]
 
-register_keypaths.get = _keypath_registry.get  # type: ignore[attr-defined]
+register_keypaths.get = _KEYPATH_REGISTRY.get  # type: ignore[attr-defined]
