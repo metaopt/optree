@@ -25,9 +25,9 @@ SUBMODULES = frozenset({'jax', 'numpy', 'torch'})
 
 
 class _LazyModule(type(current_module)):  # pylint: disable=too-few-public-methods
-    def __getattr__(self, name: str) -> Any:  # noqa: N804
+    def __getattribute__(self, name: str) -> Any:  # noqa: N804
         try:
-            return super().__getattr__(name)
+            return super().__getattribute__(name)
         except AttributeError:
             if name in SUBMODULES:
                 import importlib  # pylint: disable=import-outside-toplevel
