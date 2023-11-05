@@ -85,7 +85,13 @@ def _unravel_pytree(
     return tree_unflatten(treespec, unravel_func(flat))
 
 
-def _unravel_empty(_: torch.Tensor) -> list[torch.Tensor]:
+def _unravel_empty(flat: torch.Tensor) -> list[torch.Tensor]:
+    if not torch.is_tensor(flat):
+        raise ValueError(f'Expected a tensor to unravel, got {type(flat)}.')
+    if flat.shape != (0,):
+        raise ValueError(
+            f'The unravel function expected a tensor of shape {(0,)}, got shape {flat.shape}.',
+        )
     return []
 
 
@@ -126,9 +132,11 @@ def _unravel_leaves_single_dtype(
     shapes: tuple[tuple[int, ...]],
     flat: torch.Tensor,
 ) -> list[torch.Tensor]:
+    if not torch.is_tensor(flat):
+        raise ValueError(f'Expected a tensor to unravel, got {type(flat)}.')
     if flat.shape != (sum(sizes),):
         raise ValueError(
-            f'The unravel function expected an array of shape {(sum(sizes),)}, '
+            f'The unravel function expected a tensor of shape {(sum(sizes),)}, '
             f'got shape {flat.shape}.',
         )
 
@@ -147,7 +155,7 @@ def _unravel_leaves(
         raise ValueError(f'Expected a tensor to unravel, got {type(flat)}.')
     if flat.shape != (sum(sizes),):
         raise ValueError(
-            f'The unravel function expected an array of shape {(sum(sizes),)}, '
+            f'The unravel function expected a tensor of shape {(sum(sizes),)}, '
             f'got shape {flat.shape}.',
         )
     if flat.dtype != to_dtype:

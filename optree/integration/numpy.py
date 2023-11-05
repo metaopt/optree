@@ -88,7 +88,12 @@ def _unravel_pytree(
     return tree_unflatten(treespec, unravel_func(flat))
 
 
-def _unravel_empty(_: np.ndarray) -> list[np.ndarray]:
+def _unravel_empty(flat: np.ndarray) -> list[np.ndarray]:
+    if np.shape(flat) != (0,):  # type: ignore[comparison-overlap]
+        raise ValueError(
+            f'The unravel function expected an array of shape {(0,)}, '
+            f'got shape {np.shape(flat)}.',
+        )
     return []
 
 
@@ -126,7 +131,7 @@ def _unravel_leaves_single_dtype(
     shapes: tuple[tuple[int, ...]],
     flat: np.ndarray,
 ) -> list[np.ndarray]:
-    if np.shape(flat) != (indices[-1],):
+    if np.shape(flat) != (indices[-1],):  # type: ignore[comparison-overlap]
         raise ValueError(
             f'The unravel function expected an array of shape {(indices[-1],)}, '
             f'got shape {np.shape(flat)}.',
@@ -143,7 +148,7 @@ def _unravel_leaves(
     to_dtype: np.dtype,
     flat: np.ndarray,
 ) -> list[np.ndarray]:
-    if np.shape(flat) != (indices[-1],):
+    if np.shape(flat) != (indices[-1],):  # type: ignore[comparison-overlap]
         raise ValueError(
             f'The unravel function expected an array of shape {(indices[-1],)}, '
             f'got shape {np.shape(flat)}.',

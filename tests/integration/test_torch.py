@@ -18,11 +18,11 @@
 import pytest
 
 
-numpy = pytest.importorskip('numpy')
+torch = pytest.importorskip('torch')
 
 import random
 
-import numpy as np
+import torch
 
 import optree
 from helpers import LEAVES, TREES, parametrize
@@ -33,7 +33,10 @@ def test_tree_ravel(tree):
     random.seed(0)
 
     def replace_leaf(_):
-        candidates = [random.randint(-100, 100), random.uniform(-100.0, 100.0)]
+        candidates = [
+            torch.tensor(random.randint(-100, 100)),
+            torch.tensor(random.uniform(-100.0, 100.0)),
+        ]
 
         shapes = [
             (),
@@ -42,62 +45,65 @@ def test_tree_ravel(tree):
             (random.randint(1, 10), random.randint(1, 10), random.randint(1, 10)),
         ]
         dtypes = [
-            np.float32,
-            np.float64,
-            np.int32,
-            np.int64,
+            torch.float32,
+            torch.float64,
+            torch.int32,
+            torch.int64,
         ]
         for dtype in dtypes:
             candidates.extend(
-                np.random.uniform(low=-5.0, high=5.0, size=shape).astype(dtype) for shape in shapes
+                (5.0 * (2.0 * torch.randn(size=shape) - 1.0)).to(dtype) for shape in shapes
             )
 
         return random.choice(candidates)
 
     tree = optree.tree_map(replace_leaf, tree)
-    flat, unravel_func = optree.integration.numpy.tree_ravel(tree)
+    flat, unravel_func = optree.integration.torch.tree_ravel(tree)
 
     leaves, treespec = optree.tree_flatten(tree)
-    assert np.size(flat) == sum(np.size(leaf) for leaf in leaves)
-    assert np.shape(flat) == (np.size(flat),)
+    assert flat.numel() == sum(leaf.numel() for leaf in leaves)
+    assert flat.shape == (flat.numel(),)
 
     reconstructed = unravel_func(flat)
     reconstructed_leaves, reconstructed_treespec = optree.tree_flatten(reconstructed)
     assert reconstructed_treespec == treespec
     assert len(leaves) == len(reconstructed_leaves)
     for leaf, reconstructed_leaf in zip(leaves, reconstructed_leaves):
-        assert np.allclose(leaf, reconstructed_leaf)
-        leaf = np.asarray(leaf)
-        reconstructed_leaf = np.asarray(reconstructed_leaf)
+        assert torch.is_tensor(leaf)
+        assert torch.is_tensor(reconstructed_leaf)
+        assert torch.allclose(leaf, reconstructed_leaf)
         assert leaf.dtype == reconstructed_leaf.dtype
         assert leaf.shape == reconstructed_leaf.shape
 
+    with pytest.raises(ValueError, match=r'Expected a tensor to unravel, got .*\.'):
+        unravel_func(1)
+
     with pytest.raises(
         ValueError,
-        match=r'The unravel function expected an array of shape .*, got .*\.',
+        match=r'The unravel function expected a tensor of shape .*, got .*\.',
     ):
         unravel_func(flat.reshape((-1, 1)))
     with pytest.raises(
         ValueError,
-        match=r'The unravel function expected an array of shape .*, got .*\.',
+        match=r'The unravel function expected a tensor of shape .*, got .*\.',
     ):
-        unravel_func(np.concatenate([flat, np.zeros((1,))]))
+        unravel_func(torch.cat([flat, torch.zeros((1,))]))
 
-    if all(np.result_type(leaf) == flat.dtype for leaf in leaves):
-        unravel_func(flat.astype(np.complex128))
+    if all(leaf.dtype == flat.dtype for leaf in leaves):
+        unravel_func(flat.to(torch.complex128))
     else:
         with pytest.raises(
             ValueError,
-            match=r'The unravel function expected an array of dtype .*, got dtype .*\.',
+            match=r'The unravel function expected a tensor of dtype .*, got dtype .*\.',
         ):
-            unravel_func(flat.astype(np.complex128))
+            unravel_func(flat.to(torch.complex128))
 
 
 @parametrize(tree=list(TREES + LEAVES))
 def test_tree_ravel_single_dtype(tree):
     random.seed(0)
-    dtype = np.float16
-    default_dtype = np.array([]).dtype
+    dtype = torch.float16
+    default_dtype = torch.tensor([]).dtype
 
     def replace_leaf(_):
         candidates = []
@@ -108,38 +114,54 @@ def test_tree_ravel_single_dtype(tree):
             (random.randint(1, 10), random.randint(1, 10), random.randint(1, 10)),
         ]
         candidates.extend(
-            np.random.uniform(low=-5.0, high=5.0, size=shape).astype(dtype) for shape in shapes
+            (5.0 * (2.0 * torch.randn(size=shape) - 1.0)).to(dtype) for shape in shapes
         )
         return random.choice(candidates)
 
     tree = optree.tree_map(replace_leaf, tree)
-    flat, unravel_func = optree.integration.numpy.tree_ravel(tree)
+    flat, unravel_func = optree.integration.torch.tree_ravel(tree)
 
     leaves, treespec = optree.tree_flatten(tree)
     assert flat.dtype == dtype if leaves else default_dtype
-    assert np.size(flat) == sum(np.size(leaf) for leaf in leaves)
-    assert np.shape(flat) == (np.size(flat),)
+    assert flat.numel() == sum(leaf.numel() for leaf in leaves)
+    assert flat.shape == (flat.numel(),)
 
     reconstructed = unravel_func(flat)
     reconstructed_leaves, reconstructed_treespec = optree.tree_flatten(reconstructed)
     assert reconstructed_treespec == treespec
     assert len(leaves) == len(reconstructed_leaves)
     for leaf, reconstructed_leaf in zip(leaves, reconstructed_leaves):
-        assert np.allclose(leaf, reconstructed_leaf)
-        leaf = np.asarray(leaf)
-        reconstructed_leaf = np.asarray(reconstructed_leaf)
+        assert torch.is_tensor(leaf)
+        assert torch.is_tensor(reconstructed_leaf)
+        assert torch.allclose(leaf, reconstructed_leaf)
         assert leaf.dtype == reconstructed_leaf.dtype
         assert leaf.shape == reconstructed_leaf.shape
 
+    with pytest.raises(ValueError, match=r'Expected a tensor to unravel, got .*\.'):
+        unravel_func(1)
+
     with pytest.raises(
         ValueError,
-        match=r'The unravel function expected an array of shape .*, got .*\.',
+        match=r'The unravel function expected a tensor of shape .*, got .*\.',
     ):
         unravel_func(flat.reshape((-1, 1)))
     with pytest.raises(
         ValueError,
-        match=r'The unravel function expected an array of shape .*, got .*\.',
+        match=r'The unravel function expected a tensor of shape .*, got .*\.',
     ):
-        unravel_func(np.concatenate([flat, np.zeros((1,))]))
+        unravel_func(torch.cat([flat, torch.zeros((1,))]))
 
-    unravel_func(flat.astype(np.complex128))
+    unravel_func(flat.to(torch.complex128))
+
+
+def test_tree_ravel_non_tensor():
+    with pytest.raises(ValueError, match=r'All leaves must be tensors\.'):
+        optree.integration.torch.tree_ravel(1)
+
+    with pytest.raises(ValueError, match=r'All leaves must be tensors\.'):
+        optree.integration.torch.tree_ravel((1, 2))
+
+    with pytest.raises(ValueError, match=r'All leaves must be tensors\.'):
+        optree.integration.torch.tree_ravel((torch.tensor(1), 2))
+
+    optree.integration.torch.tree_ravel((torch.tensor(1), torch.tensor(2)))
