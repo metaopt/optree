@@ -41,7 +41,7 @@ def tree_ravel(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> tuple[torch.Tensor, Callable[[torch.Tensor], TensorTree]]:
-    """Ravel (flatten) a pytree of tensors down to a 1D tensor.
+    r"""Ravel (flatten) a pytree of tensors down to a 1D tensor.
 
     Args:
         tree (pytree): a pytree of tensors to ravel.
@@ -59,7 +59,7 @@ def tree_ravel(
     Returns:
         A pair ``(tensor, unravel_func)`` where the first element is a 1D tensor representing the
         flattened and concatenated leaf values, with ``dtype`` determined by promoting the
-        ``dtype``s of leaf values, and the second element is a callable for unflattening a 1D tensor
+        ``dtype``\s of leaf values, and the second element is a callable for unflattening a 1D tensor
         of the same length back to a pytree of of the same structure as the input ``tree``. If the
         input pytree is empty (i.e. has no leaves) then as a convention a 1D empty tensor of the
         default dtype is returned in the first component of the output.

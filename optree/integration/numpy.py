@@ -44,7 +44,7 @@ def tree_ravel(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> tuple[np.ndarray, Callable[[np.ndarray], ArrayTree]]:
-    """Ravel (flatten) a pytree of arrays down to a 1D array.
+    r"""Ravel (flatten) a pytree of arrays down to a 1D array.
 
     Args:
         tree (pytree): a pytree of arrays and scalars to ravel.
@@ -62,7 +62,7 @@ def tree_ravel(
     Returns:
         A pair ``(array, unravel_func)`` where the first element is a 1D array representing the
         flattened and concatenated leaf values, with ``dtype`` determined by promoting the
-        ``dtype``s of leaf values, and the second element is a callable for unflattening a 1D array
+        ``dtype``\s of leaf values, and the second element is a callable for unflattening a 1D array
         of the same length back to a pytree of of the same structure as the input ``tree``. If the
         input pytree is empty (i.e. has no leaves) then as a convention a 1D empty array of the
         default dtype is returned in the first component of the output.
