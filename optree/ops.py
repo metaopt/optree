@@ -23,7 +23,7 @@ import functools
 import itertools
 import textwrap
 from collections import OrderedDict, defaultdict, deque
-from typing import Any, Callable, cast, overload
+from typing import Any, Callable, overload
 
 from optree import _C
 from optree.registry import (
@@ -36,7 +36,6 @@ from optree.registry import (
     register_pytree_node,
 )
 from optree.typing import (
-    Children,
     Iterable,
     MetaData,
     PyTree,
@@ -1693,7 +1692,12 @@ def tree_flatten_one_level(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> tuple[Children[T], MetaData, tuple[Any, ...], Callable[[MetaData, Children[T]]], PyTree[T]]:
+) -> tuple[
+    list[PyTree[T]],
+    MetaData,
+    tuple[Any, ...],
+    Callable[[MetaData, list[PyTree[T]]], PyTree[T]],
+]:
     """Flatten the pytree one level, returning a 4-tuple of children, auxiliary data, path entries, and an unflatten function.
 
     See also :func:`tree_flatten`, :func:`tree_flatten_with_path`.
@@ -1735,7 +1739,7 @@ def tree_flatten_one_level(
 
     handler: PyTreeNodeRegistryEntry | None = register_pytree_node.get(node_type, namespace=namespace)  # type: ignore[attr-defined]
     if handler:
-        flattened = tuple(handler.flatten_func(tree))
+        flattened = tuple(handler.flatten_func(tree))  # type: ignore[arg-type]
         if len(flattened) == 2:
             flattened = (*flattened, None)
         elif len(flattened) != 3:
@@ -1744,14 +1748,14 @@ def tree_flatten_one_level(
                 f'got {len(flattened)}.',
             )
         children, metadata, entries = flattened
-        children = list(children)
+        children = list(children)  # type: ignore[arg-type]
         entries = tuple(range(len(children)) if entries is None else entries)
         if len(children) != len(entries):
             raise RuntimeError(
                 f'PyTree custom flatten function for type {node_type} returned inconsistent '
                 f'number of children ({len(children)}) and number of entries ({len(entries)}).',
             )
-        return children, metadata, entries, handler.unflatten_func
+        return children, metadata, entries, handler.unflatten_func  # type: ignore[return-value]
 
     raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
 
@@ -2189,8 +2193,8 @@ def _prefix_error(
     for k, t1, t2 in zip(keys, prefix_tree_children, full_tree_children):
         yield from _prefix_error(
             key_path + k,
-            cast(PyTree[T], t1),
-            cast(PyTree[S], t2),
+            t1,
+            t2,
             is_leaf=is_leaf,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
