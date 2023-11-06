@@ -33,9 +33,9 @@ class _LazyModule(type(current_module)):  # type: ignore[misc]
             if name in SUBMODULES:
                 import importlib  # pylint: disable=import-outside-toplevel
 
-                module = importlib.import_module(f'{__name__}.{name}')
-                setattr(self, name, module)
-                return module
+                submodule = importlib.import_module(f'{__name__}.{name}')
+                setattr(self, name, submodule)
+                return submodule
             raise
 
 

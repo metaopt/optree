@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add `tree_ravel` function for JAX/NumPy/PyTorch array/tensor tree manipulation by [@XuehaiPan](https://github.com/XuehaiPan) in [#100](https://github.com/metaopt/optree/pull/100).
+- Expose node kind enum for `PyTreeSpec` by [@XuehaiPan](https://github.com/XuehaiPan) in [#98](https://github.com/metaopt/optree/pull/98).
+- Expose function `tree_flatten_one_level` by [@XuehaiPan](https://github.com/XuehaiPan) in [#101](https://github.com/metaopt/optree/pull/101).
 - Add tree broadcast functions `broadcast_common`, `tree_broadcast_common`, `tree_broadcast_map`, and `tree_broadcast_map_with_path` by [@XuehaiPan](https://github.com/XuehaiPan) in [#87](https://github.com/metaopt/optree/pull/87).
 - Add function `tree_is_leaf` and add `is_leaf` argument to function `all_leaves` by [@XuehaiPan](https://github.com/XuehaiPan) in [#93](https://github.com/metaopt/optree/pull/93).
 - Add methods `PyTreeSpec.entry` and `PyTreeSpec.child` by [@XuehaiPan](https://github.com/XuehaiPan) in [#88](https://github.com/metaopt/optree/pull/88).

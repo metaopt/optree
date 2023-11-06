@@ -56,11 +56,11 @@ def test_total_order_sorted():
 
 
 def test_safe_zip():
-    assert safe_zip([]) == []
-    assert safe_zip([1]) == [(1,)]
-    assert safe_zip([1, 2]) == [(1,), (2,)]
-    assert safe_zip([1, 2], [3, 4]) == [(1, 3), (2, 4)]
-    assert safe_zip([1, 2], [3, 4], [5, 6]) == [(1, 3, 5), (2, 4, 6)]
+    assert list(safe_zip([])) == []
+    assert list(safe_zip([1])) == [(1,)]
+    assert list(safe_zip([1, 2])) == [(1,), (2,)]
+    assert list(safe_zip([1, 2], [3, 4])) == [(1, 3), (2, 4)]
+    assert list(safe_zip([1, 2], [3, 4], [5, 6])) == [(1, 3, 5), (2, 4, 6)]
     with pytest.raises(ValueError, match='length mismatch'):
         safe_zip([1, 2], [3, 4, 5])
     with pytest.raises(ValueError, match='length mismatch'):

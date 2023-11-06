@@ -16,6 +16,7 @@
 # pylint: disable=all
 
 import builtins
+import enum
 from collections.abc import Callable, Iterable, Sequence
 from typing import Any
 
@@ -64,6 +65,19 @@ def is_structseq(obj: object | type) -> bool: ...
 def is_structseq_class(cls: type) -> bool: ...
 def structseq_fields(obj: builtins.tuple | type[builtins.tuple]) -> builtins.tuple[str, ...]: ...
 
+class PyTreeKind(enum.IntEnum):
+    CUSTOM = 0  # a custom type
+    LEAF = enum.auto()  # an opaque leaf node
+    NONE = enum.auto()  # None
+    TUPLE = enum.auto()  # a tuple
+    LIST = enum.auto()  # a list
+    DICT = enum.auto()  # a dict
+    NAMEDTUPLE = enum.auto()  # a collections.namedtuple
+    ORDEREDDICT = enum.auto()  # a collections.OrderedDict
+    DEFAULTDICT = enum.auto()  # a collections.defaultdict
+    DEQUE = enum.auto()  # a collections.deque
+    STRUCTSEQUENCE = enum.auto()  # a PyStructSequence
+
 class PyTreeSpec:
     num_nodes: int
     num_leaves: int
@@ -71,6 +85,7 @@ class PyTreeSpec:
     none_is_leaf: bool
     namespace: str
     type: builtins.type | None
+    kind: PyTreeKind
     def unflatten(self, leaves: Iterable[T]) -> PyTree[T]: ...
     def flatten_up_to(self, full_tree: PyTree[T]) -> list[PyTree[T]]: ...
     def broadcast_to_common_suffix(self, other: PyTreeSpec) -> PyTreeSpec: ...
@@ -100,7 +115,7 @@ class PyTreeSpec:
 
 def register_node(
     cls: type[CustomTreeNode[T]],
-    to_iterable: FlattenFunc,
-    from_iterable: UnflattenFunc,
+    flatten_func: FlattenFunc,
+    unflatten_func: UnflattenFunc,
     namespace: str,
 ) -> None: ...

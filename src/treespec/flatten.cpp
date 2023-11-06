@@ -122,7 +122,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
 
             case PyTreeKind::Custom: {
                 found_custom = true;
-                py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(handle));
+                py::tuple out = py::cast<py::tuple>(node.custom->flatten_func(handle));
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
@@ -316,7 +316,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
 
             case PyTreeKind::Custom: {
                 found_custom = true;
-                py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(handle));
+                py::tuple out = py::cast<py::tuple>(node.custom->flatten_func(handle));
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
@@ -605,7 +605,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::handle& full_tree) const {
                         << "; value: " << static_cast<std::string>(py::repr(object)) << ".";
                     throw py::value_error(oss.str());
                 }
-                py::tuple out = py::cast<py::tuple>(node.custom->to_iterable(object));
+                py::tuple out = py::cast<py::tuple>(node.custom->flatten_func(object));
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};

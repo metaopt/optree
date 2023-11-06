@@ -162,6 +162,8 @@ class PyTreeSpec {
 
     [[nodiscard]] py::object GetType() const;
 
+    [[nodiscard]] PyTreeKind GetPyTreeKind() const;
+
     bool operator==(const PyTreeSpec &other) const;
     inline bool operator!=(const PyTreeSpec &other) const { return !(*this == other); }
     inline bool operator<(const PyTreeSpec &other) const { return IsPrefix(other, true); }
@@ -196,14 +198,14 @@ class PyTreeSpec {
         // For a OrderedDict, contains a list of keys.
         // For a DefaultDict, contains a tuple of (default_factory, sorted list of keys).
         // For a Deque, contains the `maxlen` attribute.
-        // For a Custom type, contains the auxiliary data returned by the `to_iterable` function.
+        // For a Custom type, contains the auxiliary data returned by the `flatten_func` function.
         py::object node_data;
 
         // The tuple of path entries.
         // This is optional, if not specified, `range(arity)` is used.
         // For a sequence, contains the index of the element.
         // For a mapping, contains the key of the element.
-        // For a Custom type, contains the path entries returned by the `to_iterable` function.
+        // For a Custom type, contains the path entries returned by the `flatten_func` function.
         py::object node_entries;
 
         // Custom type registration. Must be null for non-custom types.
