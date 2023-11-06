@@ -1575,6 +1575,10 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
                     assert node[entry] is child
 
             assert unflatten_func(metadata, children) == node
+            if node_type is type(None):
+                assert unflatten_func(metadata, []) is None
+                with pytest.raises(ValueError, match=re.escape('Expected no children.')):
+                    unflatten_func(metadata, range(1))
 
             stack.extend(reversed(children))
 

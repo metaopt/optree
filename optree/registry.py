@@ -306,7 +306,7 @@ def _none_flatten(none: None) -> tuple[tuple[()], None]:
     return (), None
 
 
-def _none_unflatten(_: None, children: Iterable[Any]) -> None:  # pragma: no cover
+def _none_unflatten(_: None, children: Iterable[Any]) -> None:
     sentinel = object()
     if next(iter(children), sentinel) is not sentinel:
         raise ValueError('Expected no children.')
