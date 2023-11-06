@@ -961,7 +961,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
                 // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
                 SET_ITEM<py::tuple>(tuple, i, children[i]);
             }
-            return node.custom->from_iterable(node.node_data, tuple);
+            return node.custom->unflatten_func(node.node_data, tuple);
         }
 
         default:

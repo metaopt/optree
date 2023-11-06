@@ -16,9 +16,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence, overload
 
-from optree.typing import T, U
+from optree.typing import S, T, U
 
 
 def total_order_sorted(
@@ -59,16 +59,50 @@ def total_order_sorted(
             return sequence  # fallback to original order
 
 
-def safe_zip(*args: Sequence[T]) -> list[tuple[T, ...]]:
+@overload
+def safe_zip(
+    __iter1: Iterable[T],
+) -> zip[tuple[T]]:  # pragma: no cover
+    ...
+
+
+@overload
+def safe_zip(
+    __iter1: Iterable[T],
+    __iter2: Iterable[S],
+) -> zip[tuple[T, S]]:  # pragma: no cover
+    ...
+
+
+@overload
+def safe_zip(
+    __iter1: Iterable[T],
+    __iter2: Iterable[S],
+    __iter3: Iterable[U],
+) -> zip[tuple[T, S, U]]:  # pragma: no cover
+    ...
+
+
+@overload
+def safe_zip(
+    __iter1: Iterable[Any],
+    __iter2: Iterable[Any],
+    __iter3: Iterable[Any],
+    __iter4: Iterable[Any],
+    *__iters: Iterable[Any],
+) -> zip[tuple[Any, ...]]:  # pragma: no cover
+    ...
+
+
+def safe_zip(*args):
     """Strict zip that requires all arguments to be the same length."""
-    n = len(args[0])
-    for arg in args[1:]:
-        if len(arg) != n:
-            raise ValueError(f'length mismatch: {list(map(len, args))}')
-    return list(zip(*args))
+    seqs = [arg if isinstance(arg, Sequence) else list(arg) for arg in args]
+    if len(set(map(len, seqs))) > 1:
+        raise ValueError(f'length mismatch: {list(map(len, seqs))}')
+    return zip(*seqs)
 
 
-def unzip2(xys: Iterable[tuple[T, U]]) -> tuple[tuple[T, ...], tuple[U, ...]]:
+def unzip2(xys: Iterable[tuple[T, S]]) -> tuple[tuple[T, ...], tuple[S, ...]]:
     """Unzip sequence of length-2 tuples into two tuples."""
     # Note: we deliberately don't use zip(*xys) because it is lazily evaluated,
     # is too permissive about inputs, and does not guarantee a length-2 output.
