@@ -97,28 +97,18 @@ def tree_ravel(
         namespace=namespace,
     )
     flat, unravel_flat = _ravel_leaves(leaves)
-    return flat, functools.partial(_unravel_pytree, treespec, unravel_flat)
+    return flat, functools.partial(_tree_unravel, treespec, unravel_flat)
 
 
 ravel_pytree = tree_ravel
 
 
-def _unravel_pytree(
+def _tree_unravel(
     treespec: PyTreeSpec,
-    unravel_func: Callable[[torch.Tensor], list[torch.Tensor]],
+    unravel_flat: Callable[[torch.Tensor], list[torch.Tensor]],
     flat: torch.Tensor,
 ) -> TensorTree:
-    return tree_unflatten(treespec, unravel_func(flat))
-
-
-def _unravel_empty(flat: torch.Tensor) -> list[torch.Tensor]:
-    if not torch.is_tensor(flat):
-        raise ValueError(f'Expected a tensor to unravel, got {type(flat)}.')
-    if flat.shape != (0,):
-        raise ValueError(
-            f'The unravel function expected a tensor of shape {(0,)}, got shape {flat.shape}.',
-        )
-    return []
+    return tree_unflatten(treespec, unravel_flat(flat))
 
 
 def _ravel_leaves(
@@ -151,6 +141,16 @@ def _ravel_leaves(
         raveled,
         functools.partial(_unravel_leaves, sizes, shapes, from_dtypes, to_dtype),
     )
+
+
+def _unravel_empty(flat: torch.Tensor) -> list[torch.Tensor]:
+    if not torch.is_tensor(flat):
+        raise ValueError(f'Expected a tensor to unravel, got {type(flat)}.')
+    if flat.shape != (0,):
+        raise ValueError(
+            f'The unravel function expected a tensor of shape {(0,)}, got shape {flat.shape}.',
+        )
+    return []
 
 
 def _unravel_leaves_single_dtype(

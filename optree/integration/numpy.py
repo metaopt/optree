@@ -100,27 +100,18 @@ def tree_ravel(
         namespace=namespace,
     )
     flat, unravel_flat = _ravel_leaves(leaves)
-    return flat, functools.partial(_unravel_pytree, treespec, unravel_flat)
+    return flat, functools.partial(_tree_unravel, treespec, unravel_flat)
 
 
 ravel_pytree = tree_ravel
 
 
-def _unravel_pytree(
+def _tree_unravel(
     treespec: PyTreeSpec,
-    unravel_func: Callable[[np.ndarray], list[np.ndarray]],
+    unravel_flat: Callable[[np.ndarray], list[np.ndarray]],
     flat: np.ndarray,
 ) -> ArrayTree:
-    return tree_unflatten(treespec, unravel_func(flat))
-
-
-def _unravel_empty(flat: np.ndarray) -> list[np.ndarray]:
-    if np.shape(flat) != (0,):  # type: ignore[comparison-overlap]
-        raise ValueError(
-            f'The unravel function expected an array of shape {(0,)}, '
-            f'got shape {np.shape(flat)}.',
-        )
-    return []
+    return tree_unflatten(treespec, unravel_flat(flat))
 
 
 def _ravel_leaves(
@@ -150,6 +141,15 @@ def _ravel_leaves(
         raveled,
         functools.partial(_unravel_leaves, indices, shapes, from_dtypes, to_dtype),
     )
+
+
+def _unravel_empty(flat: np.ndarray) -> list[np.ndarray]:
+    if np.shape(flat) != (0,):  # type: ignore[comparison-overlap]
+        raise ValueError(
+            f'The unravel function expected an array of shape {(0,)}, '
+            f'got shape {np.shape(flat)}.',
+        )
+    return []
 
 
 def _unravel_leaves_single_dtype(

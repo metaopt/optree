@@ -171,28 +171,18 @@ def tree_ravel(
         namespace=namespace,
     )
     flat, unravel_flat = _ravel_leaves(leaves)
-    return flat, HashablePartial(_unravel_pytree, treespec, unravel_flat)  # type: ignore[arg-type]
+    return flat, HashablePartial(_tree_unravel, treespec, unravel_flat)  # type: ignore[arg-type]
 
 
 ravel_pytree = tree_ravel
 
 
-def _unravel_pytree(
+def _tree_unravel(
     treespec: PyTreeSpec,
-    unravel_func: Callable[[Array], list[ArrayLike]],
+    unravel_flat: Callable[[Array], list[ArrayLike]],
     flat: Array,
 ) -> ArrayTree:
-    return tree_unflatten(treespec, unravel_func(flat))
-
-
-def _unravel_empty(flat: Array) -> list[ArrayLike]:
-    if jnp.shape(flat) != (0,):  # type: ignore[comparison-overlap]
-        raise ValueError(
-            f'The unravel function expected an array of shape {(0,)}, '
-            f'got shape {jnp.shape(flat)}.',
-        )
-
-    return []
+    return tree_unflatten(treespec, unravel_flat(flat))
 
 
 def _ravel_leaves(
@@ -225,6 +215,16 @@ def _ravel_leaves(
         raveled,
         HashablePartial(_unravel_leaves, indices, shapes, from_dtypes, to_dtype),  # type: ignore[arg-type]
     )
+
+
+def _unravel_empty(flat: Array) -> list[ArrayLike]:
+    if jnp.shape(flat) != (0,):  # type: ignore[comparison-overlap]
+        raise ValueError(
+            f'The unravel function expected an array of shape {(0,)}, '
+            f'got shape {jnp.shape(flat)}.',
+        )
+
+    return []
 
 
 def _unravel_leaves_single_dtype(
