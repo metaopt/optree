@@ -119,23 +119,29 @@ def tree_ravel(
 
     >>> tree = {
     ...     'layer1': {
-    ...         'weight': jnp.arange(6, dtype=jnp.float32).reshape((2, 3)),
-    ...         'bias': jnp.arange(2, dtype=jnp.float32).reshape((2,)),
+    ...         'weight': jnp.arange(0, 6, dtype=jnp.float32).reshape((2, 3)),
+    ...         'bias': jnp.arange(6, 8, dtype=jnp.float32).reshape((2,)),
     ...     },
     ...     'layer2': {
-    ...         'weight': jnp.arange(2, dtype=jnp.float32).reshape((1, 2)),
-    ...         'bias': jnp.arange(1, dtype=jnp.float32).reshape((1,))
+    ...         'weight': jnp.arange(8, 10, dtype=jnp.float32).reshape((1, 2)),
+    ...         'bias': jnp.arange(10, 11, dtype=jnp.float32).reshape((1,))
     ...     },
     ... }
+    >>> tree
+    {'layer1': {'weight': Array([[0., 1., 2.],
+                                 [3., 4., 5.]], dtype=float32),
+                'bias': Array([6., 7.], dtype=float32)},
+     'layer2': {'weight': Array([[8., 9.]], dtype=float32),
+                'bias': Array([10.], dtype=float32)}}
     >>> flat, unravel_func = tree_ravel(tree)
     >>> flat
-    Array([0., 1., 0., 1., 2., 3., 4., 5., 0., 0., 1.], dtype=float32)
+    Array([ 6.,  7.,  0.,  1.,  2.,  3.,  4.,  5., 10.,  8.,  9.], dtype=float32)
     >>> unravel_func(flat)
     {'layer1': {'weight': Array([[0., 1., 2.],
                                  [3., 4., 5.]], dtype=float32),
-                'bias': Array([0., 1.], dtype=float32)},
-     'layer2': {'weight': Array([[0., 1.]], dtype=float32),
-                'bias': Array([0.], dtype=float32)}}
+                'bias': Array([6., 7.], dtype=float32)},
+     'layer2': {'weight': Array([[8., 9.]], dtype=float32),
+                'bias': Array([10.], dtype=float32)}}
 
     Args:
         tree (pytree): a pytree of arrays and scalars to ravel.

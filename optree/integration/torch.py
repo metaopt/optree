@@ -45,23 +45,29 @@ def tree_ravel(
 
     >>> tree = {
     ...     'layer1': {
-    ...         'weight': torch.arange(6, dtype=torch.float64).reshape((2, 3)),
-    ...         'bias': torch.arange(2, dtype=torch.float64).reshape((2,)),
+    ...         'weight': torch.arange(0, 6, dtype=torch.float64).reshape((2, 3)),
+    ...         'bias': torch.arange(6, 8, dtype=torch.float64).reshape((2,)),
     ...     },
     ...     'layer2': {
-    ...         'weight': torch.arange(2, dtype=torch.float64).reshape((1, 2)),
-    ...         'bias': torch.arange(1, dtype=torch.float64).reshape((1,))
+    ...         'weight': torch.arange(8, 10, dtype=torch.float64).reshape((1, 2)),
+    ...         'bias': torch.arange(10, 11, dtype=torch.float64).reshape((1,))
     ...     },
     ... }
+    >>> tree
+    {'layer1': {'weight': tensor([[0., 1., 2.],
+                                  [3., 4., 5.]], dtype=torch.float64),
+                'bias': tensor([6., 7.], dtype=torch.float64)},
+     'layer2': {'weight': tensor([[8., 9.]], dtype=torch.float64),
+                'bias': tensor([10.], dtype=torch.float64)}}
     >>> flat, unravel_func = tree_ravel(tree)
     >>> flat
-    tensor([0., 1., 0., 1., 2., 3., 4., 5., 0., 0., 1.], dtype=torch.float64)
+    tensor([ 6.,  7.,  0.,  1.,  2.,  3.,  4.,  5., 10.,  8.,  9.], dtype=torch.float64)
     >>> unravel_func(flat)
     {'layer1': {'weight': tensor([[0., 1., 2.],
-                                 [3., 4., 5.]], dtype=torch.float64),
-                'bias': tensor([0., 1.], dtype=torch.float64)},
-     'layer2': {'weight': tensor([[0., 1.]], dtype=torch.float64),
-                'bias': tensor([0.], dtype=torch.float64)}}
+                                  [3., 4., 5.]], dtype=torch.float64),
+                'bias': tensor([6., 7.], dtype=torch.float64)},
+     'layer2': {'weight': tensor([[8., 9.]], dtype=torch.float64),
+                'bias': tensor([10.], dtype=torch.float64)}}
 
     Args:
         tree (pytree): a pytree of tensors to ravel.
