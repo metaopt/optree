@@ -18,14 +18,24 @@ from __future__ import annotations
 
 import functools
 import inspect
-from collections import OrderedDict, defaultdict, deque
+from collections import OrderedDict, defaultdict, deque, namedtuple
 from operator import methodcaller
 from threading import Lock
 from typing import Any, Callable, Iterable, NamedTuple, Sequence, overload
 from typing_extensions import Self  # Python 3.11+
 
 from optree import _C
-from optree.typing import KT, VT, CustomTreeNode, FlattenFunc, PyTree, T, UnflattenFunc
+from optree.typing import (
+    KT,
+    VT,
+    CustomTreeNode,
+    FlattenFunc,
+    PyTree,
+    T,
+    UnflattenFunc,
+    is_namedtuple_class,
+    is_structseq_class,
+)
 from optree.utils import safe_zip, total_order_sorted, unzip2
 
 
@@ -40,8 +50,8 @@ __all__ = [
 
 
 class PyTreeNodeRegistryEntry(NamedTuple):
-    to_iterable: FlattenFunc
-    from_iterable: UnflattenFunc
+    flatten_func: FlattenFunc
+    unflatten_func: UnflattenFunc
 
 
 # pylint: disable-next=missing-class-docstring,too-few-public-methods
@@ -284,17 +294,48 @@ def register_pytree_node_class(
     return cls
 
 
-def _sorted_items(items: Iterable[tuple[KT, VT]]) -> list[tuple[KT, VT]]:  # pragma: no cover
+def _sorted_items(items: Iterable[tuple[KT, VT]]) -> list[tuple[KT, VT]]:
     return total_order_sorted(items, key=lambda kv: kv[0])
 
 
-def _sorted_keys(dct: dict[KT, VT]) -> list[KT]:  # pragma: no cover
+def _sorted_keys(dct: dict[KT, VT]) -> list[KT]:
     return total_order_sorted(dct)
+
+
+def _none_flatten(none: None) -> tuple[tuple[()], None]:
+    return (), None
+
+
+def _none_unflatten(_: None, children: Iterable[Any]) -> None:
+    sentinel = object()
+    if next(iter(children), sentinel) is not sentinel:
+        raise ValueError('Expected no children.')
+    return None  # noqa: RET501
+
+
+def _tuple_flatten(tup: tuple[T, ...]) -> tuple[tuple[T, ...], None]:
+    return tup, None
+
+
+def _tuple_unflatten(_: None, children: Iterable[T]) -> tuple[T, ...]:
+    return tuple(children)
+
+
+def _list_flatten(lst: list[T]) -> tuple[list[T], None]:
+    return lst, None
+
+
+def _list_unflatten(_: None, children: Iterable[T]) -> list[T]:
+    return list(children)
 
 
 def _dict_flatten(dct: dict[KT, VT]) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
     keys, values = unzip2(_sorted_items(dct.items()))
     return values, list(keys), keys
+
+
+def _dict_unflatten(keys: list[KT], values: Iterable[VT]) -> dict[KT, VT]:
+    return dict(safe_zip(keys, values))
 
 
 def _ordereddict_flatten(
@@ -304,6 +345,10 @@ def _ordereddict_flatten(
     return values, list(keys), keys
 
 
+def _ordereddict_unflatten(keys: list[KT], values: Iterable[VT]) -> OrderedDict[KT, VT]:
+    return OrderedDict(safe_zip(keys, values))
+
+
 def _defaultdict_flatten(
     dct: defaultdict[KT, VT],
 ) -> tuple[tuple[VT, ...], tuple[Callable[[], VT] | None, list[KT]], tuple[KT, ...]]:
@@ -311,36 +356,53 @@ def _defaultdict_flatten(
     return values, (dct.default_factory, list(keys)), entries
 
 
+def _defaultdict_unflatten(
+    metadata: tuple[Callable[[], VT], list[KT]],
+    values: Iterable[VT],
+) -> defaultdict[KT, VT]:
+    default_factory, keys = metadata
+    return defaultdict(default_factory, safe_zip(keys, values))
+
+
+def _deque_flatten(deq: deque[T]) -> tuple[deque[T], int | None]:
+    return deq, deq.maxlen
+
+
+def _deque_unflatten(maxlen: int | None, children: Iterable[T]) -> deque[T]:
+    return deque(children, maxlen=maxlen)
+
+
+def _namedtuple_flatten(tup: NamedTuple[T]) -> tuple[tuple[T, ...], type[NamedTuple[T]]]:  # type: ignore[type-arg]
+    return tup, type(tup)
+
+
+def _namedtuple_unflatten(cls: type[NamedTuple[T]], children: Iterable[T]) -> NamedTuple[T]:  # type: ignore[type-arg]
+    return cls(*children)  # type: ignore[call-overload]
+
+
+class __StructSequenceSentinel(tuple):  # noqa: N801
+    pass
+
+
+def _structseq_flatten(structseq: tuple[T, ...]) -> tuple[tuple[T, ...], type[tuple[T, ...]]]:
+    return structseq, type(structseq)
+
+
+def _structseq_unflatten(cls: type[tuple[T, ...]], children: Iterable[T]) -> tuple[T, ...]:
+    return cls(children)
+
+
 # pylint: disable=all
-_NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {
-    type(None): PyTreeNodeRegistryEntry(
-        lambda none: ((), None),
-        lambda _, none: None,  # type: ignore[arg-type,return-value]
-    ),
-    tuple: PyTreeNodeRegistryEntry(
-        lambda tup: (tup, None),  # type: ignore[arg-type,return-value]
-        lambda _, tup: tuple(tup),  # type: ignore[arg-type,return-value]
-    ),
-    list: PyTreeNodeRegistryEntry(
-        lambda lst: (lst, None),  # type: ignore[arg-type,return-value]
-        lambda _, lst: list(lst),  # type: ignore[arg-type,return-value]
-    ),
-    dict: PyTreeNodeRegistryEntry(
-        _dict_flatten,  # type: ignore[arg-type]
-        lambda keys, values: dict(safe_zip(keys, values)),  # type: ignore[arg-type,return-value]
-    ),
-    OrderedDict: PyTreeNodeRegistryEntry(
-        _ordereddict_flatten,  # type: ignore[arg-type]
-        lambda keys, values: OrderedDict(safe_zip(keys, values)),  # type: ignore[arg-type,return-value]
-    ),
-    defaultdict: PyTreeNodeRegistryEntry(
-        _defaultdict_flatten,  # type: ignore[arg-type]
-        lambda metadata, values: defaultdict(metadata[0], safe_zip(metadata[1], values)),  # type: ignore[arg-type,return-value,index]
-    ),
-    deque: PyTreeNodeRegistryEntry(
-        lambda deq: (list(deq), deq.maxlen),  # type: ignore[call-overload,attr-defined]
-        lambda maxlen, lst: deque(lst, maxlen=maxlen),  # type: ignore[arg-type,return-value]
-    ),
+_NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {  # fmt: off
+    type(None): PyTreeNodeRegistryEntry(_none_flatten, _none_unflatten),  # type: ignore[arg-type]
+    tuple: PyTreeNodeRegistryEntry(_tuple_flatten, _tuple_unflatten),  # type: ignore[arg-type]
+    list: PyTreeNodeRegistryEntry(_list_flatten, _list_unflatten),  # type: ignore[arg-type]
+    dict: PyTreeNodeRegistryEntry(_dict_flatten, _dict_unflatten),  # type: ignore[arg-type]
+    namedtuple: PyTreeNodeRegistryEntry(_namedtuple_flatten, _namedtuple_unflatten),  # type: ignore[arg-type,dict-item] # noqa: PYI024
+    OrderedDict: PyTreeNodeRegistryEntry(_ordereddict_flatten, _ordereddict_unflatten),  # type: ignore[arg-type]
+    defaultdict: PyTreeNodeRegistryEntry(_defaultdict_flatten, _defaultdict_unflatten),  # type: ignore[arg-type]
+    deque: PyTreeNodeRegistryEntry(_deque_flatten, _deque_unflatten),  # type: ignore[arg-type]
+    __StructSequenceSentinel: PyTreeNodeRegistryEntry(_structseq_flatten, _structseq_unflatten),  # type: ignore[arg-type]
 }
 # pylint: enable=all
 
@@ -350,10 +412,17 @@ def _pytree_node_registry_get(
     *,
     namespace: str = __GLOBAL_NAMESPACE,
 ) -> PyTreeNodeRegistryEntry | None:
-    entry: PyTreeNodeRegistryEntry | None = _NODETYPE_REGISTRY.get(cls)
-    if entry is not None or namespace is __GLOBAL_NAMESPACE or namespace == '':
-        return entry
-    return _NODETYPE_REGISTRY.get((namespace, cls))
+    handler: PyTreeNodeRegistryEntry | None = _NODETYPE_REGISTRY.get(cls)
+    if handler is not None:
+        return handler
+    handler = _NODETYPE_REGISTRY.get((namespace, cls))
+    if handler is not None:
+        return handler
+    if is_namedtuple_class(cls):
+        return _NODETYPE_REGISTRY.get(namedtuple)  # type: ignore[call-overload] # noqa: PYI024
+    if is_structseq_class(cls):
+        return _NODETYPE_REGISTRY.get(__StructSequenceSentinel)
+    return None
 
 
 register_pytree_node.get = _pytree_node_registry_get  # type: ignore[attr-defined]

@@ -41,8 +41,8 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
             "Register a Python type. Extends the set of types that are considered internal nodes "
             "in pytrees.",
             py::arg("cls"),
-            py::arg("to_iterable"),
-            py::arg("from_iterable"),
+            py::arg("flatten_func"),
+            py::arg("unflatten_func"),
             py::arg("namespace") = "")
         .def("flatten",
              &PyTreeSpec::Flatten,
