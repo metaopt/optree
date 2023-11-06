@@ -68,3 +68,6 @@ sortable
 OrderedDict
 defaultdict
 unsubclassable
+sys
+structseq
+MyTuple

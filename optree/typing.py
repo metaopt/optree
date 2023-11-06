@@ -14,7 +14,6 @@
 # ==============================================================================
 """Typing utilities for OpTree."""
 
-# mypy: no-warn-unused-ignores
 
 from __future__ import annotations
 
@@ -22,6 +21,7 @@ import types
 from typing import (
     Any,
     Callable,
+    ClassVar,
     DefaultDict,
     Deque,
     Dict,
@@ -303,24 +303,55 @@ def namedtuple_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
 _T_co = TypeVar('_T_co', covariant=True)
 
 
+class _StructSequenceMeta(type):
+    def __subclasscheck__(cls, subclass: type) -> bool:
+        """Return whether the class is a PyStructSequence type.
+
+        >>> import time
+        >>> issubclass(time.struct_time, structseq)
+        True
+        >>> class MyTuple(tuple):
+        ...     n_fields = 2
+        ...     n_sequence_fields = 2
+        ...     n_unnamed_fields = 0
+        >>> issubclass(MyTuple, structseq)
+        False
+        """
+        return is_structseq_class(subclass)
+
+    def __instancecheck__(cls, instance: Any) -> bool:
+        """Return whether the object is a PyStructSequence instance.
+
+        >>> import sys
+        >>> isinstance(sys.float_info, structseq)
+        True
+        >>> isinstance((1, 2), structseq)
+        False
+        """
+        return is_structseq_class(type(instance))
+
+
 # Reference: https://github.com/python/typeshed/blob/main/stdlib/_typeshed/__init__.pyi
 # This is an internal CPython type that is like, but subtly different from a NamedTuple.
 # `structseq` classes are unsubclassable, so are all decorated with `@final`.
 # pylint: disable-next=invalid-name,missing-class-docstring
-class structseq(tuple, Generic[_T_co]):  # noqa: N801
-    n_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
-    n_unnamed_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
-    n_sequence_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
+class structseq(tuple, Generic[_T_co], metaclass=_StructSequenceMeta):  # type: ignore[misc] # noqa: N801
+    """A generic type stub for CPython's ``PyStructSequence`` type."""
+
+    n_fields: Final[ClassVar[int]]  # type: ignore[misc] # pylint: disable=invalid-name
+    n_sequence_fields: Final[ClassVar[int]]  # type: ignore[misc] # pylint: disable=invalid-name
+    n_unnamed_fields: Final[ClassVar[int]]  # type: ignore[misc] # pylint: disable=invalid-name
 
     def __init_subclass__(cls) -> NoReturn:
+        """Prohibit subclassing."""
         raise TypeError("type 'structseq' is not an acceptable base type")
 
-    def __new__(  # type: ignore[empty-body] # pylint: disable=unused-argument
-        cls: type[Self],
-        sequence: Iterable[_T_co],
-        dict: dict[str, Any] = ...,  # pylint: disable=redefined-builtin
-    ) -> Self:
-        ...
+    # pylint: disable-next=unused-argument,redefined-builtin
+    def __new__(cls: type[Self], sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self:
+        raise NotImplementedError
+
+
+del _StructSequenceMeta
 
 
 def is_structseq(obj: object | type) -> bool:

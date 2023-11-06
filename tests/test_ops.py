@@ -1580,6 +1580,8 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
                 assert one_level_treespec.kind == optree.PyTreeKind.NAMEDTUPLE
             elif optree.is_structseq(node):
                 assert optree.is_structseq_class(node_type)
+                assert isinstance(node, optree.typing.structseq)
+                assert issubclass(node_type, optree.typing.structseq)
                 assert metadata is node_type
                 assert one_level_treespec.kind == optree.PyTreeKind.STRUCTSEQUENCE
             else:
