@@ -62,7 +62,7 @@ def total_order_sorted(
 @overload
 def safe_zip(
     __iter1: Iterable[T],
-) -> list[tuple[T]]:  # pragma: no cover
+) -> zip[tuple[T]]:  # pragma: no cover
     ...
 
 
@@ -70,7 +70,7 @@ def safe_zip(
 def safe_zip(
     __iter1: Iterable[T],
     __iter2: Iterable[S],
-) -> list[tuple[T, S]]:  # pragma: no cover
+) -> zip[tuple[T, S]]:  # pragma: no cover
     ...
 
 
@@ -79,7 +79,7 @@ def safe_zip(
     __iter1: Iterable[T],
     __iter2: Iterable[S],
     __iter3: Iterable[U],
-) -> list[tuple[T, S, U]]:  # pragma: no cover
+) -> zip[tuple[T, S, U]]:  # pragma: no cover
     ...
 
 
@@ -90,7 +90,7 @@ def safe_zip(
     __iter3: Iterable[Any],
     __iter4: Iterable[Any],
     *__iters: Iterable[Any],
-) -> list[tuple[Any, ...]]:  # pragma: no cover
+) -> zip[tuple[Any, ...]]:  # pragma: no cover
     ...
 
 
@@ -99,7 +99,7 @@ def safe_zip(*args):
     seqs = [arg if isinstance(arg, Sequence) else list(arg) for arg in args]
     if len(set(map(len, seqs))) > 1:
         raise ValueError(f'length mismatch: {list(map(len, seqs))}')
-    return list(zip(*seqs))
+    return zip(*seqs)
 
 
 def unzip2(xys: Iterable[tuple[T, S]]) -> tuple[tuple[T, ...], tuple[S, ...]]:

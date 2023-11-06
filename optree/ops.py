@@ -1945,10 +1945,8 @@ def flatten_one_level(
     namespace: str = '',
 ) -> tuple[Children[T], MetaData, tuple[Any, ...]]:
     """Flatten the pytree one level, returning a tuple of children, auxiliary data, and path entries."""
-    if tree is None:
-        if none_is_leaf:  # type: ignore[unreachable]
-            raise ValueError(f'Cannot flatten leaf-type: {type(None)}.')
-        return [], None, ()
+    if tree is None and none_is_leaf:  # type: ignore[unreachable]
+        raise ValueError(f'Cannot flatten leaf-type: {type(None)}.')
 
     node_type = type(tree)
     handler = register_pytree_node.get(node_type, namespace=namespace)  # type: ignore[attr-defined]

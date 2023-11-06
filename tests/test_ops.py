@@ -1573,6 +1573,13 @@ def test_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
             if hasattr(node, '__getitem__'):
                 for child, entry in zip(children, entries):
                     assert node[entry] is child
+
+            handler = optree.register_pytree_node.get(node_type, namespace=namespace)
+            if handler is None:
+                assert optree.is_namedtuple(node) or optree.is_structseq(node)
+            else:
+                assert handler.from_iterable(metadata, children) == node
+
             stack.extend(reversed(children))
 
     assert actual_leaves == expected_leaves
