@@ -65,16 +65,16 @@ class PyTreeTypeRegistry {
         // The Python type object, used to identify the type.
         py::object type;
         // A function with signature: object -> (iterable, metadata, entries)
-        py::function to_iterable;
+        py::function flatten_func;
         // A function with signature: (metadata, iterable) -> object
-        py::function from_iterable;
+        py::function unflatten_func;
     };
 
     // Registers a new custom type. Objects of `cls` will be treated as container node types in
     // PyTrees.
     static void Register(const py::object &cls,
-                         const py::function &to_iterable,
-                         const py::function &from_iterable,
+                         const py::function &flatten_func,
+                         const py::function &unflatten_func,
                          const std::string &registry_namespace = "");
 
     // Finds the custom type registration for `type`. Returns nullptr if none exists.
@@ -93,8 +93,8 @@ class PyTreeTypeRegistry {
 
     template <bool NoneIsLeaf>
     static void RegisterImpl(const py::object &cls,
-                             const py::function &to_iterable,
-                             const py::function &from_iterable,
+                             const py::function &flatten_func,
+                             const py::function &unflatten_func,
                              const std::string &registry_namespace);
 
     class TypeHash {

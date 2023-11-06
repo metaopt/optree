@@ -291,7 +291,7 @@ def test_flatten_with_wrong_number_of_returns():
         RuntimeError,
         match=r"PyTree custom flatten function for type <class '.*'> should return a 2- or 3-tuple, got 1\.",
     ):
-        optree.ops.flatten_one_level(MyList1([1, 2, 3]), namespace='error')
+        optree.tree_flatten_one_level(MyList1([1, 2, 3]), namespace='error')
 
     @optree.register_pytree_node_class(namespace='error')
     class MyList4(UserList):
@@ -312,7 +312,7 @@ def test_flatten_with_wrong_number_of_returns():
         RuntimeError,
         match=r"PyTree custom flatten function for type <class '.*'> should return a 2- or 3-tuple, got 4\.",
     ):
-        optree.ops.flatten_one_level(MyList4([1, 2, 3]), namespace='error')
+        optree.tree_flatten_one_level(MyList4([1, 2, 3]), namespace='error')
 
     @optree.register_pytree_node_class(namespace='error')
     class MyListEntryMismatch(UserList):
@@ -333,19 +333,19 @@ def test_flatten_with_wrong_number_of_returns():
         RuntimeError,
         match=r"PyTree custom flatten function for type <class '.*'> returned inconsistent number of children \(3\) and number of entries \(4\)\.",
     ):
-        optree.ops.flatten_one_level(MyListEntryMismatch([1, 2, 3]), namespace='error')
+        optree.tree_flatten_one_level(MyListEntryMismatch([1, 2, 3]), namespace='error')
 
 
 def test_pytree_node_registry_get():
     handler = optree.register_pytree_node.get(list)
     assert handler is not None
     lst = [1, 2, 3]
-    assert tuple(handler.to_iterable(lst))[:2] == (lst, None)
+    assert tuple(handler.flatten_func(lst))[:2] == (lst, None)
 
     handler = optree.register_pytree_node.get(list, namespace='any')
     assert handler is not None
     lst = [1, 2, 3]
-    assert tuple(handler.to_iterable(lst))[:2] == (lst, None)
+    assert tuple(handler.flatten_func(lst))[:2] == (lst, None)
 
     handler = optree.register_pytree_node.get(set)
     assert handler is None

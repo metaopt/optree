@@ -43,6 +43,7 @@ Tree Manipulation Functions
     broadcast_common
     tree_broadcast_map
     tree_broadcast_map_with_path
+    tree_flatten_one_level
     prefix_errors
 
 .. autofunction:: tree_flatten
@@ -65,6 +66,7 @@ Tree Manipulation Functions
 .. autofunction:: broadcast_common
 .. autofunction:: tree_broadcast_map
 .. autofunction:: tree_broadcast_map_with_path
+.. autofunction:: tree_flatten_one_level
 .. autofunction:: prefix_errors
 
 ------

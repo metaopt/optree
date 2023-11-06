@@ -31,6 +31,7 @@ from optree.registry import (
     FlattenedKeyPathEntry,
     KeyPath,
     KeyPathEntry,
+    PyTreeNodeRegistryEntry,
     register_keypaths,
     register_pytree_node,
 )
@@ -38,7 +39,6 @@ from optree.typing import (
     Children,
     Iterable,
     MetaData,
-    NamedTuple,
     PyTree,
     PyTreeSpec,
     S,
@@ -81,6 +81,7 @@ __all__ = [
     'tree_min',
     'tree_all',
     'tree_any',
+    'tree_flatten_one_level',
     'treespec_is_prefix',
     'treespec_is_suffix',
     'treespec_paths',
@@ -1686,6 +1687,75 @@ def tree_any(
     )
 
 
+def tree_flatten_one_level(
+    tree: PyTree[T],
+    is_leaf: Callable[[T], bool] | None = None,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> tuple[Children[T], MetaData, tuple[Any, ...], Callable[[MetaData, Children[T]]], PyTree[T]]:
+    """Flatten the pytree one level, returning a 4-tuple of children, auxiliary data, path entries, and an unflatten function.
+
+    See also :func:`tree_flatten`, :func:`tree_flatten_with_path`.
+
+    >>> children, metadata, entries, unflatten_func = tree_flatten_one_level({'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5})
+    >>> children, metadata, entries
+    ([1, (2, [3, 4]), None, 5], ['a', 'b', 'c', 'd'], ('a', 'b', 'c', 'd'))
+    >>> unflatten_func(metadata, children)
+    {'a': 1, 'b': (2, [3, 4]), 'c': None, 'd': 5}
+    >>> children, metadata, entries, unflatten_func = tree_flatten_one_level([{'a': 1, 'b': (2, 3)}, (4, 5)])
+    >>> children, metadata, entries
+    ([{'a': 1, 'b': (2, 3)}, (4, 5)], None, (0, 1))
+    >>> unflatten_func(metadata, children)
+    [{'a': 1, 'b': (2, 3)}, (4, 5)]
+
+    Args:
+        tree (pytree): A pytree to be traversed.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        A 4-tuple ``(children, metadata, entries, unflatten_func)``. The first element is a list of
+        one-level children of the pytree node. The second element is the auxiliary data used to
+        reconstruct the pytree node. The third element is a tuple of path entries to the children.
+        The fourth element is a function that can be used to unflatten the auxiliary data and
+        children back to the pytree node.
+    """  # pylint: disable=line-too-long
+    node_type = type(tree)
+    if (tree is None and none_is_leaf) or (is_leaf is not None and is_leaf(tree)):  # type: ignore[unreachable,arg-type]
+        raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
+
+    handler: PyTreeNodeRegistryEntry | None = register_pytree_node.get(node_type, namespace=namespace)  # type: ignore[attr-defined]
+    if handler:
+        flattened = tuple(handler.flatten_func(tree))
+        if len(flattened) == 2:
+            flattened = (*flattened, None)
+        elif len(flattened) != 3:
+            raise RuntimeError(
+                f'PyTree custom flatten function for type {node_type} should return a 2- or 3-tuple, '
+                f'got {len(flattened)}.',
+            )
+        children, metadata, entries = flattened
+        children = list(children)
+        entries = tuple(range(len(children)) if entries is None else entries)
+        if len(children) != len(entries):
+            raise RuntimeError(
+                f'PyTree custom flatten function for type {node_type} returned inconsistent '
+                f'number of children ({len(children)}) and number of entries ({len(entries)}).',
+            )
+        return children, metadata, entries, handler.unflatten_func
+
+    raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
+
+
 def treespec_is_prefix(
     treespec: PyTreeSpec,
     other_treespec: PyTreeSpec,
@@ -1938,46 +2008,6 @@ def treespec_tuple(
     return _C.tuple(list(treespecs), none_is_leaf)
 
 
-def flatten_one_level(
-    tree: PyTree[T],
-    *,
-    none_is_leaf: bool = False,
-    namespace: str = '',
-) -> tuple[Children[T], MetaData, tuple[Any, ...]]:
-    """Flatten the pytree one level, returning a tuple of children, auxiliary data, and path entries."""
-    if tree is None and none_is_leaf:  # type: ignore[unreachable]
-        raise ValueError(f'Cannot flatten leaf-type: {type(None)}.')
-
-    node_type = type(tree)
-    handler = register_pytree_node.get(node_type, namespace=namespace)  # type: ignore[attr-defined]
-    if handler:
-        flattened = tuple(handler.to_iterable(tree))
-        if len(flattened) == 2:
-            flattened = (*flattened, None)
-        elif len(flattened) != 3:
-            raise RuntimeError(
-                f'PyTree custom flatten function for type {node_type} should return a 2- or 3-tuple, '
-                f'got {len(flattened)}.',
-            )
-        children, metadata, entries = flattened
-        children = list(children)
-        entries = tuple(range(len(children)) if entries is None else entries)
-        if len(children) != len(entries):
-            raise RuntimeError(
-                f'PyTree custom flatten function for type {node_type} returned inconsistent '
-                f'number of children ({len(children)}) and number of entries ({len(entries)}).',
-            )
-        return children, metadata, entries
-
-    if is_namedtuple(tree):
-        return list(cast(NamedTuple, tree)), node_type, tuple(range(len(cast(NamedTuple, tree))))
-
-    if is_structseq(tree):
-        return list(cast(tuple, tree)), node_type, tuple(range(len(cast(tuple, tree))))
-
-    raise ValueError(f'Cannot flatten leaf-type: {node_type}.')
-
-
 def prefix_errors(
     prefix_tree: PyTree[T],
     full_tree: PyTree[S],
@@ -2041,12 +2071,12 @@ def _prefix_error(
     # Or they may disagree if their roots have different numbers of children (note that because both
     # prefix_tree and full_tree have the same type at this point, and because prefix_tree is not a
     # leaf, each can be flattened once):
-    prefix_tree_children, prefix_tree_metadata, _ = flatten_one_level(
+    prefix_tree_children, prefix_tree_metadata, _, __ = tree_flatten_one_level(
         prefix_tree,
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
-    full_tree_children, full_tree_metadata, _ = flatten_one_level(
+    full_tree_children, full_tree_metadata, _, __ = tree_flatten_one_level(
         full_tree,
         none_is_leaf=none_is_leaf,
         namespace=namespace,

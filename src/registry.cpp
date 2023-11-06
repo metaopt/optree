@@ -57,15 +57,15 @@ template <bool NoneIsLeaf>
 
 template <bool NoneIsLeaf>
 /*static*/ void PyTreeTypeRegistry::RegisterImpl(const py::object& cls,
-                                                 const py::function& to_iterable,
-                                                 const py::function& from_iterable,
+                                                 const py::function& flatten_func,
+                                                 const py::function& unflatten_func,
                                                  const std::string& registry_namespace) {
     PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
     auto registration = std::make_unique<Registration>();
     registration->kind = PyTreeKind::Custom;
     registration->type = py::reinterpret_borrow<py::object>(cls);
-    registration->to_iterable = py::reinterpret_borrow<py::function>(to_iterable);
-    registration->from_iterable = py::reinterpret_borrow<py::function>(from_iterable);
+    registration->flatten_func = py::reinterpret_borrow<py::function>(flatten_func);
+    registration->unflatten_func = py::reinterpret_borrow<py::function>(unflatten_func);
     if (registry_namespace.empty()) [[unlikely]] {
         if (!registry->m_registrations.emplace(cls, std::move(registration)).second) [[unlikely]] {
             throw py::value_error("PyTree type " + static_cast<std::string>(py::repr(cls)) +
@@ -129,14 +129,14 @@ template <bool NoneIsLeaf>
 }
 
 /*static*/ void PyTreeTypeRegistry::Register(const py::object& cls,
-                                             const py::function& to_iterable,
-                                             const py::function& from_iterable,
+                                             const py::function& flatten_func,
+                                             const py::function& unflatten_func,
                                              const std::string& registry_namespace) {
-    RegisterImpl<NONE_IS_NODE>(cls, to_iterable, from_iterable, registry_namespace);
-    RegisterImpl<NONE_IS_LEAF>(cls, to_iterable, from_iterable, registry_namespace);
+    RegisterImpl<NONE_IS_NODE>(cls, flatten_func, unflatten_func, registry_namespace);
+    RegisterImpl<NONE_IS_LEAF>(cls, flatten_func, unflatten_func, registry_namespace);
     cls.inc_ref();
-    to_iterable.inc_ref();
-    from_iterable.inc_ref();
+    flatten_func.inc_ref();
+    unflatten_func.inc_ref();
 }
 
 template <bool NoneIsLeaf>

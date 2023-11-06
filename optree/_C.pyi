@@ -100,7 +100,7 @@ class PyTreeSpec:
 
 def register_node(
     cls: type[CustomTreeNode[T]],
-    to_iterable: FlattenFunc,
-    from_iterable: UnflattenFunc,
+    flatten_func: FlattenFunc,
+    unflatten_func: UnflattenFunc,
     namespace: str,
 ) -> None: ...
