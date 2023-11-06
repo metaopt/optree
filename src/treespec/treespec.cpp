@@ -66,6 +66,11 @@ py::object PyTreeSpec::GetType() const {
     }
 }
 
+PyTreeKind PyTreeSpec::GetPyTreeKind() const {
+    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    return m_traversal.back().kind;
+}
+
 bool PyTreeSpec::IsLeaf(const bool& strict) const {
     if (strict) [[likely]] {
         return GetNumNodes() == 1 && GetNumLeaves() == 1;
@@ -1387,8 +1392,17 @@ py::object PyTreeSpec::ToPicklable() const {
                 }
             }
             if (node.custom == nullptr) [[unlikely]] {
-                throw std::runtime_error("Unknown custom type in pickled PyTreeSpec: " +
-                                         static_cast<std::string>(py::repr(t[4])) + ".");
+                std::ostringstream oss{};
+                oss << "Unknown custom type in pickled PyTreeSpec: "
+                    << static_cast<std::string>(py::repr(t[4]));
+                if (!registry_namespace.empty()) [[likely]] {
+                    oss << " in namespace "
+                        << static_cast<std::string>(py::repr(py::str(registry_namespace)));
+                } else [[unlikely]] {
+                    oss << " in the global namespace";
+                }
+                oss << ".";
+                throw std::runtime_error(oss.str());
             }
         } else if (!t[3].is_none() || !t[4].is_none()) [[unlikely]] {
             throw std::runtime_error("Malformed pickled PyTreeSpec.");

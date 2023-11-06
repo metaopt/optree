@@ -73,6 +73,7 @@ from optree.typing import (
     FlattenFunc,
     PyTree,
     PyTreeDef,
+    PyTreeKind,
     PyTreeSpec,
     PyTreeTypeVar,
     UnflattenFunc,
@@ -141,6 +142,7 @@ __all__ = [
     # Typing
     'PyTreeSpec',
     'PyTreeDef',
+    'PyTreeKind',
     'PyTree',
     'PyTreeTypeVar',
     'CustomTreeNode',

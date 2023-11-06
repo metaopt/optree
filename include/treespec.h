@@ -162,6 +162,8 @@ class PyTreeSpec {
 
     [[nodiscard]] py::object GetType() const;
 
+    [[nodiscard]] PyTreeKind GetPyTreeKind() const;
+
     bool operator==(const PyTreeSpec &other) const;
     inline bool operator!=(const PyTreeSpec &other) const { return !(*this == other); }
     inline bool operator<(const PyTreeSpec &other) const { return IsPrefix(other, true); }

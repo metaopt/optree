@@ -65,6 +65,14 @@ def test_is_namedtuple():
 
 
 def test_is_structseq():
+    with pytest.raises(TypeError, match="type 'structseq' is not an acceptable base type"):
+
+        class MyTuple(optree.typing.structseq):
+            pass
+
+    with pytest.raises(NotImplementedError):
+        optree.typing.structseq(range(1))
+
     assert not optree.is_structseq((1, 2))
     assert not optree.is_structseq([1, 2])
     assert optree.is_structseq(sys.float_info)

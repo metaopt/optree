@@ -1540,6 +1540,7 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
         node_type = type(node)
         if one_level_treespec.is_leaf():
             assert expected_children == [node]
+            assert one_level_treespec.kind == optree.PyTreeKind.LEAF
             with pytest.raises(
                 ValueError,
                 match=re.escape(f'Cannot flatten leaf-type: {node_type} (node: {node!r}).'),
@@ -1553,22 +1554,38 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
                 namespace=namespace,
             )
             assert children == expected_children
-            if node_type in (list, tuple, type(None)):
+            if node_type in (type(None), tuple, list):
                 assert metadata is None
+                if node_type is tuple:
+                    assert one_level_treespec.kind == optree.PyTreeKind.TUPLE
+                elif node_type is list:
+                    assert one_level_treespec.kind == optree.PyTreeKind.LIST
+                else:
+                    assert one_level_treespec.kind == optree.PyTreeKind.NONE
             elif node_type is dict:
                 assert metadata == sorted(node.keys())
+                assert one_level_treespec.kind == optree.PyTreeKind.DICT
             elif node_type is OrderedDict:
                 assert metadata == list(node.keys())
+                assert one_level_treespec.kind == optree.PyTreeKind.ORDEREDDICT
             elif node_type is defaultdict:
                 assert metadata == (node.default_factory, sorted(node.keys()))
+                assert one_level_treespec.kind == optree.PyTreeKind.DEFAULTDICT
             elif node_type is deque:
                 assert metadata == node.maxlen
+                assert one_level_treespec.kind == optree.PyTreeKind.DEQUE
             elif optree.is_namedtuple(node):
                 assert optree.is_namedtuple_class(node_type)
                 assert metadata is node_type
+                assert one_level_treespec.kind == optree.PyTreeKind.NAMEDTUPLE
             elif optree.is_structseq(node):
                 assert optree.is_structseq_class(node_type)
+                assert isinstance(node, optree.typing.structseq)
+                assert issubclass(node_type, optree.typing.structseq)
                 assert metadata is node_type
+                assert one_level_treespec.kind == optree.PyTreeKind.STRUCTSEQUENCE
+            else:
+                assert one_level_treespec.kind == optree.PyTreeKind.CUSTOM
             assert len(entries) == len(children)
             if hasattr(node, '__getitem__'):
                 for child, entry in zip(children, entries):

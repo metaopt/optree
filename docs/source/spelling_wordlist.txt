@@ -65,3 +65,9 @@ initializer
 CPython
 CPython's
 sortable
+OrderedDict
+defaultdict
+unsubclassable
+sys
+structseq
+MyTuple

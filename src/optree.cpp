@@ -111,10 +111,26 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
              "Return the field names of a PyStructSequence.",
              py::arg("obj"));
 
+    auto PyTreeKindTypeObject =
+        py::enum_<PyTreeKind>(mod, "PyTreeKind", "The kind of a pytree node.")
+            .value("CUSTOM", PyTreeKind::Custom, "A custom type.")
+            .value("LEAF", PyTreeKind::Leaf, "An opaque leaf node.")
+            .value("NONE", PyTreeKind::None, "None.")
+            .value("TUPLE", PyTreeKind::Tuple, "A tuple.")
+            .value("LIST", PyTreeKind::List, "A list.")
+            .value("DICT", PyTreeKind::Dict, "A dict.")
+            .value("NAMEDTUPLE", PyTreeKind::NamedTuple, "A collections.namedtuple.")
+            .value("ORDEREDDICT", PyTreeKind::OrderedDict, "A collections.OrderedDict.")
+            .value("DEFAULTDICT", PyTreeKind::DefaultDict, "A collections.defaultdict.")
+            .value("DEQUE", PyTreeKind::Deque, "A collections.deque.")
+            .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.");
+    reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())->tp_name = "optree.PyTreeKind";
+    py::setattr(PyTreeKindTypeObject.ptr(), "__module__", py::str("optree"));
+
     auto PyTreeSpecTypeObject =
         py::class_<PyTreeSpec>(mod, "PyTreeSpec", "Representing the structure of the pytree.");
     reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_name = "optree.PyTreeSpec";
-    py::setattr(PyTreeSpecTypeObject, "__module__", py::str("optree"));
+    py::setattr(PyTreeSpecTypeObject.ptr(), "__module__", py::str("optree"));
 
     PyTreeSpecTypeObject
         .def_property_readonly(
@@ -141,6 +157,7 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
             "type",
             &PyTreeSpec::GetType,
             "The type of the current node. Return None if the current node is a leaf.")
+        .def_property_readonly("kind", &PyTreeSpec::GetPyTreeKind, "The kind of the current node.")
         .def("unflatten",
              &PyTreeSpec::Unflatten,
              "Reconstruct a pytree from the leaves.",
@@ -234,10 +251,16 @@ void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
 #ifdef Py_TPFLAGS_IMMUTABLETYPE
     reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_flags |=
         Py_TPFLAGS_IMMUTABLETYPE;
+    reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())->tp_flags |=
+        Py_TPFLAGS_IMMUTABLETYPE;
 #endif
     if (PyType_Ready(reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())) < 0)
         [[unlikely]] {
         INTERNAL_ERROR("`PyType_Ready(&PyTreeSpec_Type)` failed.");
+    }
+    if (PyType_Ready(reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())) < 0)
+        [[unlikely]] {
+        INTERNAL_ERROR("`PyType_Ready(&PyTreeKind_Type)` failed.");
     }
 }
 
