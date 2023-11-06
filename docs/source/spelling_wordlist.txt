@@ -67,3 +67,4 @@ CPython's
 sortable
 OrderedDict
 defaultdict
+unsubclassable

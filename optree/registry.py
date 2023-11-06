@@ -35,6 +35,7 @@ from optree.typing import (
     UnflattenFunc,
     is_namedtuple_class,
     is_structseq_class,
+    structseq,
 )
 from optree.utils import safe_zip, total_order_sorted, unzip2
 
@@ -380,15 +381,11 @@ def _namedtuple_unflatten(cls: type[NamedTuple[T]], children: Iterable[T]) -> Na
     return cls(*children)  # type: ignore[call-overload]
 
 
-class __StructSequenceSentinel(tuple):  # noqa: N801
-    pass
+def _structseq_flatten(seq: structseq[T]) -> tuple[tuple[T, ...], type[structseq[T]]]:
+    return seq, type(seq)
 
 
-def _structseq_flatten(structseq: tuple[T, ...]) -> tuple[tuple[T, ...], type[tuple[T, ...]]]:
-    return structseq, type(structseq)
-
-
-def _structseq_unflatten(cls: type[tuple[T, ...]], children: Iterable[T]) -> tuple[T, ...]:
+def _structseq_unflatten(cls: type[structseq[T]], children: Iterable[T]) -> structseq[T]:
     return cls(children)
 
 
@@ -402,7 +399,7 @@ _NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {  
     OrderedDict: PyTreeNodeRegistryEntry(_ordereddict_flatten, _ordereddict_unflatten),  # type: ignore[arg-type]
     defaultdict: PyTreeNodeRegistryEntry(_defaultdict_flatten, _defaultdict_unflatten),  # type: ignore[arg-type]
     deque: PyTreeNodeRegistryEntry(_deque_flatten, _deque_unflatten),  # type: ignore[arg-type]
-    __StructSequenceSentinel: PyTreeNodeRegistryEntry(_structseq_flatten, _structseq_unflatten),  # type: ignore[arg-type]
+    structseq: PyTreeNodeRegistryEntry(_structseq_flatten, _structseq_unflatten),  # type: ignore[arg-type]
 }
 # pylint: enable=all
 
@@ -421,7 +418,7 @@ def _pytree_node_registry_get(
     if is_namedtuple_class(cls):
         return _NODETYPE_REGISTRY.get(namedtuple)  # type: ignore[call-overload] # noqa: PYI024
     if is_structseq_class(cls):
-        return _NODETYPE_REGISTRY.get(__StructSequenceSentinel)
+        return _NODETYPE_REGISTRY.get(structseq)
     return None
 
 

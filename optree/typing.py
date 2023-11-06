@@ -38,8 +38,9 @@ from typing import (
     Union,
 )
 from typing_extensions import OrderedDict  # Generic OrderedDict: Python 3.7.2+
+from typing_extensions import Self  # Python 3.11+
 from typing_extensions import TypeAlias  # Python 3.10+
-from typing_extensions import Protocol, runtime_checkable  # Python 3.8+
+from typing_extensions import Final, Protocol, runtime_checkable  # Python 3.8+
 
 from optree import _C
 from optree._C import PyTreeKind, PyTreeSpec
@@ -297,6 +298,29 @@ def namedtuple_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
         if not is_namedtuple_class(cls):
             raise TypeError(f'Expected an instance of collections.namedtuple type, got {obj!r}.')
     return cls._fields  # type: ignore[attr-defined]
+
+
+_T_co = TypeVar('_T_co', covariant=True)
+
+
+# Reference: https://github.com/python/typeshed/blob/main/stdlib/_typeshed/__init__.pyi
+# This is an internal CPython type that is like, but subtly different from a NamedTuple.
+# `structseq` classes are unsubclassable, so are all decorated with `@final`.
+# pylint: disable-next=invalid-name,missing-class-docstring
+class structseq(tuple, Generic[_T_co]):  # noqa: N801
+    n_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
+    n_unnamed_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
+    n_sequence_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
+
+    def __init_subclass__(cls) -> NoReturn:
+        raise TypeError("type 'structseq' is not an acceptable base type")
+
+    def __new__(  # type: ignore[empty-body] # pylint: disable=unused-argument
+        cls: type[Self],
+        sequence: Iterable[_T_co],
+        dict: dict[str, Any] = ...,  # pylint: disable=redefined-builtin
+    ) -> Self:
+        ...
 
 
 def is_structseq(obj: object | type) -> bool:
