@@ -14,7 +14,7 @@
 # ==============================================================================
 """OpTree: Optimized PyTree Utilities."""
 
-from optree import typing
+from optree import integration, typing
 from optree.ops import (
     MAX_RECURSION_DEPTH,
     NONE_IS_LEAF,

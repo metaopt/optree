@@ -15,6 +15,11 @@ OpTree: Optimized PyTree Utilities
     typing.rst
     api.rst
 
+.. toctree::
+    :maxdepth: 2
+
+    integration.rst
+
 License
 -------
 

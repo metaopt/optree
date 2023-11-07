@@ -49,6 +49,9 @@ Documentation = "https://optree.readthedocs.io"
 "Bug Report" = "https://github.com/metaopt/optree/issues"
 
 [project.optional-dependencies]
+jax = ["jax"]
+numpy = ["numpy"]
+torch = ["torch"]
 lint = [
     "isort >= 5.11.0",
     "black >= 22.6.0",
@@ -69,6 +72,19 @@ lint = [
     "pre-commit",
 ]
 test = ["pytest", "pytest-cov", "pytest-xdist"]
+docs = [
+    "sphinx >= 5.2.1",
+    "sphinx-autoapi",
+    "sphinx-autobuild",
+    "sphinx-copybutton",
+    "sphinx-rtd-theme",
+    "sphinxcontrib-bibtex",
+    "sphinx-autodoc-typehints >= 1.19.2",
+    "docutils",
+    "jax[cpu]",
+    "numpy",
+    "torch",
+]
 benchmark = [
     "jax[cpu] >= 0.4.6, < 0.5.0a0",
     "torch >= 2.0, < 2.1.0a0",
@@ -118,7 +134,7 @@ lines_after_imports = 2
 multi_line_output = 3
 
 [tool.mypy]
-python_version = 3.7
+python_version = 3.8
 pretty = true
 show_error_codes = true
 show_error_context = true
@@ -215,6 +231,7 @@ typing-modules = ["optree.typing"]
     "S",     # flake8-bandit
     "BLE",   # flake8-blind-except
     "SIM",   # flake8-simplify
+    "E402",  # module-import-not-at-top-of-file
 ]
 
 [tool.ruff.flake8-annotations]

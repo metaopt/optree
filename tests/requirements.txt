@@ -20,4 +20,7 @@ pyenchant
 xdoctest
 cpplint
 pre-commit
+
 jax[cpu] >= 0.3
+numpy
+torch
