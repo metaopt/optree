@@ -13,6 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+-
+
+### Changed
+
+-
+
+### Fixed
+
+-
+
+### Removed
+
+-
+
+------
+
+## [0.10.0] - 2023-11-07
+
+### Added
+
 - Add `tree_ravel` function for JAX/NumPy/PyTorch array/tensor tree manipulation by [@XuehaiPan](https://github.com/XuehaiPan) in [#100](https://github.com/metaopt/optree/pull/100).
 - Expose node kind enum for `PyTreeSpec` by [@XuehaiPan](https://github.com/XuehaiPan) in [#98](https://github.com/metaopt/optree/pull/98).
 - Expose function `tree_flatten_one_level` by [@XuehaiPan](https://github.com/XuehaiPan) in [#101](https://github.com/metaopt/optree/pull/101).
@@ -233,7 +253,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/metaopt/optree/compare/v0.9.2...v0.10.0
 [0.9.2]: https://github.com/metaopt/optree/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/metaopt/optree/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/metaopt/optree/compare/v0.8.0...v0.9.0
