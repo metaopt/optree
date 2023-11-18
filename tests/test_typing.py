@@ -26,7 +26,25 @@ from helpers import CustomNamedTupleSubclass, CustomTuple, Vector2D
 
 
 class FakeNamedTuple(tuple):
-    _fields = ('a', 2, 'b')
+    _fields = ('a', 'b', 'c')
+
+    def __new__(cls, a, b, c):
+        return super().__new__(cls, (a, b, c))
+
+    @property
+    def a(self):
+        return self[0]
+
+    @property
+    def b(self):
+        return self[1]
+
+    @property
+    def c(self):
+        return self[2]
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}(a={self.a}, b={self.b}, c={self.c})'
 
 
 class FakeStructSequence(tuple):
@@ -42,12 +60,12 @@ def test_is_namedtuple():
     assert not optree.is_namedtuple(time.gmtime())
     assert optree.is_namedtuple(CustomTuple(1, 2))
     assert optree.is_namedtuple(CustomNamedTupleSubclass(1, 2))
-    assert not optree.is_namedtuple(FakeNamedTuple((1, 2, 3)))
+    assert not optree.is_namedtuple(FakeNamedTuple(1, 2, 3))
     assert not optree.is_namedtuple(Vector2D(1, 2))
     assert not optree.is_namedtuple(FakeStructSequence((1, 2)))
     assert not optree.is_namedtuple_class(CustomTuple(1, 2))
     assert not optree.is_namedtuple_class(CustomNamedTupleSubclass(1, 2))
-    assert not optree.is_namedtuple_class(FakeNamedTuple((1, 2, 3)))
+    assert not optree.is_namedtuple_class(FakeNamedTuple(1, 2, 3))
 
     assert not optree.is_namedtuple(type(sys.float_info))
     assert not optree.is_namedtuple(time.struct_time)
@@ -79,7 +97,7 @@ def test_is_structseq():
     assert optree.is_structseq(time.gmtime())
     assert not optree.is_structseq(CustomTuple(1, 2))
     assert not optree.is_structseq(CustomNamedTupleSubclass(1, 2))
-    assert not optree.is_structseq(FakeNamedTuple((1, 2, 3)))
+    assert not optree.is_structseq(FakeNamedTuple(1, 2, 3))
     assert not optree.is_structseq(Vector2D(1, 2))
     assert not optree.is_structseq(FakeStructSequence((1, 2)))
     assert not optree.is_structseq_class(sys.float_info)
@@ -144,9 +162,12 @@ def test_namedtuple_fields():
 
     with pytest.raises(
         TypeError,
-        match=re.escape(r'Expected an instance of collections.namedtuple type, got (1, 2, 3).'),
+        match=re.escape(
+            r'Expected an instance of collections.namedtuple type, '
+            r'got FakeNamedTuple(a=1, b=2, c=3).',
+        ),
     ):
-        optree.namedtuple_fields(FakeNamedTuple((1, 2, 3)))
+        optree.namedtuple_fields(FakeNamedTuple(1, 2, 3))
     with pytest.raises(
         TypeError,
         match=r"Expected a collections.namedtuple type, got <class '.*\.FakeNamedTuple'>\.",

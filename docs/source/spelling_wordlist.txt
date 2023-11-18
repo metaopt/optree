@@ -75,3 +75,7 @@ jax
 numpy
 torch
 dtype
+getattr
+setattr
+delattr
+typecheck
