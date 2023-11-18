@@ -21,7 +21,6 @@ import types
 from typing import (
     Any,
     Callable,
-    ClassVar,
     DefaultDict,
     Deque,
     Dict,
@@ -338,9 +337,9 @@ class _StructSequenceMeta(type):
 class structseq(tuple, Generic[_T_co], metaclass=_StructSequenceMeta):  # type: ignore[misc] # noqa: N801
     """A generic type stub for CPython's ``PyStructSequence`` type."""
 
-    n_fields: Final[ClassVar[int]]  # type: ignore[misc] # pylint: disable=invalid-name
-    n_sequence_fields: Final[ClassVar[int]]  # type: ignore[misc] # pylint: disable=invalid-name
-    n_unnamed_fields: Final[ClassVar[int]]  # type: ignore[misc] # pylint: disable=invalid-name
+    n_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
+    n_sequence_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
+    n_unnamed_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
 
     def __init_subclass__(cls) -> NoReturn:
         """Prohibit subclassing."""
@@ -371,8 +370,8 @@ def is_structseq_class(cls: type) -> bool:
         # Check direct inheritance from `tuple` rather than `issubclass(cls, tuple)`
         and cls.__bases__ == (tuple,)
         # Check PyStructSequence members
-        and isinstance(getattr(cls, 'n_sequence_fields', None), int)
         and isinstance(getattr(cls, 'n_fields', None), int)
+        and isinstance(getattr(cls, 'n_sequence_fields', None), int)
         and isinstance(getattr(cls, 'n_unnamed_fields', None), int)
         # Check the type does not allow subclassing
         and not (cls.__flags__ & Py_TPFLAGS_BASETYPE)
