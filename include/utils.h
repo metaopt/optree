@@ -386,12 +386,15 @@ inline py::tuple NamedTupleGetFields(const py::handle& object) {
 
 inline bool IsStructSequenceClassImpl(const py::handle& type) {
     // We can only identify PyStructSequences heuristically, here by the presence of
-    // n_sequence_fields, n_fields, n_unnamed_fields attributes.
+    // n_fields, n_sequence_fields, n_unnamed_fields attributes.
     auto* type_object = reinterpret_cast<PyTypeObject*>(type.ptr());
-    if (type_object->tp_base == &PyTuple_Type &&
+    if (type_object->tp_bases != nullptr &&
+        static_cast<bool>(PyTuple_CheckExact(type_object->tp_bases)) &&
+        PyTuple_GET_SIZE(type_object->tp_bases) == 1 &&
+        PyTuple_GET_ITEM(type_object->tp_bases, 0) == reinterpret_cast<PyObject*>(&PyTuple_Type) &&
         !static_cast<bool>(PyType_HasFeature(type_object, Py_TPFLAGS_BASETYPE))) [[unlikely]] {
         // NOLINTNEXTLINE[readability-use-anyofallof]
-        for (const char* name : {"n_sequence_fields", "n_fields", "n_unnamed_fields"}) {
+        for (const char* name : {"n_fields", "n_sequence_fields", "n_unnamed_fields"}) {
             if (PyObject* attr = PyObject_GetAttrString(type.ptr(), name)) [[unlikely]] {
                 bool result = static_cast<bool>(PyLong_CheckExact(attr));
                 Py_DECREF(attr);
