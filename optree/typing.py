@@ -96,7 +96,7 @@ KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 
-Children = Sequence[T]
+Children = Iterable[T]
 _MetaData = TypeVar('_MetaData', bound=Hashable)
 MetaData = Optional[_MetaData]
 
@@ -369,7 +369,7 @@ def is_structseq_class(cls: type) -> bool:
     return (
         isinstance(cls, type)
         # Check direct inheritance from `tuple` rather than `issubclass(cls, tuple)`
-        and cls.__base__ is tuple
+        and cls.__bases__ == (tuple,)
         # Check PyStructSequence members
         and isinstance(getattr(cls, 'n_sequence_fields', None), int)
         and isinstance(getattr(cls, 'n_fields', None), int)
