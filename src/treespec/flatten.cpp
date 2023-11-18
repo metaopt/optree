@@ -95,7 +95,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 auto dict = py::reinterpret_borrow<py::dict>(handle);
                 py::list keys = DictKeys(dict);
                 if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
-                    node.ordered_keys = keys.attr("copy")();
+                    node.ordered_keys = py::getattr(keys, Py_Get_ID(copy))();
                     TotalOrderSort(keys);
                 }
                 for (const py::handle& key : keys) {
@@ -103,8 +103,8 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 }
                 node.arity = GET_SIZE<py::dict>(dict);
                 if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
-                    node.node_data =
-                        py::make_tuple(py::getattr(handle, "default_factory"), std::move(keys));
+                    node.node_data = py::make_tuple(py::getattr(handle, Py_Get_ID(default_factory)),
+                                                    std::move(keys));
                 } else [[likely]] {
                     node.node_data = std::move(keys);
                 }
@@ -125,7 +125,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             case PyTreeKind::Deque: {
                 auto list = handle.cast<py::list>();
                 node.arity = GET_SIZE<py::list>(list);
-                node.node_data = py::getattr(handle, "maxlen");
+                node.node_data = py::getattr(handle, Py_Get_ID(maxlen));
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::list>(list, i));
                 }
@@ -289,7 +289,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 auto dict = py::reinterpret_borrow<py::dict>(handle);
                 py::list keys = DictKeys(dict);
                 if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
-                    node.ordered_keys = keys.attr("copy")();
+                    node.ordered_keys = py::getattr(keys, Py_Get_ID(copy))();
                     TotalOrderSort(keys);
                 }
                 for (const py::handle& key : keys) {
@@ -297,8 +297,8 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 }
                 node.arity = GET_SIZE<py::dict>(dict);
                 if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
-                    node.node_data =
-                        py::make_tuple(py::getattr(handle, "default_factory"), std::move(keys));
+                    node.node_data = py::make_tuple(py::getattr(handle, Py_Get_ID(default_factory)),
+                                                    std::move(keys));
                 } else [[likely]] {
                     node.node_data = std::move(keys);
                 }
@@ -319,7 +319,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             case PyTreeKind::Deque: {
                 auto list = handle.cast<py::list>();
                 node.arity = GET_SIZE<py::list>(list);
-                node.node_data = py::getattr(handle, "maxlen");
+                node.node_data = py::getattr(handle, Py_Get_ID(maxlen));
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::list>(list, i), py::int_(i));
                 }
