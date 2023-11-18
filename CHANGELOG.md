@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--
+- Use `__bases__` rather than `__base__` in function `is_structseq_class` by [@XuehaiPan](https://github.com/XuehaiPan) in [#104](https://github.com/metaopt/optree/pull/104).
 
 ### Fixed
 

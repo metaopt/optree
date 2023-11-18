@@ -48,8 +48,8 @@ class FakeNamedTuple(tuple):
 
 
 class FakeStructSequence(tuple):
-    n_sequence_fields = 9
     n_fields = 11
+    n_sequence_fields = 9
     n_unnamed_fields = 0
 
 
