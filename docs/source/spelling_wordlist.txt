@@ -78,3 +78,4 @@ dtype
 getattr
 setattr
 delattr
+typecheck

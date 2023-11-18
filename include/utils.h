@@ -329,24 +329,41 @@ inline void AssertExactDeque(const py::handle& object) {
     }
 }
 
+// NOLINTNEXTLINE[readability-function-cognitive-complexity]
 inline bool IsNamedTupleClassImpl(const py::handle& type) {
     // We can only identify namedtuples heuristically, here by the presence of a _fields attribute.
     if (PyType_FastSubclass(reinterpret_cast<PyTypeObject*>(type.ptr()), Py_TPFLAGS_TUPLE_SUBCLASS))
         [[unlikely]] {
         if (PyObject* _fields = PyObject_GetAttrString(type.ptr(), "_fields")) [[unlikely]] {
-            bool result = static_cast<bool>(PyTuple_CheckExact(_fields));
-            if (result) [[likely]] {
+            bool fields_ok = static_cast<bool>(PyTuple_CheckExact(_fields));
+            if (fields_ok) [[likely]] {
                 for (const auto& field : py::reinterpret_borrow<py::tuple>(_fields)) {
                     if (!static_cast<bool>(PyUnicode_CheckExact(field.ptr()))) [[unlikely]] {
-                        result = false;
+                        fields_ok = false;
                         break;
                     }
                 }
             }
             Py_DECREF(_fields);
-            return result;
+            if (fields_ok) [[likely]] {
+                // NOLINTNEXTLINE[readability-use-anyofallof]
+                for (const char* name : {"_make", "_asdict"}) {
+                    if (PyObject* attr = PyObject_GetAttrString(type.ptr(), name)) [[likely]] {
+                        bool result = static_cast<bool>(PyCallable_Check(attr));
+                        Py_DECREF(attr);
+                        if (!result) [[unlikely]] {
+                            return false;
+                        }
+                    } else [[unlikely]] {
+                        PyErr_Clear();
+                        return false;
+                    }
+                }
+                return true;
+            }
+        } else [[likely]] {
+            PyErr_Clear();
         }
-        PyErr_Clear();
     }
     return false;
 }
