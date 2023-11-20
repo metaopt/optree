@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Install `clang-format` and `clang-tidy` from PyPI by [@XuehaiPan](https://github.com/XuehaiPan) in [#107](https://github.com/metaopt/optree/pull/107).
 - Also check `_make` and `_asdict` in function `is_namedtuple_class` by [@XuehaiPan](https://github.com/XuehaiPan) in [#105](https://github.com/metaopt/optree/pull/105).
 
 ### Changed

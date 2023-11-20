@@ -19,15 +19,16 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <utility>
-
-#include "include/exceptions.h"
-#include "include/utils.h"
+#include <memory>         // std::unique_ptr
+#include <string>         // std::string
+#include <unordered_map>  // std::unordered_map
+#include <utility>        // std::pair
 
 namespace optree {
+
+namespace py = pybind11;
+using size_t = py::size_t;
+using ssize_t = py::ssize_t;
 
 enum class PyTreeKind {
     Custom = 0,      // A custom type
@@ -59,15 +60,15 @@ constexpr PyTreeKind kStructSequence = PyTreeKind::StructSequence;
 class PyTreeTypeRegistry {
  public:
     struct Registration {
-        PyTreeKind kind;
+        PyTreeKind kind = PyTreeKind::Custom;
 
         // The following values are populated for custom types.
         // The Python type object, used to identify the type.
-        py::object type;
+        py::object type{};
         // A function with signature: object -> (iterable, metadata, entries)
-        py::function flatten_func;
+        py::function flatten_func{};
         // A function with signature: (metadata, iterable) -> object
-        py::function unflatten_func;
+        py::function unflatten_func{};
     };
 
     // Registers a new custom type. Objects of `cls` will be treated as container node types in

@@ -17,9 +17,10 @@ limitations under the License.
 
 #pragma once
 
-#include <sstream>
-#include <stdexcept>
-#include <string>
+#include <cstddef>    // std::size_t
+#include <sstream>    // std::ostringstream
+#include <stdexcept>  // std::logic_error
+#include <string>     // std::string
 
 #ifndef SOURCE_PATH_PREFIX_SIZE
 #define SOURCE_PATH_PREFIX_SIZE 0
@@ -37,12 +38,11 @@ namespace optree {
 class InternalError : public std::logic_error {
  public:
     explicit InternalError(const std::string& msg) : std::logic_error(msg) {}
-    InternalError(const std::string& msg, const std::string& file, const size_t& lineno)
+    InternalError(const std::string& msg, const std::string& file, const std::size_t& lineno)
         : InternalError([&msg, &file, &lineno]() -> std::string {
               std::ostringstream oss{};
-              oss << msg << " (at file " << file << ":" << lineno << ")";
-              oss << std::endl << std::endl;
-              oss << "Please file a bug report at https://github.com/metaopt/optree/issues.";
+              oss << msg << " (at file " << file << ":" << lineno << ")\n\n"
+                  << "Please file a bug report at https://github.com/metaopt/optree/issues.";
               return oss.str();
           }()) {}
 };

@@ -17,6 +17,23 @@ limitations under the License.
 
 #include "include/treespec.h"
 
+#include <algorithm>      // std::copy, std::reverse
+#include <exception>      // std::rethrow_exception, std::current_exception
+#include <iterator>       // std::back_inserter
+#include <memory>         // std::unique_ptr, std::make_unique
+#include <sstream>        // std::ostringstream
+#include <stdexcept>      // std::runtime_error
+#include <string>         // std::string
+#include <thread>         // std::thread::id, std::this_thread // NOLINT[build/c++11]
+#include <tuple>          // std::tuple
+#include <unordered_map>  // std::unordered_map
+#include <utility>        // std::move, std::pair
+#include <vector>         // std::vector
+
+#include "include/exceptions.h"
+#include "include/registry.h"
+#include "include/utils.h"
+
 namespace optree {
 
 ssize_t PyTreeSpec::GetNumLeaves() const {

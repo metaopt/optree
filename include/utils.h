@@ -25,14 +25,12 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
-#include <memory>
-#include <optional>
-#include <sstream>
-#include <stdexcept>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
+#include <exception>   // std::rethrow_exception, std::current_exception
+#include <functional>  // std::hash
+#include <sstream>     // std::ostringstream
+#include <string>      // std::string
+#include <utility>     // std::move, std::pair, std::make_pair
+#include <vector>      // std::vector
 
 namespace py = pybind11;
 using size_t = py::size_t;
@@ -40,13 +38,13 @@ using ssize_t = py::ssize_t;
 
 // boost::hash_combine
 template <class T>
-inline void HashCombine(size_t& seed, const T& v) {  // NOLINT[runtime/references]
+inline void HashCombine(py::size_t& seed, const T& v) {  // NOLINT[runtime/references]
     std::hash<T> hasher{};
     // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
     seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
 }
 template <class T>
-inline void HashCombine(ssize_t& seed, const T& v) {  // NOLINT[runtime/references]
+inline void HashCombine(py::ssize_t& seed, const T& v) {  // NOLINT[runtime/references]
     std::hash<T> hasher{};
     // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
     seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
@@ -63,10 +61,10 @@ constexpr bool NONE_IS_NODE = false;
 #define PyDefaultDict_Type (reinterpret_cast<PyTypeObject*>(PyDefaultDictTypeObject.ptr()))
 #define PyDeque_Type (reinterpret_cast<PyTypeObject*>(PyDequeTypeObject.ptr()))
 
-inline const py::module& ImportCollections() {
+inline const py::module_& ImportCollections() {
     // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
     //       garbage collection.
-    static const py::module* ptr = new py::module{py::module::import("collections")};
+    static const py::module_* ptr = new py::module_{py::module_::import("collections")};
     return *ptr;
 }
 inline const py::object& ImportOrderedDict() {
@@ -89,7 +87,7 @@ inline const py::object& ImportDeque() {
 }
 
 template <typename T>
-inline std::vector<T> reserved_vector(const size_t& size) {
+inline std::vector<T> reserved_vector(const py::size_t& size) {
     std::vector<T> v{};
     v.reserve(size);
     return v;
@@ -134,11 +132,11 @@ inline py::handle GET_ITEM_HANDLE(const py::handle& container, const Item& item)
     return container[item];
 }
 template <>
-inline py::handle GET_ITEM_HANDLE<py::tuple>(const py::handle& container, const ssize_t& item) {
+inline py::handle GET_ITEM_HANDLE<py::tuple>(const py::handle& container, const py::ssize_t& item) {
     return PyTuple_GET_ITEM(container.ptr(), item);
 }
 template <>
-inline py::handle GET_ITEM_HANDLE<py::tuple>(const py::handle& container, const size_t& item) {
+inline py::handle GET_ITEM_HANDLE<py::tuple>(const py::handle& container, const py::size_t& item) {
     return PyTuple_GET_ITEM(container.ptr(), py::ssize_t_cast(item));
 }
 template <>
@@ -146,11 +144,11 @@ inline py::handle GET_ITEM_HANDLE<py::tuple>(const py::handle& container, const 
     return PyTuple_GET_ITEM(container.ptr(), py::ssize_t_cast(item));
 }
 template <>
-inline py::handle GET_ITEM_HANDLE<py::list>(const py::handle& container, const ssize_t& item) {
+inline py::handle GET_ITEM_HANDLE<py::list>(const py::handle& container, const py::ssize_t& item) {
     return PyList_GET_ITEM(container.ptr(), item);
 }
 template <>
-inline py::handle GET_ITEM_HANDLE<py::list>(const py::handle& container, const size_t& item) {
+inline py::handle GET_ITEM_HANDLE<py::list>(const py::handle& container, const py::size_t& item) {
     return PyList_GET_ITEM(container.ptr(), py::ssize_t_cast(item));
 }
 template <>
@@ -163,11 +161,11 @@ inline py::object GET_ITEM_BORROW(const py::handle& container, const Item& item)
     return container[item];
 }
 template <>
-inline py::object GET_ITEM_BORROW<py::tuple>(const py::handle& container, const ssize_t& item) {
+inline py::object GET_ITEM_BORROW<py::tuple>(const py::handle& container, const py::ssize_t& item) {
     return py::reinterpret_borrow<py::object>(PyTuple_GET_ITEM(container.ptr(), item));
 }
 template <>
-inline py::object GET_ITEM_BORROW<py::tuple>(const py::handle& container, const size_t& item) {
+inline py::object GET_ITEM_BORROW<py::tuple>(const py::handle& container, const py::size_t& item) {
     return py::reinterpret_borrow<py::object>(
         PyTuple_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
 }
@@ -177,11 +175,11 @@ inline py::object GET_ITEM_BORROW<py::tuple>(const py::handle& container, const 
         PyTuple_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
 }
 template <>
-inline py::object GET_ITEM_BORROW<py::list>(const py::handle& container, const ssize_t& item) {
+inline py::object GET_ITEM_BORROW<py::list>(const py::handle& container, const py::ssize_t& item) {
     return py::reinterpret_borrow<py::object>(PyList_GET_ITEM(container.ptr(), item));
 }
 template <>
-inline py::object GET_ITEM_BORROW<py::list>(const py::handle& container, const size_t& item) {
+inline py::object GET_ITEM_BORROW<py::list>(const py::handle& container, const py::size_t& item) {
     return py::reinterpret_borrow<py::object>(
         PyList_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
 }
@@ -196,11 +194,11 @@ inline py::object GET_ITEM_STEAL(const py::handle& container, const Item& item) 
     return container[item];
 }
 template <>
-inline py::object GET_ITEM_STEAL<py::tuple>(const py::handle& container, const ssize_t& item) {
+inline py::object GET_ITEM_STEAL<py::tuple>(const py::handle& container, const py::ssize_t& item) {
     return py::reinterpret_steal<py::object>(PyTuple_GET_ITEM(container.ptr(), item));
 }
 template <>
-inline py::object GET_ITEM_STEAL<py::tuple>(const py::handle& container, const size_t& item) {
+inline py::object GET_ITEM_STEAL<py::tuple>(const py::handle& container, const py::size_t& item) {
     return py::reinterpret_steal<py::object>(
         PyTuple_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
 }
@@ -210,11 +208,11 @@ inline py::object GET_ITEM_STEAL<py::tuple>(const py::handle& container, const i
         PyTuple_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
 }
 template <>
-inline py::object GET_ITEM_STEAL<py::list>(const py::handle& container, const ssize_t& item) {
+inline py::object GET_ITEM_STEAL<py::list>(const py::handle& container, const py::ssize_t& item) {
     return py::reinterpret_steal<py::object>(PyList_GET_ITEM(container.ptr(), item));
 }
 template <>
-inline py::object GET_ITEM_STEAL<py::list>(const py::handle& container, const size_t& item) {
+inline py::object GET_ITEM_STEAL<py::list>(const py::handle& container, const py::size_t& item) {
     return py::reinterpret_steal<py::object>(
         PyList_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
 }
@@ -236,7 +234,7 @@ inline void SET_ITEM<py::tuple>(const py::handle& container,
 }
 template <>
 inline void SET_ITEM<py::tuple>(const py::handle& container,
-                                const size_t& item,
+                                const py::size_t& item,
                                 const py::handle& value) {
     PyTuple_SET_ITEM(container.ptr(), py::ssize_t_cast(item), value.inc_ref().ptr());
 }
@@ -254,7 +252,7 @@ inline void SET_ITEM<py::list>(const py::handle& container,
 }
 template <>
 inline void SET_ITEM<py::list>(const py::handle& container,
-                               const size_t& item,
+                               const py::size_t& item,
                                const py::handle& value) {
     PyList_SET_ITEM(container.ptr(), py::ssize_t_cast(item), value.inc_ref().ptr());
 }

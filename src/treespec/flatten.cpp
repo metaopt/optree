@@ -15,7 +15,19 @@ limitations under the License.
 ================================================================================
 */
 
+#include <memory>     // std::unique_ptr, std::make_unique
+#include <optional>   // std::optional
+#include <sstream>    // std::ostringstream
+#include <stdexcept>  // std::runtime_error
+#include <string>     // std::string
+#include <tuple>      // std::tuple, std::make_tuple
+#include <utility>    // std::move, std::pair, std::make_pair
+#include <vector>     // std::vector
+
+#include "include/exceptions.h"
+#include "include/registry.h"
 #include "include/treespec.h"
+#include "include/utils.h"
 
 namespace optree {
 

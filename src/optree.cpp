@@ -18,13 +18,16 @@ limitations under the License.
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <optional>  // std::nullopt
+
 #include "include/exceptions.h"
 #include "include/registry.h"
 #include "include/treespec.h"
+#include "include/utils.h"
 
 namespace optree {
 
-void BuildModule(py::module& mod) {  // NOLINT[runtime/references]
+void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
     mod.doc() = "Optimized PyTree Utilities.";
     py::register_local_exception<InternalError>(mod, "InternalError", PyExc_SystemError);
     mod.attr("MAX_RECURSION_DEPTH") = py::ssize_t_cast(MAX_RECURSION_DEPTH);

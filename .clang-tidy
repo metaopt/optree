@@ -23,3 +23,5 @@ readability-*,
 HeaderFilterRegex: '^include/.*$'
 WarningsAsErrors: '*'
 FormatStyle: file
+CheckOptions:
+    misc-include-cleaner.IgnoreHeaders: 'python.*/.*;pybind11/.*'
