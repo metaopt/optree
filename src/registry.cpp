@@ -17,6 +17,17 @@ limitations under the License.
 
 #include "include/registry.h"
 
+#include <Python.h>
+
+#include <functional>  // std::hash
+#include <memory>      // std::make_unique
+#include <sstream>     // std::ostringstream
+#include <string>      // std::string
+#include <utility>     // std::move, std::pair, std::make_pair
+
+#include "include/exceptions.h"
+#include "include/utils.h"
+
 namespace optree {
 
 template <bool NoneIsLeaf>

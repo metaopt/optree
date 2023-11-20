@@ -1,4 +1,4 @@
-print-%  : ; @echo $* = $($*)
+print-%: ; @echo $* = $($*)
 PROJECT_NAME   = optree
 COPYRIGHT      = "MetaOPT Team. All Rights Reserved."
 PROJECT_PATH   = $(PROJECT_NAME)
@@ -9,7 +9,6 @@ CXX_FILES      = $(shell find $(SOURCE_FOLDERS) -type f -name "*.h" -o -name "*.
 COMMIT_HASH    = $(shell git log -1 --format=%h)
 PATH           := $(HOME)/go/bin:$(PATH)
 PYTHON         ?= $(shell command -v python3 || command -v python)
-CLANG_FORMAT   ?= $(shell command -v clang-format-17 || command -v clang-format)
 PYTESTOPTS     ?=
 OPTREE_CXX_WERROR ?= ON
 
@@ -22,7 +21,7 @@ install:
 install-editable:
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install --upgrade setuptools wheel
-	$(PYTHON) -m pip install pybind11
+	$(PYTHON) -m pip install --upgrade pybind11 cmake
 	OPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" $(PYTHON) -m pip install -vvv --no-build-isolation --editable .
 
 install-e: install-editable  # alias
@@ -37,8 +36,8 @@ build:
 
 # Tools Installation
 
-check_pip_install = $(PYTHON) -m pip show $(1) &>/dev/null || (cd && $(PYTHON) -m pip install $(1) --upgrade)
-check_pip_install_extra = $(PYTHON) -m pip show $(1) &>/dev/null || (cd && $(PYTHON) -m pip install $(2) --upgrade)
+check_pip_install = $(PYTHON) -m pip show $(1) &>/dev/null || (cd && $(PYTHON) -m pip install --upgrade $(1))
+check_pip_install_extra = $(PYTHON) -m pip show $(1) &>/dev/null || (cd && $(PYTHON) -m pip install --upgrade $(2))
 
 pylint-install:
 	$(call check_pip_install_extra,pylint,pylint[spelling])
@@ -99,12 +98,10 @@ cpplint-install:
 	$(call check_pip_install,cpplint)
 
 clang-format-install:
-	command -v clang-format-17 || command -v clang-format || \
-	sudo apt-get install -y clang-format-17 || \
-	sudo apt-get install -y clang-format
+	$(call check_pip_install,clang-format)
 
 clang-tidy-install:
-	command -v clang-tidy || sudo apt-get install -y clang-tidy
+	$(call check_pip_install,clang-tidy)
 
 go-install:
 	# requires go >= 1.16
@@ -116,6 +113,7 @@ addlicense-install: go-install
 # Tests
 
 pytest: pytest-install
+	$(PYTHON) -m pytest --version
 	cd tests && $(PYTHON) -c 'import $(PROJECT_PATH)' && \
 	$(PYTHON) -c 'import $(PROJECT_PATH)._C; print(f"GLIBCXX_USE_CXX11_ABI={$(PROJECT_PATH)._C.GLIBCXX_USE_CXX11_ABI}")' && \
 	$(PYTHON) -m pytest --verbose --color=yes --durations=0 \
@@ -127,35 +125,45 @@ test: pytest
 # Python linters
 
 pylint: pylint-install
+	$(PYTHON) -m pylint --version
 	$(PYTHON) -m pylint $(PROJECT_PATH)
 
 flake8: flake8-install
+	$(PYTHON) -m flake8 --version
 	$(PYTHON) -m flake8 --doctests --count --show-source --statistics
 
 py-format: py-format-install
+	$(PYTHON) -m isort --version
+	$(PYTHON) -m black --version
 	$(PYTHON) -m isort --project $(PROJECT_PATH) --check $(PYTHON_FILES) && \
 	$(PYTHON) -m black --check $(PYTHON_FILES)
 
 ruff: ruff-install
+	$(PYTHON) -m ruff --version
 	$(PYTHON) -m ruff check .
 
 ruff-fix: ruff-install
+	$(PYTHON) -m ruff --version
 	$(PYTHON) -m ruff check . --fix --exit-non-zero-on-fix
 
 mypy: mypy-install
+	$(PYTHON) -m mypy --version
 	$(PYTHON) -m mypy $(PROJECT_PATH) --install-types --non-interactive
 
 xdoctest: xdoctest-install
+	$(PYTHON) -m xdoctest --version
 	$(PYTHON) -m xdoctest $(PROJECT_PATH)
 
 doctest: xdoctest
 
 pre-commit: pre-commit-install
+	$(PYTHON) -m pre_commit --version
 	$(PYTHON) -m pre_commit run --all-files
 
 # C++ linters
 
 cmake-configure: cmake-install
+	cmake --version
 	cmake -S . -B cmake-build-debug \
 		-DCMAKE_BUILD_TYPE=Debug \
 		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
@@ -168,12 +176,15 @@ cmake-build: cmake-configure
 cmake: cmake-build
 
 cpplint: cpplint-install
+	$(PYTHON) -m cpplint --version
 	$(PYTHON) -m cpplint $(CXX_FILES)
 
 clang-format: clang-format-install
-	$(CLANG_FORMAT) --style=file -i $(CXX_FILES) -n --Werror
+	clang-format --version
+	clang-format --style=file -i $(CXX_FILES) -n --Werror
 
 clang-tidy: clang-tidy-install cmake-configure
+	clang-tidy --version
 	clang-tidy -p=cmake-build-debug $(CXX_FILES)
 
 # Documentation

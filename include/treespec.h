@@ -19,21 +19,23 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
-#include <memory>
-#include <optional>
-#include <stdexcept>
-#include <string>
-#include <thread>  // NOLINT[build/c++11]
-#include <tuple>
-#include <unordered_set>
-#include <utility>
-#include <vector>
+#include <memory>         // std::unique_ptr
+#include <optional>       // std::optional, std::nullopt
+#include <string>         // std::string
+#include <thread>         // std::thread::id // NOLINT[build/c++11]
+#include <tuple>          // std::tuple
+#include <unordered_set>  // std::unordered_set
+#include <utility>        // std::pair
+#include <vector>         // std::vector
 
-#include "include/exceptions.h"
 #include "include/registry.h"
 #include "include/utils.h"
 
 namespace optree {
+
+namespace py = pybind11;
+using size_t = py::size_t;
+using ssize_t = py::ssize_t;
 
 // The maximum depth of a pytree.
 constexpr ssize_t MAX_RECURSION_DEPTH = 2000;
@@ -199,14 +201,14 @@ class PyTreeSpec {
         // For a DefaultDict, contains a tuple of (default_factory, sorted list of keys).
         // For a Deque, contains the `maxlen` attribute.
         // For a Custom type, contains the auxiliary data returned by the `flatten_func` function.
-        py::object node_data;
+        py::object node_data{};
 
         // The tuple of path entries.
         // This is optional, if not specified, `range(arity)` is used.
         // For a sequence, contains the index of the element.
         // For a mapping, contains the key of the element.
         // For a Custom type, contains the path entries returned by the `flatten_func` function.
-        py::object node_entries;
+        py::object node_entries{};
 
         // Custom type registration. Must be null for non-custom types.
         const PyTreeTypeRegistry::Registration *custom = nullptr;
@@ -218,7 +220,7 @@ class PyTreeSpec {
         ssize_t num_nodes = 0;
 
         // For a Dict or DefaultDict, contains the keys in insertion order.
-        py::object ordered_keys;
+        py::object ordered_keys{};
     };
 
     // Nodes, in a post-order traversal. We use an ordered traversal to minimize allocations, and

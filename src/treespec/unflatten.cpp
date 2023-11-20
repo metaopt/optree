@@ -15,7 +15,13 @@ limitations under the License.
 ================================================================================
 */
 
+#include <sstream>  // std::ostringstream
+#include <utility>  // std::move
+
+#include "include/exceptions.h"
+#include "include/registry.h"
 #include "include/treespec.h"
+#include "include/utils.h"
 
 namespace optree {
 
