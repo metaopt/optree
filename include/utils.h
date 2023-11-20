@@ -53,6 +53,30 @@ inline void HashCombine(py::ssize_t& seed, const T& v) {  // NOLINT[runtime/refe
 constexpr bool NONE_IS_LEAF = true;
 constexpr bool NONE_IS_NODE = false;
 
+// NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
+//       garbage collection.
+#define Py_Declare_ID(name)                                 \
+    inline PyObject* Py_ID_##name() {                       \
+        static PyObject* ptr = (new py::str{#name})->ptr(); \
+        return ptr;                                         \
+    }
+
+#define Py_Get_ID(name) (Py_ID_##name())
+
+Py_Declare_ID(__module__);         // type.__module__
+Py_Declare_ID(__qualname__);       // type.__qualname__
+Py_Declare_ID(__name__);           // type.__name__
+Py_Declare_ID(sort);               // list.sort
+Py_Declare_ID(copy);               // dict.copy
+Py_Declare_ID(default_factory);    // defaultdict.default_factory
+Py_Declare_ID(maxlen);             // deque.maxlen
+Py_Declare_ID(_fields);            // namedtuple._fields
+Py_Declare_ID(_make);              // namedtuple._make
+Py_Declare_ID(_asdict);            // namedtuple._asdict
+Py_Declare_ID(n_fields);           // structseq.n_fields
+Py_Declare_ID(n_sequence_fields);  // structseq.n_sequence_fields
+Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
+
 #define PyCollectionsModule (ImportCollections())
 #define PyOrderedDictTypeObject (ImportOrderedDict())
 #define PyDefaultDictTypeObject (ImportDefaultDict())
@@ -332,7 +356,7 @@ inline bool IsNamedTupleClassImpl(const py::handle& type) {
     // We can only identify namedtuples heuristically, here by the presence of a _fields attribute.
     if (PyType_FastSubclass(reinterpret_cast<PyTypeObject*>(type.ptr()), Py_TPFLAGS_TUPLE_SUBCLASS))
         [[unlikely]] {
-        if (PyObject* _fields = PyObject_GetAttrString(type.ptr(), "_fields")) [[unlikely]] {
+        if (PyObject* _fields = PyObject_GetAttr(type.ptr(), Py_Get_ID(_fields))) [[unlikely]] {
             bool fields_ok = static_cast<bool>(PyTuple_CheckExact(_fields));
             if (fields_ok) [[likely]] {
                 for (const auto& field : py::reinterpret_borrow<py::tuple>(_fields)) {
@@ -345,8 +369,8 @@ inline bool IsNamedTupleClassImpl(const py::handle& type) {
             Py_DECREF(_fields);
             if (fields_ok) [[likely]] {
                 // NOLINTNEXTLINE[readability-use-anyofallof]
-                for (const char* name : {"_make", "_asdict"}) {
-                    if (PyObject* attr = PyObject_GetAttrString(type.ptr(), name)) [[likely]] {
+                for (PyObject* name : {Py_Get_ID(_make), Py_Get_ID(_asdict)}) {
+                    if (PyObject* attr = PyObject_GetAttr(type.ptr(), name)) [[likely]] {
                         bool result = static_cast<bool>(PyCallable_Check(attr));
                         Py_DECREF(attr);
                         if (!result) [[unlikely]] {
@@ -396,7 +420,7 @@ inline py::tuple NamedTupleGetFields(const py::handle& object) {
                                  static_cast<std::string>(py::repr(object)) + ".");
         }
     }
-    return py::getattr(type, "_fields");
+    return py::getattr(type, Py_Get_ID(_fields));
 }
 
 inline bool IsStructSequenceClassImpl(const py::handle& type) {
@@ -409,8 +433,9 @@ inline bool IsStructSequenceClassImpl(const py::handle& type) {
         PyTuple_GET_ITEM(type_object->tp_bases, 0) == reinterpret_cast<PyObject*>(&PyTuple_Type) &&
         !static_cast<bool>(PyType_HasFeature(type_object, Py_TPFLAGS_BASETYPE))) [[unlikely]] {
         // NOLINTNEXTLINE[readability-use-anyofallof]
-        for (const char* name : {"n_fields", "n_sequence_fields", "n_unnamed_fields"}) {
-            if (PyObject* attr = PyObject_GetAttrString(type.ptr(), name)) [[unlikely]] {
+        for (PyObject* name :
+             {Py_Get_ID(n_fields), Py_Get_ID(n_sequence_fields), Py_Get_ID(n_unnamed_fields)}) {
+            if (PyObject* attr = PyObject_GetAttr(type.ptr(), name)) [[unlikely]] {
                 bool result = static_cast<bool>(PyLong_CheckExact(attr));
                 Py_DECREF(attr);
                 if (!result) [[unlikely]] {
@@ -457,7 +482,7 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
         }
     }
 
-    const auto n_sequence_fields = getattr(type, "n_sequence_fields").cast<ssize_t>();
+    const auto n_sequence_fields = getattr(type, Py_Get_ID(n_sequence_fields)).cast<ssize_t>();
     auto* members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
     py::tuple fields{n_sequence_fields};
     for (ssize_t i = 0; i < n_sequence_fields; ++i) {
@@ -481,13 +506,14 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
                 // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
                 auto sort_key_fn = py::cpp_function([](const py::object& o) {
                     py::handle t = py::type::handle_of(o);
-                    py::str qualname{
-                        static_cast<std::string>(py::getattr(t, "__module__").cast<py::str>()) +
-                        "." +
-                        static_cast<std::string>(py::getattr(t, "__qualname__").cast<py::str>())};
+                    py::str qualname{static_cast<std::string>(
+                                         py::getattr(t, Py_Get_ID(__module__)).cast<py::str>()) +
+                                     "." +
+                                     static_cast<std::string>(
+                                         py::getattr(t, Py_Get_ID(__qualname__)).cast<py::str>())};
                     return py::make_tuple(qualname, o);
                 });
-                list.attr("sort")(py::arg("key") = sort_key_fn);
+                py::getattr(list, Py_Get_ID(sort))(py::arg("key") = sort_key_fn);
             } catch (py::error_already_set& ex2) {
                 if (ex2.matches(PyExc_TypeError)) [[likely]] {
                     // Found incomparable user-defined key types.

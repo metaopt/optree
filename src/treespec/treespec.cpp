@@ -1162,11 +1162,13 @@ std::string PyTreeSpec::ToStringImpl() const {
 
             case PyTreeKind::NamedTuple: {
                 py::object type = node.node_data;
-                auto fields = py::reinterpret_borrow<py::tuple>(py::getattr(type, "_fields"));
+                auto fields =
+                    py::reinterpret_borrow<py::tuple>(py::getattr(type, Py_Get_ID(_fields)));
                 EXPECT_EQ(GET_SIZE<py::tuple>(fields),
                           node.arity,
                           "Number of fields and entries does not match.");
-                std::string kind = static_cast<std::string>(py::str(py::getattr(type, "__name__")));
+                std::string kind =
+                    static_cast<std::string>(py::str(py::getattr(type, Py_Get_ID(__name__))));
                 sstream << kind << "(";
                 bool first = true;
                 auto child_iter = agenda.end() - node.arity;
@@ -1257,8 +1259,8 @@ std::string PyTreeSpec::ToStringImpl() const {
             }
 
             case PyTreeKind::Custom: {
-                std::string kind =
-                    static_cast<std::string>(py::str(py::getattr(node.custom->type, "__name__")));
+                std::string kind = static_cast<std::string>(
+                    py::str(py::getattr(node.custom->type, Py_Get_ID(__name__))));
                 sstream << "CustomTreeNode(" << kind << "[";
                 if (node.node_data) [[likely]] {
                     sstream << static_cast<std::string>(py::repr(node.node_data));
