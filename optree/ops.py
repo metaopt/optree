@@ -1957,7 +1957,8 @@ def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
 def treespec_typed_paths(treespec: PyTreeSpec) -> list[tuple[tuple[type[Any], Any], ...]]:
     """Return a list of tuples of ``(type, entry)`` for the leaves of a treespec.
 
-    See also :func:`treespec_paths` and :meth:`PyTreeSpec.typed_paths`.
+    See also :func:`tree_flatten_with_typed_path`, :func:`tree_typed_paths` and
+    :meth:`PyTreeSpec.typed_paths`.
     """
     return treespec.typed_paths()
 
