@@ -67,6 +67,7 @@ from optree.ops import (
     treespec_paths,
     treespec_structseq,
     treespec_tuple,
+    treespec_typed_paths,
 )
 from optree.registry import (
     AttributeKeyPathEntry,
@@ -129,6 +130,7 @@ __all__ = [
     'tree_flatten_one_level',
     'prefix_errors',
     'treespec_paths',
+    'treespec_typed_paths',
     'treespec_entries',
     'treespec_entry',
     'treespec_children',

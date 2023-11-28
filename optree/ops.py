@@ -84,6 +84,7 @@ __all__ = [
     'tree_any',
     'tree_flatten_one_level',
     'treespec_paths',
+    'treespec_typed_paths',
     'treespec_entries',
     'treespec_entry',
     'treespec_children',
@@ -1772,6 +1773,14 @@ def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
     See also :func:`tree_flatten_with_path`, :func:`tree_paths`, and :meth:`PyTreeSpec.paths`.
     """
     return treespec.paths()
+
+
+def treespec_typed_paths(treespec: PyTreeSpec) -> list[tuple[tuple[type[Any], Any], ...]]:
+    """Return a list of tuples of ``(type, entry)`` for the leaves of a treespec.
+
+    See also :func:`treespec_paths` and :meth:`PyTreeSpec.typed_paths`.
+    """
+    return treespec.typed_paths()
 
 
 def treespec_entries(treespec: PyTreeSpec) -> list[Any]:

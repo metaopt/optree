@@ -164,6 +164,9 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::arg("f_leaf"),
              py::arg("leaves"))
         .def("paths", &PyTreeSpec::Paths, "Return a list of paths to the leaves of the treespec.")
+        .def("typed_paths",
+             &PyTreeSpec::TypedPaths,
+             "Return a list of tuples of ``(type, entry)`` to the leaves of the treespec.")
         .def("entries", &PyTreeSpec::Entries, "Return a list of one-level entries to the children.")
         .def("entry", &PyTreeSpec::Entry, "Return the entry at the given index.", py::arg("index"))
         .def("children", &PyTreeSpec::Children, "Return a list of treespecs for the children.")
@@ -193,7 +196,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             "The registry namespace used to resolve the custom pytree node types.")
         .def_property_readonly(
             "type",
-            &PyTreeSpec::GetType,
+            [](const PyTreeSpec& t) { return t.GetType(); },
             "The type of the current node. Return None if the current node is a leaf.")
         .def_property_readonly("kind", &PyTreeSpec::GetPyTreeKind, "The kind of the current node.")
         .def("is_leaf",

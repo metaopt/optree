@@ -92,6 +92,9 @@ class PyTreeSpec {
     // Return paths to all leaves in the PyTreeSpec.
     [[nodiscard]] std::vector<py::tuple> Paths() const;
 
+    // Return a list of tuples of (type, entry) pairs to all leaves in the PyTreeSpec.
+    [[nodiscard]] std::vector<py::tuple> TypedPaths() const;
+
     // Return one-level entries of the PyTreeSpec to its children.
     [[nodiscard]] py::list Entries() const;
 
@@ -114,7 +117,7 @@ class PyTreeSpec {
 
     [[nodiscard]] std::string GetNamespace() const;
 
-    [[nodiscard]] py::object GetType() const;
+    [[nodiscard]] py::object GetType(const std::optional<Node> &node = std::nullopt) const;
 
     [[nodiscard]] PyTreeKind GetPyTreeKind() const;
 
@@ -282,6 +285,12 @@ class PyTreeSpec {
                                     Stack &stack,  // NOLINT[runtime/references]
                                     const ssize_t &pos,
                                     const ssize_t &depth) const;
+
+    template <typename Span, typename Stack>
+    [[nodiscard]] ssize_t TypedPathsImpl(Span &typed_paths,  // NOLINT[runtime/references]
+                                         Stack &stack,       // NOLINT[runtime/references]
+                                         const ssize_t &pos,
+                                         const ssize_t &depth) const;
 
     [[nodiscard]] std::string ToStringImpl() const;
 
