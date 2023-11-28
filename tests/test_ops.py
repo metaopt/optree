@@ -30,6 +30,7 @@ import optree
 from helpers import (
     LEAVES,
     TREE_PATHS,
+    TREE_TYPED_PATHS,
     TREES,
     Counter,
     CustomTuple,
@@ -318,25 +319,28 @@ def test_structure_is_leaf(structure_fn):
 @parametrize(
     data=list(
         itertools.chain(
-            zip(TREES, TREE_PATHS[False], itertools.repeat(False)),
-            zip(TREES, TREE_PATHS[True], itertools.repeat(True)),
+            zip(TREES, TREE_PATHS[False], TREE_TYPED_PATHS[False], itertools.repeat(False)),
+            zip(TREES, TREE_PATHS[True], TREE_TYPED_PATHS[True], itertools.repeat(True)),
         ),
     ),
 )
 def test_paths(data):
-    tree, expected_paths, none_is_leaf = data
+    tree, expected_paths, expected_typed_paths, none_is_leaf = data
     expected_leaves, expected_treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
     paths, leaves, treespec = optree.tree_flatten_with_path(tree, none_is_leaf=none_is_leaf)
-    treespec_paths = optree.treespec_paths(treespec)
-    treespec_typed_paths = optree.treespec_typed_paths(treespec)
+    typed_paths, other_leaves, other_treespec = optree.tree_flatten_with_typed_path(
+        tree,
+        none_is_leaf=none_is_leaf,
+    )
     assert len(paths) == len(leaves)
+    assert len(typed_paths) == len(leaves)
     assert leaves == expected_leaves
     assert treespec == expected_treespec
+    assert other_leaves == expected_leaves
+    assert other_treespec == expected_treespec
     assert paths == expected_paths
-    assert len(treespec_paths) == len(leaves)
-    assert treespec_paths == expected_paths
-    assert len(treespec_typed_paths) == len(leaves)
-    for typed_path, path in zip(treespec_typed_paths, expected_paths):
+    assert typed_paths == expected_typed_paths
+    for typed_path, path in zip(typed_paths, paths):
         assert isinstance(typed_path, tuple)
         assert isinstance(path, tuple)
         assert len(typed_path) == len(path)
@@ -344,8 +348,11 @@ def test_paths(data):
             isinstance(tp, tuple) and len(tp) == 2 and isinstance(tp[0], type) for tp in typed_path
         )
         assert tuple(entry for _, entry in typed_path) == path
-    paths = optree.tree_paths(tree, none_is_leaf=none_is_leaf)
-    assert paths == expected_paths
+
+    assert optree.treespec_paths(treespec) == expected_paths
+    assert optree.treespec_typed_paths(treespec) == expected_typed_paths
+    assert optree.tree_paths(tree, none_is_leaf=none_is_leaf) == expected_paths
+    assert optree.tree_typed_paths(tree, none_is_leaf=none_is_leaf) == expected_typed_paths
 
 
 @parametrize(
@@ -373,15 +380,47 @@ def test_paths_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
-    treespec_paths = optree.treespec_paths(treespec)
+    typed_paths, other_leaves, other_treespec = optree.tree_flatten_with_typed_path(
+        tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
     assert len(paths) == len(leaves)
+    assert len(typed_paths) == len(leaves)
     assert leaves == expected_leaves
     assert treespec == expected_treespec
-    assert len(treespec_paths) == len(leaves)
-    assert paths == treespec_paths
-    paths = optree.tree_paths(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
-    assert len(paths) == len(leaves)
-    assert paths == treespec_paths
+    assert other_leaves == expected_leaves
+    assert other_treespec == expected_treespec
+    for typed_path, path in zip(typed_paths, paths):
+        assert isinstance(typed_path, tuple)
+        assert isinstance(path, tuple)
+        assert len(typed_path) == len(path)
+        assert all(
+            isinstance(tp, tuple) and len(tp) == 2 and isinstance(tp[0], type) for tp in typed_path
+        )
+        assert tuple(entry for _, entry in typed_path) == path
+
+    assert optree.treespec_paths(treespec) == paths
+    assert optree.treespec_typed_paths(treespec) == typed_paths
+    assert (
+        optree.tree_paths(
+            tree,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        == paths
+    )
+    assert (
+        optree.tree_typed_paths(
+            tree,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        == typed_paths
+    )
 
 
 @parametrize(
@@ -1535,11 +1574,14 @@ def test_tree_any():
     namespace=['', 'undefined', 'namespace'],
 )
 def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
-    stack = [tree]
     actual_leaves = []
-    expected_leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    while stack:
-        node = stack.pop()
+    actual_paths = []
+    actual_typed_paths = []
+
+    path_stack = []
+    typed_path_stack = []
+
+    def flatten(node):  # noqa: C901
         counter = itertools.count()
         expected_children, one_level_treespec = optree.tree_flatten(
             node,
@@ -1557,6 +1599,8 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
             ):
                 optree.tree_flatten_one_level(node, none_is_leaf=none_is_leaf, namespace=namespace)
             actual_leaves.append(node)
+            actual_paths.append(tuple(path_stack))
+            actual_typed_paths.append(tuple(typed_path_stack))
         else:
             children, metadata, entries, unflatten_func = optree.tree_flatten_one_level(
                 node,
@@ -1607,9 +1651,31 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
                 with pytest.raises(ValueError, match=re.escape('Expected no children.')):
                     unflatten_func(metadata, range(1))
 
-            stack.extend(reversed(children))
+            for child, entry in zip(children, entries):
+                path_stack.append(entry)
+                typed_path_stack.append((node_type, entry))
+                flatten(child)
+                path_stack.pop()
+                typed_path_stack.pop()
 
-    assert actual_leaves == expected_leaves
+    flatten(tree)
+    assert len(path_stack) == 0
+    assert len(typed_path_stack) == 0
+    assert actual_leaves == optree.tree_leaves(
+        tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    assert actual_paths == optree.tree_paths(
+        tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    assert actual_typed_paths == optree.tree_typed_paths(
+        tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 @parametrize(

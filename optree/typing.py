@@ -139,7 +139,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
     >>> import torch
     >>> from optree.typing import PyTree
     >>> TensorTree = PyTree[torch.Tensor]
-    >>> TensorTree  # doctest: +NORMALIZE_WHITESPACE
+    >>> TensorTree  # doctest: +IGNORE_WHITESPACE
     typing.Union[torch.Tensor,
                  typing.Tuple[ForwardRef('PyTree[torch.Tensor]'), ...],
                  typing.List[ForwardRef('PyTree[torch.Tensor]')],
@@ -225,7 +225,7 @@ class PyTreeTypeVar:
     >>> import torch
     >>> from optree.typing import PyTreeTypeVar
     >>> TensorTree = PyTreeTypeVar('TensorTree', torch.Tensor)
-    >>> TensorTree  # doctest: +NORMALIZE_WHITESPACE
+    >>> TensorTree  # doctest: +IGNORE_WHITESPACE
     typing.Union[torch.Tensor,
                  typing.Tuple[ForwardRef('TensorTree'), ...],
                  typing.List[ForwardRef('TensorTree')],
