@@ -43,6 +43,18 @@ from typing_extensions import Final, Protocol, runtime_checkable  # Python 3.8+
 
 from optree import _C
 from optree._C import PyTreeKind, PyTreeSpec
+from optree.accessor import (
+    DataclassEntry,
+    FlattenedEntry,
+    GetAttrEntry,
+    GetItemEntry,
+    MappingEntry,
+    NamedTupleEntry,
+    PyTreeAccessor,
+    PyTreeEntry,
+    SequenceEntry,
+    StructSequenceEntry,
+)
 
 
 __all__ = [
@@ -56,6 +68,16 @@ __all__ = [
     'MetaData',
     'FlattenFunc',
     'UnflattenFunc',
+    'PyTreeEntry',
+    'GetItemEntry',
+    'GetAttrEntry',
+    'FlattenedEntry',
+    'SequenceEntry',
+    'MappingEntry',
+    'NamedTupleEntry',
+    'StructSequenceEntry',
+    'DataclassEntry',
+    'PyTreeAccessor',
     'is_namedtuple',
     'is_namedtuple_instance',
     'is_namedtuple_class',
@@ -90,9 +112,9 @@ KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 
-Children = Iterable[T]
+Children: TypeAlias = Iterable[T]
 _MetaData = TypeVar('_MetaData', bound=Hashable)
-MetaData = Optional[_MetaData]
+MetaData: TypeAlias = Optional[_MetaData]
 
 
 @runtime_checkable
@@ -255,14 +277,14 @@ class PyTreeTypeVar:
         return self
 
 
-FlattenFunc = Callable[
+FlattenFunc: TypeAlias = Callable[
     [CustomTreeNode[T]],
     Union[
         Tuple[Children[T], MetaData],
         Tuple[Children[T], MetaData, Optional[Iterable[Any]]],
     ],
 ]
-UnflattenFunc = Callable[[MetaData, Children[T]], CustomTreeNode[T]]
+UnflattenFunc: TypeAlias = Callable[[MetaData, Children[T]], CustomTreeNode[T]]
 
 
 def is_namedtuple(obj: object | type) -> bool:
@@ -370,7 +392,7 @@ def is_structseq_instance(obj: object) -> bool:
 
 
 # Set if the type allows subclassing (see CPython's Include/object.h)
-Py_TPFLAGS_BASETYPE = _C.Py_TPFLAGS_BASETYPE  # (1UL << 10)
+Py_TPFLAGS_BASETYPE: int = _C.Py_TPFLAGS_BASETYPE  # (1UL << 10)
 
 
 def is_structseq_class(cls: type) -> bool:

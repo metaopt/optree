@@ -462,7 +462,7 @@ def test_treespec_entries(tree, none_is_leaf, namespace):
     )
     assert optree.treespec_paths(treespec) == expected_paths
 
-    def gen_path(spec, prefix):
+    def gen_path(spec):
         entries = optree.treespec_entries(spec)
         children = optree.treespec_children(spec)
         assert len(entries) == spec.num_children
@@ -471,13 +471,47 @@ def test_treespec_entries(tree, none_is_leaf, namespace):
         assert children is not optree.treespec_children(spec)
         optree.treespec_entries(spec).clear()
         optree.treespec_children(spec).clear()
-        if spec.is_leaf():
-            yield prefix
-        for entry, child in zip(entries, children):
-            yield from gen_path(child, (*prefix, entry))
 
-    paths = list(gen_path(treespec, ()))
+        if spec.is_leaf():
+            assert spec.num_children == 0
+            yield ()
+            return
+
+        for entry, child in zip(entries, children):
+            for suffix in gen_path(child):
+                yield (entry, *suffix)
+
+    paths = list(gen_path(treespec))
     assert paths == expected_paths
+
+    expected_typed_paths, _, other_treespec = optree.tree_flatten_with_typed_path(
+        tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    assert optree.treespec_typed_paths(treespec) == expected_typed_paths
+    assert optree.treespec_typed_paths(other_treespec) == expected_typed_paths
+    assert treespec == other_treespec
+
+    def gen_typed_path(spec):
+        entries = optree.treespec_entries(spec)
+        children = optree.treespec_children(spec)
+        assert len(entries) == spec.num_children
+        assert len(children) == spec.num_children
+
+        if spec.is_leaf():
+            assert spec.num_children == 0
+            yield ()
+            return
+
+        node_type = spec.type
+        node_kind = spec.kind
+        for entry, child in zip(entries, children):
+            for suffix in gen_typed_path(child):
+                yield ((entry, node_type, node_kind), *suffix)
+
+    typed_paths = list(gen_typed_path(treespec))
+    assert typed_paths == expected_typed_paths
 
 
 @parametrize(
@@ -618,6 +652,7 @@ def test_treespec_num_leaves(tree, none_is_leaf, namespace):
     assert treespec.num_leaves == len(leaves)
     assert treespec.num_leaves == len(treespec)
     assert treespec.num_leaves == len(treespec.paths())
+    assert treespec.num_leaves == len(treespec.typed_paths())
 
 
 @parametrize(

@@ -20,7 +20,17 @@ import enum
 from collections.abc import Callable, Iterable, Iterator
 from typing import Any
 
-from optree.typing import CustomTreeNode, FlattenFunc, MetaData, PyTree, T, U, UnflattenFunc
+from optree.typing import (
+    CustomTreeNode,
+    FlattenFunc,
+    MetaData,
+    PyTree,
+    PyTreeAccessor,
+    PyTreeEntry,
+    T,
+    U,
+    UnflattenFunc,
+)
 
 class InternalError(RuntimeError): ...
 
@@ -109,6 +119,7 @@ class PyTreeSpec:
         leaves: Iterable[T],
     ) -> U: ...
     def paths(self) -> list[tuple[Any, ...]]: ...
+    def accessors(self) -> list[PyTreeAccessor]: ...
     def entries(self) -> list[Any]: ...
     def entry(self, index: int) -> Any: ...
     def children(self) -> list[PyTreeSpec]: ...
@@ -140,6 +151,7 @@ def register_node(
     cls: type[CustomTreeNode[T]],
     flatten_func: FlattenFunc,
     unflatten_func: UnflattenFunc,
+    path_entry_type: type[PyTreeEntry],
     namespace: str = '',
 ) -> None: ...
 def unregister_node(

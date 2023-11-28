@@ -21,6 +21,7 @@ limitations under the License.
 #include <exception>      // std::rethrow_exception, std::current_exception
 #include <iterator>       // std::back_inserter
 #include <memory>         // std::unique_ptr, std::make_unique
+#include <optional>       // std::optional
 #include <sstream>        // std::ostringstream
 #include <stdexcept>      // std::runtime_error
 #include <string>         // std::string
@@ -159,6 +160,58 @@ namespace optree {
                 SET_ITEM<py::tuple>(tuple, i, children[i]);
             }
             return node.custom->unflatten_func(node.node_data, tuple);
+        }
+
+        default:
+            INTERNAL_ERROR();
+    }
+}
+
+/*static*/ py::object PyTreeSpec::GetPathEntryClass(const Node& node) {
+    static auto [SequenceEntry,
+                 MappingEntry,
+                 NamedTupleEntry,
+                 StructSequenceEntry,
+                 FlattenedEntry] =
+        []() -> std::tuple<py::object, py::object, py::object, py::object, py::object> {
+        const py::module_& mod = GetCxxModule();
+        return {py::getattr(mod, "SequenceEntry"),
+                py::getattr(mod, "MappingEntry"),
+                py::getattr(mod, "NamedTupleEntry"),
+                py::getattr(mod, "StructSequenceEntry"),
+                py::getattr(mod, "FlattenedEntry")};
+    }();
+
+    switch (node.kind) {
+        case PyTreeKind::Leaf:
+        case PyTreeKind::None: {
+            return py::none();
+        }
+
+        case PyTreeKind::Tuple:
+        case PyTreeKind::List:
+        case PyTreeKind::Deque: {
+            return SequenceEntry;
+        }
+
+        case PyTreeKind::Dict:
+        case PyTreeKind::OrderedDict:
+        case PyTreeKind::DefaultDict: {
+            return MappingEntry;
+        }
+
+        case PyTreeKind::NamedTuple: {
+            return NamedTupleEntry;
+        }
+
+        case PyTreeKind::StructSequence: {
+            return StructSequenceEntry;
+        }
+
+        case PyTreeKind::Custom: {
+            EXPECT_NE(node.custom, nullptr, "The custom registration is null.");
+            EXPECT_TRUE(node.custom->path_entry_type, "The path entry type is null.");
+            return node.custom->path_entry_type;
         }
 
         default:
@@ -565,6 +618,104 @@ std::vector<py::tuple> PyTreeSpec::Paths() const {
     return paths;
 }
 
+template <typename Span, typename Stack>
+// NOLINTNEXTLINE[misc-no-recursion]
+ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,
+                                  Stack& stack,
+                                  const ssize_t& pos,
+                                  const ssize_t& depth) const {
+    static const py::object& PyTreeAccessor = py::getattr(GetCxxModule(), "PyTreeAccessor");
+
+    const Node& root = m_traversal.at(pos);
+    EXPECT_GE(pos + 1, root.num_nodes, "PyTreeSpec::TypedPaths() walked off start of array.");
+
+    ssize_t cur = pos - 1;
+    const py::object node_type = GetType(root);
+    const PyTreeKind& node_kind = root.kind;
+    // NOLINTNEXTLINE[misc-no-recursion]
+    auto recurse = [this, &node_type, &node_kind, &accessors, &stack, &depth](
+                       const ssize_t& cur,
+                       const py::handle& entry,
+                       const py::handle& path_entry_type) -> ssize_t {
+        stack.emplace_back(path_entry_type(entry, node_type, node_kind));
+        const ssize_t num_nodes = AccessorsImpl(accessors, stack, cur, depth + 1);
+        stack.pop_back();
+        return num_nodes;
+    };
+
+    py::object path_entry_type = GetPathEntryClass(root);
+    if (root.node_entries) [[unlikely]] {
+        EXPECT_EQ(
+            root.kind, PyTreeKind::Custom, "Node entries are only supported for custom nodes.");
+        EXPECT_NE(root.custom, nullptr, "The custom registration is null.");
+        for (ssize_t i = root.arity - 1; i >= 0; --i) {
+            cur -= recurse(cur, GET_ITEM_HANDLE<py::tuple>(root.node_entries, i), path_entry_type);
+        }
+    } else [[likely]] {
+        switch (root.kind) {
+            case PyTreeKind::Leaf: {
+                py::tuple typed_path{depth};
+                for (ssize_t d = 0; d < depth; ++d) {
+                    SET_ITEM<py::tuple>(typed_path, d, stack[d]);
+                }
+                accessors.emplace_back(PyTreeAccessor(typed_path));
+                break;
+            }
+
+            case PyTreeKind::None:
+                break;
+
+            case PyTreeKind::Tuple:
+            case PyTreeKind::List:
+            case PyTreeKind::NamedTuple:
+            case PyTreeKind::Deque:
+            case PyTreeKind::StructSequence:
+            case PyTreeKind::Custom: {
+                for (ssize_t i = root.arity - 1; i >= 0; --i) {
+                    cur -= recurse(cur, py::int_(i), path_entry_type);
+                }
+                break;
+            }
+
+            case PyTreeKind::Dict:
+            case PyTreeKind::OrderedDict:
+            case PyTreeKind::DefaultDict: {
+                auto keys = py::reinterpret_borrow<py::list>(
+                    root.kind != PyTreeKind::DefaultDict
+                        ? root.node_data
+                        : GET_ITEM_BORROW<py::tuple>(root.node_data, 1));
+                for (ssize_t i = root.arity - 1; i >= 0; --i) {
+                    cur -= recurse(cur, GET_ITEM_HANDLE<py::list>(keys, i), path_entry_type);
+                }
+                break;
+            }
+
+            default:
+                INTERNAL_ERROR();
+        }
+    }
+
+    return pos - cur;
+}
+
+std::vector<py::object> PyTreeSpec::Accessors() const {
+    const ssize_t num_leaves = GetNumLeaves();
+    auto accessors = reserved_vector<py::object>(num_leaves);
+    if (num_leaves == 0) [[unlikely]] {
+        return accessors;
+    }
+
+    const ssize_t num_nodes = GetNumNodes();
+    auto stack = reserved_vector<py::object>(4);
+    const ssize_t num_nodes_walked = AccessorsImpl(accessors, stack, num_nodes - 1, 0);
+    std::reverse(accessors.begin(), accessors.end());
+    EXPECT_EQ(num_nodes_walked, num_nodes, "`pos != 0` at end of PyTreeSpec::Accessors().");
+    EXPECT_EQ(py::ssize_t_cast(accessors.size()),
+              num_leaves,
+              "PyTreeSpec::Accessors() mismatched leaves.");
+    return accessors;
+}
+
 py::list PyTreeSpec::Entries() const {
     EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
     const Node& root = m_traversal.back();
@@ -706,13 +857,15 @@ bool PyTreeSpec::GetNoneIsLeaf() const { return m_none_is_leaf; }
 
 std::string PyTreeSpec::GetNamespace() const { return m_namespace; }
 
-py::object PyTreeSpec::GetType() const {
-    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
-    Node node = m_traversal.back();
-    switch (node.kind) {
+py::object PyTreeSpec::GetType(const std::optional<Node>& node) const {
+    if (!node.has_value()) [[likely]] {
+        EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    }
+    const Node& n = node.value_or(m_traversal.back());
+    switch (n.kind) {
         case PyTreeKind::Custom:
-            EXPECT_NE(node.custom, nullptr, "The custom registration is null.");
-            return py::reinterpret_borrow<py::object>(node.custom->type);
+            EXPECT_NE(n.custom, nullptr, "The custom registration is null.");
+            return py::reinterpret_borrow<py::object>(n.custom->type);
         case PyTreeKind::Leaf:
             return py::none();
         case PyTreeKind::None:
@@ -725,7 +878,7 @@ py::object PyTreeSpec::GetType() const {
             return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyDict_Type));
         case PyTreeKind::NamedTuple:
         case PyTreeKind::StructSequence:
-            return py::reinterpret_borrow<py::object>(node.node_data);
+            return py::reinterpret_borrow<py::object>(n.node_data);
         case PyTreeKind::OrderedDict:
             return PyOrderedDictTypeObject;
         case PyTreeKind::DefaultDict:

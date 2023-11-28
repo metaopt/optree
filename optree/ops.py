@@ -23,7 +23,7 @@ import functools
 import itertools
 import textwrap
 from collections import OrderedDict, defaultdict, deque
-from typing import Any, Callable, Iterable, Mapping, overload
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, overload
 
 from optree import _C
 from optree.registry import (
@@ -40,6 +40,7 @@ from optree.typing import (
     MetaData,
     NamedTuple,
     PyTree,
+    PyTreeKind,
     PyTreeSpec,
     S,
     T,
@@ -52,17 +53,23 @@ from optree.typing import structseq as PyStructSequence  # noqa: N812
 from optree.typing import structseq_fields
 
 
+if TYPE_CHECKING:
+    from optree.accessor import PyTreeAccessor
+
+
 __all__ = [
     'MAX_RECURSION_DEPTH',
     'NONE_IS_NODE',
     'NONE_IS_LEAF',
     'tree_flatten',
     'tree_flatten_with_path',
+    'tree_flatten_with_accessor',
     'tree_unflatten',
     'tree_iter',
     'tree_leaves',
     'tree_structure',
     'tree_paths',
+    'tree_accessors',
     'tree_is_leaf',
     'all_leaves',
     'tree_map',
@@ -87,6 +94,7 @@ __all__ = [
     'tree_any',
     'tree_flatten_one_level',
     'treespec_paths',
+    'treespec_accessors',
     'treespec_entries',
     'treespec_entry',
     'treespec_children',
@@ -260,6 +268,106 @@ def tree_flatten_with_path(
         leaf values and the last element is a treespec representing the structure of the pytree.
     """
     return _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)
+
+
+def tree_flatten_with_accessor(
+    tree: PyTree[T],
+    is_leaf: Callable[[T], bool] | None = None,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> tuple[list[PyTreeAccessor], list[T], PyTreeSpec]:
+    """Flatten a pytree and additionally record the accessors.
+
+    See also :func:`tree_flatten`, :func:`tree_accessors`, and :func:`treespec_accessors`.
+
+    The flattening order (i.e., the order of elements in the output list) is deterministic,
+    corresponding to a left-to-right depth-first tree traversal.
+
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> tree_flatten_with_accessor(tree)  # doctest: +IGNORE_WHITESPACE
+    (
+        [
+            PyTreeAccessor(*['a'], (MappingEntry(key='a', type=<class 'dict'>),)),
+            PyTreeAccessor(*['b'][0], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
+            PyTreeAccessor(*['b'][1][0], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=0, type=<class 'list'>))),
+            PyTreeAccessor(*['b'][1][1], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=1, type=<class 'list'>))),
+            PyTreeAccessor(*['d'], (MappingEntry(key='d', type=<class 'dict'>),))
+        ],
+        [1, 2, 3, 4, 5],
+        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
+    )
+    >>> tree_flatten_with_accessor(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    (
+        [
+            PyTreeAccessor(*['a'], (MappingEntry(key='a', type=<class 'dict'>),)),
+            PyTreeAccessor(*['b'][0], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
+            PyTreeAccessor(*['b'][1][0], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=0, type=<class 'list'>))),
+            PyTreeAccessor(*['b'][1][1], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=1, type=<class 'list'>))),
+            PyTreeAccessor(*['c'], (MappingEntry(key='c', type=<class 'dict'>),)),
+            PyTreeAccessor(*['d'], (MappingEntry(key='d', type=<class 'dict'>),))
+        ],
+        [1, 2, 3, 4, None, 5],
+        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf)
+    )
+    >>> tree_flatten_with_accessor(1)
+    ([PyTreeAccessor(*, ())], [1], PyTreeSpec(*))
+    >>> tree_flatten_with_accessor(None)
+    ([], [], PyTreeSpec(None))
+    >>> tree_flatten_with_accessor(None, none_is_leaf=True)
+    ([PyTreeAccessor(*, ())], [None], PyTreeSpec(*, NoneIsLeaf))
+
+    For unordered dictionaries, :class:`dict` and :class:`collections.defaultdict`, the order is
+    dependent on the **sorted** keys in the dictionary. Please use :class:`collections.OrderedDict`
+    if you want to keep the keys in the insertion order.
+
+    >>> from collections import OrderedDict
+    >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
+    >>> tree_flatten_with_accessor(tree)  # doctest: +IGNORE_WHITESPACE
+    (
+        [
+            PyTreeAccessor(*['b'][0], (MappingEntry(key='b', type=<class 'collections.OrderedDict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
+            PyTreeAccessor(*['b'][1][0], (MappingEntry(key='b', type=<class 'collections.OrderedDict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=0, type=<class 'list'>))),
+            PyTreeAccessor(*['b'][1][1], (MappingEntry(key='b', type=<class 'collections.OrderedDict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=1, type=<class 'list'>))),
+            PyTreeAccessor(*['a'], (MappingEntry(key='a', type=<class 'collections.OrderedDict'>),)),
+            PyTreeAccessor(*['d'], (MappingEntry(key='d', type=<class 'collections.OrderedDict'>),))
+        ],
+        [2, 3, 4, 1, 5],
+        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)]))
+    )
+    >>> tree_flatten_with_accessor(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    (
+        [
+            PyTreeAccessor(*['b'][0], (MappingEntry(key='b', type=<class 'collections.OrderedDict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
+            PyTreeAccessor(*['b'][1][0], (MappingEntry(key='b', type=<class 'collections.OrderedDict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=0, type=<class 'list'>))),
+            PyTreeAccessor(*['b'][1][1], (MappingEntry(key='b', type=<class 'collections.OrderedDict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=1, type=<class 'list'>))),
+            PyTreeAccessor(*['a'], (MappingEntry(key='a', type=<class 'collections.OrderedDict'>),)),
+            PyTreeAccessor(*['c'], (MappingEntry(key='c', type=<class 'collections.OrderedDict'>),)),
+            PyTreeAccessor(*['d'], (MappingEntry(key='d', type=<class 'collections.OrderedDict'>),))
+        ],
+        [2, 3, 4, 1, None, 5],
+        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf)
+    )
+
+    Args:
+        tree (pytree): A pytree to flatten.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        A triple ``(accessors, leaves, treespec)``. The first element is a list of accessors to the
+        leaf values. The second element is a list of leaf values and the last element is a treespec
+        representing the structure of the pytree.
+    """  # pylint: disable=line-too-long
+    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
+    return treespec.accessors(), leaves, treespec
 
 
 def tree_unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
@@ -446,6 +554,61 @@ def tree_paths(
         A list of the paths to the leaf values, while each path is a tuple of the index or keys.
     """
     return _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)[0]
+
+
+def tree_accessors(
+    tree: PyTree[T],
+    is_leaf: Callable[[T], bool] | None = None,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> list[PyTreeAccessor]:
+    """Get the accessors to the leaves of a pytree.
+
+    See also :func:`tree_flatten`, :func:`tree_flatten_with_accessor`, and
+    :func:`treespec_accessors`.
+
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> tree_accessors(tree)  # doctest: +IGNORE_WHITESPACE
+    [
+        PyTreeAccessor(*['a'], (MappingEntry(key='a', type=<class 'dict'>),)),
+        PyTreeAccessor(*['b'][0], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
+        PyTreeAccessor(*['b'][1][0], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=0, type=<class 'list'>))),
+        PyTreeAccessor(*['b'][1][1], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=1, type=<class 'list'>))),
+        PyTreeAccessor(*['d'], (MappingEntry(key='d', type=<class 'dict'>),))
+    ]
+    >>> tree_accessors(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    [
+        PyTreeAccessor(*['a'], (MappingEntry(key='a', type=<class 'dict'>),)),
+        PyTreeAccessor(*['b'][0], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
+        PyTreeAccessor(*['b'][1][0], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=0, type=<class 'list'>))),
+        PyTreeAccessor(*['b'][1][1], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=1, type=<class 'list'>))),
+        PyTreeAccessor(*['c'], (MappingEntry(key='c', type=<class 'dict'>),)),
+        PyTreeAccessor(*['d'], (MappingEntry(key='d', type=<class 'dict'>),))
+    ]
+    >>> tree_accessors(1)
+    [PyTreeAccessor(*, ())]
+    >>> tree_accessors(None)
+    []
+    >>> tree_accessors(None, none_is_leaf=True)
+    [PyTreeAccessor(*, ())]
+
+    Args:
+        tree (pytree): A pytree to flatten.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        A list of accessors to the leaf values.
+    """  # pylint: disable=line-too-long
+    return _C.flatten(tree, is_leaf, none_is_leaf, namespace)[1].accessors()
 
 
 def tree_is_leaf(
@@ -2025,6 +2188,17 @@ def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
     See also :func:`tree_flatten_with_path`, :func:`tree_paths`, and :meth:`PyTreeSpec.paths`.
     """
     return treespec.paths()
+
+
+def treespec_accessors(
+    treespec: PyTreeSpec,
+) -> list[tuple[tuple[Any, type[Any], PyTreeKind], ...]]:
+    """Return a list of accessors to the leaves of a treespec.
+
+    See also :func:`tree_flatten_with_accessor`, :func:`tree_accessors` and
+    :meth:`PyTreeSpec.accessors`.
+    """
+    return treespec.accessors()
 
 
 def treespec_entries(treespec: PyTreeSpec) -> list[Any]:

@@ -73,6 +73,8 @@ class PyTreeTypeRegistry {
         py::function flatten_func{};
         // A function with signature: (metadata, iterable) -> object
         py::function unflatten_func{};
+        // The Python type object for the path entry class.
+        py::object path_entry_type{};
     };
 
     using RegistrationPtr = std::shared_ptr<const Registration>;
@@ -82,6 +84,7 @@ class PyTreeTypeRegistry {
     static void Register(const py::object &cls,
                          const py::function &flatten_func,
                          const py::function &unflatten_func,
+                         const py::object &path_entry_type,
                          const std::string &registry_namespace = "");
 
     static void Unregister(const py::object &cls, const std::string &registry_namespace = "");
@@ -104,6 +107,7 @@ class PyTreeTypeRegistry {
     static void RegisterImpl(const py::object &cls,
                              const py::function &flatten_func,
                              const py::function &unflatten_func,
+                             const py::object &path_entry_type,
                              const std::string &registry_namespace);
 
     template <bool NoneIsLeaf>

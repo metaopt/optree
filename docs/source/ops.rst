@@ -25,11 +25,13 @@ Tree Manipulation Functions
 
     tree_flatten
     tree_flatten_with_path
+    tree_flatten_with_accessor
     tree_unflatten
     tree_iter
     tree_leaves
     tree_structure
     tree_paths
+    tree_accessors
     tree_is_leaf
     all_leaves
     tree_map
@@ -51,11 +53,13 @@ Tree Manipulation Functions
 
 .. autofunction:: tree_flatten
 .. autofunction:: tree_flatten_with_path
+.. autofunction:: tree_flatten_with_accessor
 .. autofunction:: tree_unflatten
 .. autofunction:: tree_iter
 .. autofunction:: tree_leaves
 .. autofunction:: tree_structure
 .. autofunction:: tree_paths
+.. autofunction:: tree_accessors
 .. autofunction:: tree_is_leaf
 .. autofunction:: all_leaves
 .. autofunction:: tree_map
@@ -104,6 +108,7 @@ PyTreeSpec Functions
 .. autosummary::
 
     treespec_paths
+    treespec_accessors
     treespec_entries
     treespec_entry
     treespec_children
@@ -125,6 +130,7 @@ PyTreeSpec Functions
     treespec_from_collection
 
 .. autofunction:: treespec_paths
+.. autofunction:: treespec_accessors
 .. autofunction:: treespec_entries
 .. autofunction:: treespec_entry
 .. autofunction:: treespec_children

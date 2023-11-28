@@ -18,7 +18,7 @@ limitations under the License.
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include <optional>  // std::nullopt
+#include <optional>  // std::optional, std::nullopt
 #include <string>    // std::string
 
 #include "include/exceptions.h"
@@ -28,7 +28,21 @@ limitations under the License.
 
 namespace optree {
 
+py::module_ GetCxxModule(const std::optional<py::module_>& module) {
+    static py::object this_module{};
+    if (module.has_value()) [[unlikely]] {
+        EXPECT_FALSE(this_module, "The module has already been initialized.");
+        this_module = module.value();
+    } else [[likely]] {
+        EXPECT_TRUE(this_module, "The module is not initialized.");
+    }
+
+    return py::reinterpret_borrow<py::module_>(this_module);
+}
+
 void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
+    GetCxxModule(mod);
+
     mod.doc() = "Optimized PyTree Utilities.";
     py::register_local_exception<InternalError>(mod, "InternalError", PyExc_SystemError);
     mod.attr("MAX_RECURSION_DEPTH") = py::ssize_t_cast(MAX_RECURSION_DEPTH);
@@ -47,6 +61,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             py::arg("cls"),
             py::arg("flatten_func"),
             py::arg("unflatten_func"),
+            py::arg("path_entry_type"),
             py::arg("namespace") = "")
         .def("unregister_node",
              &PyTreeTypeRegistry::Unregister,
@@ -178,6 +193,9 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::arg("f_leaf"),
              py::arg("leaves"))
         .def("paths", &PyTreeSpec::Paths, "Return a list of paths to the leaves of the treespec.")
+        .def("accessors",
+             &PyTreeSpec::Accessors,
+             "Return a list of accessors to the leaves in the treespec.")
         .def("entries", &PyTreeSpec::Entries, "Return a list of one-level entries to the children.")
         .def("entry", &PyTreeSpec::Entry, "Return the entry at the given index.", py::arg("index"))
         .def("children", &PyTreeSpec::Children, "Return a list of treespecs for the children.")
@@ -207,7 +225,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             "The registry namespace used to resolve the custom pytree node types.")
         .def_property_readonly(
             "type",
-            &PyTreeSpec::GetType,
+            [](const PyTreeSpec& t) { return t.GetType(); },
             "The type of the current node. Return None if the current node is a leaf.")
         .def_property_readonly("kind", &PyTreeSpec::GetPyTreeKind, "The kind of the current node.")
         .def("is_leaf",
