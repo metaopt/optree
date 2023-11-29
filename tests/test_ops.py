@@ -1585,7 +1585,7 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
         counter = itertools.count()
         expected_children, one_level_treespec = optree.tree_flatten(
             node,
-            is_leaf=lambda x: next(counter) > 0,  # noqa: B023
+            is_leaf=lambda x: next(counter) > 0,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
