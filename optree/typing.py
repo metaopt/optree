@@ -351,7 +351,7 @@ class structseq(tuple, Generic[_T_co], metaclass=_StructSequenceMeta):  # type: 
         raise TypeError("type 'structseq' is not an acceptable base type")
 
     # pylint: disable-next=unused-argument,redefined-builtin
-    def __new__(cls: type[Self], sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self:
+    def __new__(cls, sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self:
         raise NotImplementedError
 
 

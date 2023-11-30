@@ -128,12 +128,12 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             .value("DEQUE", PyTreeKind::Deque, "A collections.deque.")
             .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.");
     reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())->tp_name = "optree.PyTreeKind";
-    py::setattr(PyTreeKindTypeObject.ptr(), "__module__", py::str("optree"));
+    py::setattr(PyTreeKindTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
 
     auto PyTreeSpecTypeObject =
         py::class_<PyTreeSpec>(mod, "PyTreeSpec", "Representing the structure of the pytree.");
     reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_name = "optree.PyTreeSpec";
-    py::setattr(PyTreeSpecTypeObject.ptr(), "__module__", py::str("optree"));
+    py::setattr(PyTreeSpecTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
 
     PyTreeSpecTypeObject
         .def_property_readonly(

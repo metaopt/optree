@@ -53,16 +53,22 @@ inline void HashCombine(py::ssize_t& seed, const T& v) {  // NOLINT[runtime/refe
 constexpr bool NONE_IS_LEAF = true;
 constexpr bool NONE_IS_NODE = false;
 
-// NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
-//       garbage collection.
-#define Py_Declare_ID(name)                                 \
-    inline PyObject* Py_ID_##name() {                       \
-        static PyObject* ptr = (new py::str{#name})->ptr(); \
-        return ptr;                                         \
+#define Py_Declare_ID(name)                                    \
+    inline PyObject* Py_ID_##name() {                          \
+        static PyObject* obj = []() {                          \
+            PyObject* ptr = PyUnicode_InternFromString(#name); \
+            if (ptr == nullptr) [[unlikely]] {                 \
+                throw py::error_already_set();                 \
+            }                                                  \
+            Py_INCREF(ptr); /* leak a reference on purpose */  \
+            return ptr;                                        \
+        }();                                                   \
+        return obj;                                            \
     }
 
 #define Py_Get_ID(name) (Py_ID_##name())
 
+Py_Declare_ID(optree);
 Py_Declare_ID(__module__);         // type.__module__
 Py_Declare_ID(__qualname__);       // type.__qualname__
 Py_Declare_ID(__name__);           // type.__name__
