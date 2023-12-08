@@ -2215,13 +2215,13 @@ def _child_keys(
     if handler:
         return list(handler(tree))
 
-    if is_namedtuple(tree):
-        # Handle namedtuple as a special case, based on heuristic
-        return list(map(AttributeKeyPathEntry, namedtuple_fields(tree)))  # type: ignore[arg-type]
-
     if is_structseq(tree):
         # Handle PyStructSequence as a special case, based on heuristic
         return list(map(AttributeKeyPathEntry, structseq_fields(tree)))  # type: ignore[arg-type]
+
+    if is_namedtuple(tree):
+        # Handle namedtuple as a special case, based on heuristic
+        return list(map(AttributeKeyPathEntry, namedtuple_fields(tree)))  # type: ignore[arg-type]
 
     num_children = treespec.num_children
     return list(map(FlattenedKeyPathEntry, range(num_children)))

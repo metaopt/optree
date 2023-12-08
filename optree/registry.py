@@ -415,10 +415,10 @@ def _pytree_node_registry_get(
     handler = _NODETYPE_REGISTRY.get((namespace, cls))
     if handler is not None:
         return handler
-    if is_namedtuple_class(cls):
-        return _NODETYPE_REGISTRY.get(namedtuple)  # type: ignore[call-overload] # noqa: PYI024
     if is_structseq_class(cls):
         return _NODETYPE_REGISTRY.get(structseq)
+    if is_namedtuple_class(cls):
+        return _NODETYPE_REGISTRY.get(namedtuple)  # type: ignore[call-overload] # noqa: PYI024
     return None
 
 

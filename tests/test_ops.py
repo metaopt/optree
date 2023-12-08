@@ -1574,16 +1574,16 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
             elif node_type is deque:
                 assert metadata == node.maxlen
                 assert one_level_treespec.kind == optree.PyTreeKind.DEQUE
-            elif optree.is_namedtuple(node):
-                assert optree.is_namedtuple_class(node_type)
-                assert metadata is node_type
-                assert one_level_treespec.kind == optree.PyTreeKind.NAMEDTUPLE
             elif optree.is_structseq(node):
                 assert optree.is_structseq_class(node_type)
                 assert isinstance(node, optree.typing.structseq)
                 assert issubclass(node_type, optree.typing.structseq)
                 assert metadata is node_type
                 assert one_level_treespec.kind == optree.PyTreeKind.STRUCTSEQUENCE
+            elif optree.is_namedtuple(node):
+                assert optree.is_namedtuple_class(node_type)
+                assert metadata is node_type
+                assert one_level_treespec.kind == optree.PyTreeKind.NAMEDTUPLE
             else:
                 assert one_level_treespec.kind == optree.PyTreeKind.CUSTOM
             assert len(entries) == len(children)
