@@ -13,12 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Cache intermediate `str` objects in `PyObject_GetAttr` calls by [@XuehaiPan](https://github.com/XuehaiPan) in [#106](https://github.com/metaopt/optree/pull/106).
+- Cache intermediate `str` objects in `PyObject_GetAttr` calls by [@XuehaiPan](https://github.com/XuehaiPan) in [#106](https://github.com/metaopt/optree/pull/106) and [#109](https://github.com/metaopt/optree/pull/109).
 - Install `clang-format` and `clang-tidy` from PyPI by [@XuehaiPan](https://github.com/XuehaiPan) in [#107](https://github.com/metaopt/optree/pull/107).
 - Also check `_make` and `_asdict` in function `is_namedtuple_class` by [@XuehaiPan](https://github.com/XuehaiPan) in [#105](https://github.com/metaopt/optree/pull/105).
 
 ### Changed
 
+- Reorder cases for `namedtuple` and `PyStructSequence` types by [@XuehaiPan](https://github.com/XuehaiPan) in [#111](https://github.com/metaopt/optree/pull/111).
 - Use `__bases__` rather than `__base__` in function `is_structseq_class` by [@XuehaiPan](https://github.com/XuehaiPan) in [#104](https://github.com/metaopt/optree/pull/104).
 
 ### Fixed

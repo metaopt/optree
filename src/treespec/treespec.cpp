@@ -1001,11 +1001,11 @@ template <bool NoneIsLeaf>
         return registration->kind;
     }
     *custom = nullptr;
-    if (IsNamedTupleInstance(handle)) [[unlikely]] {
-        return PyTreeKind::NamedTuple;
-    }
     if (IsStructSequenceInstance(handle)) [[unlikely]] {
         return PyTreeKind::StructSequence;
+    }
+    if (IsNamedTupleInstance(handle)) [[unlikely]] {
+        return PyTreeKind::NamedTuple;
     }
     return PyTreeKind::Leaf;
 }

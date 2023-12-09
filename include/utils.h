@@ -433,11 +433,13 @@ inline bool IsStructSequenceClassImpl(const py::handle& type) {
     // We can only identify PyStructSequences heuristically, here by the presence of
     // n_fields, n_sequence_fields, n_unnamed_fields attributes.
     auto* type_object = reinterpret_cast<PyTypeObject*>(type.ptr());
-    if (type_object->tp_bases != nullptr &&
+    if (PyType_FastSubclass(type_object, Py_TPFLAGS_TUPLE_SUBCLASS) &&
+        !static_cast<bool>(PyType_HasFeature(type_object, Py_TPFLAGS_BASETYPE)) &&
+        type_object->tp_bases != nullptr &&
         static_cast<bool>(PyTuple_CheckExact(type_object->tp_bases)) &&
         PyTuple_GET_SIZE(type_object->tp_bases) == 1 &&
-        PyTuple_GET_ITEM(type_object->tp_bases, 0) == reinterpret_cast<PyObject*>(&PyTuple_Type) &&
-        !static_cast<bool>(PyType_HasFeature(type_object, Py_TPFLAGS_BASETYPE))) [[unlikely]] {
+        PyTuple_GET_ITEM(type_object->tp_bases, 0) == reinterpret_cast<PyObject*>(&PyTuple_Type))
+        [[unlikely]] {
         // NOLINTNEXTLINE[readability-use-anyofallof]
         for (PyObject* name :
              {Py_Get_ID(n_fields), Py_Get_ID(n_sequence_fields), Py_Get_ID(n_unnamed_fields)}) {
