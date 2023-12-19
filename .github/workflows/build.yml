@@ -38,6 +38,7 @@ concurrency:
 
 jobs:
   build-sdist:
+    name: Build sdist
     runs-on: ubuntu-latest
     if: github.repository == 'metaopt/optree' && (github.event_name != 'push' || startsWith(github.ref, 'refs/tags/'))
     timeout-minutes: 10
