@@ -191,7 +191,7 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
 }
 
 /*static*/ std::pair<std::vector<py::object>, std::unique_ptr<PyTreeSpec>> PyTreeSpec::Flatten(
-    const py::handle& tree,
+    const py::object& tree,
     const std::optional<py::function>& leaf_predicate,
     const bool& none_is_leaf,
     const std::string& registry_namespace) {
@@ -205,11 +205,11 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
     return std::make_pair(std::move(leaves), std::move(treespec));
 }
 
-template <bool NoneIsLeaf, typename Span, typename Stack>
+template <bool NoneIsLeaf, typename LeafSpan, typename PathSpan, typename Stack>
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
-                                         Span& leaves,
-                                         Span& paths,
+                                         LeafSpan& leaves,
+                                         PathSpan& paths,
                                          Stack& stack,
                                          const ssize_t& depth,
                                          const std::optional<py::function>& leaf_predicate,
@@ -390,7 +390,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
 
 bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
                                      std::vector<py::object>& leaves,
-                                     std::vector<py::object>& paths,
+                                     std::vector<py::tuple>& paths,
                                      const std::optional<py::function>& leaf_predicate,
                                      const bool& none_is_leaf,
                                      const std::string& registry_namespace) {
@@ -404,13 +404,13 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
     }
 }
 
-/*static*/ std::tuple<std::vector<py::object>, std::vector<py::object>, std::unique_ptr<PyTreeSpec>>
-PyTreeSpec::FlattenWithPath(const py::handle& tree,
+/*static*/ std::tuple<std::vector<py::tuple>, std::vector<py::object>, std::unique_ptr<PyTreeSpec>>
+PyTreeSpec::FlattenWithPath(const py::object& tree,
                             const std::optional<py::function>& leaf_predicate,
                             const bool& none_is_leaf,
                             const std::string& registry_namespace) {
     auto leaves = reserved_vector<py::object>(4);
-    auto paths = reserved_vector<py::object>(4);
+    auto paths = reserved_vector<py::tuple>(4);
     auto treespec = std::make_unique<PyTreeSpec>();
     treespec->m_none_is_leaf = none_is_leaf;
     if (treespec->FlattenIntoWithPath(
@@ -421,7 +421,7 @@ PyTreeSpec::FlattenWithPath(const py::handle& tree,
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-py::list PyTreeSpec::FlattenUpTo(const py::handle& full_tree) const {
+py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
     const ssize_t num_leaves = GetNumLeaves();
 
     auto agenda = reserved_vector<py::object>(4);
@@ -603,11 +603,11 @@ py::list PyTreeSpec::FlattenUpTo(const py::handle& full_tree) const {
             case PyTreeKind::Custom: {
                 const PyTreeTypeRegistry::Registration* registration = nullptr;
                 if (m_none_is_leaf) [[unlikely]] {
-                    registration = PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(
-                        py::type::handle_of(object), m_namespace);
+                    registration =
+                        PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(py::type::of(object), m_namespace);
                 } else [[likely]] {
-                    registration = PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(
-                        py::type::handle_of(object), m_namespace);
+                    registration =
+                        PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(py::type::of(object), m_namespace);
                 }
                 if (registration != node.custom) [[unlikely]] {
                     std::ostringstream oss{};
@@ -672,14 +672,14 @@ template <bool NoneIsLeaf>
             (GetKind<NoneIsLeaf>(handle, &custom, registry_namespace) == PyTreeKind::Leaf));
 }
 
-/*static*/ bool PyTreeSpec::ObjectIsLeaf(const py::handle& handle,
+/*static*/ bool PyTreeSpec::ObjectIsLeaf(const py::object& object,
                                          const std::optional<py::function>& leaf_predicate,
                                          const bool& none_is_leaf,
                                          const std::string& registry_namespace) {
     if (none_is_leaf) [[unlikely]] {
-        return ObjectIsLeafImpl<NONE_IS_LEAF>(handle, leaf_predicate, registry_namespace);
+        return ObjectIsLeafImpl<NONE_IS_LEAF>(object, leaf_predicate, registry_namespace);
     } else [[likely]] {
-        return ObjectIsLeafImpl<NONE_IS_NODE>(handle, leaf_predicate, registry_namespace);
+        return ObjectIsLeafImpl<NONE_IS_NODE>(object, leaf_predicate, registry_namespace);
     }
 }
 

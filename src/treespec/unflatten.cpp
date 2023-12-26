@@ -29,7 +29,7 @@ template <typename Span>
 py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
     auto agenda = reserved_vector<py::object>(4);
     auto it = leaves.begin();
-    ssize_t leaf_count = 0;
+    ssize_t num_leaves = 0;
     for (const Node& node : m_traversal) {
         EXPECT_GE(
             py::ssize_t_cast(agenda.size()), node.arity, "Too few elements for PyTreeSpec node.");
@@ -39,12 +39,12 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
                 if (it == leaves.end()) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "Too few leaves for PyTreeSpec; expected: " << GetNumLeaves()
-                        << ", got: " << leaf_count << ".";
+                        << ", got: " << num_leaves << ".";
                     throw py::value_error(oss.str());
                 }
                 agenda.emplace_back(py::reinterpret_borrow<py::object>(*it));
                 ++it;
-                ++leaf_count;
+                ++num_leaves;
                 break;
             }
 

@@ -547,7 +547,7 @@ inline py::list SortedDictKeys(const py::dict& dict) {
     return keys;
 }
 
-inline bool DictKeysEqual(const py::list& /* unique */ keys, const py::dict& dict) {
+inline bool DictKeysEqual(const py::list& /*unique*/ keys, const py::dict& dict) {
     ssize_t list_len = GET_SIZE<py::list>(keys);
     ssize_t dict_len = GET_SIZE<py::dict>(dict);
     if (list_len != dict_len) [[likely]] {  // assumes keys are unique
@@ -566,7 +566,7 @@ inline bool DictKeysEqual(const py::list& /* unique */ keys, const py::dict& dic
     return true;
 }
 
-inline std::pair<py::list, py::list> DictKeysDifference(const py::list& /* unique */ keys,
+inline std::pair<py::list, py::list> DictKeysDifference(const py::list& /*unique*/ keys,
                                                         const py::dict& dict) {
     py::set expected_keys{keys};
     py::set got_keys{DictKeys(dict)};

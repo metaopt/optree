@@ -58,7 +58,7 @@ py::object PyTreeSpec::GetType() const {
     switch (node.kind) {
         case PyTreeKind::Custom:
             EXPECT_NE(node.custom, nullptr, "The custom registration is null.");
-            return node.custom->type;
+            return py::reinterpret_borrow<py::object>(node.custom->type);
         case PyTreeKind::Leaf:
             return py::none();
         case PyTreeKind::None:
@@ -71,7 +71,7 @@ py::object PyTreeSpec::GetType() const {
             return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyDict_Type));
         case PyTreeKind::NamedTuple:
         case PyTreeKind::StructSequence:
-            return node.node_data;
+            return py::reinterpret_borrow<py::object>(node.node_data);
         case PyTreeKind::OrderedDict:
             return PyOrderedDictTypeObject;
         case PyTreeKind::DefaultDict:
@@ -886,7 +886,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-/*static*/ py::object PyTreeSpec::MakeNode(const PyTreeSpec::Node& node,
+/*static*/ py::object PyTreeSpec::MakeNode(const Node& node,
                                            const py::object* children,
                                            const size_t& num_children) {
     EXPECT_EQ(py::ssize_t_cast(num_children), node.arity, "Node arity did not match.");
@@ -991,7 +991,7 @@ template <bool NoneIsLeaf>
                                           PyTreeTypeRegistry::Registration const** custom,
                                           const std::string& registry_namespace) {
     const PyTreeTypeRegistry::Registration* registration =
-        PyTreeTypeRegistry::Lookup<NoneIsLeaf>(py::type::handle_of(handle), registry_namespace);
+        PyTreeTypeRegistry::Lookup<NoneIsLeaf>(py::type::of(handle), registry_namespace);
     if (registration) [[likely]] {
         if (registration->kind == PyTreeKind::Custom) [[unlikely]] {
             *custom = registration;
@@ -1327,7 +1327,7 @@ py::object PyTreeSpec::ToPicklable() const {
 
 // NOLINTBEGIN[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklableImpl(const py::object& picklable) {
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklableImpl(const py::handle& picklable) {
     auto state = py::reinterpret_steal<py::tuple>(picklable);
     if (state.size() != 3) [[unlikely]] {
         throw std::runtime_error("Malformed pickled PyTreeSpec.");
