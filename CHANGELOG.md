@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- Fix potential segmentation fault when modifying `treespec.entries()` by [@XuehaiPan](https://github.com/XuehaiPan) in [#116](https://github.com/metaopt/optree/pull/116).
 
 ### Removed
 
