@@ -205,7 +205,7 @@ class PyTreeSpec {
         ssize_t num_nodes = 0;
 
         // For a Dict or DefaultDict, contains the keys in insertion order.
-        py::object ordered_keys{};
+        py::object original_keys{};
     };
 
     // Nodes, in a post-order traversal. We use an ordered traversal to minimize allocations, and

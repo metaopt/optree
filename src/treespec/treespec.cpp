@@ -312,7 +312,7 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec& other, const bool& strict) const {
     node.num_nodes = 1;
     node.node_data = root.node_data;
     node.custom = root.custom;
-    node.ordered_keys = root.ordered_keys;
+    node.original_keys = root.original_keys;
     switch (root.kind) {
         case PyTreeKind::Tuple:
         case PyTreeKind::List:
@@ -691,10 +691,10 @@ py::list PyTreeSpec::Entries() const {
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict: {
-            return py::list{root.node_data};
+            return py::getattr(root.node_data, Py_Get_ID(copy))();
         }
         case PyTreeKind::DefaultDict: {
-            return py::list{GET_ITEM_BORROW<py::tuple>(root.node_data, 1)};
+            return py::getattr(GET_ITEM_BORROW<py::tuple>(root.node_data, 1), Py_Get_ID(copy))();
         }
 
         default:
@@ -931,9 +931,9 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
         case PyTreeKind::Dict: {
             py::dict dict{};
             auto keys = py::reinterpret_borrow<py::list>(node.node_data);
-            if (node.ordered_keys) [[unlikely]] {
+            if (node.original_keys) [[unlikely]] {
                 for (ssize_t i = 0; i < node.arity; ++i) {
-                    dict[GET_ITEM_HANDLE<py::list>(node.ordered_keys, i)] = py::none();
+                    dict[GET_ITEM_HANDLE<py::list>(node.original_keys, i)] = py::none();
                 }
             }
             for (ssize_t i = 0; i < node.arity; ++i) {
@@ -960,9 +960,9 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
             py::dict dict{};
             py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
             py::list keys = GET_ITEM_BORROW<py::tuple>(node.node_data, 1);
-            if (node.ordered_keys) [[unlikely]] {
+            if (node.original_keys) [[unlikely]] {
                 for (ssize_t i = 0; i < node.arity; ++i) {
-                    dict[GET_ITEM_HANDLE<py::list>(node.ordered_keys, i)] = py::none();
+                    dict[GET_ITEM_HANDLE<py::list>(node.original_keys, i)] = py::none();
                 }
             }
             for (ssize_t i = 0; i < node.arity; ++i) {
@@ -1320,7 +1320,7 @@ py::object PyTreeSpec::ToPicklable() const {
                                            node.custom != nullptr ? node.custom->type : py::none(),
                                            node.num_leaves,
                                            node.num_nodes,
-                                           node.ordered_keys ? node.ordered_keys : py::none()));
+                                           node.original_keys ? node.original_keys : py::none()));
     }
     return py::make_tuple(std::move(node_states), py::bool_(m_none_is_leaf), py::str(m_namespace));
 }
@@ -1352,7 +1352,7 @@ py::object PyTreeSpec::ToPicklable() const {
                 } else [[unlikely]] {
                     if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict)
                         [[likely]] {
-                        node.ordered_keys = t[7].cast<py::list>();
+                        node.original_keys = t[7].cast<py::list>();
                     } else [[unlikely]] {
                         throw std::runtime_error("Malformed pickled PyTreeSpec.");
                     }
