@@ -95,7 +95,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 auto dict = py::reinterpret_borrow<py::dict>(handle);
                 py::list keys = DictKeys(dict);
                 if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
-                    node.ordered_keys = py::getattr(keys, Py_Get_ID(copy))();
+                    node.original_keys = py::getattr(keys, Py_Get_ID(copy))();
                     TotalOrderSort(keys);
                 }
                 for (const py::handle& key : keys) {
@@ -289,7 +289,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 auto dict = py::reinterpret_borrow<py::dict>(handle);
                 py::list keys = DictKeys(dict);
                 if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
-                    node.ordered_keys = py::getattr(keys, Py_Get_ID(copy))();
+                    node.original_keys = py::getattr(keys, Py_Get_ID(copy))();
                     TotalOrderSort(keys);
                 }
                 for (const py::handle& key : keys) {
