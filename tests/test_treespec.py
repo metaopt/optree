@@ -415,6 +415,10 @@ def test_treespec_entries(tree, none_is_leaf, namespace):
         children = optree.treespec_children(spec)
         assert len(entries) == spec.num_children
         assert len(children) == spec.num_children
+        assert entries is not optree.treespec_entries(spec)
+        assert children is not optree.treespec_children(spec)
+        optree.treespec_entries(spec).clear()
+        optree.treespec_children(spec).clear()
         if spec.is_leaf():
             yield prefix
         for entry, child in zip(entries, children):

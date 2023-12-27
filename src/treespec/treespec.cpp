@@ -691,10 +691,10 @@ py::list PyTreeSpec::Entries() const {
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict: {
-            return py::list{root.node_data};
+            return py::getattr(root.node_data, Py_Get_ID(copy))();
         }
         case PyTreeKind::DefaultDict: {
-            return py::list{GET_ITEM_BORROW<py::tuple>(root.node_data, 1)};
+            return py::getattr(GET_ITEM_BORROW<py::tuple>(root.node_data, 1), Py_Get_ID(copy))();
         }
 
         default:
