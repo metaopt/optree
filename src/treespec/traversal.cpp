@@ -25,7 +25,7 @@ limitations under the License.
 namespace optree {
 
 py::object PyTreeSpec::Walk(const py::function& f_node,
-                            const py::handle& f_leaf,
+                            const py::object& f_leaf,
                             const py::iterable& leaves) const {
     auto agenda = reserved_vector<py::object>(4);
     auto it = leaves.begin();

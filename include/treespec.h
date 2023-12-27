@@ -54,46 +54,31 @@ class PyTreeSpec {
     // Return references to the flattened objects, which might be temporary objects in the case of
     // custom PyType handlers.
     static std::pair<std::vector<py::object>, std::unique_ptr<PyTreeSpec>> Flatten(
-        const py::handle &tree,
+        const py::object &tree,
         const std::optional<py::function> &leaf_predicate = std::nullopt,
         const bool &none_is_leaf = false,
         const std::string &registry_namespace = "");
 
-    // Recursive helper used to implement Flatten().
-    bool FlattenInto(const py::handle &handle,
-                     std::vector<py::object> &leaves,  // NOLINT[runtime/references]
-                     const std::optional<py::function> &leaf_predicate,
-                     const bool &none_is_leaf,
-                     const std::string &registry_namespace);
-
     // Flatten a PyTree into a list of leaves with a list of paths and a PyTreeSpec.
     // Return references to the flattened objects, which might be temporary objects in the case of
     // custom PyType handlers.
-    static std::tuple<std::vector<py::object>, std::vector<py::object>, std::unique_ptr<PyTreeSpec>>
-    FlattenWithPath(const py::handle &tree,
+    static std::tuple<std::vector<py::tuple>, std::vector<py::object>, std::unique_ptr<PyTreeSpec>>
+    FlattenWithPath(const py::object &tree,
                     const std::optional<py::function> &leaf_predicate = std::nullopt,
                     const bool &none_is_leaf = false,
                     const std::string &registry_namespace = "");
 
-    // Recursive helper used to implement FlattenWithPath().
-    bool FlattenIntoWithPath(const py::handle &handle,
-                             std::vector<py::object> &leaves,  // NOLINT[runtime/references]
-                             std::vector<py::object> &paths,   // NOLINT[runtime/references]
-                             const std::optional<py::function> &leaf_predicate,
-                             const bool &none_is_leaf,
-                             const std::string &registry_namespace);
-
     // Flatten a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure
     // of 'x'. For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeSpec [(*,
     // *), *], the result is the list of leaves [1, (2, 3), {"foo": 4}].
-    [[nodiscard]] py::list FlattenUpTo(const py::handle &full_tree) const;
+    [[nodiscard]] py::list FlattenUpTo(const py::object &full_tree) const;
 
     // Broadcast to a common suffix of this PyTreeSpec and other PyTreeSpec.
     [[nodiscard]] std::unique_ptr<PyTreeSpec> BroadcastToCommonSuffix(
         const PyTreeSpec &other) const;
 
     // Test whether the given object is a leaf node.
-    static bool ObjectIsLeaf(const py::handle &handle,
+    static bool ObjectIsLeaf(const py::object &object,
                              const std::optional<py::function> &leaf_predicate,
                              const bool &none_is_leaf = false,
                              const std::string &registry_namespace = "");
@@ -113,7 +98,7 @@ class PyTreeSpec {
     // Map a function over a PyTree structure, applying f_leaf to each leaf, and
     // f_node(children, node_data) to each container node.
     [[nodiscard]] py::object Walk(const py::function &f_node,
-                                  const py::handle &f_leaf,
+                                  const py::object &f_leaf,
                                   const py::iterable &leaves) const;
 
     // Return true if this PyTreeSpec is a prefix of `other`.
@@ -247,6 +232,13 @@ class PyTreeSpec {
                               PyTreeTypeRegistry::Registration const **custom,
                               const std::string &registry_namespace);
 
+    // Recursive helper used to implement Flatten().
+    bool FlattenInto(const py::handle &handle,
+                     std::vector<py::object> &leaves,  // NOLINT[runtime/references]
+                     const std::optional<py::function> &leaf_predicate,
+                     const bool &none_is_leaf,
+                     const std::string &registry_namespace);
+
     template <bool NoneIsLeaf, typename Span>
     bool FlattenIntoImpl(const py::handle &handle,
                          Span &leaves,  // NOLINT[runtime/references]
@@ -254,11 +246,19 @@ class PyTreeSpec {
                          const std::optional<py::function> &leaf_predicate,
                          const std::string &registry_namespace);
 
-    template <bool NoneIsLeaf, typename Span, typename Stack>
+    // Recursive helper used to implement FlattenWithPath().
+    bool FlattenIntoWithPath(const py::handle &handle,
+                             std::vector<py::object> &leaves,  // NOLINT[runtime/references]
+                             std::vector<py::tuple> &paths,    // NOLINT[runtime/references]
+                             const std::optional<py::function> &leaf_predicate,
+                             const bool &none_is_leaf,
+                             const std::string &registry_namespace);
+
+    template <bool NoneIsLeaf, typename LeafSpan, typename PathSpan, typename Stack>
     bool FlattenIntoWithPathImpl(const py::handle &handle,
-                                 Span &leaves,  // NOLINT[runtime/references]
-                                 Span &paths,   // NOLINT[runtime/references]
-                                 Stack &stack,  // NOLINT[runtime/references]
+                                 LeafSpan &leaves,  // NOLINT[runtime/references]
+                                 PathSpan &paths,   // NOLINT[runtime/references]
+                                 Stack &stack,      // NOLINT[runtime/references]
                                  const ssize_t &depth,
                                  const std::optional<py::function> &leaf_predicate,
                                  const std::string &registry_namespace);
@@ -296,7 +296,7 @@ class PyTreeSpec {
 
     [[nodiscard]] std::string ToStringImpl() const;
 
-    static std::unique_ptr<PyTreeSpec> FromPicklableImpl(const py::object &picklable);
+    static std::unique_ptr<PyTreeSpec> FromPicklableImpl(const py::handle &picklable);
 
     class ThreadIndentTypeHash {
      public:

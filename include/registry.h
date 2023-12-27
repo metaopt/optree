@@ -80,15 +80,9 @@ class PyTreeTypeRegistry {
 
     // Finds the custom type registration for `type`. Returns nullptr if none exists.
     template <bool NoneIsLeaf>
-    static const Registration *Lookup(const py::handle &type,
-                                      const std::string &registry_namespace);
+    static const Registration *Lookup(const py::object &cls, const std::string &registry_namespace);
 
  private:
-    template <bool NoneIsLeaf>
-    struct SingletonHelper {
-        static PyTreeTypeRegistry *get();
-    };
-
     template <bool NoneIsLeaf>
     static PyTreeTypeRegistry *Singleton();
 
@@ -132,12 +126,13 @@ class PyTreeTypeRegistry {
                         const std::pair<std::string, py::handle> &b) const;
     };
 
-    std::unordered_map<py::object, std::unique_ptr<Registration>, TypeHash, TypeEq> m_registrations;
+    std::unordered_map<py::object, std::unique_ptr<Registration>, TypeHash, TypeEq>
+        m_registrations{};
     std::unordered_map<std::pair<std::string, py::object>,
                        std::unique_ptr<Registration>,
                        NamedTypeHash,
                        NamedTypeEq>
-        m_named_registrations;
+        m_named_registrations{};
 };
 
 }  // namespace optree
