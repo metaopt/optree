@@ -36,227 +36,166 @@ limitations under the License.
 
 namespace optree {
 
-ssize_t PyTreeSpec::GetNumLeaves() const {
-    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
-    return m_traversal.back().num_leaves;
-}
-
-ssize_t PyTreeSpec::GetNumNodes() const { return py::ssize_t_cast(m_traversal.size()); }
-
-ssize_t PyTreeSpec::GetNumChildren() const {
-    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
-    return m_traversal.back().arity;
-}
-
-bool PyTreeSpec::GetNoneIsLeaf() const { return m_none_is_leaf; }
-
-std::string PyTreeSpec::GetNamespace() const { return m_namespace; }
-
-py::object PyTreeSpec::GetType() const {
-    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
-    Node node = m_traversal.back();
+/*static*/ std::string PyTreeSpec::NodeKindToString(const Node& node) {
     switch (node.kind) {
-        case PyTreeKind::Custom:
-            EXPECT_NE(node.custom, nullptr, "The custom registration is null.");
-            return py::reinterpret_borrow<py::object>(node.custom->type);
         case PyTreeKind::Leaf:
-            return py::none();
+            return "leaf type";
         case PyTreeKind::None:
-            return py::type::of(py::none());
+            return "NoneType";
         case PyTreeKind::Tuple:
-            return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyTuple_Type));
+            return "tuple";
         case PyTreeKind::List:
-            return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyList_Type));
+            return "list";
         case PyTreeKind::Dict:
-            return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyDict_Type));
+            return "dict";
+        case PyTreeKind::OrderedDict:
+            return "OrderedDict";
+        case PyTreeKind::DefaultDict:
+            return "defaultdict";
         case PyTreeKind::NamedTuple:
         case PyTreeKind::StructSequence:
-            return py::reinterpret_borrow<py::object>(node.node_data);
-        case PyTreeKind::OrderedDict:
-            return PyOrderedDictTypeObject;
-        case PyTreeKind::DefaultDict:
-            return PyDefaultDictTypeObject;
+            return static_cast<std::string>(py::repr(node.node_data));
         case PyTreeKind::Deque:
-            return PyDequeTypeObject;
+            return "deque";
+        case PyTreeKind::Custom:
+            EXPECT_NE(node.custom, nullptr, "The custom registration is null.");
+            return static_cast<std::string>(py::repr(node.custom->type));
         default:
             INTERNAL_ERROR();
     }
 }
 
-PyTreeKind PyTreeSpec::GetPyTreeKind() const {
-    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
-    return m_traversal.back().kind;
-}
-
-bool PyTreeSpec::IsLeaf(const bool& strict) const {
-    if (strict) [[likely]] {
-        return GetNumNodes() == 1 && GetNumLeaves() == 1;
-    }
-    return GetNumNodes() == 1;
-}
-
-bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
-    if (m_traversal.size() != other.m_traversal.size() || m_none_is_leaf != other.m_none_is_leaf)
-        [[likely]] {
-        return false;
-    }
-    if (!m_namespace.empty() && !other.m_namespace.empty() && m_namespace != other.m_namespace)
-        [[likely]] {
-        return false;
-    }
-
-    // NOLINTNEXTLINE[readability-qualified-auto]
-    auto b = other.m_traversal.begin();
-    // NOLINTNEXTLINE[readability-qualified-auto]
-    for (auto a = m_traversal.begin(); a != m_traversal.end(); ++a, ++b) {
-        if (a->kind != b->kind || a->arity != b->arity ||
-            static_cast<bool>(a->node_data) != static_cast<bool>(b->node_data) ||
-            a->custom != b->custom) [[likely]] {
-            return false;
-        }
-        if (a->node_data && a->node_data.not_equal(b->node_data)) [[likely]] {
-            return false;
-        }
-        EXPECT_EQ(a->num_leaves, b->num_leaves);
-        EXPECT_EQ(a->num_nodes, b->num_nodes);
-    }
-    return true;
-}
-
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-bool PyTreeSpec::IsPrefix(const PyTreeSpec& other, const bool& strict) const {
-    if (m_none_is_leaf != other.m_none_is_leaf) [[unlikely]] {
-        return false;
-    }
-    if (!m_namespace.empty() && !other.m_namespace.empty() && m_namespace != other.m_namespace)
-        [[likely]] {
-        return false;
-    }
-    if (GetNumNodes() > other.GetNumNodes()) [[likely]] {
-        return false;
-    }
+/*static*/ py::object PyTreeSpec::MakeNode(const Node& node,
+                                           const py::object* children,
+                                           const size_t& num_children) {
+    EXPECT_EQ(py::ssize_t_cast(num_children), node.arity, "Node arity did not match.");
+    switch (node.kind) {
+        case PyTreeKind::Leaf:
+            INTERNAL_ERROR("PyTreeSpec::MakeNode() not implemented for leaves.");
 
-    bool all_leaves_match = true;
-    std::vector<Node> other_traversal{other.m_traversal.begin(), other.m_traversal.end()};
-    // NOLINTNEXTLINE[readability-qualified-auto]
-    auto b = other_traversal.rbegin();
-    // NOLINTNEXTLINE[readability-qualified-auto]
-    for (auto a = m_traversal.rbegin(); a != m_traversal.rend(); ++a, ++b) {
-        if (b == other_traversal.rend()) [[unlikely]] {
-            return false;
-        }
-        if (a->kind == PyTreeKind::Leaf) [[unlikely]] {
-            all_leaves_match &= b->kind == PyTreeKind::Leaf;
-            b += b->num_nodes - 1;
-            EXPECT_LT(b, other_traversal.rend(), "PyTreeSpec traversal out of range.");
-            continue;
-        }
-        if (a->arity != b->arity ||
-            static_cast<bool>(a->node_data) != static_cast<bool>(b->node_data) ||
-            a->custom != b->custom) [[likely]] {
-            return false;
+        case PyTreeKind::None: {
+            return py::none();
         }
 
-        switch (a->kind) {
-            case PyTreeKind::None:
-            case PyTreeKind::Tuple:
-            case PyTreeKind::List:
-            case PyTreeKind::Deque: {
-                if (a->kind != b->kind) [[likely]] {
-                    return false;
-                }
-                break;
+        case PyTreeKind::Tuple:
+        case PyTreeKind::NamedTuple:
+        case PyTreeKind::StructSequence: {
+            py::tuple tuple{node.arity};
+            for (ssize_t i = 0; i < node.arity; ++i) {
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                SET_ITEM<py::tuple>(tuple, i, children[i]);
             }
-
-            case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
-                if (b->kind != PyTreeKind::Dict && b->kind != PyTreeKind::OrderedDict &&
-                    b->kind != PyTreeKind::DefaultDict) [[likely]] {
-                    return false;
-                }
-                auto expected_keys = py::reinterpret_borrow<py::list>(
-                    a->kind != PyTreeKind::DefaultDict
-                        ? a->node_data
-                        : GET_ITEM_BORROW<py::tuple>(a->node_data, 1));
-                auto other_keys = py::reinterpret_borrow<py::list>(
-                    b->kind != PyTreeKind::DefaultDict
-                        ? b->node_data
-                        : GET_ITEM_BORROW<py::tuple>(b->node_data, 1));
-                py::dict dict{};
-                for (ssize_t i = 0; i < b->arity; ++i) {
-                    dict[GET_ITEM_HANDLE<py::list>(other_keys, i)] = py::int_(i);
-                }
-                if (!DictKeysEqual(expected_keys, dict)) [[likely]] {
-                    return false;
-                }
-                if (expected_keys.not_equal(other_keys)) [[unlikely]] {
-                    auto other_offsets = reserved_vector<ssize_t>(b->arity + 1);
-                    auto other_num_nodes = reserved_vector<ssize_t>(b->arity);
-                    auto other_cur = b + 1;
-                    other_offsets.emplace_back(1);
-                    for (ssize_t j = b->arity - 1; j >= 0; --j) {
-                        ssize_t num_nodes = other_cur->num_nodes;
-                        other_num_nodes.emplace_back(num_nodes);
-                        other_offsets.emplace_back(other_offsets.back() + num_nodes);
-                        other_cur += num_nodes;
-                    }
-                    std::reverse(other_num_nodes.begin(), other_num_nodes.end());
-                    std::reverse(other_offsets.begin(), other_offsets.end());
-                    EXPECT_EQ(
-                        other_offsets.front(), b->num_nodes, "PyTreeSpec traversal out of range.");
-                    auto reordered_index_to_index = std::unordered_map<ssize_t, ssize_t>{};
-                    for (ssize_t i = a->arity - 1; i >= 0; --i) {
-                        py::object key = GET_ITEM_BORROW<py::list>(expected_keys, i);
-                        reordered_index_to_index.emplace(i, dict[key].cast<ssize_t>());
-                    }
-                    auto reordered_other_num_nodes = reserved_vector<ssize_t>(b->arity);
-                    reordered_other_num_nodes.resize(b->arity);
-                    for (const auto& [i, j] : reordered_index_to_index) {
-                        reordered_other_num_nodes[i] = other_num_nodes[j];
-                    }
-                    auto reordered_other_offsets = reserved_vector<ssize_t>(b->arity + 1);
-                    reordered_other_offsets.emplace_back(1);
-                    for (ssize_t i = a->arity - 1; i >= 0; --i) {
-                        reordered_other_offsets.emplace_back(reordered_other_offsets.back() +
-                                                             reordered_other_num_nodes[i]);
-                    }
-                    std::reverse(reordered_other_offsets.begin(), reordered_other_offsets.end());
-                    EXPECT_EQ(reordered_other_offsets.front(),
-                              b->num_nodes,
-                              "PyTreeSpec traversal out of range.");
-                    auto original_b = other.m_traversal.rbegin() + (b - other_traversal.rbegin());
-                    for (const auto& [i, j] : reordered_index_to_index) {
-                        std::copy(original_b + other_offsets[j + 1],
-                                  original_b + other_offsets[j],
-                                  b + reordered_other_offsets[i + 1]);
-                    }
-                }
-                break;
+            if (node.kind == PyTreeKind::NamedTuple) [[unlikely]] {
+                return node.node_data(*tuple);
             }
-
-            case PyTreeKind::NamedTuple:
-            case PyTreeKind::StructSequence:
-            case PyTreeKind::Custom: {
-                if (a->kind != b->kind || (a->node_data && a->node_data.not_equal(b->node_data)))
-                    [[likely]] {
-                    return false;
-                }
-                break;
+            if (node.kind == PyTreeKind::StructSequence) [[unlikely]] {
+                return node.node_data(std::move(tuple));
             }
-
-            case PyTreeKind::Leaf:
-            default:
-                INTERNAL_ERROR();
+            return tuple;
         }
 
-        if (a->num_nodes > b->num_nodes) [[likely]] {
-            return false;
+        case PyTreeKind::List:
+        case PyTreeKind::Deque: {
+            py::list list{node.arity};
+            for (ssize_t i = 0; i < node.arity; ++i) {
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                SET_ITEM<py::list>(list, i, children[i]);
+            }
+            if (node.kind == PyTreeKind::Deque) [[unlikely]] {
+                return PyDequeTypeObject(list, py::arg("maxlen") = node.node_data);
+            }
+            return list;
         }
+
+        case PyTreeKind::Dict: {
+            py::dict dict{};
+            auto keys = py::reinterpret_borrow<py::list>(node.node_data);
+            if (node.original_keys) [[unlikely]] {
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    dict[GET_ITEM_HANDLE<py::list>(node.original_keys, i)] = py::none();
+                }
+            }
+            for (ssize_t i = 0; i < node.arity; ++i) {
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = children[i];
+            }
+            return dict;
+        }
+
+        case PyTreeKind::OrderedDict: {
+            py::list items{node.arity};
+            auto keys = py::reinterpret_borrow<py::list>(node.node_data);
+            for (ssize_t i = 0; i < node.arity; ++i) {
+                SET_ITEM<py::list>(
+                    items,
+                    i,
+                    // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                    py::make_tuple(GET_ITEM_HANDLE<py::list>(keys, i), children[i]));
+            }
+            return PyOrderedDictTypeObject(items);
+        }
+
+        case PyTreeKind::DefaultDict: {
+            py::dict dict{};
+            py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
+            py::list keys = GET_ITEM_BORROW<py::tuple>(node.node_data, 1);
+            if (node.original_keys) [[unlikely]] {
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    dict[GET_ITEM_HANDLE<py::list>(node.original_keys, i)] = py::none();
+                }
+            }
+            for (ssize_t i = 0; i < node.arity; ++i) {
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = children[i];
+            }
+            return PyDefaultDictTypeObject(default_factory, dict);
+        }
+
+        case PyTreeKind::Custom: {
+            py::tuple tuple{node.arity};
+            for (ssize_t i = 0; i < node.arity; ++i) {
+                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                SET_ITEM<py::tuple>(tuple, i, children[i]);
+            }
+            return node.custom->unflatten_func(node.node_data, tuple);
+        }
+
+        default:
+            INTERNAL_ERROR();
     }
-    EXPECT_EQ(b, other_traversal.rend(), "PyTreeSpec traversal did not yield a singleton.");
-    return (!strict || !all_leaves_match);
 }
+
+template <bool NoneIsLeaf>
+/*static*/ PyTreeKind PyTreeSpec::GetKind(const py::handle& handle,
+                                          PyTreeTypeRegistry::Registration const** custom,
+                                          const std::string& registry_namespace) {
+    const PyTreeTypeRegistry::Registration* registration =
+        PyTreeTypeRegistry::Lookup<NoneIsLeaf>(py::type::of(handle), registry_namespace);
+    if (registration) [[likely]] {
+        if (registration->kind == PyTreeKind::Custom) [[unlikely]] {
+            *custom = registration;
+        } else [[likely]] {
+            *custom = nullptr;
+        }
+        return registration->kind;
+    }
+    *custom = nullptr;
+    if (IsStructSequenceInstance(handle)) [[unlikely]] {
+        return PyTreeKind::StructSequence;
+    }
+    if (IsNamedTupleInstance(handle)) [[unlikely]] {
+        return PyTreeKind::NamedTuple;
+    }
+    return PyTreeKind::Leaf;
+}
+
+template PyTreeKind PyTreeSpec::GetKind<NONE_IS_NODE>(const py::handle&,
+                                                      PyTreeTypeRegistry::Registration const**,
+                                                      const std::string&);
+template PyTreeKind PyTreeSpec::GetKind<NONE_IS_LEAF>(const py::handle&,
+                                                      PyTreeTypeRegistry::Registration const**,
+                                                      const std::string&);
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ std::tuple<ssize_t, ssize_t, ssize_t, ssize_t> PyTreeSpec::BroadcastToCommonSuffixImpl(
@@ -789,310 +728,226 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
     return child;
 }
 
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::Tuple(const std::vector<PyTreeSpec>& treespecs,
-                                                         const bool& none_is_leaf) {
-    std::string registry_namespace{};
-    for (const PyTreeSpec& treespec : treespecs) {
-        if (treespec.m_none_is_leaf != none_is_leaf) [[unlikely]] {
-            throw py::value_error(none_is_leaf ? "Expected treespecs with `node_is_leaf=True`."
-                                               : "Expected treespecs with `node_is_leaf=False`.");
-        }
-        if (!treespec.m_namespace.empty()) [[unlikely]] {
-            if (registry_namespace.empty()) [[likely]] {
-                registry_namespace = treespec.m_namespace;
-            } else if (registry_namespace != treespec.m_namespace) [[unlikely]] {
-                std::ostringstream oss{};
-                oss << "Expected treespecs with the same namespace. Got "
-                    << static_cast<std::string>(py::repr(py::str(registry_namespace))) << " vs. "
-                    << static_cast<std::string>(py::repr(py::str(treespec.m_namespace))) << ".";
-                throw py::value_error(oss.str());
-            }
-        }
-    }
-
-    auto out = std::make_unique<PyTreeSpec>();
-    ssize_t num_leaves = 0;
-    for (const PyTreeSpec& treespec : treespecs) {
-        std::copy(treespec.m_traversal.begin(),
-                  treespec.m_traversal.end(),
-                  std::back_inserter(out->m_traversal));
-        num_leaves += treespec.GetNumLeaves();
-    }
-    Node node;
-    node.kind = PyTreeKind::Tuple;
-    node.arity = py::ssize_t_cast(treespecs.size());
-    node.num_leaves = num_leaves;
-    node.num_nodes = py::ssize_t_cast(out->m_traversal.size()) + 1;
-    out->m_traversal.emplace_back(std::move(node));
-    out->m_none_is_leaf = none_is_leaf;
-    out->m_namespace = registry_namespace;
-    return out;
+ssize_t PyTreeSpec::GetNumLeaves() const {
+    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    return m_traversal.back().num_leaves;
 }
 
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::Leaf(const bool& none_is_leaf) {
-    auto out = std::make_unique<PyTreeSpec>();
-    Node node;
-    node.kind = PyTreeKind::Leaf;
-    node.arity = 0;
-    node.num_leaves = 1;
-    node.num_nodes = 1;
-    out->m_traversal.emplace_back(std::move(node));
-    out->m_none_is_leaf = none_is_leaf;
-    return out;
+ssize_t PyTreeSpec::GetNumNodes() const { return py::ssize_t_cast(m_traversal.size()); }
+
+ssize_t PyTreeSpec::GetNumChildren() const {
+    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    return m_traversal.back().arity;
 }
 
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::None(const bool& none_is_leaf) {
-    if (none_is_leaf) [[unlikely]] {
-        return Leaf(none_is_leaf);
-    }
-    auto out = std::make_unique<PyTreeSpec>();
-    Node node;
-    node.kind = PyTreeKind::None;
-    node.arity = 0;
-    node.num_leaves = 0;
-    node.num_nodes = 1;
-    out->m_traversal.emplace_back(std::move(node));
-    out->m_none_is_leaf = none_is_leaf;
-    return out;
-}
+bool PyTreeSpec::GetNoneIsLeaf() const { return m_none_is_leaf; }
 
-/*static*/ std::string PyTreeSpec::NodeKindToString(const Node& node) {
+std::string PyTreeSpec::GetNamespace() const { return m_namespace; }
+
+py::object PyTreeSpec::GetType() const {
+    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    Node node = m_traversal.back();
     switch (node.kind) {
-        case PyTreeKind::Leaf:
-            return "leaf type";
-        case PyTreeKind::None:
-            return "NoneType";
-        case PyTreeKind::Tuple:
-            return "tuple";
-        case PyTreeKind::List:
-            return "list";
-        case PyTreeKind::Dict:
-            return "dict";
-        case PyTreeKind::OrderedDict:
-            return "OrderedDict";
-        case PyTreeKind::DefaultDict:
-            return "defaultdict";
-        case PyTreeKind::NamedTuple:
-        case PyTreeKind::StructSequence:
-            return static_cast<std::string>(py::repr(node.node_data));
-        case PyTreeKind::Deque:
-            return "deque";
         case PyTreeKind::Custom:
             EXPECT_NE(node.custom, nullptr, "The custom registration is null.");
-            return static_cast<std::string>(py::repr(node.custom->type));
+            return py::reinterpret_borrow<py::object>(node.custom->type);
+        case PyTreeKind::Leaf:
+            return py::none();
+        case PyTreeKind::None:
+            return py::type::of(py::none());
+        case PyTreeKind::Tuple:
+            return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyTuple_Type));
+        case PyTreeKind::List:
+            return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyList_Type));
+        case PyTreeKind::Dict:
+            return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyDict_Type));
+        case PyTreeKind::NamedTuple:
+        case PyTreeKind::StructSequence:
+            return py::reinterpret_borrow<py::object>(node.node_data);
+        case PyTreeKind::OrderedDict:
+            return PyOrderedDictTypeObject;
+        case PyTreeKind::DefaultDict:
+            return PyDefaultDictTypeObject;
+        case PyTreeKind::Deque:
+            return PyDequeTypeObject;
         default:
             INTERNAL_ERROR();
     }
+}
+
+PyTreeKind PyTreeSpec::GetPyTreeKind() const {
+    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    return m_traversal.back().kind;
+}
+
+bool PyTreeSpec::IsLeaf(const bool& strict) const {
+    if (strict) [[likely]] {
+        return GetNumNodes() == 1 && GetNumLeaves() == 1;
+    }
+    return GetNumNodes() == 1;
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-/*static*/ py::object PyTreeSpec::MakeNode(const Node& node,
-                                           const py::object* children,
-                                           const size_t& num_children) {
-    EXPECT_EQ(py::ssize_t_cast(num_children), node.arity, "Node arity did not match.");
-    switch (node.kind) {
-        case PyTreeKind::Leaf:
-            INTERNAL_ERROR("PyTreeSpec::MakeNode() not implemented for leaves.");
+bool PyTreeSpec::IsPrefix(const PyTreeSpec& other, const bool& strict) const {
+    if (m_none_is_leaf != other.m_none_is_leaf) [[unlikely]] {
+        return false;
+    }
+    if (!m_namespace.empty() && !other.m_namespace.empty() && m_namespace != other.m_namespace)
+        [[likely]] {
+        return false;
+    }
+    if (GetNumNodes() > other.GetNumNodes()) [[likely]] {
+        return false;
+    }
 
-        case PyTreeKind::None: {
-            return py::none();
+    bool all_leaves_match = true;
+    std::vector<Node> other_traversal{other.m_traversal.begin(), other.m_traversal.end()};
+    // NOLINTNEXTLINE[readability-qualified-auto]
+    auto b = other_traversal.rbegin();
+    // NOLINTNEXTLINE[readability-qualified-auto]
+    for (auto a = m_traversal.rbegin(); a != m_traversal.rend(); ++a, ++b) {
+        if (b == other_traversal.rend()) [[unlikely]] {
+            return false;
+        }
+        if (a->kind == PyTreeKind::Leaf) [[unlikely]] {
+            all_leaves_match &= b->kind == PyTreeKind::Leaf;
+            b += b->num_nodes - 1;
+            EXPECT_LT(b, other_traversal.rend(), "PyTreeSpec traversal out of range.");
+            continue;
+        }
+        if (a->arity != b->arity ||
+            static_cast<bool>(a->node_data) != static_cast<bool>(b->node_data) ||
+            a->custom != b->custom) [[likely]] {
+            return false;
         }
 
-        case PyTreeKind::Tuple:
-        case PyTreeKind::NamedTuple:
-        case PyTreeKind::StructSequence: {
-            py::tuple tuple{node.arity};
-            for (ssize_t i = 0; i < node.arity; ++i) {
-                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
-                SET_ITEM<py::tuple>(tuple, i, children[i]);
-            }
-            if (node.kind == PyTreeKind::NamedTuple) [[unlikely]] {
-                return node.node_data(*tuple);
-            }
-            if (node.kind == PyTreeKind::StructSequence) [[unlikely]] {
-                return node.node_data(std::move(tuple));
-            }
-            return tuple;
-        }
-
-        case PyTreeKind::List:
-        case PyTreeKind::Deque: {
-            py::list list{node.arity};
-            for (ssize_t i = 0; i < node.arity; ++i) {
-                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
-                SET_ITEM<py::list>(list, i, children[i]);
-            }
-            if (node.kind == PyTreeKind::Deque) [[unlikely]] {
-                return PyDequeTypeObject(list, py::arg("maxlen") = node.node_data);
-            }
-            return list;
-        }
-
-        case PyTreeKind::Dict: {
-            py::dict dict{};
-            auto keys = py::reinterpret_borrow<py::list>(node.node_data);
-            if (node.original_keys) [[unlikely]] {
-                for (ssize_t i = 0; i < node.arity; ++i) {
-                    dict[GET_ITEM_HANDLE<py::list>(node.original_keys, i)] = py::none();
+        switch (a->kind) {
+            case PyTreeKind::None:
+            case PyTreeKind::Tuple:
+            case PyTreeKind::List:
+            case PyTreeKind::Deque: {
+                if (a->kind != b->kind) [[likely]] {
+                    return false;
                 }
+                break;
             }
-            for (ssize_t i = 0; i < node.arity; ++i) {
-                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
-                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = children[i];
-            }
-            return dict;
-        }
 
-        case PyTreeKind::OrderedDict: {
-            py::list items{node.arity};
-            auto keys = py::reinterpret_borrow<py::list>(node.node_data);
-            for (ssize_t i = 0; i < node.arity; ++i) {
-                SET_ITEM<py::list>(
-                    items,
-                    i,
-                    // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
-                    py::make_tuple(GET_ITEM_HANDLE<py::list>(keys, i), children[i]));
-            }
-            return PyOrderedDictTypeObject(items);
-        }
-
-        case PyTreeKind::DefaultDict: {
-            py::dict dict{};
-            py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
-            py::list keys = GET_ITEM_BORROW<py::tuple>(node.node_data, 1);
-            if (node.original_keys) [[unlikely]] {
-                for (ssize_t i = 0; i < node.arity; ++i) {
-                    dict[GET_ITEM_HANDLE<py::list>(node.original_keys, i)] = py::none();
+            case PyTreeKind::Dict:
+            case PyTreeKind::OrderedDict:
+            case PyTreeKind::DefaultDict: {
+                if (b->kind != PyTreeKind::Dict && b->kind != PyTreeKind::OrderedDict &&
+                    b->kind != PyTreeKind::DefaultDict) [[likely]] {
+                    return false;
                 }
+                auto expected_keys = py::reinterpret_borrow<py::list>(
+                    a->kind != PyTreeKind::DefaultDict
+                        ? a->node_data
+                        : GET_ITEM_BORROW<py::tuple>(a->node_data, 1));
+                auto other_keys = py::reinterpret_borrow<py::list>(
+                    b->kind != PyTreeKind::DefaultDict
+                        ? b->node_data
+                        : GET_ITEM_BORROW<py::tuple>(b->node_data, 1));
+                py::dict dict{};
+                for (ssize_t i = 0; i < b->arity; ++i) {
+                    dict[GET_ITEM_HANDLE<py::list>(other_keys, i)] = py::int_(i);
+                }
+                if (!DictKeysEqual(expected_keys, dict)) [[likely]] {
+                    return false;
+                }
+                if (expected_keys.not_equal(other_keys)) [[unlikely]] {
+                    auto other_offsets = reserved_vector<ssize_t>(b->arity + 1);
+                    auto other_num_nodes = reserved_vector<ssize_t>(b->arity);
+                    auto other_cur = b + 1;
+                    other_offsets.emplace_back(1);
+                    for (ssize_t j = b->arity - 1; j >= 0; --j) {
+                        ssize_t num_nodes = other_cur->num_nodes;
+                        other_num_nodes.emplace_back(num_nodes);
+                        other_offsets.emplace_back(other_offsets.back() + num_nodes);
+                        other_cur += num_nodes;
+                    }
+                    std::reverse(other_num_nodes.begin(), other_num_nodes.end());
+                    std::reverse(other_offsets.begin(), other_offsets.end());
+                    EXPECT_EQ(
+                        other_offsets.front(), b->num_nodes, "PyTreeSpec traversal out of range.");
+                    auto reordered_index_to_index = std::unordered_map<ssize_t, ssize_t>{};
+                    for (ssize_t i = a->arity - 1; i >= 0; --i) {
+                        py::object key = GET_ITEM_BORROW<py::list>(expected_keys, i);
+                        reordered_index_to_index.emplace(i, dict[key].cast<ssize_t>());
+                    }
+                    auto reordered_other_num_nodes = reserved_vector<ssize_t>(b->arity);
+                    reordered_other_num_nodes.resize(b->arity);
+                    for (const auto& [i, j] : reordered_index_to_index) {
+                        reordered_other_num_nodes[i] = other_num_nodes[j];
+                    }
+                    auto reordered_other_offsets = reserved_vector<ssize_t>(b->arity + 1);
+                    reordered_other_offsets.emplace_back(1);
+                    for (ssize_t i = a->arity - 1; i >= 0; --i) {
+                        reordered_other_offsets.emplace_back(reordered_other_offsets.back() +
+                                                             reordered_other_num_nodes[i]);
+                    }
+                    std::reverse(reordered_other_offsets.begin(), reordered_other_offsets.end());
+                    EXPECT_EQ(reordered_other_offsets.front(),
+                              b->num_nodes,
+                              "PyTreeSpec traversal out of range.");
+                    auto original_b = other.m_traversal.rbegin() + (b - other_traversal.rbegin());
+                    for (const auto& [i, j] : reordered_index_to_index) {
+                        std::copy(original_b + other_offsets[j + 1],
+                                  original_b + other_offsets[j],
+                                  b + reordered_other_offsets[i + 1]);
+                    }
+                }
+                break;
             }
-            for (ssize_t i = 0; i < node.arity; ++i) {
-                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
-                dict[GET_ITEM_HANDLE<py::list>(keys, i)] = children[i];
+
+            case PyTreeKind::NamedTuple:
+            case PyTreeKind::StructSequence:
+            case PyTreeKind::Custom: {
+                if (a->kind != b->kind || (a->node_data && a->node_data.not_equal(b->node_data)))
+                    [[likely]] {
+                    return false;
+                }
+                break;
             }
-            return PyDefaultDictTypeObject(default_factory, dict);
+
+            case PyTreeKind::Leaf:
+            default:
+                INTERNAL_ERROR();
         }
 
-        case PyTreeKind::Custom: {
-            py::tuple tuple{node.arity};
-            for (ssize_t i = 0; i < node.arity; ++i) {
-                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
-                SET_ITEM<py::tuple>(tuple, i, children[i]);
-            }
-            return node.custom->unflatten_func(node.node_data, tuple);
+        if (a->num_nodes > b->num_nodes) [[likely]] {
+            return false;
         }
-
-        default:
-            INTERNAL_ERROR();
     }
+    EXPECT_EQ(b, other_traversal.rend(), "PyTreeSpec traversal did not yield a singleton.");
+    return (!strict || !all_leaves_match);
 }
 
-template <bool NoneIsLeaf>
-/*static*/ PyTreeKind PyTreeSpec::GetKind(const py::handle& handle,
-                                          PyTreeTypeRegistry::Registration const** custom,
-                                          const std::string& registry_namespace) {
-    const PyTreeTypeRegistry::Registration* registration =
-        PyTreeTypeRegistry::Lookup<NoneIsLeaf>(py::type::of(handle), registry_namespace);
-    if (registration) [[likely]] {
-        if (registration->kind == PyTreeKind::Custom) [[unlikely]] {
-            *custom = registration;
-        } else [[likely]] {
-            *custom = nullptr;
+bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
+    if (m_traversal.size() != other.m_traversal.size() || m_none_is_leaf != other.m_none_is_leaf)
+        [[likely]] {
+        return false;
+    }
+    if (!m_namespace.empty() && !other.m_namespace.empty() && m_namespace != other.m_namespace)
+        [[likely]] {
+        return false;
+    }
+
+    // NOLINTNEXTLINE[readability-qualified-auto]
+    auto b = other.m_traversal.begin();
+    // NOLINTNEXTLINE[readability-qualified-auto]
+    for (auto a = m_traversal.begin(); a != m_traversal.end(); ++a, ++b) {
+        if (a->kind != b->kind || a->arity != b->arity ||
+            static_cast<bool>(a->node_data) != static_cast<bool>(b->node_data) ||
+            a->custom != b->custom) [[likely]] {
+            return false;
         }
-        return registration->kind;
-    }
-    *custom = nullptr;
-    if (IsStructSequenceInstance(handle)) [[unlikely]] {
-        return PyTreeKind::StructSequence;
-    }
-    if (IsNamedTupleInstance(handle)) [[unlikely]] {
-        return PyTreeKind::NamedTuple;
-    }
-    return PyTreeKind::Leaf;
-}
-
-template PyTreeKind PyTreeSpec::GetKind<NONE_IS_NODE>(const py::handle&,
-                                                      PyTreeTypeRegistry::Registration const**,
-                                                      const std::string&);
-template PyTreeKind PyTreeSpec::GetKind<NONE_IS_LEAF>(const py::handle&,
-                                                      PyTreeTypeRegistry::Registration const**,
-                                                      const std::string&);
-
-/*static*/ void PyTreeSpec::HashCombineNode(ssize_t& seed, const PyTreeSpec::Node& node) {
-    ssize_t data_hash = 0;
-    switch (node.kind) {
-        case PyTreeKind::Custom:
-            // We don't hash node_data custom node types since they may not hashable.
-            break;
-
-        case PyTreeKind::Leaf:
-        case PyTreeKind::None:
-        case PyTreeKind::Tuple:
-        case PyTreeKind::List:
-        case PyTreeKind::NamedTuple:
-        case PyTreeKind::Deque:
-        case PyTreeKind::StructSequence: {
-            data_hash = py::hash(node.node_data ? node.node_data : py::none());
-            break;
+        if (a->node_data && a->node_data.not_equal(b->node_data)) [[likely]] {
+            return false;
         }
-
-        case PyTreeKind::Dict:
-        case PyTreeKind::OrderedDict:
-        case PyTreeKind::DefaultDict: {
-            if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
-                EXPECT_EQ(
-                    GET_SIZE<py::tuple>(node.node_data), 2, "Number of auxiliary data mismatch.");
-                py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
-                data_hash = py::hash(default_factory);
-            }
-            auto keys = py::reinterpret_borrow<py::list>(
-                node.kind != PyTreeKind::DefaultDict
-                    ? node.node_data
-                    : GET_ITEM_BORROW<py::tuple>(node.node_data, 1));
-            EXPECT_EQ(
-                GET_SIZE<py::list>(keys), node.arity, "Number of keys and entries does not match.");
-            for (const py::handle& key : keys) {
-                HashCombine(data_hash, py::hash(key));
-            }
-            break;
-        }
-
-        default:
-            INTERNAL_ERROR();
+        EXPECT_EQ(a->num_leaves, b->num_leaves);
+        EXPECT_EQ(a->num_nodes, b->num_nodes);
     }
-
-    HashCombine(seed, node.kind);
-    HashCombine(seed, node.arity);
-    HashCombine(seed, node.custom);
-    HashCombine(seed, node.num_leaves);
-    HashCombine(seed, node.num_nodes);
-    HashCombine(seed, data_hash);
-}
-
-ssize_t PyTreeSpec::HashValueImpl() const {
-    ssize_t seed = 0;
-    for (const Node& node : m_traversal) {
-        HashCombineNode(seed, node);
-    }
-    HashCombine(seed, m_none_is_leaf);
-    HashCombine(seed, m_namespace);
-    return seed;
-}
-
-ssize_t PyTreeSpec::HashValue() const {
-    std::pair<const PyTreeSpec*, std::thread::id> indent{this, std::this_thread::get_id()};
-    if (sm_hash_running.find(indent) != sm_hash_running.end()) [[unlikely]] {
-        return 0;
-    }
-
-    sm_hash_running.insert(indent);
-    try {
-        ssize_t result = HashValueImpl();
-        sm_hash_running.erase(indent);
-        return result;
-    } catch (...) {
-        sm_hash_running.erase(indent);
-        std::rethrow_exception(std::current_exception());
-    }
+    return true;
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
@@ -1307,6 +1162,84 @@ std::string PyTreeSpec::ToString() const {
     }
 }
 
+/*static*/ void PyTreeSpec::HashCombineNode(ssize_t& seed, const PyTreeSpec::Node& node) {
+    ssize_t data_hash = 0;
+    switch (node.kind) {
+        case PyTreeKind::Custom:
+            // We don't hash node_data custom node types since they may not hashable.
+            break;
+
+        case PyTreeKind::Leaf:
+        case PyTreeKind::None:
+        case PyTreeKind::Tuple:
+        case PyTreeKind::List:
+        case PyTreeKind::NamedTuple:
+        case PyTreeKind::Deque:
+        case PyTreeKind::StructSequence: {
+            data_hash = py::hash(node.node_data ? node.node_data : py::none());
+            break;
+        }
+
+        case PyTreeKind::Dict:
+        case PyTreeKind::OrderedDict:
+        case PyTreeKind::DefaultDict: {
+            if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
+                EXPECT_EQ(
+                    GET_SIZE<py::tuple>(node.node_data), 2, "Number of auxiliary data mismatch.");
+                py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
+                data_hash = py::hash(default_factory);
+            }
+            auto keys = py::reinterpret_borrow<py::list>(
+                node.kind != PyTreeKind::DefaultDict
+                    ? node.node_data
+                    : GET_ITEM_BORROW<py::tuple>(node.node_data, 1));
+            EXPECT_EQ(
+                GET_SIZE<py::list>(keys), node.arity, "Number of keys and entries does not match.");
+            for (const py::handle& key : keys) {
+                HashCombine(data_hash, py::hash(key));
+            }
+            break;
+        }
+
+        default:
+            INTERNAL_ERROR();
+    }
+
+    HashCombine(seed, node.kind);
+    HashCombine(seed, node.arity);
+    HashCombine(seed, node.custom);
+    HashCombine(seed, node.num_leaves);
+    HashCombine(seed, node.num_nodes);
+    HashCombine(seed, data_hash);
+}
+
+ssize_t PyTreeSpec::HashValueImpl() const {
+    ssize_t seed = 0;
+    for (const Node& node : m_traversal) {
+        HashCombineNode(seed, node);
+    }
+    HashCombine(seed, m_none_is_leaf);
+    HashCombine(seed, m_namespace);
+    return seed;
+}
+
+ssize_t PyTreeSpec::HashValue() const {
+    std::pair<const PyTreeSpec*, std::thread::id> indent{this, std::this_thread::get_id()};
+    if (sm_hash_running.find(indent) != sm_hash_running.end()) [[unlikely]] {
+        return 0;
+    }
+
+    sm_hash_running.insert(indent);
+    try {
+        ssize_t result = HashValueImpl();
+        sm_hash_running.erase(indent);
+        return result;
+    } catch (...) {
+        sm_hash_running.erase(indent);
+        std::rethrow_exception(std::current_exception());
+    }
+}
+
 py::object PyTreeSpec::ToPicklable() const {
     py::tuple node_states{GetNumNodes()};
     ssize_t i = 0;
@@ -1327,7 +1260,7 @@ py::object PyTreeSpec::ToPicklable() const {
 
 // NOLINTBEGIN[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklableImpl(const py::handle& picklable) {
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklable(const py::object& picklable) {
     auto state = py::reinterpret_steal<py::tuple>(picklable);
     if (state.size() != 3) [[unlikely]] {
         throw std::runtime_error("Malformed pickled PyTreeSpec.");
@@ -1433,8 +1366,71 @@ py::object PyTreeSpec::ToPicklable() const {
 }
 // NOLINTEND[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
 
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklable(const py::object& picklable) {
-    return FromPicklableImpl(picklable);
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeLeaf(const bool& none_is_leaf) {
+    auto out = std::make_unique<PyTreeSpec>();
+    Node node;
+    node.kind = PyTreeKind::Leaf;
+    node.arity = 0;
+    node.num_leaves = 1;
+    node.num_nodes = 1;
+    out->m_traversal.emplace_back(std::move(node));
+    out->m_none_is_leaf = none_is_leaf;
+    return out;
+}
+
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeNone(const bool& none_is_leaf) {
+    if (none_is_leaf) [[unlikely]] {
+        return MakeLeaf(none_is_leaf);
+    }
+    auto out = std::make_unique<PyTreeSpec>();
+    Node node;
+    node.kind = PyTreeKind::None;
+    node.arity = 0;
+    node.num_leaves = 0;
+    node.num_nodes = 1;
+    out->m_traversal.emplace_back(std::move(node));
+    out->m_none_is_leaf = none_is_leaf;
+    return out;
+}
+
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeTuple(
+    const std::vector<PyTreeSpec>& treespecs, const bool& none_is_leaf) {
+    std::string registry_namespace{};
+    for (const PyTreeSpec& treespec : treespecs) {
+        if (treespec.m_none_is_leaf != none_is_leaf) [[unlikely]] {
+            throw py::value_error(none_is_leaf ? "Expected treespecs with `node_is_leaf=True`."
+                                               : "Expected treespecs with `node_is_leaf=False`.");
+        }
+        if (!treespec.m_namespace.empty()) [[unlikely]] {
+            if (registry_namespace.empty()) [[likely]] {
+                registry_namespace = treespec.m_namespace;
+            } else if (registry_namespace != treespec.m_namespace) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << "Expected treespecs with the same namespace. Got "
+                    << static_cast<std::string>(py::repr(py::str(registry_namespace))) << " vs. "
+                    << static_cast<std::string>(py::repr(py::str(treespec.m_namespace))) << ".";
+                throw py::value_error(oss.str());
+            }
+        }
+    }
+
+    auto out = std::make_unique<PyTreeSpec>();
+    ssize_t num_leaves = 0;
+    for (const PyTreeSpec& treespec : treespecs) {
+        std::copy(treespec.m_traversal.begin(),
+                  treespec.m_traversal.end(),
+                  std::back_inserter(out->m_traversal));
+        num_leaves += treespec.GetNumLeaves();
+    }
+    Node node;
+    node.kind = PyTreeKind::Tuple;
+    node.arity = py::ssize_t_cast(treespecs.size());
+    node.num_leaves = num_leaves;
+    node.num_nodes = py::ssize_t_cast(out->m_traversal.size()) + 1;
+    out->m_traversal.emplace_back(std::move(node));
+    out->m_none_is_leaf = none_is_leaf;
+    out->m_namespace = registry_namespace;
+    return out;
 }
 
 size_t PyTreeSpec::ThreadIndentTypeHash::operator()(

@@ -75,16 +75,16 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::arg("leaf_predicate") = std::nullopt,
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
-        .def("leaf",
-             &PyTreeSpec::Leaf,
+        .def("make_leaf",
+             &PyTreeSpec::MakeLeaf,
              "Make a treespec representing a leaf node.",
              py::arg("none_is_leaf") = false)
-        .def("none",
-             &PyTreeSpec::None,
+        .def("make_none",
+             &PyTreeSpec::MakeNone,
              "Make a treespec representing a ``None`` node.",
              py::arg("none_is_leaf") = false)
-        .def("tuple",
-             &PyTreeSpec::Tuple,
+        .def("make_tuple",
+             &PyTreeSpec::MakeTuple,
              "Make a tuple treespec from a list of child treespecs.",
              py::arg("treespecs"),
              py::arg("none_is_leaf") = false)
@@ -136,6 +136,38 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
     py::setattr(PyTreeSpecTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
 
     PyTreeSpecTypeObject
+        .def("unflatten",
+             &PyTreeSpec::Unflatten,
+             "Reconstruct a pytree from the leaves.",
+             py::arg("leaves"))
+        .def("flatten_up_to",
+             &PyTreeSpec::FlattenUpTo,
+             "Flatten the subtrees in ``full_tree`` up to the structure of this treespec "
+             "and return a list of subtrees.",
+             py::arg("full_tree"))
+        .def("broadcast_to_common_suffix",
+             &PyTreeSpec::BroadcastToCommonSuffix,
+             "Broadcast to the common suffix of this treespec and other treespec.",
+             py::arg("other"))
+        .def("compose",
+             &PyTreeSpec::Compose,
+             "Compose two treespecs. Constructs the inner treespec as a subtree at each leaf node.",
+             py::arg("inner_treespec"))
+        .def("walk",
+             &PyTreeSpec::Walk,
+             "Walk over the pytree structure, calling ``f_node(children, node_data)`` at nodes, "
+             "and ``f_leaf(leaf)`` at leaves.",
+             py::arg("f_node"),
+             py::arg("f_leaf"),
+             py::arg("leaves"))
+        .def("paths", &PyTreeSpec::Paths, "Return a list of paths to the leaves of the treespec.")
+        .def("entries", &PyTreeSpec::Entries, "Return a list of one-level entries to the children.")
+        .def("entry", &PyTreeSpec::Entry, "Return the entry at the given index.", py::arg("index"))
+        .def("children", &PyTreeSpec::Children, "Return a list of treespecs for the children.")
+        .def("child",
+             &PyTreeSpec::Child,
+             "Return the treespec for the child at the given index.",
+             py::arg("index"))
         .def_property_readonly(
             "num_leaves", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
         .def_property_readonly("num_nodes",
@@ -161,30 +193,10 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             &PyTreeSpec::GetType,
             "The type of the current node. Return None if the current node is a leaf.")
         .def_property_readonly("kind", &PyTreeSpec::GetPyTreeKind, "The kind of the current node.")
-        .def("unflatten",
-             &PyTreeSpec::Unflatten,
-             "Reconstruct a pytree from the leaves.",
-             py::arg("leaves"))
-        .def("flatten_up_to",
-             &PyTreeSpec::FlattenUpTo,
-             "Flatten the subtrees in ``full_tree`` up to the structure of this treespec "
-             "and return a list of subtrees.",
-             py::arg("full_tree"))
-        .def("broadcast_to_common_suffix",
-             &PyTreeSpec::BroadcastToCommonSuffix,
-             "Broadcast to the common suffix of this treespec and other treespec.",
-             py::arg("other"))
-        .def("compose",
-             &PyTreeSpec::Compose,
-             "Compose two treespecs. Constructs the inner treespec as a subtree at each leaf node.",
-             py::arg("inner_treespec"))
-        .def("walk",
-             &PyTreeSpec::Walk,
-             "Walk over the pytree structure, calling ``f_node(children, node_data)`` at nodes, "
-             "and ``f_leaf(leaf)`` at leaves.",
-             py::arg("f_node"),
-             py::arg("f_leaf"),
-             py::arg("leaves"))
+        .def("is_leaf",
+             &PyTreeSpec::IsLeaf,
+             "Test whether the current node is a leaf.",
+             py::arg("strict") = true)
         .def("is_prefix",
              &PyTreeSpec::IsPrefix,
              "Test whether this treespec is a prefix of the given treespec.",
@@ -195,19 +207,6 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              "Test whether this treespec is a suffix of the given treespec.",
              py::arg("other"),
              py::arg("strict") = false)
-        .def("paths", &PyTreeSpec::Paths, "Return a list of paths to the leaves of the treespec.")
-        .def("entries", &PyTreeSpec::Entries, "Return a list of one-level entries to the children.")
-        .def("entry", &PyTreeSpec::Entry, "Return the entry at the given index.", py::arg("index"))
-        .def("children", &PyTreeSpec::Children, "Return a list of treespecs for the children.")
-        .def("child",
-             &PyTreeSpec::Child,
-             "Return the treespec for the child at the given index.",
-             py::arg("index"))
-        .def("is_leaf",
-             &PyTreeSpec::IsLeaf,
-             "Test whether the current node is a leaf.",
-             py::arg("strict") = true)
-        .def("__repr__", &PyTreeSpec::ToString, "Return a string representation of the treespec.")
         .def(
             "__eq__",
             [](const PyTreeSpec& a, const PyTreeSpec& b) { return a == b; },
@@ -244,6 +243,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             "Test for this treespec is a suffix of another object.",
             py::is_operator(),
             py::arg("other"))
+        .def("__repr__", &PyTreeSpec::ToString, "Return a string representation of the treespec.")
         .def("__hash__", &PyTreeSpec::HashValue, "Return the hash of the treespec.")
         .def("__len__", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
         .def(py::pickle([](const PyTreeSpec& t) { return t.ToPicklable(); },
