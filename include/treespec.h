@@ -68,6 +68,9 @@ class PyTreeSpec {
                     const bool &none_is_leaf = false,
                     const std::string &registry_namespace = "");
 
+    // Return an unflattened PyTree given an iterable of leaves and a PyTreeSpec.
+    [[nodiscard]] py::object Unflatten(const py::iterable &leaves) const;
+
     // Flatten a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure
     // of 'x'. For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeSpec [(*,
     // *), *], the result is the list of leaves [1, (2, 3), {"foo": 4}].
@@ -77,21 +80,6 @@ class PyTreeSpec {
     [[nodiscard]] std::unique_ptr<PyTreeSpec> BroadcastToCommonSuffix(
         const PyTreeSpec &other) const;
 
-    // Test whether the given object is a leaf node.
-    static bool ObjectIsLeaf(const py::object &object,
-                             const std::optional<py::function> &leaf_predicate,
-                             const bool &none_is_leaf = false,
-                             const std::string &registry_namespace = "");
-
-    // Test whether all elements in the given iterable are all leaves.
-    static bool AllLeaves(const py::iterable &iterable,
-                          const std::optional<py::function> &leaf_predicate,
-                          const bool &none_is_leaf = false,
-                          const std::string &registry_namespace = "");
-
-    // Return an unflattened PyTree given an iterable of leaves and a PyTreeSpec.
-    [[nodiscard]] py::object Unflatten(const py::iterable &leaves) const;
-
     // Compose two PyTreeSpecs, replacing the leaves of this tree with copies of `inner`.
     [[nodiscard]] std::unique_ptr<PyTreeSpec> Compose(const PyTreeSpec &inner_treespec) const;
 
@@ -100,14 +88,6 @@ class PyTreeSpec {
     [[nodiscard]] py::object Walk(const py::function &f_node,
                                   const py::object &f_leaf,
                                   const py::iterable &leaves) const;
-
-    // Return true if this PyTreeSpec is a prefix of `other`.
-    [[nodiscard]] bool IsPrefix(const PyTreeSpec &other, const bool &strict = false) const;
-
-    // Return true if this PyTreeSpec is a suffix of `other`.
-    [[nodiscard]] inline bool IsSuffix(const PyTreeSpec &other, const bool &strict = false) const {
-        return other.IsPrefix(*this, strict);
-    }
 
     // Return paths to all leaves in the PyTreeSpec.
     [[nodiscard]] std::vector<py::tuple> Paths() const;
@@ -124,19 +104,6 @@ class PyTreeSpec {
     // Return the child at the given index of the PyTreeSpec.
     [[nodiscard]] std::unique_ptr<PyTreeSpec> Child(ssize_t index) const;
 
-    // Test whether this PyTreeSpec represents a leaf.
-    [[nodiscard]] bool IsLeaf(const bool &strict = true) const;
-
-    // Make a Tuple PyTreeSpec out of a vector of PyTreeSpecs.
-    static std::unique_ptr<PyTreeSpec> Tuple(const std::vector<PyTreeSpec> &treespecs,
-                                             const bool &none_is_leaf);
-
-    // Make a PyTreeSpec representing a leaf node.
-    static std::unique_ptr<PyTreeSpec> Leaf(const bool &none_is_leaf);
-
-    // Make a PyTreeSpec representing a `None` node.
-    static std::unique_ptr<PyTreeSpec> None(const bool &none_is_leaf);
-
     [[nodiscard]] ssize_t GetNumLeaves() const;
 
     [[nodiscard]] ssize_t GetNumNodes() const;
@@ -151,6 +118,17 @@ class PyTreeSpec {
 
     [[nodiscard]] PyTreeKind GetPyTreeKind() const;
 
+    // Test whether this PyTreeSpec represents a leaf.
+    [[nodiscard]] bool IsLeaf(const bool &strict = true) const;
+
+    // Return true if this PyTreeSpec is a prefix of `other`.
+    [[nodiscard]] bool IsPrefix(const PyTreeSpec &other, const bool &strict = false) const;
+
+    // Return true if this PyTreeSpec is a suffix of `other`.
+    [[nodiscard]] inline bool IsSuffix(const PyTreeSpec &other, const bool &strict = false) const {
+        return other.IsPrefix(*this, strict);
+    }
+
     bool operator==(const PyTreeSpec &other) const;
     inline bool operator!=(const PyTreeSpec &other) const { return !(*this == other); }
     inline bool operator<(const PyTreeSpec &other) const { return IsPrefix(other, true); }
@@ -158,11 +136,11 @@ class PyTreeSpec {
     inline bool operator>(const PyTreeSpec &other) const { return IsSuffix(other, true); }
     inline bool operator>=(const PyTreeSpec &other) const { return IsSuffix(other, false); }
 
-    // Return the hash value of the PyTreeSpec.
-    [[nodiscard]] ssize_t HashValue() const;
-
     // Return a string representation of the PyTreeSpec.
     [[nodiscard]] std::string ToString() const;
+
+    // Return the hash value of the PyTreeSpec.
+    [[nodiscard]] ssize_t HashValue() const;
 
     // Transform the PyTreeSpec into a picklable object.
     // Used to implement `PyTreeSpec.__getstate__`.
@@ -171,6 +149,28 @@ class PyTreeSpec {
     // Transform the object returned by `ToPicklable()` back to PyTreeSpec.
     // Used to implement `PyTreeSpec.__setstate__`.
     static std::unique_ptr<PyTreeSpec> FromPicklable(const py::object &picklable);
+
+    // Make a PyTreeSpec representing a leaf node.
+    static std::unique_ptr<PyTreeSpec> MakeLeaf(const bool &none_is_leaf);
+
+    // Make a PyTreeSpec representing a `None` node.
+    static std::unique_ptr<PyTreeSpec> MakeNone(const bool &none_is_leaf);
+
+    // Make a Tuple PyTreeSpec out of a vector of PyTreeSpecs.
+    static std::unique_ptr<PyTreeSpec> MakeTuple(const std::vector<PyTreeSpec> &treespecs,
+                                                 const bool &none_is_leaf);
+
+    // Test whether the given object is a leaf node.
+    static bool ObjectIsLeaf(const py::object &object,
+                             const std::optional<py::function> &leaf_predicate,
+                             const bool &none_is_leaf = false,
+                             const std::string &registry_namespace = "");
+
+    // Test whether all elements in the given iterable are all leaves.
+    static bool AllLeaves(const py::iterable &iterable,
+                          const std::optional<py::function> &leaf_predicate,
+                          const bool &none_is_leaf = false,
+                          const std::string &registry_namespace = "");
 
  private:
     struct Node {
@@ -263,12 +263,28 @@ class PyTreeSpec {
                                  const std::optional<py::function> &leaf_predicate,
                                  const std::string &registry_namespace);
 
+    template <typename Span>
+    py::object UnflattenImpl(const Span &leaves) const;
+
     static std::tuple<ssize_t, ssize_t, ssize_t, ssize_t> BroadcastToCommonSuffixImpl(
         std::vector<Node> &nodes,  // NOLINT[runtime/references]
         const std::vector<Node> &traversal,
         const ssize_t &pos,
         const std::vector<Node> &other_traversal,
         const ssize_t &other_pos);
+
+    template <typename Span, typename Stack>
+    [[nodiscard]] ssize_t PathsImpl(Span &paths,   // NOLINT[runtime/references]
+                                    Stack &stack,  // NOLINT[runtime/references]
+                                    const ssize_t &pos,
+                                    const ssize_t &depth) const;
+
+    [[nodiscard]] std::string ToStringImpl() const;
+
+    // Get the hash value of the node.
+    static void HashCombineNode(ssize_t &seed, const Node &node);  // NOLINT[runtime/references]
+
+    [[nodiscard]] ssize_t HashValueImpl() const;
 
     template <bool NoneIsLeaf>
     static bool ObjectIsLeafImpl(const py::handle &handle,
@@ -279,24 +295,6 @@ class PyTreeSpec {
     static bool AllLeavesImpl(const py::iterable &iterable,
                               const std::optional<py::function> &leaf_predicate,
                               const std::string &registry_namespace);
-
-    template <typename Span>
-    py::object UnflattenImpl(const Span &leaves) const;
-
-    template <typename Span, typename Stack>
-    [[nodiscard]] ssize_t PathsImpl(Span &paths,   // NOLINT[runtime/references]
-                                    Stack &stack,  // NOLINT[runtime/references]
-                                    const ssize_t &pos,
-                                    const ssize_t &depth) const;
-
-    // Get the hash value of the node.
-    static void HashCombineNode(ssize_t &seed, const Node &node);  // NOLINT[runtime/references]
-
-    [[nodiscard]] ssize_t HashValueImpl() const;
-
-    [[nodiscard]] std::string ToStringImpl() const;
-
-    static std::unique_ptr<PyTreeSpec> FromPicklableImpl(const py::handle &picklable);
 
     class ThreadIndentTypeHash {
      public:

@@ -81,8 +81,6 @@ __all__ = [
     'tree_all',
     'tree_any',
     'tree_flatten_one_level',
-    'treespec_is_prefix',
-    'treespec_is_suffix',
     'treespec_paths',
     'treespec_entries',
     'treespec_entry',
@@ -90,6 +88,8 @@ __all__ = [
     'treespec_child',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',
+    'treespec_is_prefix',
+    'treespec_is_suffix',
     'treespec_leaf',
     'treespec_none',
     'treespec_tuple',
@@ -1760,30 +1760,6 @@ def tree_flatten_one_level(
     raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
 
 
-def treespec_is_prefix(
-    treespec: PyTreeSpec,
-    other_treespec: PyTreeSpec,
-    strict: bool = False,
-) -> bool:
-    """Return whether ``treespec`` is a prefix of ``other_treespec``.
-
-    See also :func:`treespec_is_prefix` and :meth:`PyTreeSpec.is_prefix`.
-    """
-    return treespec.is_prefix(other_treespec, strict=strict)
-
-
-def treespec_is_suffix(
-    treespec: PyTreeSpec,
-    other_treespec: PyTreeSpec,
-    strict: bool = False,
-) -> bool:
-    """Return whether ``treespec`` is a suffix of ``other_treespec``.
-
-    See also :func:`treespec_is_suffix` :meth:`PyTreeSpec.is_suffix`.
-    """
-    return treespec.is_suffix(other_treespec, strict=strict)
-
-
 def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
     """Return a list of paths to the leaves of a treespec.
 
@@ -1892,6 +1868,30 @@ def treespec_is_strict_leaf(treespec: PyTreeSpec) -> bool:
     return treespec.num_nodes == 1 and treespec.num_leaves == 1
 
 
+def treespec_is_prefix(
+    treespec: PyTreeSpec,
+    other_treespec: PyTreeSpec,
+    strict: bool = False,
+) -> bool:
+    """Return whether ``treespec`` is a prefix of ``other_treespec``.
+
+    See also :func:`treespec_is_prefix` and :meth:`PyTreeSpec.is_prefix`.
+    """
+    return treespec.is_prefix(other_treespec, strict=strict)
+
+
+def treespec_is_suffix(
+    treespec: PyTreeSpec,
+    other_treespec: PyTreeSpec,
+    strict: bool = False,
+) -> bool:
+    """Return whether ``treespec`` is a suffix of ``other_treespec``.
+
+    See also :func:`treespec_is_suffix` :meth:`PyTreeSpec.is_suffix`.
+    """
+    return treespec.is_suffix(other_treespec, strict=strict)
+
+
 def treespec_leaf(*, none_is_leaf: bool = False) -> PyTreeSpec:
     """Make a treespec representing a leaf node.
 
@@ -1929,7 +1929,7 @@ def treespec_leaf(*, none_is_leaf: bool = False) -> PyTreeSpec:
     Returns:
         A treespec representing a leaf node.
     """
-    return _C.leaf(none_is_leaf)
+    return _C.make_leaf(none_is_leaf)
 
 
 def treespec_none(*, none_is_leaf: bool = False) -> PyTreeSpec:
@@ -1971,7 +1971,7 @@ def treespec_none(*, none_is_leaf: bool = False) -> PyTreeSpec:
     Returns:
         A treespec representing a :data:`None` node.
     """
-    return _C.none(none_is_leaf)
+    return _C.make_none(none_is_leaf)
 
 
 def treespec_tuple(
@@ -2009,7 +2009,7 @@ def treespec_tuple(
     Returns:
         A treespec representing a tuple node with the given children.
     """
-    return _C.tuple(list(treespecs), none_is_leaf)
+    return _C.make_tuple(list(treespecs), none_is_leaf)
 
 
 def prefix_errors(
