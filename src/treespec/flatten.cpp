@@ -69,8 +69,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                     break;
                 }
                 INTERNAL_ERROR(
-                    "NoneIsLeaf is true, but PyTreeSpec::GetKind() returned "
-                    "`PyTreeKind::None`.");
+                    "NoneIsLeaf is true, but PyTreeSpec::GetKind() returned `PyTreeKind::None`.");
             }
 
             case PyTreeKind::Tuple: {
@@ -93,6 +92,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
                 auto dict = py::reinterpret_borrow<py::dict>(handle);
+                node.arity = GET_SIZE<py::dict>(dict);
                 py::list keys = DictKeys(dict);
                 if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
                     node.original_keys = py::getattr(keys, Py_Get_ID(copy))();
@@ -101,7 +101,6 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 for (const py::handle& key : keys) {
                     recurse(dict[key]);
                 }
-                node.arity = GET_SIZE<py::dict>(dict);
                 if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
                     node.node_data = py::make_tuple(py::getattr(handle, Py_Get_ID(default_factory)),
                                                     std::move(keys));
@@ -115,7 +114,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             case PyTreeKind::StructSequence: {
                 auto tuple = py::reinterpret_borrow<py::tuple>(handle);
                 node.arity = GET_SIZE<py::tuple>(tuple);
-                node.node_data = py::reinterpret_borrow<py::object>(py::type::handle_of(tuple));
+                node.node_data = py::type::of(tuple);
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::tuple>(tuple, i));
                 }
@@ -263,8 +262,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                     break;
                 }
                 INTERNAL_ERROR(
-                    "NoneIsLeaf is true, but PyTreeSpec::GetKind() returned "
-                    "`PyTreeKind::None`.");
+                    "NoneIsLeaf is true, but PyTreeSpec::GetKind() returned PyTreeKind::None`.");
             }
 
             case PyTreeKind::Tuple: {
@@ -309,7 +307,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             case PyTreeKind::StructSequence: {
                 auto tuple = py::reinterpret_borrow<py::tuple>(handle);
                 node.arity = GET_SIZE<py::tuple>(tuple);
-                node.node_data = py::reinterpret_borrow<py::object>(py::type::handle_of(tuple));
+                node.node_data = py::type::of(tuple);
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::tuple>(tuple, i), py::int_(i));
                 }
@@ -360,8 +358,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                             throw std::runtime_error(
                                 "PyTree custom flatten function for type " +
                                 static_cast<std::string>(py::repr(node.custom->type)) +
-                                " returned inconsistent "
-                                "number of children and number of entries.");
+                                " returned inconsistent number of children and number of entries.");
                         }
                         recurse(child,
                                 GET_ITEM_BORROW<py::tuple>(node.node_entries, num_children++));

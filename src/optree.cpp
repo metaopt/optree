@@ -78,16 +78,19 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         .def("make_leaf",
              &PyTreeSpec::MakeLeaf,
              "Make a treespec representing a leaf node.",
-             py::arg("none_is_leaf") = false)
+             py::arg("none_is_leaf") = false,
+             py::arg("namespace") = "")
         .def("make_none",
              &PyTreeSpec::MakeNone,
              "Make a treespec representing a ``None`` node.",
-             py::arg("none_is_leaf") = false)
-        .def("make_tuple",
-             &PyTreeSpec::MakeTuple,
-             "Make a tuple treespec from a list of child treespecs.",
-             py::arg("treespecs"),
-             py::arg("none_is_leaf") = false)
+             py::arg("none_is_leaf") = false,
+             py::arg("namespace") = "")
+        .def("make_from_collection",
+             &PyTreeSpec::MakeFromCollection,
+             "Make a treespec from a collection of child treespecs.",
+             py::arg("tuple"),
+             py::arg("none_is_leaf") = false,
+             py::arg("namespace") = "")
         .def("is_namedtuple",
              &IsNamedTuple,
              "Return whether the object is an instance of namedtuple or a subclass of namedtuple.",

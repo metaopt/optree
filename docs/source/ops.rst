@@ -109,6 +109,14 @@ PyTreeSpec Functions
     treespec_leaf
     treespec_none
     treespec_tuple
+    treespec_list
+    treespec_dict
+    treespec_namedtuple
+    treespec_ordereddict
+    treespec_defaultdict
+    treespec_deque
+    treespec_structseq
+    treespec_from_collection
 
 .. autofunction:: treespec_paths
 .. autofunction:: treespec_entries
@@ -122,3 +130,11 @@ PyTreeSpec Functions
 .. autofunction:: treespec_leaf
 .. autofunction:: treespec_none
 .. autofunction:: treespec_tuple
+.. autofunction:: treespec_list
+.. autofunction:: treespec_dict
+.. autofunction:: treespec_namedtuple
+.. autofunction:: treespec_ordereddict
+.. autofunction:: treespec_defaultdict
+.. autofunction:: treespec_deque
+.. autofunction:: treespec_structseq
+.. autofunction:: treespec_from_collection
