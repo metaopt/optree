@@ -1813,9 +1813,10 @@ def treespec_is_leaf(treespec: PyTreeSpec, strict: bool = True) -> bool:
 
     See also :func:`treespec_is_strict_leaf` and :meth:`PyTreeSpec.is_leaf`.
 
-    This function does not check whether the treespec set ``none_is_leaf``. It is equivalent to
-    ``treespec.is_leaf(strict=strict)``. If ``strict=False``, it will return :data:`True` if the
-    treespec represents a strict leaf or :data:`None` or an empty container (e.g., an empty tuple).
+    This function is equivalent to ``treespec.is_leaf(strict=strict)``. If ``strict=False``, it will
+    return :data:`True` if and only if the treespec represents a strict leaf. If ``strict=False``,
+    it will return :data:`True` if the treespec represents a strict leaf or :data:`None` or an empty
+    container (e.g., an empty tuple).
 
     >>> treespec_is_leaf(tree_structure(1))
     True
@@ -1840,6 +1841,8 @@ def treespec_is_leaf(treespec: PyTreeSpec, strict: bool = True) -> bool:
 
     Args:
         treespec (PyTreeSpec): A treespec.
+        strict (bool, optional): Whether not to treat :data:`None` or an empty
+            container (e.g., an empty tuple) as a leaf. (default: :data:`True`)
 
     Returns:
         :data:`True` if the treespec represents a leaf that has no children, otherwise, :data:`False`.
