@@ -2152,6 +2152,7 @@ def treespec_namedtuple(
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
+    >>> from collections import namedtuple
     >>> Point = namedtuple('Point', ['x', 'y'])
     >>> treespec_namedtuple(Point(x=treespec_leaf(), y=treespec_leaf()))
     PyTreeSpec(Point(x=*, y=*))
@@ -2432,7 +2433,7 @@ def prefix_errors(
     )
 
 
-STANDARD_DICT_TYPES = frozenset([dict, OrderedDict, defaultdict])
+STANDARD_DICT_TYPES = frozenset({dict, OrderedDict, defaultdict})
 
 
 # pylint: disable-next=too-many-locals
