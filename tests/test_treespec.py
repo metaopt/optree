@@ -580,33 +580,37 @@ def test_treespec_num_children(tree, none_is_leaf, namespace):
 
 
 def test_treespec_is_leaf():
-    assert optree.treespec_is_leaf(optree.tree_structure(1))
-    assert not optree.treespec_is_leaf(optree.tree_structure((1, 2)))
-    assert optree.treespec_is_leaf(optree.tree_structure(None))
-    assert optree.treespec_is_leaf(optree.tree_structure(None, none_is_leaf=True))
-    assert optree.treespec_is_leaf(optree.tree_structure(()))
-    assert optree.treespec_is_leaf(optree.tree_structure([]))
-    assert optree.tree_structure(1).is_leaf(strict=False)
-    assert not optree.tree_structure((1, 2)).is_leaf(strict=False)
-    assert optree.tree_structure(None).is_leaf(strict=False)
-    assert optree.tree_structure(None, none_is_leaf=True).is_leaf(strict=False)
-    assert optree.tree_structure(()).is_leaf(strict=False)
-    assert optree.tree_structure([]).is_leaf(strict=False)
-
-
-def test_treespec_is_strict_leaf():
     assert optree.treespec_is_strict_leaf(optree.tree_structure(1))
     assert not optree.treespec_is_strict_leaf(optree.tree_structure((1, 2)))
     assert not optree.treespec_is_strict_leaf(optree.tree_structure(None))
     assert optree.treespec_is_strict_leaf(optree.tree_structure(None, none_is_leaf=True))
     assert not optree.treespec_is_strict_leaf(optree.tree_structure(()))
     assert not optree.treespec_is_strict_leaf(optree.tree_structure([]))
+    assert optree.treespec_is_leaf(optree.tree_structure(1))
+    assert not optree.treespec_is_leaf(optree.tree_structure((1, 2)))
+    assert not optree.treespec_is_leaf(optree.tree_structure(None))
+    assert optree.treespec_is_leaf(optree.tree_structure(None, none_is_leaf=True))
+    assert not optree.treespec_is_leaf(optree.tree_structure(()))
+    assert not optree.treespec_is_leaf(optree.tree_structure([]))
     assert optree.tree_structure(1).is_leaf(strict=True)
     assert not optree.tree_structure((1, 2)).is_leaf(strict=True)
     assert not optree.tree_structure(None).is_leaf(strict=True)
     assert optree.tree_structure(None, none_is_leaf=True).is_leaf(strict=True)
     assert not optree.tree_structure(()).is_leaf(strict=True)
     assert not optree.tree_structure([]).is_leaf(strict=True)
+
+    assert optree.treespec_is_leaf(optree.tree_structure(1), strict=False)
+    assert not optree.treespec_is_leaf(optree.tree_structure((1, 2)), strict=False)
+    assert optree.treespec_is_leaf(optree.tree_structure(None), strict=False)
+    assert optree.treespec_is_leaf(optree.tree_structure(None, none_is_leaf=True), strict=False)
+    assert optree.treespec_is_leaf(optree.tree_structure(()), strict=False)
+    assert optree.treespec_is_leaf(optree.tree_structure([]), strict=False)
+    assert optree.tree_structure(1).is_leaf(strict=False)
+    assert not optree.tree_structure((1, 2)).is_leaf(strict=False)
+    assert optree.tree_structure(None).is_leaf(strict=False)
+    assert optree.tree_structure(None, none_is_leaf=True).is_leaf(strict=False)
+    assert optree.tree_structure(()).is_leaf(strict=False)
+    assert optree.tree_structure([]).is_leaf(strict=False)
 
 
 def test_treespec_leaf_none():
