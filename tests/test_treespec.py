@@ -675,34 +675,46 @@ def test_treespec_leaf_none(namespace):
         namespace=namespace,
     )
 
-    assert optree.treespec_from_collection(
-        1,
-        namespace=namespace,
-    ) == optree.treespec_leaf(
-        namespace=namespace,
-    )
-    assert optree.treespec_from_collection(
-        1,
-        none_is_leaf=True,
-        namespace=namespace,
-    ) == optree.treespec_leaf(
-        none_is_leaf=True,
-        namespace=namespace,
-    )
+    with pytest.warns(
+        UserWarning,
+        match=re.escape('PyTreeSpec::MakeFromCollection() is called on a leaf.'),
+    ):
+        assert optree.treespec_from_collection(
+            1,
+            namespace=namespace,
+        ) == optree.treespec_leaf(
+            namespace=namespace,
+        )
+    with pytest.warns(
+        UserWarning,
+        match=re.escape('PyTreeSpec::MakeFromCollection() is called on a leaf.'),
+    ):
+        assert optree.treespec_from_collection(
+            1,
+            none_is_leaf=True,
+            namespace=namespace,
+        ) == optree.treespec_leaf(
+            none_is_leaf=True,
+            namespace=namespace,
+        )
     assert optree.treespec_from_collection(
         None,
         namespace=namespace,
     ) == optree.treespec_none(
         namespace=namespace,
     )
-    assert optree.treespec_from_collection(
-        None,
-        none_is_leaf=True,
-        namespace=namespace,
-    ) == optree.treespec_none(
-        none_is_leaf=True,
-        namespace=namespace,
-    )
+    with pytest.warns(
+        UserWarning,
+        match=re.escape('PyTreeSpec::MakeFromCollection() is called on a leaf.'),
+    ):
+        assert optree.treespec_from_collection(
+            None,
+            none_is_leaf=True,
+            namespace=namespace,
+        ) == optree.treespec_none(
+            none_is_leaf=True,
+            namespace=namespace,
+        )
 
 
 @parametrize(
@@ -730,14 +742,18 @@ def test_treespec_constructor(tree, none_is_leaf, namespace):  # noqa: C901
             node_type = type(node)
             if one_level_treespec.is_leaf():
                 assert len(children) == 1
-                assert (
-                    optree.treespec_from_collection(
-                        node,
-                        none_is_leaf=none_is_leaf,
-                        namespace=passed_namespace,
+                with pytest.warns(
+                    UserWarning,
+                    match=re.escape('PyTreeSpec::MakeFromCollection() is called on a leaf.'),
+                ):
+                    assert (
+                        optree.treespec_from_collection(
+                            node,
+                            none_is_leaf=none_is_leaf,
+                            namespace=passed_namespace,
+                        )
+                        == expected_treespec
                     )
-                    == expected_treespec
-                )
                 assert (
                     optree.treespec_leaf(
                         none_is_leaf=none_is_leaf,

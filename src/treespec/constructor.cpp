@@ -126,6 +126,9 @@ template <bool NoneIsLeaf>
     switch (node.kind) {
         case PyTreeKind::Leaf: {
             node.arity = 0;
+            PyErr_WarnEx(PyExc_UserWarning,
+                         "PyTreeSpec::MakeFromCollection() is called on a leaf.",
+                         /*stack_level=*/2);
             break;
         }
 
