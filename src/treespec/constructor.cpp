@@ -118,7 +118,7 @@ template <bool NoneIsLeaf>
                     << ".";
                 throw py::value_error(oss.str());
             }
-        } else [[unlikely]] {
+        } else if (node.kind != PyTreeKind::Custom) [[likely]] {
             register_namespace = "";
         }
     };

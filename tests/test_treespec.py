@@ -18,7 +18,7 @@
 import itertools
 import pickle
 import re
-from collections import OrderedDict, defaultdict, deque
+from collections import OrderedDict, UserList, defaultdict, deque
 
 import pytest
 
@@ -962,3 +962,72 @@ def test_treespec_constructor(tree, none_is_leaf, namespace):  # noqa: C901
                         )
 
                 stack.extend(reversed(children))
+
+
+def test_treespec_constructor_namespace():
+    @optree.register_pytree_node_class(namespace='mylist')
+    class MyList(UserList):
+        def tree_flatten(self):
+            return self.data, None, None
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            return cls(children)
+
+    with pytest.warns(
+        UserWarning,
+        match=re.escape('PyTreeSpec::MakeFromCollection() is called on a leaf.'),
+    ):
+        assert (
+            optree.treespec_from_collection(
+                MyList([optree.treespec_leaf(), optree.treespec_leaf(), optree.treespec_leaf()]),
+            )
+            == optree.treespec_leaf()
+        )
+
+    expected_treespec = optree.tree_structure(MyList([1, 2, 3]), namespace='mylist')
+    actual_treespec = optree.treespec_from_collection(
+        MyList([optree.treespec_leaf(), optree.treespec_leaf(), optree.treespec_leaf()]),
+        namespace='mylist',
+    )
+    assert actual_treespec == expected_treespec
+    assert actual_treespec.type is MyList
+    assert actual_treespec.namespace == 'mylist'
+
+    children_treespecs = actual_treespec.children()
+    assert all(child.namespace == 'mylist' for child in children_treespecs)
+    treespec1 = optree.treespec_from_collection(list(children_treespecs), namespace='')
+    assert treespec1.type is list
+    assert treespec1.namespace == 'mylist'
+
+    treespec2 = optree.treespec_from_collection(
+        [optree.treespec_leaf(), optree.treespec_leaf(), optree.treespec_leaf()],
+        namespace='mylist',
+    )
+    assert treespec2.type is list
+    assert treespec2.namespace == ''
+
+    assert treespec1 == treespec2
+
+
+def test_treespec_constructor_none_treespec_inputs():
+    with pytest.raises(ValueError, match=r'Expected a\(n\) list of PyTreeSpec\(s\), got .*\.'):
+        optree.treespec_list([optree.treespec_leaf(), 1])
+
+    with pytest.raises(ValueError, match=r'Expected a\(n\) list of PyTreeSpec\(s\), got .*\.'):
+        optree.treespec_from_collection([optree.treespec_leaf(), 1])
+
+    with pytest.raises(ValueError, match=r'Expected a\(n\) list of PyTreeSpec\(s\), got .*\.'):
+        optree.treespec_from_collection(
+            [
+                optree.treespec_leaf(),
+                (optree.treespec_leaf(), optree.treespec_leaf()),
+            ],
+        )
+
+    assert optree.treespec_from_collection(
+        [
+            optree.treespec_leaf(),
+            optree.treespec_tuple((optree.treespec_leaf(), optree.treespec_leaf())),
+        ],
+    ) == optree.tree_structure([0, (1, 2)])
