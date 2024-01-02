@@ -17,7 +17,7 @@
 
 import builtins
 import enum
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable
 from typing import Any
 
 from optree.typing import CustomTreeNode, FlattenFunc, MetaData, PyTree, T, U, UnflattenFunc
@@ -43,9 +43,19 @@ def flatten_with_path(
     node_is_leaf: bool = False,
     namespace: str = '',
 ) -> tuple[list[tuple[Any, ...]], list[T], PyTreeSpec]: ...
-def make_leaf(node_is_leaf: bool = False) -> PyTreeSpec: ...
-def make_none(node_is_leaf: bool = False) -> PyTreeSpec: ...
-def make_tuple(treespecs: Sequence[PyTreeSpec], node_is_leaf: bool = False) -> PyTreeSpec: ...
+def make_leaf(
+    node_is_leaf: bool = False,
+    namespace: str = '',  # unused
+) -> PyTreeSpec: ...
+def make_none(
+    node_is_leaf: bool = False,
+    namespace: str = '',  # unused
+) -> PyTreeSpec: ...
+def make_from_collection(
+    collection: CustomTreeNode[PyTreeSpec],
+    node_is_leaf: bool = False,
+    namespace: str = '',
+) -> PyTreeSpec: ...
 def is_leaf(
     obj: T,
     leaf_predicate: Callable[[T], bool] | None = None,

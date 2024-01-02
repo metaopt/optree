@@ -423,7 +423,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec
     if (!m_namespace.empty() && !other.m_namespace.empty() && m_namespace != other.m_namespace)
         [[unlikely]] {
         std::ostringstream oss{};
-        oss << "PyTreeSpecs must have the same namespace. Got "
+        oss << "PyTreeSpecs must have the same namespace, got "
             << static_cast<std::string>(py::repr(py::str(m_namespace))) << " vs. "
             << static_cast<std::string>(py::repr(py::str(other.m_namespace))) << ".";
         throw py::value_error(oss.str());
@@ -471,7 +471,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     if (!m_namespace.empty() && !inner_treespec.m_namespace.empty() &&
         m_namespace != inner_treespec.m_namespace) [[unlikely]] {
         std::ostringstream oss{};
-        oss << "PyTreeSpecs must have the same namespace. Got "
+        oss << "PyTreeSpecs must have the same namespace, got "
             << static_cast<std::string>(py::repr(py::str(m_namespace))) << " vs. "
             << static_cast<std::string>(py::repr(py::str(inner_treespec.m_namespace))) << ".";
         throw py::value_error(oss.str());
@@ -1365,73 +1365,6 @@ py::object PyTreeSpec::ToPicklable() const {
     return out;
 }
 // NOLINTEND[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
-
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeLeaf(const bool& none_is_leaf) {
-    auto out = std::make_unique<PyTreeSpec>();
-    Node node;
-    node.kind = PyTreeKind::Leaf;
-    node.arity = 0;
-    node.num_leaves = 1;
-    node.num_nodes = 1;
-    out->m_traversal.emplace_back(std::move(node));
-    out->m_none_is_leaf = none_is_leaf;
-    return out;
-}
-
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeNone(const bool& none_is_leaf) {
-    if (none_is_leaf) [[unlikely]] {
-        return MakeLeaf(none_is_leaf);
-    }
-    auto out = std::make_unique<PyTreeSpec>();
-    Node node;
-    node.kind = PyTreeKind::None;
-    node.arity = 0;
-    node.num_leaves = 0;
-    node.num_nodes = 1;
-    out->m_traversal.emplace_back(std::move(node));
-    out->m_none_is_leaf = none_is_leaf;
-    return out;
-}
-
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeTuple(
-    const std::vector<PyTreeSpec>& treespecs, const bool& none_is_leaf) {
-    std::string registry_namespace{};
-    for (const PyTreeSpec& treespec : treespecs) {
-        if (treespec.m_none_is_leaf != none_is_leaf) [[unlikely]] {
-            throw py::value_error(none_is_leaf ? "Expected treespecs with `node_is_leaf=True`."
-                                               : "Expected treespecs with `node_is_leaf=False`.");
-        }
-        if (!treespec.m_namespace.empty()) [[unlikely]] {
-            if (registry_namespace.empty()) [[likely]] {
-                registry_namespace = treespec.m_namespace;
-            } else if (registry_namespace != treespec.m_namespace) [[unlikely]] {
-                std::ostringstream oss{};
-                oss << "Expected treespecs with the same namespace. Got "
-                    << static_cast<std::string>(py::repr(py::str(registry_namespace))) << " vs. "
-                    << static_cast<std::string>(py::repr(py::str(treespec.m_namespace))) << ".";
-                throw py::value_error(oss.str());
-            }
-        }
-    }
-
-    auto out = std::make_unique<PyTreeSpec>();
-    ssize_t num_leaves = 0;
-    for (const PyTreeSpec& treespec : treespecs) {
-        std::copy(treespec.m_traversal.begin(),
-                  treespec.m_traversal.end(),
-                  std::back_inserter(out->m_traversal));
-        num_leaves += treespec.GetNumLeaves();
-    }
-    Node node;
-    node.kind = PyTreeKind::Tuple;
-    node.arity = py::ssize_t_cast(treespecs.size());
-    node.num_leaves = num_leaves;
-    node.num_nodes = py::ssize_t_cast(out->m_traversal.size()) + 1;
-    out->m_traversal.emplace_back(std::move(node));
-    out->m_none_is_leaf = none_is_leaf;
-    out->m_namespace = registry_namespace;
-    return out;
-}
 
 size_t PyTreeSpec::ThreadIndentTypeHash::operator()(
     const std::pair<const PyTreeSpec*, std::thread::id>& p) const {

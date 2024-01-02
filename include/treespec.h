@@ -151,14 +151,18 @@ class PyTreeSpec {
     static std::unique_ptr<PyTreeSpec> FromPicklable(const py::object &picklable);
 
     // Make a PyTreeSpec representing a leaf node.
-    static std::unique_ptr<PyTreeSpec> MakeLeaf(const bool &none_is_leaf);
+    static std::unique_ptr<PyTreeSpec> MakeLeaf(const bool &none_is_leaf = false,
+                                                const std::string &registry_namespace = "");
 
     // Make a PyTreeSpec representing a `None` node.
-    static std::unique_ptr<PyTreeSpec> MakeNone(const bool &none_is_leaf);
+    static std::unique_ptr<PyTreeSpec> MakeNone(const bool &none_is_leaf = false,
+                                                const std::string &registry_namespace = "");
 
-    // Make a Tuple PyTreeSpec out of a vector of PyTreeSpecs.
-    static std::unique_ptr<PyTreeSpec> MakeTuple(const std::vector<PyTreeSpec> &treespecs,
-                                                 const bool &none_is_leaf);
+    // Make a PyTreeSpec out of a collection of PyTreeSpecs.
+    static std::unique_ptr<PyTreeSpec> MakeFromCollection(
+        const py::object &object,
+        const bool &none_is_leaf = false,
+        const std::string &registry_namespace = "");
 
     // Test whether the given object is a leaf node.
     static bool ObjectIsLeaf(const py::object &object,
@@ -285,6 +289,10 @@ class PyTreeSpec {
     static void HashCombineNode(ssize_t &seed, const Node &node);  // NOLINT[runtime/references]
 
     [[nodiscard]] ssize_t HashValueImpl() const;
+
+    template <bool NoneIsLeaf>
+    static std::unique_ptr<PyTreeSpec> MakeFromCollectionImpl(const py::handle &handle,
+                                                              std::string registry_namespace);
 
     template <bool NoneIsLeaf>
     static bool ObjectIsLeafImpl(const py::handle &handle,

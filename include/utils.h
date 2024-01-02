@@ -343,8 +343,7 @@ inline void AssertExactStandardDict(const py::handle& object) {
           py::type::handle_of(object).is(PyOrderedDictTypeObject) ||
           py::type::handle_of(object).is(PyDefaultDictTypeObject))) [[unlikely]] {
         throw py::value_error(
-            "Expected an instance of "
-            "dict, collections.OrderedDict, or collections.defaultdict, "
+            "Expected an instance of dict, collections.OrderedDict, or collections.defaultdict, "
             "got " +
             static_cast<std::string>(py::repr(object)) + ".");
     }

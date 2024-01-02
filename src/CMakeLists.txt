@@ -17,6 +17,7 @@ set(
     optree_csrc
     optree.cpp
     registry.cpp
+    treespec/constructor.cpp
     treespec/treespec.cpp
     treespec/flatten.cpp
     treespec/unflatten.cpp
