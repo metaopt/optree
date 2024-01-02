@@ -25,12 +25,13 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
-#include <exception>   // std::rethrow_exception, std::current_exception
-#include <functional>  // std::hash
-#include <sstream>     // std::ostringstream
-#include <string>      // std::string
-#include <utility>     // std::move, std::pair, std::make_pair
-#include <vector>      // std::vector
+#include <exception>      // std::rethrow_exception, std::current_exception
+#include <functional>     // std::hash
+#include <sstream>        // std::ostringstream
+#include <string>         // std::string
+#include <unordered_map>  // std::unordered_map
+#include <utility>        // std::move, std::pair, std::make_pair
+#include <vector>         // std::vector
 
 namespace py = pybind11;
 using size_t = py::size_t;
@@ -49,6 +50,58 @@ inline void HashCombine(py::ssize_t& seed, const T& v) {  // NOLINT[runtime/refe
     // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
     seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
 }
+
+class TypeHash {
+ public:
+    using is_transparent = void;
+    py::size_t operator()(const py::object& t) const { return std::hash<PyObject*>{}(t.ptr()); }
+    py::size_t operator()(const py::handle& t) const { return std::hash<PyObject*>{}(t.ptr()); }
+};
+class TypeEq {
+ public:
+    using is_transparent = void;
+    bool operator()(const py::object& a, const py::object& b) const { return a.ptr() == b.ptr(); }
+    bool operator()(const py::object& a, const py::handle& b) const { return a.ptr() == b.ptr(); }
+    bool operator()(const py::handle& a, const py::object& b) const { return a.ptr() == b.ptr(); }
+    bool operator()(const py::handle& a, const py::handle& b) const { return a.ptr() == b.ptr(); }
+};
+
+class NamedTypeHash {
+ public:
+    using is_transparent = void;
+    py::size_t operator()(const std::pair<std::string, py::object>& p) const {
+        py::size_t seed = 0;
+        HashCombine(seed, p.first);
+        HashCombine(seed, p.second.ptr());
+        return seed;
+    }
+    py::size_t operator()(const std::pair<std::string, py::handle>& p) const {
+        py::size_t seed = 0;
+        HashCombine(seed, p.first);
+        HashCombine(seed, p.second.ptr());
+        return seed;
+    }
+};
+class NamedTypeEq {
+ public:
+    using is_transparent = void;
+    bool operator()(const std::pair<std::string, py::object>& a,
+                    const std::pair<std::string, py::object>& b) const {
+        return a.first == b.first && a.second.ptr() == b.second.ptr();
+    }
+    bool operator()(const std::pair<std::string, py::object>& a,
+                    const std::pair<std::string, py::handle>& b) const {
+        return a.first == b.first && a.second.ptr() == b.second.ptr();
+    }
+    bool operator()(const std::pair<std::string, py::handle>& a,
+                    const std::pair<std::string, py::object>& b) const {
+        return a.first == b.first && a.second.ptr() == b.second.ptr();
+    }
+    bool operator()(const std::pair<std::string, py::handle>& a,
+                    const std::pair<std::string, py::handle>& b) const {
+        return a.first == b.first && a.second.ptr() == b.second.ptr();
+    }
+};
 
 constexpr bool NONE_IS_LEAF = true;
 constexpr bool NONE_IS_NODE = false;
@@ -399,7 +452,22 @@ inline bool IsNamedTupleClassImpl(const py::handle& type) {
     return false;
 }
 inline bool IsNamedTupleClass(const py::handle& type) {
-    return PyType_Check(type.ptr()) && IsNamedTupleClassImpl(type);
+    if (PyType_Check(type.ptr())) [[likely]] {
+        static auto cache = std::unordered_map<py::handle, bool, TypeHash, TypeEq>{};
+        auto it = cache.find(type);
+        if (it != cache.end()) [[likely]] {
+            return it->second;
+        }
+        bool result = IsNamedTupleClassImpl(type);
+        cache.emplace(type, result);
+        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                              cache.erase(type);
+                              weakref.dec_ref();
+                          }))
+            .release();
+        return result;
+    }
+    return false;
 }
 inline bool IsNamedTupleInstance(const py::handle& object) {
     return IsNamedTupleClass(py::type::handle_of(object));
@@ -462,7 +530,22 @@ inline bool IsStructSequenceClassImpl(const py::handle& type) {
     return false;
 }
 inline bool IsStructSequenceClass(const py::handle& type) {
-    return PyType_Check(type.ptr()) && IsStructSequenceClassImpl(type);
+    if (PyType_Check(type.ptr())) [[likely]] {
+        static auto cache = std::unordered_map<py::handle, bool, TypeHash, TypeEq>{};
+        auto it = cache.find(type);
+        if (it != cache.end()) [[likely]] {
+            return it->second;
+        }
+        bool result = IsStructSequenceClassImpl(type);
+        cache.emplace(type, result);
+        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                              cache.erase(type);
+                              weakref.dec_ref();
+                          }))
+            .release();
+        return result;
+    }
+    return false;
 }
 inline bool IsStructSequenceInstance(const py::handle& object) {
     return IsStructSequenceClass(py::type::handle_of(object));

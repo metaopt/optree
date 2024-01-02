@@ -19,11 +19,10 @@ limitations under the License.
 
 #include <Python.h>
 
-#include <functional>  // std::hash
-#include <memory>      // std::make_unique
-#include <sstream>     // std::ostringstream
-#include <string>      // std::string
-#include <utility>     // std::move, std::pair, std::make_pair
+#include <memory>   // std::make_unique
+#include <sstream>  // std::ostringstream
+#include <string>   // std::string
+#include <utility>  // std::move, std::make_pair
 
 #include "include/exceptions.h"
 #include "include/utils.h"
@@ -166,61 +165,5 @@ template const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup<NONE
     const py::object&, const std::string&);
 template const PyTreeTypeRegistry::Registration* PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(
     const py::object&, const std::string&);
-
-size_t PyTreeTypeRegistry::TypeHash::operator()(const py::object& t) const {
-    return std::hash<PyObject*>{}(t.ptr());
-}
-size_t PyTreeTypeRegistry::TypeHash::operator()(const py::handle& t) const {
-    return std::hash<PyObject*>{}(t.ptr());
-}
-
-bool PyTreeTypeRegistry::TypeEq::operator()(const py::object& a, const py::object& b) const {
-    return a.ptr() == b.ptr();
-}
-bool PyTreeTypeRegistry::TypeEq::operator()(const py::object& a, const py::handle& b) const {
-    return a.ptr() == b.ptr();
-}
-bool PyTreeTypeRegistry::TypeEq::operator()(const py::handle& a, const py::object& b) const {
-    return a.ptr() == b.ptr();
-}
-bool PyTreeTypeRegistry::TypeEq::operator()(const py::handle& a, const py::handle& b) const {
-    return a.ptr() == b.ptr();
-}
-
-size_t PyTreeTypeRegistry::NamedTypeHash::operator()(
-    const std::pair<std::string, py::object>& p) const {
-    size_t seed = 0;
-    HashCombine(seed, p.first);
-    HashCombine(seed, p.second.ptr());
-    return seed;
-}
-size_t PyTreeTypeRegistry::NamedTypeHash::operator()(
-    const std::pair<std::string, py::handle>& p) const {
-    size_t seed = 0;
-    HashCombine(seed, p.first);
-    HashCombine(seed, p.second.ptr());
-    return seed;
-}
-
-bool PyTreeTypeRegistry::NamedTypeEq::operator()(
-    const std::pair<std::string, py::object>& a,
-    const std::pair<std::string, py::object>& b) const {
-    return a.first == b.first && a.second.ptr() == b.second.ptr();
-}
-bool PyTreeTypeRegistry::NamedTypeEq::operator()(
-    const std::pair<std::string, py::object>& a,
-    const std::pair<std::string, py::handle>& b) const {
-    return a.first == b.first && a.second.ptr() == b.second.ptr();
-}
-bool PyTreeTypeRegistry::NamedTypeEq::operator()(
-    const std::pair<std::string, py::handle>& a,
-    const std::pair<std::string, py::object>& b) const {
-    return a.first == b.first && a.second.ptr() == b.second.ptr();
-}
-bool PyTreeTypeRegistry::NamedTypeEq::operator()(
-    const std::pair<std::string, py::handle>& a,
-    const std::pair<std::string, py::handle>& b) const {
-    return a.first == b.first && a.second.ptr() == b.second.ptr();
-}
 
 }  // namespace optree
