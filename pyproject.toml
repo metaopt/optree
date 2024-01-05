@@ -41,7 +41,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Utilities",
 ]
-dependencies = ["typing-extensions >= 4.0.0"]
+dependencies = ["typing-extensions >= 4.9.0"]
 dynamic = ["version"]
 
 [project.urls]
@@ -260,4 +260,7 @@ inline-quotes = "single"
 ban-relative-imports = "all"
 
 [tool.pytest.ini_options]
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    "ignore:The key path API is deprecated and will be removed in a future version.:DeprecationWarning",
+]

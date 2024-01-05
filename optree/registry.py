@@ -23,6 +23,7 @@ from operator import methodcaller
 from threading import Lock
 from typing import Any, Callable, Iterable, NamedTuple, Sequence, overload
 from typing_extensions import Self  # Python 3.11+
+from typing_extensions import deprecated  # Python 3.13+
 
 from optree import _C
 from optree.typing import (
@@ -531,6 +532,7 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
         return cls(metadata, *args, **keywords)
 
 
+@deprecated('The key path API is deprecated and will be removed in a future version.')
 class KeyPathEntry(NamedTuple):
     key: Any
 
@@ -549,6 +551,7 @@ class KeyPathEntry(NamedTuple):
         raise NotImplementedError
 
 
+@deprecated('The key path API is deprecated and will be removed in a future version.')
 class KeyPath(NamedTuple):
     keys: tuple[KeyPathEntry, ...] = ()
 
@@ -569,6 +572,7 @@ class KeyPath(NamedTuple):
         return ''.join(k.pprint() for k in self.keys)
 
 
+@deprecated('The key path API is deprecated and will be removed in a future version.')
 class GetitemKeyPathEntry(KeyPathEntry):
     """The key path entry class for sequences and dictionaries."""
 
@@ -577,6 +581,7 @@ class GetitemKeyPathEntry(KeyPathEntry):
         return f'[{self.key!r}]'
 
 
+@deprecated('The key path API is deprecated and will be removed in a future version.')
 class AttributeKeyPathEntry(KeyPathEntry):
     """The key path entry class for namedtuples."""
 
@@ -585,6 +590,7 @@ class AttributeKeyPathEntry(KeyPathEntry):
         return f'.{self.key}'
 
 
+@deprecated('The key path API is deprecated and will be removed in a future version.')
 class FlattenedKeyPathEntry(KeyPathEntry):  # fallback
     """The fallback key path entry class."""
 
@@ -597,6 +603,7 @@ KeyPathHandler = Callable[[PyTree], Sequence[KeyPathEntry]]
 _KEYPATH_REGISTRY: dict[type[CustomTreeNode], KeyPathHandler] = {}
 
 
+@deprecated('The key path API is deprecated and will be removed in a future version.')
 def register_keypaths(
     cls: type[CustomTreeNode[T]],
     handler: KeyPathHandler,
