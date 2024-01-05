@@ -23,7 +23,24 @@ from operator import methodcaller
 from threading import Lock
 from typing import Any, Callable, Iterable, NamedTuple, Sequence, overload
 from typing_extensions import Self  # Python 3.11+
-from typing_extensions import deprecated  # Python 3.13+
+
+
+try:
+    from typing_extensions import deprecated  # Python 3.13+
+except ImportError:  # Python 3.7 # pragma: no cover
+
+    def deprecated(  # type: ignore[no-redef]
+        *args: Any,
+        **kwargs: Any,
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        """A decorator that marks a function or class as deprecated."""
+
+        def decorator(func_or_cls: Callable[..., Any]) -> Callable[..., Any]:
+            """A decorator that wraps the input function or class."""
+            return func_or_cls
+
+        return decorator
+
 
 from optree import _C
 from optree.typing import (
