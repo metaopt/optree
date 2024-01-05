@@ -453,9 +453,10 @@ def test_treespec_entries(tree, none_is_leaf, namespace):
             return
 
         node_type = spec.type
+        node_kind = spec.kind
         for entry, child in zip(entries, children):
             for suffix in gen_typed_path(child):
-                yield ((node_type, entry), *suffix)
+                yield ((entry, node_type, node_kind), *suffix)
 
     typed_paths = list(gen_typed_path(treespec))
     assert typed_paths == expected_typed_paths

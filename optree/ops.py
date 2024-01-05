@@ -40,6 +40,7 @@ from optree.typing import (
     MetaData,
     NamedTuple,
     PyTree,
+    PyTreeKind,
     PyTreeSpec,
     S,
     T,
@@ -268,7 +269,7 @@ def tree_flatten_with_typed_path(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> tuple[list[tuple[tuple[type[Any], Any], ...]], list[T], PyTreeSpec]:
+) -> tuple[list[tuple[tuple[Any, type[Any], PyTreeKind], ...]], list[T], PyTreeSpec]:
     """Flatten a pytree and additionally record the paths with types.
 
     See also :func:`tree_flatten`, :func:`tree_typed_paths`, and :func:`treespec_typed_paths`.
@@ -280,11 +281,11 @@ def tree_flatten_with_typed_path(
     >>> tree_flatten_with_typed_path(tree)  # doctest: +IGNORE_WHITESPACE
     (
         [
-            ((<class 'dict'>, 'a'),),
-            ((<class 'dict'>, 'b'), (<class 'tuple'>, 0)),
-            ((<class 'dict'>, 'b'), (<class 'tuple'>, 1), (<class 'list'>, 0)),
-            ((<class 'dict'>, 'b'), (<class 'tuple'>, 1), (<class 'list'>, 1)),
-            ((<class 'dict'>, 'd'),)
+            (('a', <class 'dict'>, <PyTreeKind.DICT: 5>),),
+            (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (0, <class 'tuple'>, <PyTreeKind.TUPLE: 3>)),
+            (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (0, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (1, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('d', <class 'dict'>, <PyTreeKind.DICT: 5>),)
         ],
         [1, 2, 3, 4, 5],
         PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
@@ -292,12 +293,12 @@ def tree_flatten_with_typed_path(
     >>> tree_flatten_with_typed_path(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
     (
         [
-            ((<class 'dict'>, 'a'),),
-            ((<class 'dict'>, 'b'), (<class 'tuple'>, 0)),
-            ((<class 'dict'>, 'b'), (<class 'tuple'>, 1), (<class 'list'>, 0)),
-            ((<class 'dict'>, 'b'), (<class 'tuple'>, 1), (<class 'list'>, 1)),
-            ((<class 'dict'>, 'c'),),
-            ((<class 'dict'>, 'd'),)
+            (('a', <class 'dict'>, <PyTreeKind.DICT: 5>),),
+            (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (0, <class 'tuple'>, <PyTreeKind.TUPLE: 3>)),
+            (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (0, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (1, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('c', <class 'dict'>, <PyTreeKind.DICT: 5>),),
+            (('d', <class 'dict'>, <PyTreeKind.DICT: 5>),)
         ],
         [1, 2, 3, 4, None, 5],
         PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf)
@@ -318,11 +319,11 @@ def tree_flatten_with_typed_path(
     >>> tree_flatten_with_typed_path(tree)  # doctest: +IGNORE_WHITESPACE
     (
         [
-            ((<class 'collections.OrderedDict'>, 'b'), (<class 'tuple'>, 0)),
-            ((<class 'collections.OrderedDict'>, 'b'), (<class 'tuple'>, 1), (<class 'list'>, 0)),
-            ((<class 'collections.OrderedDict'>, 'b'), (<class 'tuple'>, 1), (<class 'list'>, 1)),
-            ((<class 'collections.OrderedDict'>, 'a'),),
-            ((<class 'collections.OrderedDict'>, 'd'),)
+            (('b', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>), (0, <class 'tuple'>, <PyTreeKind.TUPLE: 3>)),
+            (('b', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (0, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('b', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (1, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('a', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>),),
+            (('d', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>),)
         ],
         [2, 3, 4, 1, 5],
         PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)]))
@@ -330,12 +331,12 @@ def tree_flatten_with_typed_path(
     >>> tree_flatten_with_typed_path(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
     (
         [
-            ((<class 'collections.OrderedDict'>, 'b'), (<class 'tuple'>, 0)),
-            ((<class 'collections.OrderedDict'>, 'b'), (<class 'tuple'>, 1), (<class 'list'>, 0)),
-            ((<class 'collections.OrderedDict'>, 'b'), (<class 'tuple'>, 1), (<class 'list'>, 1)),
-            ((<class 'collections.OrderedDict'>, 'a'),),
-            ((<class 'collections.OrderedDict'>, 'c'),),
-            ((<class 'collections.OrderedDict'>, 'd'),)
+            (('b', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>), (0, <class 'tuple'>, <PyTreeKind.TUPLE: 3>)),
+            (('b', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (0, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('b', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (1, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('a', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>),),
+            (('c', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>),),
+            (('d', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>),)
         ],
         [2, 3, 4, 1, None, 5],
         PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf)
@@ -355,10 +356,10 @@ def tree_flatten_with_typed_path(
 
     Returns:
         A triple ``(typed_paths, leaves, treespec)``. The first element is a list of tuples of
-        ``(type, entry)`` to the leaf values, while each entry is the index or keys. The second
+        ``(entry, type, kind)`` to the leaf values, while each entry is the index or keys. The second
         element is a list of leaf values and the last element is a treespec representing the
         structure of the pytree.
-    """
+    """  # pylint: disable=line-too-long
     leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
     return treespec.typed_paths(), leaves, treespec
 
@@ -514,7 +515,7 @@ def tree_typed_paths(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> list[tuple[tuple[type[Any], Any], ...]]:
+) -> list[tuple[tuple[Any, type[Any], PyTreeKind], ...]]:
     """Get the typed path entries to the leaves of a pytree.
 
     See also :func:`tree_flatten`, :func:`tree_flatten_with_typed_path`, and
@@ -523,20 +524,20 @@ def tree_typed_paths(
     >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
     >>> tree_typed_paths(tree)  # doctest: +IGNORE_WHITESPACE
     [
-        ((<class 'dict'>, 'a'),),
-        ((<class 'dict'>, 'b'), (<class 'tuple'>, 0)),
-        ((<class 'dict'>, 'b'), (<class 'tuple'>, 1), (<class 'list'>, 0)),
-        ((<class 'dict'>, 'b'), (<class 'tuple'>, 1), (<class 'list'>, 1)),
-        ((<class 'dict'>, 'd'),)
+        (('a', <class 'dict'>, <PyTreeKind.DICT: 5>),),
+        (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (0, <class 'tuple'>, <PyTreeKind.TUPLE: 3>)),
+        (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (0, <class 'list'>, <PyTreeKind.LIST: 4>)),
+        (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (1, <class 'list'>, <PyTreeKind.LIST: 4>)),
+        (('d', <class 'dict'>, <PyTreeKind.DICT: 5>),)
     ]
     >>> tree_typed_paths(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
     [
-        ((<class 'dict'>, 'a'),),
-        ((<class 'dict'>, 'b'), (<class 'tuple'>, 0)),
-        ((<class 'dict'>, 'b'), (<class 'tuple'>, 1), (<class 'list'>, 0)),
-        ((<class 'dict'>, 'b'), (<class 'tuple'>, 1), (<class 'list'>, 1)),
-        ((<class 'dict'>, 'c'),),
-        ((<class 'dict'>, 'd'),)
+        (('a', <class 'dict'>, <PyTreeKind.DICT: 5>),),
+        (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (0, <class 'tuple'>, <PyTreeKind.TUPLE: 3>)),
+        (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (0, <class 'list'>, <PyTreeKind.LIST: 4>)),
+        (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (1, <class 'list'>, <PyTreeKind.LIST: 4>)),
+        (('c', <class 'dict'>, <PyTreeKind.DICT: 5>),),
+        (('d', <class 'dict'>, <PyTreeKind.DICT: 5>),)
     ]
     >>> tree_typed_paths(1)
     [()]
@@ -558,9 +559,9 @@ def tree_typed_paths(
             (default: :const:`''`, i.e., the global namespace)
 
     Returns:
-        A list of tuples of ``(type, entry)`` to the leaf values, while each entry is the index or
+        A list of tuples of ``(entry, type, kind)`` to the leaf values, while each entry is the index or
         keys.
-    """
+    """  # pylint: disable=line-too-long
     return _C.flatten(tree, is_leaf, none_is_leaf, namespace)[1].typed_paths()
 
 
@@ -1954,8 +1955,10 @@ def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
     return treespec.paths()
 
 
-def treespec_typed_paths(treespec: PyTreeSpec) -> list[tuple[tuple[type[Any], Any], ...]]:
-    """Return a list of tuples of ``(type, entry)`` for the leaves of a treespec.
+def treespec_typed_paths(
+    treespec: PyTreeSpec,
+) -> list[tuple[tuple[Any, type[Any], PyTreeKind], ...]]:
+    """Return a list of tuples of ``(entry, type, kind)`` for the leaves of a treespec.
 
     See also :func:`tree_flatten_with_typed_path`, :func:`tree_typed_paths` and
     :meth:`PyTreeSpec.typed_paths`.

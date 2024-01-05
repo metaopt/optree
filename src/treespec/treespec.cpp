@@ -607,11 +607,12 @@ ssize_t PyTreeSpec::TypedPathsImpl(Span& typed_paths,
     EXPECT_GE(pos + 1, root.num_nodes, "PyTreeSpec::TypedPaths() walked off start of array.");
 
     ssize_t cur = pos - 1;
-    py::object node_type = GetType(root);
+    const py::object node_type = GetType(root);
+    const PyTreeKind& node_kind = root.kind;
     // NOLINTNEXTLINE[misc-no-recursion]
-    auto recurse = [this, &node_type, &typed_paths, &stack, &depth](
+    auto recurse = [this, &node_type, &node_kind, &typed_paths, &stack, &depth](
                        const ssize_t& cur, const py::handle& entry) -> ssize_t {
-        stack.emplace_back(py::make_tuple(node_type, entry));
+        stack.emplace_back(py::make_tuple(entry, node_type, node_kind));
         const ssize_t num_nodes = TypedPathsImpl(typed_paths, stack, cur, depth + 1);
         stack.pop_back();
         return num_nodes;
