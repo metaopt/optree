@@ -560,6 +560,16 @@ inline void AssertExactStructSequence(const py::handle& object) {
                               PyRepr(object) + ".");
     }
 }
+inline py::tuple StructSequenceGetFieldsImpl(const py::handle& type) {
+    const auto n_sequence_fields = getattr(type, Py_Get_ID(n_sequence_fields)).cast<ssize_t>();
+    auto* members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
+    py::tuple fields{n_sequence_fields};
+    for (ssize_t i = 0; i < n_sequence_fields; ++i) {
+        // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+        SET_ITEM<py::tuple>(fields, i, py::str(members[i].name));
+    }
+    return fields;
+}
 inline py::tuple StructSequenceGetFields(const py::handle& object) {
     py::handle type;
     if (PyType_Check(object.ptr())) [[unlikely]] {
@@ -575,13 +585,23 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
         }
     }
 
-    const auto n_sequence_fields = getattr(type, Py_Get_ID(n_sequence_fields)).cast<ssize_t>();
-    auto* members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
-    py::tuple fields{n_sequence_fields};
-    for (ssize_t i = 0; i < n_sequence_fields; ++i) {
-        // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
-        SET_ITEM<py::tuple>(fields, i, py::str(members[i].name));
+    static auto cache = std::unordered_map<py::handle, py::tuple, TypeHash, TypeEq>{};
+    auto it = cache.find(type);
+    if (it != cache.end()) [[likely]] {
+        return it->second;
     }
+    py::tuple fields = StructSequenceGetFieldsImpl(type);
+    cache.emplace(type, fields);
+    fields.inc_ref();
+    (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                          auto it = cache.find(type);
+                          if (it != cache.end()) [[likely]] {
+                              it->second.dec_ref();
+                              cache.erase(it);
+                          }
+                          weakref.dec_ref();
+                      }))
+        .release();
     return fields;
 }
 

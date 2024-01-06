@@ -123,14 +123,78 @@ def test_is_namedtuple_cache():
         pass
 
     refcount = getrefcount(Foo)
-    weakref_refcount = weakref.getweakrefcount(Foo)
+    weakrefcount = weakref.getweakrefcount(Foo)
     assert not optree.is_namedtuple(Foo)
     new_refcount = getrefcount(Foo)
-    new_weakref_refcount = weakref.getweakrefcount(Foo)
+    new_weakrefcount = weakref.getweakrefcount(Foo)
     assert new_refcount == refcount
-    assert new_weakref_refcount == weakref_refcount + 1
+    assert new_weakrefcount == weakrefcount + 1
     assert not optree.is_namedtuple_class(Foo)
-    assert weakref.getweakrefcount(Foo) == new_weakref_refcount
+    assert weakref.getweakrefcount(Foo) == new_weakrefcount
+
+    assert called_with == ''
+    wr = weakref.getweakrefs(Foo)[0]
+    assert wr() is Foo
+    del Foo
+    getrefcount()
+    assert called_with == 'Foo'
+    assert wr() is None
+
+
+def test_namedtuple_fields_cache():
+    Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
+
+    refcount = getrefcount(Point)
+    weakrefcount = weakref.getweakrefcount(Point)
+    assert optree.namedtuple_fields(Point) == ('x', 'y')
+    new_refcount = getrefcount(Point)
+    new_weakrefcount = weakref.getweakrefcount(Point)
+    assert new_refcount == refcount
+    assert new_weakrefcount == weakrefcount + 1
+    assert optree.namedtuple_fields(Point(0, 1)) == ('x', 'y')
+    assert weakref.getweakrefcount(Point) == new_weakrefcount
+    wr = weakref.getweakrefs(Point)[0]
+    assert wr() is Point
+
+    fields = optree.namedtuple_fields(Point)
+    assert optree.namedtuple_fields(Point) is fields
+    assert optree.namedtuple_fields(Point(0, 1)) is fields
+    new_fields = ('a', 'b')
+    Point._fields = new_fields
+    assert optree.namedtuple_fields(Point) is new_fields
+    assert optree.namedtuple_fields(Point(0, 1)) is new_fields
+
+    del Point
+    getrefcount()
+    assert wr() is None
+
+    with pytest.raises(
+        TypeError,
+        match=r"Expected a collections.namedtuple type, got <class '.*'>\.",
+    ):
+        assert optree.namedtuple_fields(time.struct_time)
+
+    called_with = ''
+
+    class FooMeta(type):
+        def __del__(cls):
+            nonlocal called_with
+            called_with = cls.__name__
+
+    class Foo(metaclass=FooMeta):
+        pass
+
+    refcount = getrefcount(Foo)
+    weakrefcount = weakref.getweakrefcount(Foo)
+    with pytest.raises(
+        TypeError,
+        match=r"Expected a collections.namedtuple type, got <class '.*'>\.",
+    ):
+        optree.namedtuple_fields(Foo)
+    new_refcount = getrefcount(Foo)
+    new_weakrefcount = weakref.getweakrefcount(Foo)
+    assert new_refcount == refcount
+    assert new_weakrefcount == weakrefcount + 1
 
     assert called_with == ''
     wr = weakref.getweakrefs(Foo)[0]
@@ -386,3 +450,64 @@ def test_structseq_fields():
         match=r"Expected a PyStructSequence type, got <class '.*\.FakeStructSequence'>\.",
     ):
         optree.structseq_fields(FakeStructSequence)
+
+
+def test_structseq_fields_cache():
+    Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
+
+    refcount = getrefcount(Point)
+    weakrefcount = weakref.getweakrefcount(Point)
+    with pytest.raises(TypeError, match=r"Expected a PyStructSequence type, got <class '.*'>\."):
+        optree.structseq_fields(Point)
+    new_refcount = getrefcount(Point)
+    new_weakrefcount = weakref.getweakrefcount(Point)
+    assert new_refcount == refcount
+    assert new_weakrefcount == weakrefcount + 1
+    with pytest.raises(
+        TypeError,
+        match=re.escape('Expected an instance of PyStructSequence type, got Point(x=0, y=1).'),
+    ):
+        optree.structseq_fields(Point(0, 1))
+    assert weakref.getweakrefcount(Point) == new_weakrefcount
+    wr = weakref.getweakrefs(Point)[0]
+    assert wr() is Point
+    del Point
+    getrefcount()
+    assert wr() is None
+
+    refcount = getrefcount(time.struct_time)
+    weakrefcount = weakref.getweakrefcount(time.struct_time)
+    assert optree.structseq_fields(time.struct_time) is optree.structseq_fields(time.struct_time)
+    new_refcount = getrefcount(time.struct_time)
+    new_weakrefcount = weakref.getweakrefcount(time.struct_time)
+    assert new_refcount == refcount
+    assert new_weakrefcount <= weakrefcount + 2
+    assert optree.structseq_fields(time.gmtime()) is optree.structseq_fields(time.struct_time)
+    assert weakref.getweakrefcount(time.struct_time) == new_weakrefcount
+
+    called_with = ''
+
+    class FooMeta(type):
+        def __del__(cls):
+            nonlocal called_with
+            called_with = cls.__name__
+
+    class Foo(metaclass=FooMeta):
+        pass
+
+    refcount = getrefcount(Foo)
+    weakrefcount = weakref.getweakrefcount(Foo)
+    with pytest.raises(TypeError, match=r"Expected a PyStructSequence type, got <class '.*'>\."):
+        optree.structseq_fields(Foo)
+    new_refcount = getrefcount(Foo)
+    new_weakrefcount = weakref.getweakrefcount(Foo)
+    assert new_refcount == refcount
+    assert new_weakrefcount == weakrefcount + 1
+
+    assert called_with == ''
+    wr = weakref.getweakrefs(Foo)[0]
+    assert wr() is Foo
+    del Foo
+    getrefcount()
+    assert called_with == 'Foo'
+    assert wr() is None
