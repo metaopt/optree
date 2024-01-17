@@ -75,9 +75,12 @@ from optree.registry import (
     AttributeKeyPathEntry,
     GetitemKeyPathEntry,
     Partial,
+    PyTreeAccessor,
+    PyTreePathEntry,
     register_keypaths,
     register_pytree_node,
     register_pytree_node_class,
+    register_pytree_path_handler,
 )
 from optree.typing import (
     CustomTreeNode,
@@ -161,6 +164,9 @@ __all__ = [
     'register_keypaths',
     'AttributeKeyPathEntry',
     'GetitemKeyPathEntry',
+    'PyTreeAccessor',
+    'PyTreePathEntry',
+    'register_pytree_path_handler',
     # Typing
     'PyTreeSpec',
     'PyTreeDef',

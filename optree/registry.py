@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import builtins
+import dataclasses
 import functools
 import inspect
 from collections import OrderedDict, defaultdict, deque, namedtuple
@@ -49,11 +51,14 @@ from optree.typing import (
     CustomTreeNode,
     FlattenFunc,
     PyTree,
+    PyTreeKind,
     T,
     UnflattenFunc,
     is_namedtuple_class,
     is_structseq_class,
+    namedtuple_fields,
     structseq,
+    structseq_fields,
 )
 from optree.utils import safe_zip, total_order_sorted, unzip2
 
@@ -68,9 +73,12 @@ __all__ = [
 ]
 
 
-class PyTreeNodeRegistryEntry(NamedTuple):
+@dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, slots=True)
+class PyTreeNodeRegistryEntry:
+    type: builtins.type
     flatten_func: FlattenFunc
     unflatten_func: UnflattenFunc
+    namespace: str = ''
 
 
 # pylint: disable-next=missing-class-docstring,too-few-public-methods
@@ -213,7 +221,12 @@ def register_pytree_node(
     with __REGISTRY_LOCK:
         _C.register_node(cls, flatten_func, unflatten_func, namespace)
         CustomTreeNode.register(cls)  # pylint: disable=no-member
-        _NODETYPE_REGISTRY[registration_key] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
+        _NODETYPE_REGISTRY[registration_key] = PyTreeNodeRegistryEntry(
+            cls,
+            flatten_func,
+            unflatten_func,
+            namespace=namespace,
+        )
     return cls
 
 
@@ -409,15 +422,15 @@ def _structseq_unflatten(cls: type[structseq[T]], children: Iterable[T]) -> stru
 
 # pylint: disable=all
 _NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {  # fmt: off
-    type(None): PyTreeNodeRegistryEntry(_none_flatten, _none_unflatten),  # type: ignore[arg-type]
-    tuple: PyTreeNodeRegistryEntry(_tuple_flatten, _tuple_unflatten),  # type: ignore[arg-type]
-    list: PyTreeNodeRegistryEntry(_list_flatten, _list_unflatten),  # type: ignore[arg-type]
-    dict: PyTreeNodeRegistryEntry(_dict_flatten, _dict_unflatten),  # type: ignore[arg-type]
-    namedtuple: PyTreeNodeRegistryEntry(_namedtuple_flatten, _namedtuple_unflatten),  # type: ignore[arg-type,dict-item] # noqa: PYI024
-    OrderedDict: PyTreeNodeRegistryEntry(_ordereddict_flatten, _ordereddict_unflatten),  # type: ignore[arg-type]
-    defaultdict: PyTreeNodeRegistryEntry(_defaultdict_flatten, _defaultdict_unflatten),  # type: ignore[arg-type]
-    deque: PyTreeNodeRegistryEntry(_deque_flatten, _deque_unflatten),  # type: ignore[arg-type]
-    structseq: PyTreeNodeRegistryEntry(_structseq_flatten, _structseq_unflatten),  # type: ignore[arg-type]
+    type(None): PyTreeNodeRegistryEntry(type(None), _none_flatten, _none_unflatten),  # type: ignore[arg-type]
+    tuple: PyTreeNodeRegistryEntry(tuple, _tuple_flatten, _tuple_unflatten),  # type: ignore[arg-type]
+    list: PyTreeNodeRegistryEntry(list, _list_flatten, _list_unflatten),  # type: ignore[arg-type]
+    dict: PyTreeNodeRegistryEntry(dict, _dict_flatten, _dict_unflatten),  # type: ignore[arg-type]
+    namedtuple: PyTreeNodeRegistryEntry(namedtuple, _namedtuple_flatten, _namedtuple_unflatten),  # type: ignore[arg-type,dict-item] # noqa: PYI024
+    OrderedDict: PyTreeNodeRegistryEntry(OrderedDict, _ordereddict_flatten, _ordereddict_unflatten),  # type: ignore[arg-type]
+    defaultdict: PyTreeNodeRegistryEntry(defaultdict, _defaultdict_flatten, _defaultdict_unflatten),  # type: ignore[arg-type]
+    deque: PyTreeNodeRegistryEntry(deque, _deque_flatten, _deque_unflatten),  # type: ignore[arg-type]
+    structseq: PyTreeNodeRegistryEntry(structseq, _structseq_flatten, _structseq_unflatten),  # type: ignore[arg-type]
 }
 # pylint: enable=all
 
@@ -547,6 +560,114 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
         """Unflatten the children and auxiliary data into a :class:`Partial` instance."""
         args, keywords = children
         return cls(metadata, *args, **keywords)
+
+
+@dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, slots=True)
+class PyTreePathEntry:
+    """A path entry class for sequences and dictionaries."""
+
+    entry: Any
+    type: builtins.type
+    kind: PyTreeKind
+
+    def __post_init__(self) -> Self:
+        """Post-initialize the path entry."""
+        if self.kind is PyTreeKind.LEAF:
+            raise ValueError('Cannot create a leaf path entry.')
+        if self.kind is PyTreeKind.NONE:
+            raise ValueError('Cannot create a path entry for None.')
+
+    def __call__(self, obj: PyTree) -> Any:
+        """Get the child object."""
+        return obj[self.entry]
+
+    def __add__(self, other: object) -> PyTreeAccessor:
+        if isinstance(other, PyTreePathEntry):
+            return PyTreeAccessor((self, other))
+        if isinstance(other, PyTreeAccessor):
+            return PyTreeAccessor((self, *other))
+        return NotImplemented
+
+    def pprint(self, root: str = '') -> str:
+        """Pretty name of the path entry."""
+        if self.kind is PyTreeKind.CUSTOM:
+            return f'{root}[<flat index {self.key!r}>]'
+        if self.kind is PyTreeKind.STRUCTSEQUENCE:
+            return f'{root}.{structseq_fields(self.type)[self.entry]}'
+        if self.kind is PyTreeKind.NAMEDTUPLE:
+            return f'{root}.{namedtuple_fields(self.type)[self.entry]}'
+        return f'{root}[{self.entry!r}]'
+
+
+class PyTreeAccessor(tuple):
+    """A path class for sequences and dictionaries."""
+
+    def __new__(cls, path: Iterable[PyTreePathEntry]) -> Self:
+        """Create a new path instance."""
+        if not isinstance(path, (list, tuple)):
+            path = tuple(path)
+        if not all(isinstance(p, PyTreePathEntry) for p in path):
+            raise TypeError(f'Expected a path of PathEntry, got {path}.')
+        return super().__new__(cls, path)
+
+    def __call__(self, obj: PyTree) -> Any:
+        """Get the child object."""
+        for entry in self:
+            obj = entry(obj)
+        return obj
+
+    def __getitem__(self, index: int | slice) -> PyTreePathEntry | PyTreeAccessor:
+        """Get the child path entry or a subpath."""
+        if isinstance(index, slice):
+            return PyTreeAccessor(super().__getitem__(index))
+        return super().__getitem__(index)
+
+    def __add__(self, other: object) -> PyTreeAccessor:
+        if isinstance(other, PyTreePathEntry):
+            return PyTreeAccessor((*self, other))
+        if isinstance(other, PyTreeAccessor):
+            return PyTreeAccessor((*self, *other))
+        return NotImplemented
+
+    def __mul__(self, value: int) -> PyTreeAccessor:
+        return PyTreeAccessor(super().__mul__(value))
+
+    def __rmul__(self, value: int) -> PyTreeAccessor:
+        return PyTreeAccessor(super().__rmul__(value))
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, PyTreeAccessor) and super().__eq__(other)
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}({self.pprint()}, {super().__repr__()})'
+
+    def __str__(self) -> str:
+        return f'{self.__class__.__name__}({self.pprint()}'
+
+    def pprint(self, root: str = '*') -> str:
+        """Pretty name of the path."""
+        return root + ''.join(p.pprint() for p in self)
+
+
+PyTreePathHandler = Callable[[PyTree], Sequence[PyTreePathEntry]]
+_NODE_PATH_REGISTRY: dict[type[CustomTreeNode], PyTreePathHandler] = {}
+
+
+def register_pytree_path_handler(
+    cls: type[CustomTreeNode[T]],
+    handler: PyTreePathHandler,
+) -> PyTreePathHandler:
+    """Register a pytree path handler for a custom pytree node type."""
+    if not inspect.isclass(cls):
+        raise TypeError(f'Expected a class, got {cls}.')
+    if cls in _NODE_PATH_REGISTRY:
+        raise ValueError(f'Key path handler for {cls} has already been registered.')
+
+    _NODE_PATH_REGISTRY[cls] = handler
+    return handler
+
+
+####################################################################################################
 
 
 @deprecated('The key path API is deprecated and will be removed in a future version.')

@@ -31,7 +31,9 @@ from optree.registry import (
     FlattenedKeyPathEntry,
     KeyPath,
     KeyPathEntry,
+    PyTreeAccessor,
     PyTreeNodeRegistryEntry,
+    PyTreePathEntry,
     register_keypaths,
     register_pytree_node,
 )
@@ -361,7 +363,14 @@ def tree_flatten_with_typed_path(
         structure of the pytree.
     """  # pylint: disable=line-too-long
     leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
-    return treespec.typed_paths(), leaves, treespec
+    return (
+        [
+            PyTreeAccessor(itertools.starmap(PyTreePathEntry, typed_path))
+            for typed_path in treespec.typed_paths()
+        ],
+        leaves,
+        treespec,
+    )
 
 
 def tree_unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
