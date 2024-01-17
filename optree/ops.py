@@ -363,6 +363,17 @@ def tree_flatten_with_typed_path(
         structure of the pytree.
     """  # pylint: disable=line-too-long
     leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
+    return treespec.typed_paths(), leaves, treespec
+
+
+def tree_flatten_with_accessor(
+    tree: PyTree[T],
+    is_leaf: Callable[[T], bool] | None = None,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> tuple[list[PyTreeAccessor], list[T], PyTreeSpec]:
+    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
     return (
         [
             PyTreeAccessor(itertools.starmap(PyTreePathEntry, typed_path))
