@@ -103,7 +103,7 @@ class HashablePartial:  # pragma: no cover
 
 try:  # noqa: SIM105 # pragma: no cover
     # pylint: disable=ungrouped-imports
-    from jax._src.util import HashablePartial  # type: ignore[assignment] # noqa: F811
+    from jax._src.util import HashablePartial  # type: ignore[assignment] # noqa: F811,RUF100
 except ImportError:  # pragma: no cover
     pass
 
