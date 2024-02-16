@@ -16,9 +16,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Iterable, Sequence, overload
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Sequence, overload
 
-from optree.typing import S, T, U
+
+if TYPE_CHECKING:
+    from optree.typing import S, T, U
 
 
 def total_order_sorted(
