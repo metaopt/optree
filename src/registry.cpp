@@ -233,6 +233,39 @@ template PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup<NONE_IS_
 template PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(
     const py::object&, const std::string&);
 
+template <bool NoneIsLeaf>
+/*static*/ PyTreeKind PyTreeTypeRegistry::GetKind(
+    const py::handle& handle,
+    PyTreeTypeRegistry::RegistrationPtr& custom,  // NOLINT[runtime/references]
+    const std::string& registry_namespace) {
+    RegistrationPtr registration = Lookup<NoneIsLeaf>(py::type::of(handle), registry_namespace);
+    if (registration) [[likely]] {
+        if (registration->kind == PyTreeKind::Custom) [[unlikely]] {
+            custom = registration;
+        } else [[likely]] {
+            custom = nullptr;
+        }
+        return registration->kind;
+    }
+    custom = nullptr;
+    if (IsStructSequenceInstance(handle)) [[unlikely]] {
+        return PyTreeKind::StructSequence;
+    }
+    if (IsNamedTupleInstance(handle)) [[unlikely]] {
+        return PyTreeKind::NamedTuple;
+    }
+    return PyTreeKind::Leaf;
+}
+
+template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_NODE>(
+    const py::handle&,
+    PyTreeTypeRegistry::RegistrationPtr& custom,  // NOLINT[runtime/references]
+    const std::string&);
+template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
+    const py::handle&,
+    PyTreeTypeRegistry::RegistrationPtr& custom,  // NOLINT[runtime/references]
+    const std::string&);
+
 size_t PyTreeTypeRegistry::TypeHash::operator()(const py::object& t) const {
     return std::hash<PyObject*>{}(t.ptr());
 }

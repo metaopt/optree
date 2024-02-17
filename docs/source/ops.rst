@@ -26,6 +26,7 @@ Tree Manipulation Functions
     tree_flatten
     tree_flatten_with_path
     tree_unflatten
+    tree_iter
     tree_leaves
     tree_structure
     tree_paths
@@ -51,6 +52,7 @@ Tree Manipulation Functions
 .. autofunction:: tree_flatten
 .. autofunction:: tree_flatten_with_path
 .. autofunction:: tree_unflatten
+.. autofunction:: tree_iter
 .. autofunction:: tree_leaves
 .. autofunction:: tree_structure
 .. autofunction:: tree_paths

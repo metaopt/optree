@@ -25,7 +25,7 @@ limitations under the License.
 #include <thread>         // std::thread::id // NOLINT[build/c++11]
 #include <tuple>          // std::tuple
 #include <unordered_set>  // std::unordered_set
-#include <utility>        // std::pair
+#include <utility>        // std::pair, std::make_pair
 #include <vector>         // std::vector
 
 #include "include/registry.h"
@@ -39,6 +39,28 @@ using ssize_t = py::ssize_t;
 
 // The maximum depth of a pytree.
 constexpr ssize_t MAX_RECURSION_DEPTH = 2000;
+
+// Test whether the given object is a leaf node.
+bool IsLeaf(const py::object &object,
+            const std::optional<py::function> &leaf_predicate,
+            const bool &none_is_leaf = false,
+            const std::string &registry_namespace = "");
+
+// Test whether all elements in the given iterable are all leaves.
+bool AllLeaves(const py::iterable &iterable,
+               const std::optional<py::function> &leaf_predicate,
+               const bool &none_is_leaf = false,
+               const std::string &registry_namespace = "");
+
+template <bool NoneIsLeaf>
+bool IsLeafImpl(const py::handle &handle,
+                const std::optional<py::function> &leaf_predicate,
+                const std::string &registry_namespace);
+
+template <bool NoneIsLeaf>
+bool AllLeavesImpl(const py::iterable &iterable,
+                   const std::optional<py::function> &leaf_predicate,
+                   const std::string &registry_namespace);
 
 // A PyTreeSpec describes the tree structure of a PyTree. A PyTree is a tree of Python values, where
 // the interior nodes are tuples, lists, dictionaries, or user-defined containers, and the leaves
@@ -164,18 +186,6 @@ class PyTreeSpec {
         const bool &none_is_leaf = false,
         const std::string &registry_namespace = "");
 
-    // Test whether the given object is a leaf node.
-    static bool ObjectIsLeaf(const py::object &object,
-                             const std::optional<py::function> &leaf_predicate,
-                             const bool &none_is_leaf = false,
-                             const std::string &registry_namespace = "");
-
-    // Test whether all elements in the given iterable are all leaves.
-    static bool AllLeaves(const py::iterable &iterable,
-                          const std::optional<py::function> &leaf_predicate,
-                          const bool &none_is_leaf = false,
-                          const std::string &registry_namespace = "");
-
  private:
     using RegistrationPtr = PyTreeTypeRegistry::RegistrationPtr;
 
@@ -231,12 +241,6 @@ class PyTreeSpec {
     static py::object MakeNode(const Node &node,
                                const py::object *children,
                                const size_t &num_children);
-
-    // Compute the node kind of a given Python object.
-    template <bool NoneIsLeaf>
-    static PyTreeKind GetKind(const py::handle &handle,
-                              RegistrationPtr &custom,  // NOLINT[runtime/references]
-                              const std::string &registry_namespace);
 
     // Recursive helper used to implement Flatten().
     bool FlattenInto(const py::handle &handle,
@@ -296,16 +300,6 @@ class PyTreeSpec {
     static std::unique_ptr<PyTreeSpec> MakeFromCollectionImpl(const py::handle &handle,
                                                               std::string registry_namespace);
 
-    template <bool NoneIsLeaf>
-    static bool ObjectIsLeafImpl(const py::handle &handle,
-                                 const std::optional<py::function> &leaf_predicate,
-                                 const std::string &registry_namespace);
-
-    template <bool NoneIsLeaf>
-    static bool AllLeavesImpl(const py::iterable &iterable,
-                              const std::optional<py::function> &leaf_predicate,
-                              const std::string &registry_namespace);
-
     class ThreadIndentTypeHash {
      public:
         using is_transparent = void;
@@ -321,6 +315,43 @@ class PyTreeSpec {
     inline static std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
                                      ThreadIndentTypeHash>
         sm_hash_running{};
+};
+
+class PyTreeIter {
+ public:
+    PyTreeIter(const py::object &tree,
+               const std::optional<py::function> &leaf_predicate,
+               bool none_is_leaf,
+               std::string registry_namespace)
+        : m_agenda({std::make_pair(tree, 0)}),
+          m_leaf_predicate(leaf_predicate),
+          m_none_is_leaf(none_is_leaf),
+          m_namespace(std::move(registry_namespace)){};
+
+    PyTreeIter() = delete;
+
+    ~PyTreeIter() = default;
+
+    PyTreeIter(const PyTreeIter &) = delete;
+
+    PyTreeIter operator=(const PyTreeIter &) = delete;
+
+    PyTreeIter(PyTreeIter &&) = default;
+
+    PyTreeIter &operator=(PyTreeIter &&) = default;
+
+    [[nodiscard]] PyTreeIter &Iter() { return *this; }
+
+    [[nodiscard]] py::object Next();
+
+ private:
+    std::vector<std::pair<py::object, ssize_t>> m_agenda;
+    std::optional<py::function> m_leaf_predicate;
+    bool m_none_is_leaf;
+    std::string m_namespace;
+
+    template <bool NoneIsLeaf>
+    [[nodiscard]] py::object NextImpl();
 };
 
 }  // namespace optree

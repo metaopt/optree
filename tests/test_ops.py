@@ -130,6 +130,9 @@ def test_flatten_dict_order():
     assert optree.tree_leaves({'a': 1, 2: 2}) == [2, 1]
     assert optree.tree_leaves({'a': 1, 2: 2, 3.0: 3}) == [3, 2, 1]
     assert optree.tree_leaves({2: 2, 3.0: 3}) == [2, 3]
+    assert list(optree.tree_iter({'a': 1, 2: 2})) == [2, 1]
+    assert list(optree.tree_iter({'a': 1, 2: 2, 3.0: 3})) == [3, 2, 1]
+    assert list(optree.tree_iter({2: 2, 3.0: 3})) == [2, 3]
 
     sorted_treespec = optree.tree_structure({'a': 1, 'b': 2, 'c': {'e': 3, 'f': None, 'g': 4}})
 
@@ -162,6 +165,20 @@ def test_tree_unflatten_mismatch_number_of_leaves(tree, none_is_leaf, namespace)
             optree.tree_unflatten(treespec, leaves[:-1])
     with pytest.raises(ValueError, match='Too many leaves for PyTreeSpec.'):
         optree.tree_unflatten(treespec, (*leaves, 0))
+
+
+@parametrize(
+    tree=list(TREES + LEAVES),
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+)
+def test_tree_iter(tree, none_is_leaf, namespace):
+    leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+    it = optree.tree_iter(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+    assert iter(it) is it
+    assert list(it) == leaves
+    with pytest.raises(StopIteration):
+        next(it)
 
 
 def test_walk():
@@ -270,7 +287,9 @@ def test_flatten_up_to_none_is_leaf():
 @parametrize(
     leaves_fn=[
         optree.tree_leaves,
+        lambda tree, is_leaf: list(optree.tree_iter(tree, is_leaf)),
         lambda tree, is_leaf: optree.tree_flatten(tree, is_leaf)[0],
+        lambda tree, is_leaf: optree.tree_flatten_with_path(tree, is_leaf)[1],
     ],
 )
 def test_flatten_is_leaf(leaves_fn):
@@ -297,6 +316,7 @@ def test_flatten_is_leaf(leaves_fn):
     structure_fn=[
         optree.tree_structure,
         lambda tree, is_leaf: optree.tree_flatten(tree, is_leaf)[1],
+        lambda tree, is_leaf: optree.tree_flatten_with_path(tree, is_leaf)[2],
     ],
 )
 def test_structure_is_leaf(structure_fn):

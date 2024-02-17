@@ -88,6 +88,12 @@ class PyTreeTypeRegistry {
     template <bool NoneIsLeaf>
     static RegistrationPtr Lookup(const py::object &cls, const std::string &registry_namespace);
 
+    // Compute the node kind of a given Python object.
+    template <bool NoneIsLeaf>
+    static PyTreeKind GetKind(const py::handle &handle,
+                              RegistrationPtr &custom,  // NOLINT[runtime/references]
+                              const std::string &registry_namespace);
+
  private:
     template <bool NoneIsLeaf>
     static PyTreeTypeRegistry *Singleton();
