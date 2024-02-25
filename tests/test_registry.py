@@ -226,8 +226,8 @@ def test_register_pytree_node_namedtuple():
     ):
         optree.register_pytree_node(
             mytuple1,
-            lambda t: (reversed(t), None, None),
-            lambda _, t: mytuple1(*reversed(t)),
+            lambda t: (list(t)[1::] + list(t)[:1], None, None),
+            lambda _, t: mytuple1(*(list(t)[-1:] + list(t)[:-1])),
             namespace='mytuple',
         )
 
@@ -235,6 +235,22 @@ def test_register_pytree_node_namedtuple():
     leaves1, treespec1 = optree.tree_flatten(tree1)
     assert leaves1 == [3, 2, 1]
     assert str(treespec1) == 'PyTreeSpec(CustomTreeNode(mytuple1[None], [*, *, *]))'
+    assert tree1 == optree.tree_unflatten(treespec1, leaves1)
+
+    leaves1, treespec1 = optree.tree_flatten(tree1, namespace='undefined')
+    assert leaves1 == [3, 2, 1]
+    assert (
+        str(treespec1)
+        == "PyTreeSpec(CustomTreeNode(mytuple1[None], [*, *, *]), namespace='undefined')"
+    )
+    assert tree1 == optree.tree_unflatten(treespec1, leaves1)
+
+    leaves1, treespec1 = optree.tree_flatten(tree1, namespace='mytuple')
+    assert leaves1 == [2, 3, 1]
+    assert (
+        str(treespec1)
+        == "PyTreeSpec(CustomTreeNode(mytuple1[None], [*, *, *]), namespace='mytuple')"
+    )
     assert tree1 == optree.tree_unflatten(treespec1, leaves1)
 
     mytuple2 = namedtuple('mytuple2', ['a', 'b', 'c'])  # noqa: PYI024

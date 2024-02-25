@@ -217,17 +217,15 @@ template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup(
     const py::object& cls, const std::string& registry_namespace) {
     PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
-    auto it = registry->m_registrations.find(cls);
-    if (it != registry->m_registrations.end()) [[likely]] {
-        return it->second;
-    }
-    if (registry_namespace.empty()) [[likely]] {
-        return nullptr;
-    } else [[unlikely]] {
+    if (!registry_namespace.empty()) [[unlikely]] {
         auto named_it =
             registry->m_named_registrations.find(std::make_pair(registry_namespace, cls));
-        return named_it != registry->m_named_registrations.end() ? named_it->second : nullptr;
+        if (named_it != registry->m_named_registrations.end()) [[likely]] {
+            return named_it->second;
+        }
     }
+    auto it = registry->m_registrations.find(cls);
+    return it != registry->m_registrations.end() ? it->second : nullptr;
 }
 
 template PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(
