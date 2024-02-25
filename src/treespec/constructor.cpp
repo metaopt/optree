@@ -207,8 +207,7 @@ template <bool NoneIsLeaf>
             const ssize_t num_out = GET_SIZE<py::tuple>(out);
             if (num_out != 2 && num_out != 3) [[unlikely]] {
                 std::ostringstream oss{};
-                oss << "PyTree custom flatten function for type "
-                    << static_cast<std::string>(py::repr(node.custom->type))
+                oss << "PyTree custom flatten function for type " << PyRepr(node.custom->type)
                     << " should return a 2- or 3-tuple, got " << num_out << ".";
                 throw std::runtime_error(oss.str());
             }
@@ -228,7 +227,7 @@ template <bool NoneIsLeaf>
                     if (num_entries != node.arity) [[unlikely]] {
                         std::ostringstream oss{};
                         oss << "PyTree custom flatten function for type "
-                            << static_cast<std::string>(py::repr(node.custom->type))
+                            << PyRepr(node.custom->type)
                             << " returned inconsistent number of children (" << node.arity
                             << ") and number of entries (" << num_entries << ").";
                         throw std::runtime_error(oss.str());

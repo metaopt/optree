@@ -59,7 +59,7 @@ namespace optree {
             return "deque";
         case PyTreeKind::Custom:
             EXPECT_NE(node.custom, nullptr, "The custom registration is null.");
-            return static_cast<std::string>(py::repr(node.custom->type));
+            return PyRepr(node.custom->type);
         default:
             INTERNAL_ERROR();
     }
@@ -1336,8 +1336,7 @@ py::object PyTreeSpec::ToPicklable() const {
             }
             if (node.custom == nullptr) [[unlikely]] {
                 std::ostringstream oss{};
-                oss << "Unknown custom type in pickled PyTreeSpec: "
-                    << static_cast<std::string>(py::repr(t[4]));
+                oss << "Unknown custom type in pickled PyTreeSpec: " << PyRepr(t[4]);
                 if (!registry_namespace.empty()) [[likely]] {
                     oss << " in namespace " << PyRepr(registry_namespace);
                 } else [[unlikely]] {

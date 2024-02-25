@@ -516,11 +516,10 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
                 // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
                 auto sort_key_fn = py::cpp_function([](const py::object& o) {
                     py::handle t = py::type::handle_of(o);
-                    py::str qualname{static_cast<std::string>(
-                                         py::getattr(t, Py_Get_ID(__module__)).cast<py::str>()) +
-                                     "." +
-                                     static_cast<std::string>(
-                                         py::getattr(t, Py_Get_ID(__qualname__)).cast<py::str>())};
+                    py::str qualname{
+                        static_cast<std::string>(py::str(py::getattr(t, Py_Get_ID(__module__)))) +
+                        "." +
+                        static_cast<std::string>(py::str(py::getattr(t, Py_Get_ID(__qualname__))))};
                     return py::make_tuple(qualname, o);
                 });
                 py::getattr(list, Py_Get_ID(sort))(py::arg("key") = sort_key_fn);

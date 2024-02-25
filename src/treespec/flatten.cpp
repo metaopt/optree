@@ -137,8 +137,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
-                    oss << "PyTree custom flatten function for type "
-                        << static_cast<std::string>(py::repr(node.custom->type))
+                    oss << "PyTree custom flatten function for type " << PyRepr(node.custom->type)
                         << " should return a 2- or 3-tuple, got " << num_out << ".";
                     throw std::runtime_error(oss.str());
                 }
@@ -157,7 +156,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                         if (num_entries != node.arity) [[unlikely]] {
                             std::ostringstream oss{};
                             oss << "PyTree custom flatten function for type "
-                                << static_cast<std::string>(py::repr(node.custom->type))
+                                << PyRepr(node.custom->type)
                                 << " returned inconsistent number of children (" << node.arity
                                 << ") and number of entries (" << num_entries << ").";
                             throw std::runtime_error(oss.str());
@@ -330,8 +329,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
-                    oss << "PyTree custom flatten function for type "
-                        << static_cast<std::string>(py::repr(node.custom->type))
+                    oss << "PyTree custom flatten function for type " << PyRepr(node.custom->type)
                         << " should return a 2- or 3-tuple, got " << num_out << ".";
                     throw std::runtime_error(oss.str());
                 }
@@ -357,7 +355,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                         if (num_children >= node.arity) [[unlikely]] {
                             throw std::runtime_error(
                                 "PyTree custom flatten function for type " +
-                                static_cast<std::string>(py::repr(node.custom->type)) +
+                                PyRepr(node.custom->type) +
                                 " returned inconsistent number of children and number of entries.");
                         }
                         recurse(child,
@@ -366,7 +364,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                     if (num_children != node.arity) [[unlikely]] {
                         std::ostringstream oss{};
                         oss << "PyTree custom flatten function for type "
-                            << static_cast<std::string>(py::repr(node.custom->type))
+                            << PyRepr(node.custom->type)
                             << " returned inconsistent number of children (" << num_children
                             << ") and number of entries (" << node.arity << ").";
                         throw std::runtime_error(oss.str());
@@ -541,8 +539,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 if (py::type::handle_of(object).not_equal(node.node_data)) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "namedtuple type mismatch; expected type: " << PyRepr(node.node_data)
-                        << ", got type: "
-                        << static_cast<std::string>(py::repr(py::type::handle_of(object)))
+                        << ", got type: " << PyRepr(py::type::handle_of(object))
                         << "; tuple: " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
@@ -581,8 +578,8 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 if (py::type::handle_of(object).not_equal(node.node_data)) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "PyStructSequence type mismatch; expected type: "
-                        << PyRepr(node.node_data) << ", got type: "
-                        << static_cast<std::string>(py::repr(py::type::handle_of(object)))
+                        << PyRepr(node.node_data)
+                        << ", got type: " << PyRepr(py::type::handle_of(object))
                         << "; tuple: " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
@@ -603,9 +600,8 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 }
                 if (registration != node.custom) [[unlikely]] {
                     std::ostringstream oss{};
-                    oss << "Custom node type mismatch; expected type: "
-                        << static_cast<std::string>(py::repr(node.custom->type)) << ", got type: "
-                        << static_cast<std::string>(py::repr(py::type::handle_of(object)))
+                    oss << "Custom node type mismatch; expected type: " << PyRepr(node.custom->type)
+                        << ", got type: " << PyRepr(py::type::handle_of(object))
                         << "; value: " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
@@ -613,17 +609,15 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
-                    oss << "PyTree custom flatten function for type "
-                        << static_cast<std::string>(py::repr(node.custom->type))
+                    oss << "PyTree custom flatten function for type " << PyRepr(node.custom->type)
                         << " should return a 2- or 3-tuple, got " << num_out << ".";
                     throw std::runtime_error(oss.str());
                 }
-                if (node.node_data.not_equal(GET_ITEM_BORROW<py::tuple>(out, 1))) [[unlikely]] {
+                py::object node_data = GET_ITEM_BORROW<py::tuple>(out, 1);
+                if (node.node_data.not_equal(node_data)) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "Mismatch custom node data; expected: " << PyRepr(node.node_data)
-                        << ", got: "
-                        << static_cast<std::string>(py::repr(GET_ITEM_BORROW<py::tuple>(out, 1)))
-                        << "; value: " << PyRepr(object) << ".";
+                        << ", got: " << PyRepr(node_data) << "; value: " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
                 ssize_t arity = 0;
