@@ -20,9 +20,10 @@ limitations under the License.
 #include <pybind11/pybind11.h>
 
 #include <cstdint>        // std::uint8_t
-#include <memory>         // std::unique_ptr
+#include <memory>         // std::shared_ptr
 #include <string>         // std::string
 #include <unordered_map>  // std::unordered_map
+#include <unordered_set>  // std::unordered_set
 #include <utility>        // std::pair
 
 namespace optree {
@@ -72,6 +73,8 @@ class PyTreeTypeRegistry {
         py::function unflatten_func{};
     };
 
+    using RegistrationPtr = std::shared_ptr<const Registration>;
+
     // Registers a new custom type. Objects of `cls` will be treated as container node types in
     // PyTrees.
     static void Register(const py::object &cls,
@@ -79,9 +82,11 @@ class PyTreeTypeRegistry {
                          const py::function &unflatten_func,
                          const std::string &registry_namespace = "");
 
+    static void Unregister(const py::object &cls, const std::string &registry_namespace = "");
+
     // Finds the custom type registration for `type`. Returns nullptr if none exists.
     template <bool NoneIsLeaf>
-    static const Registration *Lookup(const py::object &cls, const std::string &registry_namespace);
+    static RegistrationPtr Lookup(const py::object &cls, const std::string &registry_namespace);
 
  private:
     template <bool NoneIsLeaf>
@@ -92,6 +97,10 @@ class PyTreeTypeRegistry {
                              const py::function &flatten_func,
                              const py::function &unflatten_func,
                              const std::string &registry_namespace);
+
+    template <bool NoneIsLeaf>
+    static RegistrationPtr UnregisterImpl(const py::object &cls,
+                                          const std::string &registry_namespace);
 
     class TypeHash {
      public:
@@ -127,10 +136,10 @@ class PyTreeTypeRegistry {
                         const std::pair<std::string, py::handle> &b) const;
     };
 
-    std::unordered_map<py::object, std::unique_ptr<Registration>, TypeHash, TypeEq>
-        m_registrations{};
+    inline static std::unordered_set<py::object, TypeHash, TypeEq> sm_builtins_types{};
+    std::unordered_map<py::object, RegistrationPtr, TypeHash, TypeEq> m_registrations{};
     std::unordered_map<std::pair<std::string, py::object>,
-                       std::unique_ptr<Registration>,
+                       RegistrationPtr,
                        NamedTypeHash,
                        NamedTypeEq>
         m_named_registrations{};

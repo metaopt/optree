@@ -158,7 +158,7 @@ def test_register_pytree_node_with_invalid_namespace():
 def test_register_pytree_node_duplicate_builtin_namespace():
     with pytest.raises(
         ValueError,
-        match=r"PyTree type <class 'NoneType'> is already registered in the global namespace.",
+        match=r"PyTree type <class 'NoneType'> is a built-in type and cannot be re-registered.",
     ):
         optree.register_pytree_node(
             type(None),
@@ -169,7 +169,7 @@ def test_register_pytree_node_duplicate_builtin_namespace():
 
     with pytest.raises(
         ValueError,
-        match=r"PyTree type <class 'NoneType'> is already registered in the global namespace.",
+        match=r"PyTree type <class 'NoneType'> is a built-in type and cannot be re-registered.",
     ):
         optree.register_pytree_node(
             type(None),
@@ -180,7 +180,7 @@ def test_register_pytree_node_duplicate_builtin_namespace():
 
     with pytest.raises(
         ValueError,
-        match=r"PyTree type <class 'list'> is already registered in the global namespace.",
+        match=r"PyTree type <class 'list'> is a built-in type and cannot be re-registered.",
     ):
         optree.register_pytree_node(
             list,
@@ -190,7 +190,7 @@ def test_register_pytree_node_duplicate_builtin_namespace():
         )
     with pytest.raises(
         ValueError,
-        match=r"PyTree type <class 'list'> is already registered in the global namespace.",
+        match=r"PyTree type <class 'list'> is a built-in type and cannot be re-registered.",
     ):
         optree.register_pytree_node(
             list,
@@ -216,10 +216,12 @@ def test_register_pytree_node_namedtuple():
             lambda _, t: mytuple1(*reversed(t)),
             namespace=optree.registry.__GLOBAL_NAMESPACE,
         )
-    with pytest.raises(
-        ValueError,
+    with pytest.warns(
+        UserWarning,
         match=re.escape(
-            r"PyTree type <class 'test_registry.mytuple1'> is already registered in the global namespace.",
+            r"PyTree type <class 'test_registry.mytuple1'> is a subclass of `collections.namedtuple`, "
+            r'which is already registered in the global namespace. '
+            r"Override it with custom flatten/unflatten functions in namespace 'mytuple'.",
         ),
     ):
         optree.register_pytree_node(
@@ -412,3 +414,7 @@ def test_pytree_node_registry_with_init_subclass():
         str(treespec)
         == "PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyAnotherDict[['f', 'd']], [*, *]), *, (*, *)]), namespace='mydict')"
     )
+
+
+def test_unregister_pytree_node_with_no_namespace():
+    pass

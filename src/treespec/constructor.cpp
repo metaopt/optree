@@ -72,7 +72,7 @@ template <bool NoneIsLeaf>
     auto treespecs = reserved_vector<PyTreeSpec>(4);
 
     Node node;
-    node.kind = GetKind<NoneIsLeaf>(handle, &node.custom, registry_namespace);
+    node.kind = GetKind<NoneIsLeaf>(handle, node.custom, registry_namespace);
 
     auto verify_children = [&handle, &node](const std::vector<py::object>& children,
                                             std::vector<PyTreeSpec>& treespecs,

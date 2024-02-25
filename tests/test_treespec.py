@@ -18,6 +18,9 @@
 import itertools
 import pickle
 import re
+import subprocess
+import sys
+import textwrap
 from collections import OrderedDict, UserList, defaultdict, deque
 
 import pytest
@@ -254,10 +257,49 @@ def test_treespec_pickle_round_trip(tree, none_is_leaf, namespace):
     else:
         actual = pickle.loads(pickle.dumps(expected))
         assert actual == expected
-        if expected.type is dict or expected.type is defaultdict:
+        if expected.type in {dict, OrderedDict, defaultdict}:
             assert list(optree.tree_unflatten(actual, range(len(actual)))) == list(
                 optree.tree_unflatten(expected, range(len(expected))),
             )
+
+
+class Foo:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+
+def test_treespec_pickle_missing_registration():
+    optree.register_pytree_node(
+        Foo,
+        lambda foo: ((foo.x, foo.y), None),
+        lambda _, children: Foo(children[0], children[1]),
+        namespace='foo',
+    )
+
+    treespec = optree.tree_structure(Foo(0, 1), namespace='foo')
+    serialized = pickle.dumps(treespec)
+
+    error = subprocess.check_output(
+        [
+            sys.executable,
+            '-c',
+            textwrap.dedent(
+                f"""
+                import pickle
+                import sys
+
+                try:
+                    treespec = pickle.loads({serialized!r})
+                except Exception as ex:
+                    print(ex)
+                else:
+                    sys.exit(1)
+                """,
+            ),
+        ],
+    ).decode('utf-8')
+    assert 'Unknown custom type in pickled PyTreeSpec' in error
 
 
 @parametrize(

@@ -77,6 +77,7 @@ from optree.registry import (
     register_keypaths,
     register_pytree_node,
     register_pytree_node_class,
+    unregister_pytree_node,
 )
 from optree.typing import (
     CustomTreeNode,
@@ -155,6 +156,7 @@ __all__ = [
     # Registry
     'register_pytree_node',
     'register_pytree_node_class',
+    'unregister_pytree_node',
     'Partial',
     'register_keypaths',
     'AttributeKeyPathEntry',
