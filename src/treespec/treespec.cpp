@@ -54,12 +54,12 @@ namespace optree {
             return "defaultdict";
         case PyTreeKind::NamedTuple:
         case PyTreeKind::StructSequence:
-            return static_cast<std::string>(py::repr(node.node_data));
+            return PyRepr(node.node_data);
         case PyTreeKind::Deque:
             return "deque";
         case PyTreeKind::Custom:
             EXPECT_NE(node.custom, nullptr, "The custom registration is null.");
-            return static_cast<std::string>(py::repr(node.custom->type));
+            return PyRepr(node.custom->type);
         default:
             INTERNAL_ERROR();
     }
@@ -299,18 +299,14 @@ template PyTreeKind PyTreeSpec::GetKind<NONE_IS_LEAF>(const py::handle&,
                 auto [missing_keys, extra_keys] = DictKeysDifference(expected_keys, dict);
                 std::ostringstream key_difference_sstream{};
                 if (GET_SIZE<py::list>(missing_keys) != 0) [[likely]] {
-                    key_difference_sstream << ", missing key(s): "
-                                           << static_cast<std::string>(py::repr(missing_keys));
+                    key_difference_sstream << ", missing key(s): " << PyRepr(missing_keys);
                 }
                 if (GET_SIZE<py::list>(extra_keys) != 0) [[likely]] {
-                    key_difference_sstream << ", extra key(s): "
-                                           << static_cast<std::string>(py::repr(extra_keys));
+                    key_difference_sstream << ", extra key(s): " << PyRepr(extra_keys);
                 }
                 std::ostringstream oss{};
-                oss << "dictionary key mismatch; expected key(s): "
-                    << static_cast<std::string>(py::repr(expected_keys))
-                    << ", got key(s): " + static_cast<std::string>(py::repr(other_keys))
-                    << key_difference_sstream.str() << ".";
+                oss << "dictionary key mismatch; expected key(s): " << PyRepr(expected_keys)
+                    << ", got key(s): " + PyRepr(other_keys) << key_difference_sstream.str() << ".";
                 throw py::value_error(oss.str());
             }
 
@@ -385,9 +381,8 @@ template PyTreeKind PyTreeSpec::GetKind<NONE_IS_LEAF>(const py::handle&,
             }
             if (root.node_data.not_equal(other_root.node_data)) [[unlikely]] {
                 std::ostringstream oss{};
-                oss << "Mismatch custom node data; expected: "
-                    << static_cast<std::string>(py::repr(root.node_data))
-                    << ", got: " << static_cast<std::string>(py::repr(other_root.node_data)) << ".";
+                oss << "Mismatch custom node data; expected: " << PyRepr(root.node_data)
+                    << ", got: " << PyRepr(other_root.node_data) << ".";
                 throw py::value_error(oss.str());
             }
             break;
@@ -423,9 +418,8 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec
     if (!m_namespace.empty() && !other.m_namespace.empty() && m_namespace != other.m_namespace)
         [[unlikely]] {
         std::ostringstream oss{};
-        oss << "PyTreeSpecs must have the same namespace, got "
-            << static_cast<std::string>(py::repr(py::str(m_namespace))) << " vs. "
-            << static_cast<std::string>(py::repr(py::str(other.m_namespace))) << ".";
+        oss << "PyTreeSpecs must have the same namespace, got " << PyRepr(m_namespace) << " vs. "
+            << PyRepr(other.m_namespace) << ".";
         throw py::value_error(oss.str());
     }
 
@@ -471,9 +465,8 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     if (!m_namespace.empty() && !inner_treespec.m_namespace.empty() &&
         m_namespace != inner_treespec.m_namespace) [[unlikely]] {
         std::ostringstream oss{};
-        oss << "PyTreeSpecs must have the same namespace, got "
-            << static_cast<std::string>(py::repr(py::str(m_namespace))) << " vs. "
-            << static_cast<std::string>(py::repr(py::str(inner_treespec.m_namespace))) << ".";
+        oss << "PyTreeSpecs must have the same namespace, got " << PyRepr(m_namespace) << " vs. "
+            << PyRepr(inner_treespec.m_namespace) << ".";
         throw py::value_error(oss.str());
     }
 
@@ -1007,7 +1000,7 @@ std::string PyTreeSpec::ToStringImpl() const {
                     if (!first) [[likely]] {
                         sstream << ", ";
                     }
-                    sstream << static_cast<std::string>(py::repr(key)) << ": " << *child_iter;
+                    sstream << PyRepr(key) << ": " << *child_iter;
                     ++child_iter;
                     first = false;
                 }
@@ -1050,8 +1043,7 @@ std::string PyTreeSpec::ToStringImpl() const {
                     if (!first) [[likely]] {
                         sstream << ", ";
                     }
-                    sstream << "(" << static_cast<std::string>(py::repr(key)) << ", " << *child_iter
-                            << ")";
+                    sstream << "(" << PyRepr(key) << ", " << *child_iter << ")";
                     ++child_iter;
                     first = false;
                 }
@@ -1068,15 +1060,14 @@ std::string PyTreeSpec::ToStringImpl() const {
                 EXPECT_EQ(GET_SIZE<py::list>(keys),
                           node.arity,
                           "Number of keys and entries does not match.");
-                sstream << "defaultdict(" << static_cast<std::string>(py::repr(default_factory))
-                        << ", {";
+                sstream << "defaultdict(" << PyRepr(default_factory) << ", {";
                 bool first = true;
                 auto child_iter = agenda.end() - node.arity;
                 for (const py::handle& key : keys) {
                     if (!first) [[likely]] {
                         sstream << ", ";
                     }
-                    sstream << static_cast<std::string>(py::repr(key)) << ": " << *child_iter;
+                    sstream << PyRepr(key) << ": " << *child_iter;
                     ++child_iter;
                     first = false;
                 }
@@ -1118,7 +1109,7 @@ std::string PyTreeSpec::ToStringImpl() const {
                     py::str(py::getattr(node.custom->type, Py_Get_ID(__name__))));
                 sstream << "CustomTreeNode(" << kind << "[";
                 if (node.node_data) [[likely]] {
-                    sstream << static_cast<std::string>(py::repr(node.node_data));
+                    sstream << PyRepr(node.node_data);
                 }
                 sstream << "], [" << children << "])";
                 break;
@@ -1139,7 +1130,7 @@ std::string PyTreeSpec::ToStringImpl() const {
         oss << ", NoneIsLeaf";
     }
     if (!m_namespace.empty()) [[unlikely]] {
-        oss << ", namespace=" << static_cast<std::string>(py::repr(py::str(m_namespace)));
+        oss << ", namespace=" << PyRepr(m_namespace);
     }
     oss << ")";
     return oss.str();
@@ -1345,11 +1336,9 @@ py::object PyTreeSpec::ToPicklable() const {
             }
             if (node.custom == nullptr) [[unlikely]] {
                 std::ostringstream oss{};
-                oss << "Unknown custom type in pickled PyTreeSpec: "
-                    << static_cast<std::string>(py::repr(t[4]));
+                oss << "Unknown custom type in pickled PyTreeSpec: " << PyRepr(t[4]);
                 if (!registry_namespace.empty()) [[likely]] {
-                    oss << " in namespace "
-                        << static_cast<std::string>(py::repr(py::str(registry_namespace)));
+                    oss << " in namespace " << PyRepr(registry_namespace);
                 } else [[unlikely]] {
                     oss << " in the global namespace";
                 }

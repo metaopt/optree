@@ -122,7 +122,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             }
 
             case PyTreeKind::Deque: {
-                auto list = handle.cast<py::list>();
+                auto list = py::cast<py::list>(handle);
                 node.arity = GET_SIZE<py::list>(list);
                 node.node_data = py::getattr(handle, Py_Get_ID(maxlen));
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -137,8 +137,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
-                    oss << "PyTree custom flatten function for type "
-                        << static_cast<std::string>(py::repr(node.custom->type))
+                    oss << "PyTree custom flatten function for type " << PyRepr(node.custom->type)
                         << " should return a 2- or 3-tuple, got " << num_out << ".";
                     throw std::runtime_error(oss.str());
                 }
@@ -157,7 +156,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                         if (num_entries != node.arity) [[unlikely]] {
                             std::ostringstream oss{};
                             oss << "PyTree custom flatten function for type "
-                                << static_cast<std::string>(py::repr(node.custom->type))
+                                << PyRepr(node.custom->type)
                                 << " returned inconsistent number of children (" << node.arity
                                 << ") and number of entries (" << num_entries << ").";
                             throw std::runtime_error(oss.str());
@@ -315,7 +314,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             }
 
             case PyTreeKind::Deque: {
-                auto list = handle.cast<py::list>();
+                auto list = py::cast<py::list>(handle);
                 node.arity = GET_SIZE<py::list>(list);
                 node.node_data = py::getattr(handle, Py_Get_ID(maxlen));
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -330,8 +329,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
-                    oss << "PyTree custom flatten function for type "
-                        << static_cast<std::string>(py::repr(node.custom->type))
+                    oss << "PyTree custom flatten function for type " << PyRepr(node.custom->type)
                         << " should return a 2- or 3-tuple, got " << num_out << ".";
                     throw std::runtime_error(oss.str());
                 }
@@ -357,7 +355,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                         if (num_children >= node.arity) [[unlikely]] {
                             throw std::runtime_error(
                                 "PyTree custom flatten function for type " +
-                                static_cast<std::string>(py::repr(node.custom->type)) +
+                                PyRepr(node.custom->type) +
                                 " returned inconsistent number of children and number of entries.");
                         }
                         recurse(child,
@@ -366,7 +364,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                     if (num_children != node.arity) [[unlikely]] {
                         std::ostringstream oss{};
                         oss << "PyTree custom flatten function for type "
-                            << static_cast<std::string>(py::repr(node.custom->type))
+                            << PyRepr(node.custom->type)
                             << " returned inconsistent number of children (" << num_children
                             << ") and number of entries (" << node.arity << ").";
                         throw std::runtime_error(oss.str());
@@ -431,7 +429,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
         if (it == m_traversal.rend()) [[unlikely]] {
             std::ostringstream oss{};
             oss << "Tree structures did not match; expected: " << ToString()
-                << ", got: " << static_cast<std::string>(py::repr(full_tree)) << ".";
+                << ", got: " << PyRepr(full_tree) << ".";
             throw py::value_error(oss.str());
         }
         const Node& node = *it;
@@ -455,8 +453,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 }
                 if (!object.is_none()) [[likely]] {
                     std::ostringstream oss{};
-                    oss << "Expected None, got " << static_cast<std::string>(py::repr(object))
-                        << ".";
+                    oss << "Expected None, got " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
                 break;
@@ -468,8 +465,8 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 if (GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "tuple arity mismatch; expected: " << node.arity
-                        << ", got: " << GET_SIZE<py::tuple>(tuple)
-                        << "; tuple: " << static_cast<std::string>(py::repr(object)) << ".";
+                        << ", got: " << GET_SIZE<py::tuple>(tuple) << "; tuple: " << PyRepr(object)
+                        << ".";
                     throw py::value_error(oss.str());
                 }
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -484,8 +481,8 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 if (GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "list arity mismatch; expected: " << node.arity
-                        << ", got: " << GET_SIZE<py::list>(list)
-                        << "; list: " << static_cast<std::string>(py::repr(object)) << ".";
+                        << ", got: " << GET_SIZE<py::list>(list) << "; list: " << PyRepr(object)
+                        << ".";
                     throw py::value_error(oss.str());
                 }
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -512,19 +509,15 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                     auto [missing_keys, extra_keys] = DictKeysDifference(expected_keys, dict);
                     std::ostringstream key_difference_sstream{};
                     if (GET_SIZE<py::list>(missing_keys) != 0) [[likely]] {
-                        key_difference_sstream << ", missing key(s): "
-                                               << static_cast<std::string>(py::repr(missing_keys));
+                        key_difference_sstream << ", missing key(s): " << PyRepr(missing_keys);
                     }
                     if (GET_SIZE<py::list>(extra_keys) != 0) [[likely]] {
-                        key_difference_sstream << ", extra key(s): "
-                                               << static_cast<std::string>(py::repr(extra_keys));
+                        key_difference_sstream << ", extra key(s): " << PyRepr(extra_keys);
                     }
                     std::ostringstream oss{};
-                    oss << "dictionary key mismatch; expected key(s): "
-                        << static_cast<std::string>(py::repr(expected_keys))
-                        << ", got key(s): " + static_cast<std::string>(py::repr(keys))
-                        << key_difference_sstream.str() << "; " << dict_type_name << ": "
-                        << static_cast<std::string>(py::repr(object)) << ".";
+                    oss << "dictionary key mismatch; expected key(s): " << PyRepr(expected_keys)
+                        << ", got key(s): " + PyRepr(keys) << key_difference_sstream.str() << "; "
+                        << dict_type_name << ": " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
                 for (const py::handle& key : expected_keys) {
@@ -539,16 +532,15 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 if (GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "namedtuple arity mismatch; expected: " << node.arity
-                        << ", got: " << GET_SIZE<py::tuple>(tuple)
-                        << "; tuple: " << static_cast<std::string>(py::repr(object)) << ".";
+                        << ", got: " << GET_SIZE<py::tuple>(tuple) << "; tuple: " << PyRepr(object)
+                        << ".";
                     throw py::value_error(oss.str());
                 }
                 if (py::type::handle_of(object).not_equal(node.node_data)) [[unlikely]] {
                     std::ostringstream oss{};
-                    oss << "namedtuple type mismatch; expected type: "
-                        << static_cast<std::string>(py::repr(node.node_data)) << ", got type: "
-                        << static_cast<std::string>(py::repr(py::type::handle_of(object)))
-                        << "; tuple: " << static_cast<std::string>(py::repr(object)) << ".";
+                    oss << "namedtuple type mismatch; expected type: " << PyRepr(node.node_data)
+                        << ", got type: " << PyRepr(py::type::handle_of(object))
+                        << "; tuple: " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -563,8 +555,8 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 if (GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "deque arity mismatch; expected: " << node.arity
-                        << ", got: " << GET_SIZE<py::list>(list)
-                        << "; deque: " << static_cast<std::string>(py::repr(object)) << ".";
+                        << ", got: " << GET_SIZE<py::list>(list) << "; deque: " << PyRepr(object)
+                        << ".";
                     throw py::value_error(oss.str());
                 }
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -579,16 +571,16 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 if (GET_SIZE<py::tuple>(tuple) != node.arity) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "PyStructSequence arity mismatch; expected: " << node.arity
-                        << ", got: " << GET_SIZE<py::tuple>(tuple)
-                        << "; tuple: " << static_cast<std::string>(py::repr(object)) << ".";
+                        << ", got: " << GET_SIZE<py::tuple>(tuple) << "; tuple: " << PyRepr(object)
+                        << ".";
                     throw py::value_error(oss.str());
                 }
                 if (py::type::handle_of(object).not_equal(node.node_data)) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "PyStructSequence type mismatch; expected type: "
-                        << static_cast<std::string>(py::repr(node.node_data)) << ", got type: "
-                        << static_cast<std::string>(py::repr(py::type::handle_of(object)))
-                        << "; tuple: " << static_cast<std::string>(py::repr(object)) << ".";
+                        << PyRepr(node.node_data)
+                        << ", got type: " << PyRepr(py::type::handle_of(object))
+                        << "; tuple: " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -608,27 +600,24 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 }
                 if (registration != node.custom) [[unlikely]] {
                     std::ostringstream oss{};
-                    oss << "Custom node type mismatch; expected type: "
-                        << static_cast<std::string>(py::repr(node.custom->type)) << ", got type: "
-                        << static_cast<std::string>(py::repr(py::type::handle_of(object)))
-                        << "; value: " << static_cast<std::string>(py::repr(object)) << ".";
+                    oss << "Custom node type mismatch; expected type: " << PyRepr(node.custom->type)
+                        << ", got type: " << PyRepr(py::type::handle_of(object))
+                        << "; value: " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
                 py::tuple out = py::cast<py::tuple>(node.custom->flatten_func(object));
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
-                    oss << "PyTree custom flatten function for type "
-                        << static_cast<std::string>(py::repr(node.custom->type))
+                    oss << "PyTree custom flatten function for type " << PyRepr(node.custom->type)
                         << " should return a 2- or 3-tuple, got " << num_out << ".";
                     throw std::runtime_error(oss.str());
                 }
-                if (node.node_data.not_equal(GET_ITEM_BORROW<py::tuple>(out, 1))) [[unlikely]] {
+                py::object node_data = GET_ITEM_BORROW<py::tuple>(out, 1);
+                if (node.node_data.not_equal(node_data)) [[unlikely]] {
                     std::ostringstream oss{};
-                    oss << "Mismatch custom node data; expected: "
-                        << static_cast<std::string>(py::repr(node.node_data)) << ", got: "
-                        << static_cast<std::string>(py::repr(GET_ITEM_BORROW<py::tuple>(out, 1)))
-                        << "; value: " << static_cast<std::string>(py::repr(object)) << ".";
+                    oss << "Mismatch custom node data; expected: " << PyRepr(node.node_data)
+                        << ", got: " << PyRepr(node_data) << "; value: " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
                 ssize_t arity = 0;
@@ -640,8 +629,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 if (arity != node.arity) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "Custom type arity mismatch; expected: " << node.arity
-                        << ", got: " << arity
-                        << "; value: " << static_cast<std::string>(py::repr(object)) << ".";
+                        << ", got: " << arity << "; value: " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
                 break;
@@ -654,7 +642,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
     if (it != m_traversal.rend() || leaf != -1) [[unlikely]] {
         std::ostringstream oss{};
         oss << "Tree structures did not match; expected: " << ToString()
-            << ", got: " << static_cast<std::string>(py::repr(full_tree)) << ".";
+            << ", got: " << PyRepr(full_tree) << ".";
         throw py::value_error(oss.str());
     }
     return leaves;
