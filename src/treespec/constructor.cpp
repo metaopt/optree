@@ -81,7 +81,7 @@ template <bool NoneIsLeaf>
             if (!py::isinstance<PyTreeSpec>(child)) {
                 std::ostringstream oss{};
                 oss << "Expected a(n) " << NodeKindToString(node) << " of PyTreeSpec(s), got "
-                    << static_cast<std::string>(py::repr(handle)) << ".";
+                    << PyRepr(handle) << ".";
                 throw py::value_error(oss.str());
             }
             treespecs.emplace_back(py::cast<PyTreeSpec>(child));
@@ -100,9 +100,8 @@ template <bool NoneIsLeaf>
                 } else if (common_registry_namespace != treespec.m_namespace) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "Expected treespecs with the same namespace, got "
-                        << static_cast<std::string>(py::repr(py::str(common_registry_namespace)))
-                        << " vs. "
-                        << static_cast<std::string>(py::repr(py::str(treespec.m_namespace))) << ".";
+                        << PyRepr(common_registry_namespace) << " vs. "
+                        << PyRepr(treespec.m_namespace) << ".";
                     throw py::value_error(oss.str());
                 }
             }
@@ -112,10 +111,8 @@ template <bool NoneIsLeaf>
                 register_namespace = common_registry_namespace;
             } else if (register_namespace != common_registry_namespace) [[unlikely]] {
                 std::ostringstream oss{};
-                oss << "Expected treespec(s) with namespace "
-                    << static_cast<std::string>(py::repr(py::str(register_namespace))) << ", got "
-                    << static_cast<std::string>(py::repr(py::str(common_registry_namespace)))
-                    << ".";
+                oss << "Expected treespec(s) with namespace " << PyRepr(register_namespace)
+                    << ", got " << PyRepr(common_registry_namespace) << ".";
                 throw py::value_error(oss.str());
             }
         } else if (node.kind != PyTreeKind::Custom) [[likely]] {
@@ -195,7 +192,7 @@ template <bool NoneIsLeaf>
         }
 
         case PyTreeKind::Deque: {
-            auto list = handle.cast<py::list>();
+            auto list = py::cast<py::list>(handle);
             node.arity = GET_SIZE<py::list>(list);
             node.node_data = py::getattr(handle, Py_Get_ID(maxlen));
             for (ssize_t i = 0; i < node.arity; ++i) {
