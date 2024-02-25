@@ -299,7 +299,17 @@ def test_treespec_pickle_missing_registration():
             ),
         ],
     ).decode('utf-8')
-    assert 'Unknown custom type in pickled PyTreeSpec' in error
+    assert re.match(
+        r"Unknown custom type in pickled PyTreeSpec: <class '.*'> in namespace 'foo'\.",
+        string=error,
+    )
+
+    optree.unregister_pytree_node(Foo, namespace='foo')
+    with pytest.raises(
+        RuntimeError,
+        match=r"Unknown custom type in pickled PyTreeSpec: <class '.*'> in namespace 'foo'\.",
+    ):
+        treespec = pickle.loads(serialized)
 
 
 @parametrize(
