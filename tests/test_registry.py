@@ -16,11 +16,13 @@
 # pylint: disable=missing-function-docstring,invalid-name
 
 import re
+import weakref
 from collections import UserDict, UserList, namedtuple
 
 import pytest
 
 import optree
+from helpers import getrefcount
 
 
 def test_register_pytree_node_class_with_no_namespace():
@@ -661,3 +663,126 @@ def test_unregister_pytree_node_namedtuple():
     assert tree == optree.tree_unflatten(treespec4, leaves4)
     assert treespec1 == treespec4
     assert treespec3 != treespec4
+
+
+def test_unregister_pytree_node_memory_leak():  # noqa: C901
+
+    @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
+    class MyList1(UserList):
+        def tree_flatten(self):
+            return self.data, None, None
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            return cls(children)
+
+    weak_ref = weakref.ref(MyList1)
+    assert weak_ref() is not None
+
+    optree.unregister_pytree_node(MyList1, namespace=optree.registry.__GLOBAL_NAMESPACE)
+    del MyList1
+    getrefcount(None)
+    assert weak_ref() is None
+
+    @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
+    class MyList2(UserList):
+        def tree_flatten(self):
+            return reversed(self.data), None, None
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            return cls(reversed(children))
+
+    weak_ref = weakref.ref(MyList2)
+    assert weak_ref() is not None
+
+    leaves, treespec = optree.tree_flatten(MyList2([1, 2, 3]))
+    assert leaves == [3, 2, 1]
+    assert str(treespec) == 'PyTreeSpec(CustomTreeNode(MyList2[None], [*, *, *]))'
+
+    optree.unregister_pytree_node(MyList2, namespace=optree.registry.__GLOBAL_NAMESPACE)
+    del MyList2
+    getrefcount(None)
+    assert weak_ref() is not None
+    assert weak_ref() is treespec.type
+    assert optree.tree_unflatten(treespec, leaves) == weak_ref()([1, 2, 3])
+
+    del treespec
+    getrefcount(None)
+    assert weak_ref() is None
+
+    @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
+    class MyList3(UserList):
+        def tree_flatten(self):
+            return reversed(self.data), None, None
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            return cls(reversed(children))
+
+    weak_ref = weakref.ref(MyList3)
+    assert weak_ref() is not None
+
+    leaves, treespec = optree.tree_flatten(MyList3([1, 2, 3]), namespace='undefined')
+    assert leaves == [3, 2, 1]
+    assert (
+        str(treespec)
+        == "PyTreeSpec(CustomTreeNode(MyList3[None], [*, *, *]), namespace='undefined')"
+    )
+
+    optree.unregister_pytree_node(MyList3, namespace=optree.registry.__GLOBAL_NAMESPACE)
+    del MyList3
+    getrefcount(None)
+    assert weak_ref() is not None
+    assert weak_ref() is treespec.type
+    assert optree.tree_unflatten(treespec, leaves) == weak_ref()([1, 2, 3])
+
+    del treespec
+    getrefcount(None)
+    assert weak_ref() is None
+
+    @optree.register_pytree_node_class(namespace='mylist')
+    class MyList4(UserList):
+        def tree_flatten(self):
+            return self.data, None, None
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            return cls(children)
+
+    weak_ref = weakref.ref(MyList4)
+    assert weak_ref() is not None
+
+    optree.unregister_pytree_node(MyList4, namespace='mylist')
+    del MyList4
+    getrefcount(None)
+    assert weak_ref() is None
+
+    @optree.register_pytree_node_class(namespace='mylist')
+    class MyList5(UserList):
+        def tree_flatten(self):
+            return reversed(self.data), None, None
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            return cls(reversed(children))
+
+    weak_ref = weakref.ref(MyList5)
+    assert weak_ref() is not None
+
+    leaves, treespec = optree.tree_flatten(MyList5([1, 2, 3]), namespace='mylist')
+    assert leaves == [3, 2, 1]
+    assert (
+        str(treespec) == "PyTreeSpec(CustomTreeNode(MyList5[None], [*, *, *]), namespace='mylist')"
+    )
+
+    optree.unregister_pytree_node(MyList5, namespace='mylist')
+    del MyList5
+    getrefcount(None)
+    assert weak_ref() is not None
+    assert weak_ref() is treespec.type
+    assert optree.tree_unflatten(treespec, leaves) == weak_ref()([1, 2, 3])
+
+    del treespec
+    getrefcount(None)
+    assert weak_ref() is None
