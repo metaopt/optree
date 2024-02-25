@@ -58,8 +58,22 @@ def test_register_pytree_node_class_with_duplicate_namespace():
 def test_register_pytree_node_with_non_class():
     with pytest.raises(TypeError, match='Expected a class'):
 
+        @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
+        def func1():
+            pass
+
+    with pytest.raises(TypeError, match='Expected a class'):
+        optree.register_pytree_node(
+            1,
+            lambda s: (sorted(s), None, None),
+            lambda _, s: set(s),
+            namespace=optree.registry.__GLOBAL_NAMESPACE,
+        )
+
+    with pytest.raises(TypeError, match='Expected a class'):
+
         @optree.register_pytree_node_class(namespace='func')
-        def func():
+        def func2():
             pass
 
     with pytest.raises(TypeError, match='Expected a class'):
@@ -155,10 +169,12 @@ def test_register_pytree_node_with_invalid_namespace():
         )
 
 
-def test_register_pytree_node_duplicate_builtin_namespace():
+def test_register_pytree_node_duplicate_builtins():
     with pytest.raises(
         ValueError,
-        match=r"PyTree type <class 'NoneType'> is a built-in type and cannot be re-registered.",
+        match=re.escape(
+            r"PyTree type <class 'NoneType'> is a built-in type and cannot be re-registered.",
+        ),
     ):
         optree.register_pytree_node(
             type(None),
@@ -169,7 +185,9 @@ def test_register_pytree_node_duplicate_builtin_namespace():
 
     with pytest.raises(
         ValueError,
-        match=r"PyTree type <class 'NoneType'> is a built-in type and cannot be re-registered.",
+        match=re.escape(
+            r"PyTree type <class 'NoneType'> is a built-in type and cannot be re-registered.",
+        ),
     ):
         optree.register_pytree_node(
             type(None),
@@ -180,7 +198,9 @@ def test_register_pytree_node_duplicate_builtin_namespace():
 
     with pytest.raises(
         ValueError,
-        match=r"PyTree type <class 'list'> is a built-in type and cannot be re-registered.",
+        match=re.escape(
+            r"PyTree type <class 'list'> is a built-in type and cannot be re-registered.",
+        ),
     ):
         optree.register_pytree_node(
             list,
@@ -190,7 +210,9 @@ def test_register_pytree_node_duplicate_builtin_namespace():
         )
     with pytest.raises(
         ValueError,
-        match=r"PyTree type <class 'list'> is a built-in type and cannot be re-registered.",
+        match=re.escape(
+            r"PyTree type <class 'list'> is a built-in type and cannot be re-registered.",
+        ),
     ):
         optree.register_pytree_node(
             list,
@@ -231,27 +253,30 @@ def test_register_pytree_node_namedtuple():
             namespace='mytuple',
         )
 
-    tree1 = mytuple1(1, 2, 3)
-    leaves1, treespec1 = optree.tree_flatten(tree1)
+    tree = mytuple1(1, 2, 3)
+    leaves1, treespec1 = optree.tree_flatten(tree)
     assert leaves1 == [3, 2, 1]
     assert str(treespec1) == 'PyTreeSpec(CustomTreeNode(mytuple1[None], [*, *, *]))'
-    assert tree1 == optree.tree_unflatten(treespec1, leaves1)
+    assert tree == optree.tree_unflatten(treespec1, leaves1)
 
-    leaves1, treespec1 = optree.tree_flatten(tree1, namespace='undefined')
-    assert leaves1 == [3, 2, 1]
+    leaves2, treespec2 = optree.tree_flatten(tree, namespace='undefined')
+    assert leaves2 == [3, 2, 1]
     assert (
-        str(treespec1)
+        str(treespec2)
         == "PyTreeSpec(CustomTreeNode(mytuple1[None], [*, *, *]), namespace='undefined')"
     )
-    assert tree1 == optree.tree_unflatten(treespec1, leaves1)
+    assert tree == optree.tree_unflatten(treespec2, leaves2)
+    assert treespec1 == treespec2
 
-    leaves1, treespec1 = optree.tree_flatten(tree1, namespace='mytuple')
-    assert leaves1 == [2, 3, 1]
+    leaves3, treespec3 = optree.tree_flatten(tree, namespace='mytuple')
+    assert leaves3 == [2, 3, 1]
     assert (
-        str(treespec1)
+        str(treespec3)
         == "PyTreeSpec(CustomTreeNode(mytuple1[None], [*, *, *]), namespace='mytuple')"
     )
-    assert tree1 == optree.tree_unflatten(treespec1, leaves1)
+    assert tree == optree.tree_unflatten(treespec3, leaves3)
+    assert treespec1 != treespec3
+    assert treespec2 != treespec3
 
     mytuple2 = namedtuple('mytuple2', ['a', 'b', 'c'])  # noqa: PYI024
     with pytest.warns(
@@ -269,24 +294,26 @@ def test_register_pytree_node_namedtuple():
             namespace='mytuple',
         )
 
-    tree2 = mytuple2(1, 2, 3)
-    leaves2, treespec2 = optree.tree_flatten(tree2)
+    tree = mytuple2(1, 2, 3)
+    leaves1, treespec1 = optree.tree_flatten(tree)
+    assert leaves1 == [1, 2, 3]
+    assert str(treespec1) == 'PyTreeSpec(mytuple2(a=*, b=*, c=*))'
+    assert tree == optree.tree_unflatten(treespec1, leaves1)
+
+    leaves2, treespec2 = optree.tree_flatten(tree, namespace='undefined')
     assert leaves2 == [1, 2, 3]
     assert str(treespec2) == 'PyTreeSpec(mytuple2(a=*, b=*, c=*))'
-    assert tree2 == optree.tree_unflatten(treespec2, leaves2)
+    assert tree == optree.tree_unflatten(treespec2, leaves2)
+    assert treespec1 == treespec2
 
-    leaves2, treespec2 = optree.tree_flatten(tree2, namespace='undefined')
-    assert leaves2 == [1, 2, 3]
-    assert str(treespec2) == 'PyTreeSpec(mytuple2(a=*, b=*, c=*))'
-    assert tree2 == optree.tree_unflatten(treespec2, leaves2)
-
-    leaves2, treespec2 = optree.tree_flatten(tree2, namespace='mytuple')
-    assert leaves2 == [3, 2, 1]
+    leaves3, treespec3 = optree.tree_flatten(tree, namespace='mytuple')
+    assert leaves3 == [3, 2, 1]
     assert (
-        str(treespec2)
+        str(treespec3)
         == "PyTreeSpec(CustomTreeNode(mytuple2[None], [*, *, *]), namespace='mytuple')"
     )
-    assert tree2 == optree.tree_unflatten(treespec2, leaves2)
+    assert tree == optree.tree_unflatten(treespec3, leaves3)
+    assert treespec1 != treespec3
 
 
 def test_flatten_with_wrong_number_of_returns():
@@ -432,5 +459,205 @@ def test_pytree_node_registry_with_init_subclass():
     )
 
 
-def test_unregister_pytree_node_with_no_namespace():
-    pass
+def test_unregister_pytree_node_with_non_class():
+    with pytest.raises(TypeError, match='Expected a class'):
+
+        def func1():
+            pass
+
+        optree.unregister_pytree_node(func1, namespace=optree.registry.__GLOBAL_NAMESPACE)
+
+    with pytest.raises(TypeError, match='Expected a class'):
+        optree.unregister_pytree_node(1, namespace=optree.registry.__GLOBAL_NAMESPACE)
+
+    with pytest.raises(TypeError, match='Expected a class'):
+
+        def func2():
+            pass
+
+        optree.unregister_pytree_node(func2, namespace='func')
+
+    with pytest.raises(TypeError, match='Expected a class'):
+        optree.unregister_pytree_node(1, namespace='non-class')
+
+
+def test_unregister_pytree_node_with_non_registered_class():
+    class MyList(UserList):
+        def tree_flatten(self):
+            return self.data, None, None
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            return cls(children)
+
+    with pytest.raises(
+        ValueError,
+        match=r"PyTree type <class '.*'> is not registered in namespace 'undefined'\.",
+    ):
+        optree.unregister_pytree_node(MyList, namespace='undefined')
+
+    with pytest.raises(
+        ValueError,
+        match=r"PyTree type <class '.*'> is not registered in the global namespace\.",
+    ):
+        optree.unregister_pytree_node(MyList, namespace=optree.registry.__GLOBAL_NAMESPACE)
+
+    optree.register_pytree_node_class(MyList, namespace='mylist')
+
+    with pytest.raises(
+        ValueError,
+        match=r"PyTree type <class '.*'> is not registered in the global namespace\.",
+    ):
+        optree.unregister_pytree_node(MyList, namespace=optree.registry.__GLOBAL_NAMESPACE)
+
+    optree.unregister_pytree_node(MyList, namespace='mylist')
+
+    with pytest.raises(
+        ValueError,
+        match=r"PyTree type <class '.*'> is not registered in namespace 'mylist'\.",
+    ):
+        optree.unregister_pytree_node(MyList, namespace='mylist')
+
+
+def test_unregister_pytree_node_with_invalid_namespace():
+    with pytest.raises(TypeError, match='The namespace must be a string'):
+        optree.unregister_pytree_node(set, namespace=1)
+
+    with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
+        optree.unregister_pytree_node(set, namespace='')
+
+
+def test_unregister_pytree_node_with_builtins():
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            r"PyTree type <class 'NoneType'> is a built-in type and cannot be unregistered.",
+        ),
+    ):
+        optree.unregister_pytree_node(type(None), namespace=optree.registry.__GLOBAL_NAMESPACE)
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            r"PyTree type <class 'NoneType'> is a built-in type and cannot be unregistered.",
+        ),
+    ):
+        optree.unregister_pytree_node(type(None), namespace='none')
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            r"PyTree type <class 'list'> is a built-in type and cannot be unregistered.",
+        ),
+    ):
+        optree.unregister_pytree_node(list, namespace=optree.registry.__GLOBAL_NAMESPACE)
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            r"PyTree type <class 'list'> is a built-in type and cannot be unregistered.",
+        ),
+    ):
+        optree.unregister_pytree_node(list, namespace='list')
+
+
+def test_unregister_pytree_node_namedtuple():
+    mytuple1 = namedtuple('mytuple1', ['a', 'b', 'c'])  # noqa: PYI024
+    with pytest.warns(
+        UserWarning,
+        match=re.escape(
+            r"PyTree type <class 'test_registry.mytuple1'> is a subclass of `collections.namedtuple`, "
+            r'which is already registered in the global namespace. '
+            r'Override it with custom flatten/unflatten functions.',
+        ),
+    ):
+        optree.register_pytree_node(
+            mytuple1,
+            lambda t: (reversed(t), None, None),
+            lambda _, t: mytuple1(*reversed(t)),
+            namespace=optree.registry.__GLOBAL_NAMESPACE,
+        )
+
+    tree = mytuple1(1, 2, 3)
+    leaves1, treespec1 = optree.tree_flatten(tree)
+    assert leaves1 == [3, 2, 1]
+    assert str(treespec1) == 'PyTreeSpec(CustomTreeNode(mytuple1[None], [*, *, *]))'
+    assert tree == optree.tree_unflatten(treespec1, leaves1)
+
+    optree.unregister_pytree_node(mytuple1, namespace=optree.registry.__GLOBAL_NAMESPACE)
+    assert str(treespec1) == 'PyTreeSpec(CustomTreeNode(mytuple1[None], [*, *, *]))'
+    assert tree == optree.tree_unflatten(treespec1, leaves1)
+
+    leaves2, treespec2 = optree.tree_flatten(tree)
+    assert leaves2 == [1, 2, 3]
+    assert str(treespec2) == 'PyTreeSpec(mytuple1(a=*, b=*, c=*))'
+    assert tree == optree.tree_unflatten(treespec2, leaves2)
+    assert treespec1 != treespec2
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            r"PyTree type <class 'test_registry.mytuple1'> is a subclass of `collections.namedtuple`, "
+            r"which is not explicitly registered in namespace 'undefined'.",
+        ),
+    ):
+        optree.unregister_pytree_node(mytuple1, namespace='undefined')
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            r"PyTree type <class 'test_registry.mytuple1'> is a subclass of `collections.namedtuple`, "
+            r'which is not explicitly registered in the global namespace.',
+        ),
+    ):
+        optree.unregister_pytree_node(mytuple1, namespace=optree.registry.__GLOBAL_NAMESPACE)
+
+    mytuple2 = namedtuple('mytuple2', ['a', 'b', 'c'])  # noqa: PYI024
+    with pytest.warns(
+        UserWarning,
+        match=re.escape(
+            r"PyTree type <class 'test_registry.mytuple2'> is a subclass of `collections.namedtuple`, "
+            r'which is already registered in the global namespace. '
+            r"Override it with custom flatten/unflatten functions in namespace 'mytuple'.",
+        ),
+    ):
+        optree.register_pytree_node(
+            mytuple2,
+            lambda t: (reversed(t), None, None),
+            lambda _, t: mytuple2(*reversed(t)),
+            namespace='mytuple',
+        )
+
+    tree = mytuple2(1, 2, 3)
+    leaves1, treespec1 = optree.tree_flatten(tree)
+    assert leaves1 == [1, 2, 3]
+    assert str(treespec1) == 'PyTreeSpec(mytuple2(a=*, b=*, c=*))'
+    assert tree == optree.tree_unflatten(treespec1, leaves1)
+
+    leaves2, treespec2 = optree.tree_flatten(tree, namespace='undefined')
+    assert leaves2 == [1, 2, 3]
+    assert str(treespec2) == 'PyTreeSpec(mytuple2(a=*, b=*, c=*))'
+    assert tree == optree.tree_unflatten(treespec2, leaves2)
+    assert treespec1 == treespec2
+
+    leaves3, treespec3 = optree.tree_flatten(tree, namespace='mytuple')
+    assert leaves3 == [3, 2, 1]
+    assert (
+        str(treespec3)
+        == "PyTreeSpec(CustomTreeNode(mytuple2[None], [*, *, *]), namespace='mytuple')"
+    )
+    assert tree == optree.tree_unflatten(treespec3, leaves3)
+    assert treespec1 != treespec3
+
+    optree.unregister_pytree_node(mytuple2, namespace='mytuple')
+    assert (
+        str(treespec3)
+        == "PyTreeSpec(CustomTreeNode(mytuple2[None], [*, *, *]), namespace='mytuple')"
+    )
+    assert tree == optree.tree_unflatten(treespec3, leaves3)
+
+    leaves4, treespec4 = optree.tree_flatten(tree, namespace='mytuple')
+    assert leaves4 == [1, 2, 3]
+    assert str(treespec4) == 'PyTreeSpec(mytuple2(a=*, b=*, c=*))'
+    assert tree == optree.tree_unflatten(treespec4, leaves4)
+    assert treespec1 == treespec4
+    assert treespec3 != treespec4

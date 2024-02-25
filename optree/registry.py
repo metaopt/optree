@@ -332,6 +332,7 @@ def unregister_pytree_node(
         The removed registry entry.
 
     Raises:
+        TypeError: If the input type is not a class.
         TypeError: If the namespace is not a string.
         ValueError: If the namespace is an empty string.
         ValueError: If the type is a built-in type that cannot be unregistered.
@@ -350,6 +351,8 @@ def unregister_pytree_node(
         >>> # Unregister the Python type
         >>> unregister_pytree_node(set, namespace='set')
     """
+    if not inspect.isclass(cls):
+        raise TypeError(f'Expected a class, got {cls}.')
     if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
         raise TypeError(f'The namespace must be a string, got {namespace}.')
     if namespace == '':
