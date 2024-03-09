@@ -31,7 +31,9 @@ from optree.registry import (
     FlattenedKeyPathEntry,
     KeyPath,
     KeyPathEntry,
+    PyTreeAccessor,
     PyTreeNodeRegistryEntry,
+    PyTreePathEntry,
     register_keypaths,
     register_pytree_node,
 )
@@ -40,6 +42,7 @@ from optree.typing import (
     MetaData,
     NamedTuple,
     PyTree,
+    PyTreeKind,
     PyTreeSpec,
     S,
     T,
@@ -58,10 +61,12 @@ __all__ = [
     'NONE_IS_LEAF',
     'tree_flatten',
     'tree_flatten_with_path',
+    'tree_flatten_with_typed_path',
     'tree_unflatten',
     'tree_leaves',
     'tree_structure',
     'tree_paths',
+    'tree_typed_paths',
     'tree_is_leaf',
     'all_leaves',
     'tree_map',
@@ -84,6 +89,7 @@ __all__ = [
     'tree_any',
     'tree_flatten_one_level',
     'treespec_paths',
+    'treespec_typed_paths',
     'treespec_entries',
     'treespec_entry',
     'treespec_children',
@@ -259,6 +265,125 @@ def tree_flatten_with_path(
     return _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)
 
 
+def tree_flatten_with_typed_path(
+    tree: PyTree[T],
+    is_leaf: Callable[[T], bool] | None = None,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> tuple[list[tuple[tuple[Any, type[Any], PyTreeKind], ...]], list[T], PyTreeSpec]:
+    """Flatten a pytree and additionally record the paths with types.
+
+    See also :func:`tree_flatten`, :func:`tree_typed_paths`, and :func:`treespec_typed_paths`.
+
+    The flattening order (i.e., the order of elements in the output list) is deterministic,
+    corresponding to a left-to-right depth-first tree traversal.
+
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> tree_flatten_with_typed_path(tree)  # doctest: +IGNORE_WHITESPACE
+    (
+        [
+            (('a', <class 'dict'>, <PyTreeKind.DICT: 5>),),
+            (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (0, <class 'tuple'>, <PyTreeKind.TUPLE: 3>)),
+            (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (0, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (1, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('d', <class 'dict'>, <PyTreeKind.DICT: 5>),)
+        ],
+        [1, 2, 3, 4, 5],
+        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
+    )
+    >>> tree_flatten_with_typed_path(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    (
+        [
+            (('a', <class 'dict'>, <PyTreeKind.DICT: 5>),),
+            (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (0, <class 'tuple'>, <PyTreeKind.TUPLE: 3>)),
+            (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (0, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (1, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('c', <class 'dict'>, <PyTreeKind.DICT: 5>),),
+            (('d', <class 'dict'>, <PyTreeKind.DICT: 5>),)
+        ],
+        [1, 2, 3, 4, None, 5],
+        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf)
+    )
+    >>> tree_flatten_with_typed_path(1)
+    ([()], [1], PyTreeSpec(*))
+    >>> tree_flatten_with_typed_path(None)
+    ([], [], PyTreeSpec(None))
+    >>> tree_flatten_with_typed_path(None, none_is_leaf=True)
+    ([()], [None], PyTreeSpec(*, NoneIsLeaf))
+
+    For unordered dictionaries, :class:`dict` and :class:`collections.defaultdict`, the order is
+    dependent on the **sorted** keys in the dictionary. Please use :class:`collections.OrderedDict`
+    if you want to keep the keys in the insertion order.
+
+    >>> from collections import OrderedDict
+    >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
+    >>> tree_flatten_with_typed_path(tree)  # doctest: +IGNORE_WHITESPACE
+    (
+        [
+            (('b', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>), (0, <class 'tuple'>, <PyTreeKind.TUPLE: 3>)),
+            (('b', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (0, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('b', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (1, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('a', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>),),
+            (('d', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>),)
+        ],
+        [2, 3, 4, 1, 5],
+        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)]))
+    )
+    >>> tree_flatten_with_typed_path(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    (
+        [
+            (('b', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>), (0, <class 'tuple'>, <PyTreeKind.TUPLE: 3>)),
+            (('b', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (0, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('b', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (1, <class 'list'>, <PyTreeKind.LIST: 4>)),
+            (('a', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>),),
+            (('c', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>),),
+            (('d', <class 'collections.OrderedDict'>, <PyTreeKind.ORDEREDDICT: 7>),)
+        ],
+        [2, 3, 4, 1, None, 5],
+        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf)
+    )
+
+    Args:
+        tree (pytree): A pytree to flatten.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        A triple ``(typed_paths, leaves, treespec)``. The first element is a list of tuples of
+        ``(entry, type, kind)`` to the leaf values, while each entry is the index or keys. The second
+        element is a list of leaf values and the last element is a treespec representing the
+        structure of the pytree.
+    """  # pylint: disable=line-too-long
+    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
+    return treespec.typed_paths(), leaves, treespec
+
+
+def tree_flatten_with_accessor(
+    tree: PyTree[T],
+    is_leaf: Callable[[T], bool] | None = None,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> tuple[list[PyTreeAccessor], list[T], PyTreeSpec]:
+    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
+    return (
+        [
+            PyTreeAccessor(itertools.starmap(PyTreePathEntry, typed_path))
+            for typed_path in treespec.typed_paths()
+        ],
+        leaves,
+        treespec,
+    )
+
+
 def tree_unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
     """Reconstruct a pytree from the treespec and the leaves.
 
@@ -402,6 +527,62 @@ def tree_paths(
         A list of the paths to the leaf values, while each path is a tuple of the index or keys.
     """
     return _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)[0]
+
+
+def tree_typed_paths(
+    tree: PyTree[T],
+    is_leaf: Callable[[T], bool] | None = None,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> list[tuple[tuple[Any, type[Any], PyTreeKind], ...]]:
+    """Get the typed path entries to the leaves of a pytree.
+
+    See also :func:`tree_flatten`, :func:`tree_flatten_with_typed_path`, and
+    :func:`treespec_typed_paths`.
+
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> tree_typed_paths(tree)  # doctest: +IGNORE_WHITESPACE
+    [
+        (('a', <class 'dict'>, <PyTreeKind.DICT: 5>),),
+        (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (0, <class 'tuple'>, <PyTreeKind.TUPLE: 3>)),
+        (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (0, <class 'list'>, <PyTreeKind.LIST: 4>)),
+        (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (1, <class 'list'>, <PyTreeKind.LIST: 4>)),
+        (('d', <class 'dict'>, <PyTreeKind.DICT: 5>),)
+    ]
+    >>> tree_typed_paths(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    [
+        (('a', <class 'dict'>, <PyTreeKind.DICT: 5>),),
+        (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (0, <class 'tuple'>, <PyTreeKind.TUPLE: 3>)),
+        (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (0, <class 'list'>, <PyTreeKind.LIST: 4>)),
+        (('b', <class 'dict'>, <PyTreeKind.DICT: 5>), (1, <class 'tuple'>, <PyTreeKind.TUPLE: 3>), (1, <class 'list'>, <PyTreeKind.LIST: 4>)),
+        (('c', <class 'dict'>, <PyTreeKind.DICT: 5>),),
+        (('d', <class 'dict'>, <PyTreeKind.DICT: 5>),)
+    ]
+    >>> tree_typed_paths(1)
+    [()]
+    >>> tree_typed_paths(None)
+    []
+    >>> tree_typed_paths(None, none_is_leaf=True)
+    [()]
+
+    Args:
+        tree (pytree): A pytree to flatten.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        A list of tuples of ``(entry, type, kind)`` to the leaf values, while each entry is the index or
+        keys.
+    """  # pylint: disable=line-too-long
+    return _C.flatten(tree, is_leaf, none_is_leaf, namespace)[1].typed_paths()
 
 
 def tree_is_leaf(
@@ -1792,6 +1973,17 @@ def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
     See also :func:`tree_flatten_with_path`, :func:`tree_paths`, and :meth:`PyTreeSpec.paths`.
     """
     return treespec.paths()
+
+
+def treespec_typed_paths(
+    treespec: PyTreeSpec,
+) -> list[tuple[tuple[Any, type[Any], PyTreeKind], ...]]:
+    """Return a list of tuples of ``(entry, type, kind)`` for the leaves of a treespec.
+
+    See also :func:`tree_flatten_with_typed_path`, :func:`tree_typed_paths` and
+    :meth:`PyTreeSpec.typed_paths`.
+    """
+    return treespec.typed_paths()
 
 
 def treespec_entries(treespec: PyTreeSpec) -> list[Any]:

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add typed path APIs `tree_flatten_with_typed_path` and `PyTreeSpec.typed_paths` by [@XuehaiPan](https://github.com/XuehaiPan) in [#108](https://github.com/metaopt/optree/pull/108).
 - Add static constructors to create `PyTreeSpec` instances by [@XuehaiPan](https://github.com/XuehaiPan) in [#120](https://github.com/metaopt/optree/pull/120).
 - Cache intermediate `str` objects in `PyObject_GetAttr` calls by [@XuehaiPan](https://github.com/XuehaiPan) in [#106](https://github.com/metaopt/optree/pull/106) and [#109](https://github.com/metaopt/optree/pull/109).
 - Install `clang-format` and `clang-tidy` from PyPI by [@XuehaiPan](https://github.com/XuehaiPan) in [#107](https://github.com/metaopt/optree/pull/107).
@@ -32,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
--
+- Deprecate key path APIs by [@XuehaiPan](https://github.com/XuehaiPan) in [#108](https://github.com/metaopt/optree/pull/108).
 
 ------
 

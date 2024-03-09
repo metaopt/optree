@@ -1,6 +1,7 @@
 PyTree
 pytree
 pytrees
+PyTreeKind
 treespec
 treespecs
 subtree
@@ -66,6 +67,7 @@ CPython
 CPython's
 sortable
 OrderedDict
+ordereddict
 defaultdict
 unsubclassable
 sys
