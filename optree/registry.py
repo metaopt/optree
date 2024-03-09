@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 import inspect
 from collections import OrderedDict, defaultdict, deque, namedtuple
@@ -55,7 +56,8 @@ __all__ = [
 ]
 
 
-class PyTreeNodeRegistryEntry(NamedTuple):
+@dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, slots=True)
+class PyTreeNodeRegistryEntry:
     type: builtins.type
     flatten_func: FlattenFunc
     unflatten_func: UnflattenFunc
