@@ -83,6 +83,8 @@ def register_pytree_node(
 ) -> type[CustomTreeNode[T]]:
     """Extend the set of types that are considered internal nodes in pytrees.
 
+    See also :func:`register_pytree_node_class` and :func:`unregister_pytree_node`.
+
     The ``namespace`` argument is used to avoid collisions that occur when different libraries
     register the same Python type with different behaviors. It is recommended to add a unique prefix
     to the namespace to avoid conflicts with other libraries. Namespaces can also be used to specify
@@ -243,6 +245,8 @@ def register_pytree_node_class(
 ) -> type[CustomTreeNode[T]] | Callable[[type[CustomTreeNode[T]]], type[CustomTreeNode[T]]]:
     """Extend the set of types that are considered internal nodes in pytrees.
 
+    See also :func:`register_pytree_node` and :func:`unregister_pytree_node`.
+
     The ``namespace`` argument is used to avoid collisions that occur when different libraries
     register the same Python type with different behaviors. It is recommended to add a unique prefix
     to the namespace to avoid conflicts with other libraries. Namespaces can also be used to specify
@@ -325,6 +329,10 @@ def unregister_pytree_node(
     namespace: str,
 ) -> PyTreeNodeRegistryEntry:
     """Remove a type from the pytree node registry.
+
+    See also :func:`register_pytree_node` and :func:`register_pytree_node_class`.
+
+    This function is the inverse operation of function :func:`register_pytree_node`.
 
     Args:
         cls (type): A Python type to remove from the pytree node registry.
