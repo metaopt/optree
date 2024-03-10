@@ -56,7 +56,7 @@ __all__ = [
 ]
 
 
-@dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, slots=True)
+@dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True)
 class PyTreeNodeRegistryEntry:
     type: builtins.type
     flatten_func: FlattenFunc
