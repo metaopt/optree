@@ -346,12 +346,12 @@ def unregister_pytree_node(
         ...     set,
         ...     lambda s: (sorted(s), None, None),
         ...     lambda _, children: set(children),
-        ...     namespace='set',
+        ...     namespace='temp',
         ... )
         <class 'set'>
 
         >>> # Unregister the Python type
-        >>> unregister_pytree_node(set, namespace='set')
+        >>> unregister_pytree_node(set, namespace='temp')
     """
     if not inspect.isclass(cls):
         raise TypeError(f'Expected a class, got {cls}.')
