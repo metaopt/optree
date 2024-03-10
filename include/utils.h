@@ -37,6 +37,9 @@ namespace py = pybind11;
 using size_t = py::size_t;
 using ssize_t = py::ssize_t;
 
+// The maximum size of the type cache.
+constexpr ssize_t MAX_TYPE_CACHE_SIZE = 4096;
+
 // boost::hash_combine
 template <class T>
 inline void HashCombine(py::size_t& seed, const T& v) {  // NOLINT[runtime/references]
@@ -459,12 +462,14 @@ inline bool IsNamedTupleClass(const py::handle& type) {
             return it->second;
         }
         bool result = IsNamedTupleClassImpl(type);
-        cache.emplace(type, result);
-        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                              cache.erase(type);
-                              weakref.dec_ref();
-                          }))
-            .release();
+        if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+            cache.emplace(type, result);
+            (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                                  cache.erase(type);
+                                  weakref.dec_ref();
+                              }))
+                .release();
+        }
         return result;
     }
     return false;
@@ -537,12 +542,14 @@ inline bool IsStructSequenceClass(const py::handle& type) {
             return it->second;
         }
         bool result = IsStructSequenceClassImpl(type);
-        cache.emplace(type, result);
-        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                              cache.erase(type);
-                              weakref.dec_ref();
-                          }))
-            .release();
+        if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+            cache.emplace(type, result);
+            (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                                  cache.erase(type);
+                                  weakref.dec_ref();
+                              }))
+                .release();
+        }
         return result;
     }
     return false;
@@ -591,17 +598,19 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
         return it->second;
     }
     py::tuple fields = StructSequenceGetFieldsImpl(type);
-    cache.emplace(type, fields);
-    fields.inc_ref();
-    (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                          auto it = cache.find(type);
-                          if (it != cache.end()) [[likely]] {
-                              it->second.dec_ref();
-                              cache.erase(it);
-                          }
-                          weakref.dec_ref();
-                      }))
-        .release();
+    if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+        cache.emplace(type, fields);
+        fields.inc_ref();
+        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                              auto it = cache.find(type);
+                              if (it != cache.end()) [[likely]] {
+                                  it->second.dec_ref();
+                                  cache.erase(it);
+                              }
+                              weakref.dec_ref();
+                          }))
+            .release();
+    }
     return fields;
 }
 
