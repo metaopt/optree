@@ -133,10 +133,16 @@ def tree_flatten(
     corresponding to a left-to-right depth-first tree traversal.
 
     >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
-    >>> tree_flatten(tree)
-    ([1, 2, 3, 4, 5], PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *}))
-    >>> tree_flatten(tree, none_is_leaf=True)
-    ([1, 2, 3, 4, None, 5], PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf))
+    >>> tree_flatten(tree)  # doctest: +IGNORE_WHITESPACE
+    (
+        [1, 2, 3, 4, 5],
+        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
+    )
+    >>> tree_flatten(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    (
+        [1, 2, 3, 4, None, 5],
+        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf)
+    )
     >>> tree_flatten(1)
     ([1], PyTreeSpec(*))
     >>> tree_flatten(None)
@@ -150,10 +156,16 @@ def tree_flatten(
 
     >>> from collections import OrderedDict
     >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
-    >>> tree_flatten(tree)
-    ([2, 3, 4, 1, 5], PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)])))
-    >>> tree_flatten(tree, none_is_leaf=True)
-    ([2, 3, 4, 1, None, 5], PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf))
+    >>> tree_flatten(tree)  # doctest: +IGNORE_WHITESPACE
+    (
+        [2, 3, 4, 1, 5],
+        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)]))
+    )
+    >>> tree_flatten(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    (
+        [2, 3, 4, 1, None, 5],
+        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf)
+    )
 
     Args:
         tree (pytree): A pytree to flatten.
@@ -189,14 +201,18 @@ def tree_flatten_with_path(
     corresponding to a left-to-right depth-first tree traversal.
 
     >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
-    >>> tree_flatten_with_path(tree)  # doctest: +NORMALIZE_WHITESPACE
-    ([('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('d',)],
-     [1, 2, 3, 4, 5],
-     PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *}))
-    >>> tree_flatten_with_path(tree, none_is_leaf=True)  # doctest: +NORMALIZE_WHITESPACE
-    ([('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('c',), ('d',)],
-     [1, 2, 3, 4, None, 5],
-     PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf))
+    >>> tree_flatten_with_path(tree)  # doctest: +IGNORE_WHITESPACE
+    (
+        [('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('d',)],
+        [1, 2, 3, 4, 5],
+        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
+    )
+    >>> tree_flatten_with_path(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    (
+        [('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('c',), ('d',)],
+        [1, 2, 3, 4, None, 5],
+        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf)
+    )
     >>> tree_flatten_with_path(1)
     ([()], [1], PyTreeSpec(*))
     >>> tree_flatten_with_path(None)
@@ -210,14 +226,18 @@ def tree_flatten_with_path(
 
     >>> from collections import OrderedDict
     >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
-    >>> tree_flatten_with_path(tree)  # doctest: +NORMALIZE_WHITESPACE
-    ([('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('d',)],
-     [2, 3, 4, 1, 5],
-     PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)])))
-    >>> tree_flatten_with_path(tree, none_is_leaf=True)  # doctest: +NORMALIZE_WHITESPACE
-    ([('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('c',), ('d',)],
-     [2, 3, 4, 1, None, 5],
-     PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf))
+    >>> tree_flatten_with_path(tree)  # doctest: +IGNORE_WHITESPACE
+    (
+        [('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('d',)],
+        [2, 3, 4, 1, 5],
+        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)]))
+    )
+    >>> tree_flatten_with_path(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    (
+        [('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('c',), ('d',)],
+        [2, 3, 4, 1, None, 5],
+        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf)
+    )
 
     Args:
         tree (pytree): A pytree to flatten.
