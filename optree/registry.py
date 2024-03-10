@@ -290,10 +290,6 @@ def register_pytree_node_class(
 
         @register_pytree_node_class('mylist')
         class MyList(UserList):
-            def __init__(self, x, y):
-                self.x = x
-                self.y = y
-
             def tree_flatten(self):
                 return self.data, None, None
 
