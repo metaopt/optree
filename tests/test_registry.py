@@ -676,13 +676,13 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
         def tree_unflatten(cls, metadata, children):
             return cls(children)
 
-    weak_ref = weakref.ref(MyList1)
-    assert weak_ref() is not None
+    wr = weakref.ref(MyList1)
+    assert wr() is not None
 
     optree.unregister_pytree_node(MyList1, namespace=optree.registry.__GLOBAL_NAMESPACE)
     del MyList1
     getrefcount(None)
-    assert weak_ref() is None
+    assert wr() is None
 
     @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
     class MyList2(UserList):
@@ -693,8 +693,8 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
         def tree_unflatten(cls, metadata, children):
             return cls(reversed(children))
 
-    weak_ref = weakref.ref(MyList2)
-    assert weak_ref() is not None
+    wr = weakref.ref(MyList2)
+    assert wr() is not None
 
     leaves, treespec = optree.tree_flatten(MyList2([1, 2, 3]))
     assert leaves == [3, 2, 1]
@@ -703,13 +703,13 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
     optree.unregister_pytree_node(MyList2, namespace=optree.registry.__GLOBAL_NAMESPACE)
     del MyList2
     getrefcount(None)
-    assert weak_ref() is not None
-    assert weak_ref() is treespec.type
-    assert optree.tree_unflatten(treespec, leaves) == weak_ref()([1, 2, 3])
+    assert wr() is not None
+    assert wr() is treespec.type
+    assert optree.tree_unflatten(treespec, leaves) == wr()([1, 2, 3])
 
     del treespec
     getrefcount(None)
-    assert weak_ref() is None
+    assert wr() is None
 
     @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
     class MyList3(UserList):
@@ -720,8 +720,8 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
         def tree_unflatten(cls, metadata, children):
             return cls(reversed(children))
 
-    weak_ref = weakref.ref(MyList3)
-    assert weak_ref() is not None
+    wr = weakref.ref(MyList3)
+    assert wr() is not None
 
     leaves, treespec = optree.tree_flatten(MyList3([1, 2, 3]), namespace='undefined')
     assert leaves == [3, 2, 1]
@@ -733,13 +733,13 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
     optree.unregister_pytree_node(MyList3, namespace=optree.registry.__GLOBAL_NAMESPACE)
     del MyList3
     getrefcount(None)
-    assert weak_ref() is not None
-    assert weak_ref() is treespec.type
-    assert optree.tree_unflatten(treespec, leaves) == weak_ref()([1, 2, 3])
+    assert wr() is not None
+    assert wr() is treespec.type
+    assert optree.tree_unflatten(treespec, leaves) == wr()([1, 2, 3])
 
     del treespec
     getrefcount(None)
-    assert weak_ref() is None
+    assert wr() is None
 
     @optree.register_pytree_node_class(namespace='mylist')
     class MyList4(UserList):
@@ -750,13 +750,13 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
         def tree_unflatten(cls, metadata, children):
             return cls(children)
 
-    weak_ref = weakref.ref(MyList4)
-    assert weak_ref() is not None
+    wr = weakref.ref(MyList4)
+    assert wr() is not None
 
     optree.unregister_pytree_node(MyList4, namespace='mylist')
     del MyList4
     getrefcount(None)
-    assert weak_ref() is None
+    assert wr() is None
 
     @optree.register_pytree_node_class(namespace='mylist')
     class MyList5(UserList):
@@ -767,8 +767,8 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
         def tree_unflatten(cls, metadata, children):
             return cls(reversed(children))
 
-    weak_ref = weakref.ref(MyList5)
-    assert weak_ref() is not None
+    wr = weakref.ref(MyList5)
+    assert wr() is not None
 
     leaves, treespec = optree.tree_flatten(MyList5([1, 2, 3]), namespace='mylist')
     assert leaves == [3, 2, 1]
@@ -779,10 +779,10 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
     optree.unregister_pytree_node(MyList5, namespace='mylist')
     del MyList5
     getrefcount(None)
-    assert weak_ref() is not None
-    assert weak_ref() is treespec.type
-    assert optree.tree_unflatten(treespec, leaves) == weak_ref()([1, 2, 3])
+    assert wr() is not None
+    assert wr() is treespec.type
+    assert optree.tree_unflatten(treespec, leaves) == wr()([1, 2, 3])
 
     del treespec
     getrefcount(None)
-    assert weak_ref() is None
+    assert wr() is None
