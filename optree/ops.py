@@ -862,6 +862,8 @@ def tree_transpose_map(
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
+    if inner_treespec.num_leaves == 0:
+        raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
 
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
     transposed = zip(*grouped)
@@ -940,6 +942,8 @@ def tree_transpose_map_with_path(
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
+    if inner_treespec.num_leaves == 0:
+        raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
 
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
     transposed = zip(*grouped)
