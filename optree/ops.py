@@ -860,7 +860,7 @@ def tree_transpose_map(
     if inner_treespec is None:
         inner_treespec = tree_structure(
             outputs[0],
-            is_leaf=is_leaf,
+            is_leaf=is_leaf,  # type: ignore[arg-type]
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
@@ -870,7 +870,7 @@ def tree_transpose_map(
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
     transposed = zip(*grouped)
     subtrees = map(outer_treespec.unflatten, transposed)
-    return inner_treespec.unflatten(subtrees)
+    return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
 
 def tree_transpose_map_with_path(
@@ -942,7 +942,7 @@ def tree_transpose_map_with_path(
     if inner_treespec is None:
         inner_treespec = tree_structure(
             outputs[0],
-            is_leaf=is_leaf,
+            is_leaf=is_leaf,  # type: ignore[arg-type]
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
@@ -952,7 +952,7 @@ def tree_transpose_map_with_path(
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
     transposed = zip(*grouped)
     subtrees = map(outer_treespec.unflatten, transposed)
-    return inner_treespec.unflatten(subtrees)
+    return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
 
 def tree_broadcast_prefix(
