@@ -851,11 +851,13 @@ def tree_transpose_map(
         function ``func(x, *xs)`` where ``x`` is the value at the corresponding leaf in ``tree`` and
         ``xs`` is the tuple of values at corresponding nodes in ``rests``.
     """
-    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
-    flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
+    leaves, outer_treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
+    if outer_treespec.num_leaves == 0:
+        raise ValueError(f'The outer structure must have at least one leaf. Got: {outer_treespec}.')
+    flat_args = [leaves] + [outer_treespec.flatten_up_to(r) for r in rests]
     outputs = list(map(func, *flat_args))
 
-    if len(outputs) > 0 and inner_treespec is None:
+    if inner_treespec is None:
         inner_treespec = tree_structure(
             outputs[0],
             is_leaf=is_leaf,
@@ -867,7 +869,7 @@ def tree_transpose_map(
 
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
     transposed = zip(*grouped)
-    subtrees = map(treespec.unflatten, transposed)
+    subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)
 
 
@@ -931,11 +933,13 @@ def tree_transpose_map_with_path(
         function ``func(p, x, *xs)`` where ``(p, x)`` are the path and value at the corresponding
         leaf in ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
     """  # pylint: disable=line-too-long
-    paths, leaves, treespec = _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)
-    flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
+    paths, leaves, outer_treespec = _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)
+    if outer_treespec.num_leaves == 0:
+        raise ValueError(f'The outer structure must have at least one leaf. Got: {outer_treespec}.')
+    flat_args = [leaves] + [outer_treespec.flatten_up_to(r) for r in rests]
     outputs = list(map(func, paths, *flat_args))
 
-    if len(outputs) > 0 and inner_treespec is None:
+    if inner_treespec is None:
         inner_treespec = tree_structure(
             outputs[0],
             is_leaf=is_leaf,
@@ -947,7 +951,7 @@ def tree_transpose_map_with_path(
 
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
     transposed = zip(*grouped)
-    subtrees = map(treespec.unflatten, transposed)
+    subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)
 
 
