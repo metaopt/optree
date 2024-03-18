@@ -194,7 +194,7 @@ optree.register_pytree_node(
 
 # Unflatten back to a copy of the original object
 >>> optree.tree_unflatten(treespec, leaves)
-{'bias': tensor([0., 0.]), 'weight': tensor([[1., 1.]], device='cuda:0')}
+{'weight': tensor([[1., 1.]], device='cuda:0'), 'bias': tensor([0., 0.])}
 ```
 
 Users can also extend the pytree registry by decorating the custom class and defining an instance method `tree_flatten` and a class method `tree_unflatten`.
@@ -246,12 +246,10 @@ There are several key attributes of the pytree type registry:
 
 1. **The type registry is per-interpreter-dependent.** This means registering a custom type in the registry affects all modules that use OpTree.
 
-    ```diff
-    - !!! WARNING !!!
-      For safety reasons, a `namespace` must be specified while registering a custom type. It is
-      used to isolate the behavior of flattening and unflattening a pytree node type. This is to
-      prevent accidental collisions between different libraries that may register the same type.
-    ```
+> [!WARNING]
+> For safety reasons, a `namespace` must be specified while registering a custom type. It is
+> used to isolate the behavior of flattening and unflattening a pytree node type. This is to
+> prevent accidental collisions between different libraries that may register the same type.
 
 2. **The elements in the type registry are immutable.** Users can neither register the same type twice in the same namespace (i.e., update the type registry), nor remove a type from the type registry. To update the behavior of an already registered type, simply register it again with another `namespace`.
 
@@ -523,6 +521,7 @@ This property is also preserved during serialization/deserialization.
 {'b': [3], 'a': [1, 2]}
 ```
 
+> [!NOTE]
 > Note that there are no restrictions on the `dict` to require the keys to be comparable (sortable).
 > There can be multiple types of keys in the dictionary.
 > The keys are sorted in ascending order by `key=lambda k: k` first if capable otherwise fallback to `key=lambda k: (f'{k.__class__.__module__}.{k.__class__.__qualname__}', k)`. This handles most cases.
