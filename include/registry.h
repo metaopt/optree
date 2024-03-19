@@ -19,6 +19,7 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
+#include <cstdint>        // std::uint8_t
 #include <memory>         // std::unique_ptr
 #include <string>         // std::string
 #include <unordered_map>  // std::unordered_map
@@ -30,7 +31,7 @@ namespace py = pybind11;
 using size_t = py::size_t;
 using ssize_t = py::ssize_t;
 
-enum class PyTreeKind {
+enum class PyTreeKind : std::uint8_t {
     Custom = 0,      // A custom type
     Leaf,            // An opaque leaf node
     None,            // None

@@ -501,11 +501,6 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                                               : GET_ITEM_BORROW<py::tuple>(node.node_data, 1));
                 if (!DictKeysEqual(expected_keys, dict)) [[unlikely]] {
                     py::list keys = SortedDictKeys(dict);
-                    std::string dict_type_name =
-                        (node.kind == PyTreeKind::Dict
-                             ? "dict"
-                             : (node.kind == PyTreeKind::OrderedDict ? "OrderedDict"
-                                                                     : "defaultdict"));
                     auto [missing_keys, extra_keys] = DictKeysDifference(expected_keys, dict);
                     std::ostringstream key_difference_sstream{};
                     if (GET_SIZE<py::list>(missing_keys) != 0) [[likely]] {
@@ -516,8 +511,15 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                     }
                     std::ostringstream oss{};
                     oss << "dictionary key mismatch; expected key(s): " << PyRepr(expected_keys)
-                        << ", got key(s): " + PyRepr(keys) << key_difference_sstream.str() << "; "
-                        << dict_type_name << ": " << PyRepr(object) << ".";
+                        << ", got key(s): " + PyRepr(keys) << key_difference_sstream.str() << "; ";
+                    if (node.kind == PyTreeKind::Dict) [[likely]] {
+                        oss << "dict";
+                    } else if (node.kind == PyTreeKind::OrderedDict) [[likely]] {
+                        oss << "OrderedDict";
+                    } else [[unlikely]] {
+                        oss << "defaultdict";
+                    }
+                    oss << ": " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
                 for (const py::handle& key : expected_keys) {
