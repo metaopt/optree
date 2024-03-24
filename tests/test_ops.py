@@ -580,6 +580,68 @@ def test_tree_broadcast_map_with_path():
     )
 
 
+def test_tree_transpose_map():
+    x = ((1, 2, None), (3, 4, 5))
+    y = ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9]))
+    out = optree.tree_transpose_map(lambda a, b: {'a': a, 'b': b}, x, y)
+    assert out == {
+        'a': ((1, 2, None), (3, 4, 5)),
+        'b': ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9])),
+    }
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
+    with pytest.raises(ValueError, match=re.escape('Expected an instance of list, got None.')):
+        optree.tree_transpose_map(lambda a, b: {'a': a, 'b': b}, x, y)
+    out = optree.tree_transpose_map(
+        lambda a, b: {'a': a, 'b': b},
+        x,
+        y,
+        inner_treespec=optree.tree_structure({'a': 0, 'b': 1}),
+    )
+    assert out == {
+        'a': ((1, 2, None), (3, 4, 5)),
+        'b': (([6], None, None), ({'foo': 'bar'}, 7, [8, 9])),
+    }
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = ((6, [None], 7), ({'foo': 'bar'}, 8, [9, 0]))
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 7.')):
+        optree.tree_transpose_map(lambda a, b: {'a': a, 'b': b}, x, y)
+
+
+def test_tree_transpose_map_with_path():
+    x = ((1, 2, None), (3, 4, 5))
+    y = ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9]))
+    out = optree.tree_transpose_map_with_path(lambda p, a, b: {'d': len(p), 'a': a, 'b': b}, x, y)
+    assert out == {
+        'd': ((2, 2, None), (2, 2, 2)),
+        'a': ((1, 2, None), (3, 4, 5)),
+        'b': ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9])),
+    }
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
+    with pytest.raises(ValueError, match=re.escape('Expected an instance of list, got None.')):
+        optree.tree_transpose_map_with_path(lambda p, a, b: {'p': p, 'a': a, 'b': b}, x, y)
+    out = optree.tree_transpose_map_with_path(
+        lambda p, a, b: {'p': p, 'a': a, 'b': b},
+        x,
+        y,
+        inner_treespec=optree.tree_structure({'p': 0, 'a': 1, 'b': 2}),
+    )
+    assert out == {
+        'p': (((0, 0), (0, 1), None), ((1, 0), (1, 1), (1, 2))),
+        'a': ((1, 2, None), (3, 4, 5)),
+        'b': (([6], None, None), ({'foo': 'bar'}, 7, [8, 9])),
+    }
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = ((6, [None], 7), ({'foo': 'bar'}, 8, [9, 0]))
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 7.')):
+        optree.tree_transpose_map(lambda p, a, b: {'p': p, 'a': a, 'b': b}, x, y)
+
+
 def test_tree_map_none_is_leaf():
     x = ((1, 2, None), (3, 4, 5))
     y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
