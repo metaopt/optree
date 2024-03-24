@@ -591,6 +591,11 @@ def test_tree_transpose_map():
         match=r'The inner structure must have at least one leaf\. Got: .*\.',
     ):
         optree.tree_transpose_map(lambda a, b: None, (1,), (2,))
+    with pytest.raises(
+        ValueError,
+        match=r'The inner structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map(lambda a, b: (), (1,), (2,))
 
     x = ((1, 2, None), (3, 4, 5))
     y = ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9]))
@@ -632,6 +637,11 @@ def test_tree_transpose_map_with_path():
         match=r'The inner structure must have at least one leaf\. Got: .*\.',
     ):
         optree.tree_transpose_map_with_path(lambda p, a, b: None, (1,), (2,))
+    with pytest.raises(
+        ValueError,
+        match=r'The inner structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map_with_path(lambda p, a, b: (), (1,), (2,))
 
     x = ((1, 2, None), (3, 4, 5))
     y = ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9]))
@@ -661,7 +671,12 @@ def test_tree_transpose_map_with_path():
     x = ((1, 2, None), (3, 4, 5))
     y = ((6, [None], 7), ({'foo': 'bar'}, 8, [9, 0]))
     with pytest.raises(ValueError, match=re.escape('Expected None, got 7.')):
-        optree.tree_transpose_map(lambda p, a, b: {'p': p, 'a': a, 'b': b}, x, y)
+        optree.tree_transpose_map(
+            lambda p, a, b: {'p': p, 'a': a, 'b': b},
+            x,
+            y,
+            inner_treespec=optree.tree_structure({'p': 0, 'a': 1, 'b': 2}),
+        )
 
 
 def test_tree_map_none_is_leaf():
@@ -736,6 +751,139 @@ def test_tree_broadcast_map_with_path_none_is_leaf():
             [((1, 2, 0), 6, 10), ((1, 2, 1), 6, 11)],
         ),
     )
+
+
+def test_tree_transpose_map_none_is_leaf():
+    with pytest.raises(
+        ValueError,
+        match=r'The outer structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map(lambda a, b: {'a': a, 'b': b}, (), (), none_is_leaf=True)
+    out = optree.tree_transpose_map(lambda a, b: None, (1,), (2,), none_is_leaf=True)
+    assert out == (None,)
+    with pytest.raises(
+        ValueError,
+        match=r'The inner structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map(lambda a, b: (), (1,), (2,), none_is_leaf=True)
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9]))
+    out = optree.tree_transpose_map(lambda a, b: {'a': a, 'b': b}, x, y, none_is_leaf=True)
+    assert out == {
+        'a': ((1, 2, None), (3, 4, 5)),
+        'b': ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9])),
+    }
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
+    with pytest.raises(ValueError, match=re.escape('Expected an instance of list, got None.')):
+        optree.tree_transpose_map(lambda a, b: {'a': a, 'b': b}, x, y, none_is_leaf=True)
+    out = optree.tree_transpose_map(
+        lambda a, b: {'a': a, 'b': b},
+        x,
+        y,
+        inner_treespec=optree.tree_structure({'a': 0, 'b': 1}),
+        none_is_leaf=True,
+    )
+    assert out == {
+        'a': ((1, 2, None), (3, 4, 5)),
+        'b': (([6], None, None), ({'foo': 'bar'}, 7, [8, 9])),
+    }
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = ((6, [None], 7), ({'foo': 'bar'}, 8, [9, 0]))
+    out = optree.tree_transpose_map(
+        lambda a, b: {'a': a, 'b': b},
+        x,
+        y,
+        none_is_leaf=True,
+    )
+    assert out == {
+        'a': ((1, 2, None), (3, 4, 5)),
+        'b': ((6, [None], 7), ({'foo': 'bar'}, 8, [9, 0])),
+    }
+
+
+def test_tree_transpose_map_with_path_none_is_leaf():
+    with pytest.raises(
+        ValueError,
+        match=r'The outer structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map_with_path(
+            lambda p, a, b: {'p': p, 'a': a, 'b': b},
+            (),
+            (),
+            none_is_leaf=True,
+        )
+    out = optree.tree_transpose_map_with_path(
+        lambda p, a, b: None,
+        (1,),
+        (2,),
+        none_is_leaf=True,
+    )
+    assert out == (None,)
+    with pytest.raises(
+        ValueError,
+        match=r'The inner structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map_with_path(
+            lambda p, a, b: (),
+            (1,),
+            (2,),
+            none_is_leaf=True,
+        )
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9]))
+    out = optree.tree_transpose_map_with_path(
+        lambda p, a, b: {'d': len(p), 'a': a, 'b': b},
+        x,
+        y,
+        none_is_leaf=True,
+    )
+    assert out == {
+        'd': ((2, 2, 2), (2, 2, 2)),
+        'a': ((1, 2, None), (3, 4, 5)),
+        'b': ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9])),
+    }
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
+    with pytest.raises(ValueError, match=re.escape('Expected an instance of list, got None.')):
+        optree.tree_transpose_map_with_path(
+            lambda p, a, b: {'p': p, 'a': a, 'b': b},
+            x,
+            y,
+            none_is_leaf=True,
+        )
+    out = optree.tree_transpose_map_with_path(
+        lambda p, a, b: {'p': p, 'a': a, 'b': b},
+        x,
+        y,
+        inner_treespec=optree.tree_structure({'p': 0, 'a': 1, 'b': 2}),
+        none_is_leaf=True,
+    )
+    assert out == {
+        'p': (((0, 0), (0, 1), (0, 2)), ((1, 0), (1, 1), (1, 2))),
+        'a': ((1, 2, None), (3, 4, 5)),
+        'b': (([6], None, None), ({'foo': 'bar'}, 7, [8, 9])),
+    }
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = ((6, [None], 7), ({'foo': 'bar'}, 8, [9, 0]))
+    out = optree.tree_transpose_map_with_path(
+        lambda p, a, b: {'p': p, 'a': a, 'b': b},
+        x,
+        y,
+        inner_treespec=optree.tree_structure({'p': 0, 'a': 1, 'b': 2}),
+        none_is_leaf=True,
+    )
+    assert out == {
+        'p': (((0, 0), (0, 1), (0, 2)), ((1, 0), (1, 1), (1, 2))),
+        'a': ((1, 2, None), (3, 4, 5)),
+        'b': ((6, [None], 7), ({'foo': 'bar'}, 8, [9, 0])),
+    }
 
 
 def test_tree_map_key_order():
