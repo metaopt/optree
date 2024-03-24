@@ -581,6 +581,17 @@ def test_tree_broadcast_map_with_path():
 
 
 def test_tree_transpose_map():
+    with pytest.raises(
+        ValueError,
+        match=r'The outer structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map(lambda a, b: {'a': a, 'b': b}, (), ())
+    with pytest.raises(
+        ValueError,
+        match=r'The inner structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map(lambda a, b: None, (1,), (2,))
+
     x = ((1, 2, None), (3, 4, 5))
     y = ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9]))
     out = optree.tree_transpose_map(lambda a, b: {'a': a, 'b': b}, x, y)
@@ -611,6 +622,17 @@ def test_tree_transpose_map():
 
 
 def test_tree_transpose_map_with_path():
+    with pytest.raises(
+        ValueError,
+        match=r'The outer structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map_with_path(lambda p, a, b: {'p': p, 'a': a, 'b': b}, (), ())
+    with pytest.raises(
+        ValueError,
+        match=r'The inner structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map_with_path(lambda p, a, b: None, (1,), (2,))
+
     x = ((1, 2, None), (3, 4, 5))
     y = ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9]))
     out = optree.tree_transpose_map_with_path(lambda p, a, b: {'d': len(p), 'a': a, 'b': b}, x, y)
