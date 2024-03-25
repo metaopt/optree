@@ -184,8 +184,8 @@ __all__ = [
     'structseq_fields',
 ]
 
-MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH  # 2000
-"""Maximum recursion depth for pytree traversal. It is 2000.
+MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH  # 1000
+"""Maximum recursion depth for pytree traversal. It is 1000.
 
 This limit prevents infinite recursion from causing an overflow of the C stack
 and crashing Python.
