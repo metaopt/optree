@@ -14,10 +14,10 @@
 # ==============================================================================
 """Typing utilities for OpTree."""
 
-
 from __future__ import annotations
 
 import types
+from collections.abc import Hashable
 from typing import (
     Any,
     Callable,
@@ -26,7 +26,6 @@ from typing import (
     Dict,
     ForwardRef,
     Generic,
-    Hashable,
     Iterable,
     List,
     NoReturn,
