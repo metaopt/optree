@@ -43,14 +43,12 @@ def total_order_sorted(
         if key is None:
 
             def key_fn(x: T) -> tuple[str, Any]:
-                # pylint: disable-next=consider-using-f-string
                 return (f'{x.__class__.__module__}.{x.__class__.__qualname__}', x)
 
         else:
 
             def key_fn(x: T) -> tuple[str, Any]:
                 y = key(x)
-                # pylint: disable-next=consider-using-f-string
                 return (f'{y.__class__.__module__}.{y.__class__.__qualname__}', y)
 
         try:
