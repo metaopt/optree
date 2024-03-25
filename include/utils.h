@@ -455,24 +455,25 @@ inline bool IsNamedTupleClassImpl(const py::handle& type) {
     return false;
 }
 inline bool IsNamedTupleClass(const py::handle& type) {
-    if (PyType_Check(type.ptr())) [[likely]] {
-        static auto cache = std::unordered_map<py::handle, bool, TypeHash, TypeEq>{};
-        auto it = cache.find(type);
-        if (it != cache.end()) [[likely]] {
-            return it->second;
-        }
-        bool result = IsNamedTupleClassImpl(type);
-        if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-            cache.emplace(type, result);
-            (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                                  cache.erase(type);
-                                  weakref.dec_ref();
-                              }))
-                .release();
-        }
-        return result;
+    if (!PyType_Check(type.ptr())) [[unlikely]] {
+        return false;
     }
-    return false;
+
+    static auto cache = std::unordered_map<py::handle, bool, TypeHash, TypeEq>{};
+    auto it = cache.find(type);
+    if (it != cache.end()) [[likely]] {
+        return it->second;
+    }
+    bool result = IsNamedTupleClassImpl(type);
+    if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+        cache.emplace(type, result);
+        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                              cache.erase(type);
+                              weakref.dec_ref();
+                          }))
+            .release();
+    }
+    return result;
 }
 inline bool IsNamedTupleInstance(const py::handle& object) {
     return IsNamedTupleClass(py::type::handle_of(object));
@@ -535,24 +536,25 @@ inline bool IsStructSequenceClassImpl(const py::handle& type) {
     return false;
 }
 inline bool IsStructSequenceClass(const py::handle& type) {
-    if (PyType_Check(type.ptr())) [[likely]] {
-        static auto cache = std::unordered_map<py::handle, bool, TypeHash, TypeEq>{};
-        auto it = cache.find(type);
-        if (it != cache.end()) [[likely]] {
-            return it->second;
-        }
-        bool result = IsStructSequenceClassImpl(type);
-        if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-            cache.emplace(type, result);
-            (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                                  cache.erase(type);
-                                  weakref.dec_ref();
-                              }))
-                .release();
-        }
-        return result;
+    if (!PyType_Check(type.ptr())) [[unlikely]] {
+        return false;
     }
-    return false;
+
+    static auto cache = std::unordered_map<py::handle, bool, TypeHash, TypeEq>{};
+    auto it = cache.find(type);
+    if (it != cache.end()) [[likely]] {
+        return it->second;
+    }
+    bool result = IsStructSequenceClassImpl(type);
+    if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+        cache.emplace(type, result);
+        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                              cache.erase(type);
+                              weakref.dec_ref();
+                          }))
+            .release();
+    }
+    return result;
 }
 inline bool IsStructSequenceInstance(const py::handle& object) {
     return IsStructSequenceClass(py::type::handle_of(object));
