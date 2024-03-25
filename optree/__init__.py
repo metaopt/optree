@@ -91,8 +91,10 @@ from optree.typing import (
     UnflattenFunc,
     is_namedtuple,
     is_namedtuple_class,
+    is_namedtuple_instance,
     is_structseq,
     is_structseq_class,
+    is_structseq_instance,
     namedtuple_fields,
     structseq_fields,
 )
@@ -174,8 +176,10 @@ __all__ = [
     'UnflattenFunc',
     'is_namedtuple',
     'is_namedtuple_class',
+    'is_namedtuple_instance',
     'namedtuple_fields',
     'is_structseq',
+    'is_structseq_instance',
     'is_structseq_class',
     'structseq_fields',
 ]

@@ -101,6 +101,10 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              &IsNamedTuple,
              "Return whether the object is an instance of namedtuple or a subclass of namedtuple.",
              py::arg("obj"))
+        .def("is_namedtuple_instance",
+             &IsNamedTupleInstance,
+             "Return whether the object is an instance of namedtuple.",
+             py::arg("obj"))
         .def("is_namedtuple_class",
              &IsNamedTupleClass,
              "Return whether the class is a subclass of namedtuple.",
@@ -113,6 +117,10 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              &IsStructSequence,
              "Return whether the object is an instance of PyStructSequence or a class of "
              "PyStructSequence.",
+             py::arg("obj"))
+        .def("is_structseq_instance",
+             &IsStructSequenceInstance,
+             "Return whether the object is an instance of PyStructSequence.",
              py::arg("obj"))
         .def("is_structseq_class",
              &IsStructSequenceClass,

@@ -57,9 +57,11 @@ __all__ = [
     'FlattenFunc',
     'UnflattenFunc',
     'is_namedtuple',
+    'is_namedtuple_instance',
     'is_namedtuple_class',
     'namedtuple_fields',
     'is_structseq',
+    'is_structseq_instance',
     'is_structseq_class',
     'structseq_fields',
     'T',
@@ -269,6 +271,11 @@ def is_namedtuple(obj: object | type) -> bool:
     return is_namedtuple_class(cls)
 
 
+def is_namedtuple_instance(obj: object) -> bool:
+    """Return whether the object is an instance of namedtuple."""
+    return is_namedtuple_class(type(obj))
+
+
 def is_namedtuple_class(cls: type) -> bool:
     """Return whether the class is a subclass of namedtuple."""
     return (
@@ -325,7 +332,7 @@ class _StructSequenceMeta(type):
         >>> isinstance((1, 2), structseq)
         False
         """
-        return is_structseq_class(type(instance))
+        return is_structseq_instance(instance)
 
 
 # Reference: https://github.com/python/typeshed/blob/main/stdlib/_typeshed/__init__.pyi
@@ -355,6 +362,11 @@ def is_structseq(obj: object | type) -> bool:
     """Return whether the object is an instance of PyStructSequence or a class of PyStructSequence."""
     cls = obj if isinstance(obj, type) else type(obj)
     return is_structseq_class(cls)
+
+
+def is_structseq_instance(obj: object) -> bool:
+    """Return whether the object is an instance of PyStructSequence."""
+    return is_structseq_class(type(obj))
 
 
 # Set if the type allows subclassing (see CPython's Include/object.h)
@@ -402,8 +414,10 @@ def structseq_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
 from optree._C import (
     is_namedtuple,
     is_namedtuple_class,
+    is_namedtuple_instance,
     is_structseq,
     is_structseq_class,
+    is_structseq_instance,
     namedtuple_fields,
     structseq_fields,
 )
