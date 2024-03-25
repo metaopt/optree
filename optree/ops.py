@@ -59,6 +59,7 @@ __all__ = [
     'tree_flatten',
     'tree_flatten_with_path',
     'tree_unflatten',
+    'tree_iter',
     'tree_leaves',
     'tree_structure',
     'tree_paths',
@@ -129,7 +130,7 @@ def tree_flatten(
 ) -> tuple[list[T], PyTreeSpec]:
     """Flatten a pytree.
 
-    See also :func:`tree_flatten_with_path`.
+    See also :func:`tree_flatten_with_path` and :func:`tree_unflatten`.
 
     The flattening order (i.e., the order of elements in the output list) is deterministic,
     corresponding to a left-to-right depth-first tree traversal.
@@ -283,6 +284,47 @@ def tree_unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
     return treespec.unflatten(leaves)
 
 
+def tree_iter(
+    tree: PyTree[T],
+    is_leaf: Callable[[T], bool] | None = None,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> Iterable[T]:
+    """Get an iterator over the leaves of a pytree.
+
+    See also :func:`tree_flatten` and :func:`tree_leaves`.
+
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> list(tree_iter(tree))
+    [1, 2, 3, 4, 5]
+    >>> list(tree_iter(tree, none_is_leaf=True))
+    [1, 2, 3, 4, None, 5]
+    >>> list(tree_iter(1))
+    [1]
+    >>> list(tree_iter(None))
+    []
+    >>> list(tree_iter(None, none_is_leaf=True))
+    [None]
+
+    Args:
+        tree (pytree): A pytree to iterate over.
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        An iterator over the leaf values.
+    """
+    return _C.PyTreeIter(tree, is_leaf, none_is_leaf, namespace)
+
+
 def tree_leaves(
     tree: PyTree[T],
     is_leaf: Callable[[T], bool] | None = None,
@@ -292,7 +334,7 @@ def tree_leaves(
 ) -> list[T]:
     """Get the leaves of a pytree.
 
-    See also :func:`tree_flatten`.
+    See also :func:`tree_flatten` and :func:`tree_iter`.
 
     >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
     >>> tree_leaves(tree)
@@ -1827,7 +1869,7 @@ def tree_all(
         Otherwise, :data:`False`.
     """
     return all(
-        tree_leaves(
+        tree_iter(
             tree,  # type: ignore[arg-type]
             is_leaf=is_leaf,  # type: ignore[arg-type]
             none_is_leaf=none_is_leaf,
@@ -1878,7 +1920,7 @@ def tree_any(
         empty, return :data:`False`.
     """
     return any(
-        tree_leaves(
+        tree_iter(
             tree,  # type: ignore[arg-type]
             is_leaf=is_leaf,  # type: ignore[arg-type]
             none_is_leaf=none_is_leaf,
