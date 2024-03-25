@@ -127,5 +127,9 @@ def register_node(
     cls: type[CustomTreeNode[T]],
     flatten_func: FlattenFunc,
     unflatten_func: UnflattenFunc,
-    namespace: str,
+    namespace: str = '',
+) -> None: ...
+def unregister_node(
+    cls: type[CustomTreeNode[T]],
+    namespace: str = '',
 ) -> None: ...

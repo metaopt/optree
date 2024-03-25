@@ -15,6 +15,7 @@
 
 # pylint: disable=missing-class-docstring,missing-function-docstring,invalid-name
 
+import gc
 import itertools
 import sys
 import time
@@ -23,6 +24,12 @@ from collections import OrderedDict, UserDict, defaultdict, deque, namedtuple
 import pytest
 
 import optree
+
+
+def getrefcount(obj=None):
+    for _ in range(10):
+        gc.collect()
+    return sys.getrefcount(obj)
 
 
 def parametrize(**argvalues) -> pytest.mark.parametrize:

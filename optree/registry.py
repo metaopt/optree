@@ -16,12 +16,14 @@
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 import inspect
+import sys
 from collections import OrderedDict, defaultdict, deque, namedtuple
 from operator import methodcaller
 from threading import Lock
-from typing import Any, Callable, Iterable, NamedTuple, Sequence, overload
+from typing import TYPE_CHECKING, Any, Callable, Iterable, NamedTuple, Sequence, overload
 from typing_extensions import Self  # Python 3.11+
 
 from optree import _C
@@ -40,9 +42,14 @@ from optree.typing import (
 from optree.utils import safe_zip, total_order_sorted, unzip2
 
 
+if TYPE_CHECKING:
+    import builtins
+
+
 __all__ = [
     'register_pytree_node',
     'register_pytree_node_class',
+    'unregister_pytree_node',
     'Partial',
     'register_keypaths',
     'AttributeKeyPathEntry',
@@ -50,9 +57,18 @@ __all__ = [
 ]
 
 
-class PyTreeNodeRegistryEntry(NamedTuple):
+SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}
+
+
+@dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, **SLOTS)
+class PyTreeNodeRegistryEntry:
+    type: builtins.type
     flatten_func: FlattenFunc
     unflatten_func: UnflattenFunc
+    namespace: str = ''
+
+
+del SLOTS
 
 
 # pylint: disable-next=missing-class-docstring,too-few-public-methods
@@ -73,6 +89,8 @@ def register_pytree_node(
     namespace: str,
 ) -> type[CustomTreeNode[T]]:
     """Extend the set of types that are considered internal nodes in pytrees.
+
+    See also :func:`register_pytree_node_class` and :func:`unregister_pytree_node`.
 
     The ``namespace`` argument is used to avoid collisions that occur when different libraries
     register the same Python type with different behaviors. It is recommended to add a unique prefix
@@ -101,6 +119,12 @@ def register_pytree_node(
 
     Returns:
         The same type as the input ``cls``.
+
+    Raises:
+        TypeError: If the input type is not a class.
+        TypeError: If the namespace is not a string.
+        ValueError: If the namespace is an empty string.
+        ValueError: If the type is already registered in the registry.
 
     Examples:
         >>> # Registry a Python type with lambda functions
@@ -194,8 +218,12 @@ def register_pytree_node(
 
     with __REGISTRY_LOCK:
         _C.register_node(cls, flatten_func, unflatten_func, namespace)
-        CustomTreeNode.register(cls)  # pylint: disable=no-member
-        _NODETYPE_REGISTRY[registration_key] = PyTreeNodeRegistryEntry(flatten_func, unflatten_func)
+        _NODETYPE_REGISTRY[registration_key] = PyTreeNodeRegistryEntry(
+            cls,
+            flatten_func,
+            unflatten_func,
+            namespace=namespace,
+        )
     return cls
 
 
@@ -224,6 +252,8 @@ def register_pytree_node_class(
 ) -> type[CustomTreeNode[T]] | Callable[[type[CustomTreeNode[T]]], type[CustomTreeNode[T]]]:
     """Extend the set of types that are considered internal nodes in pytrees.
 
+    See also :func:`register_pytree_node` and :func:`unregister_pytree_node`.
+
     The ``namespace`` argument is used to avoid collisions that occur when different libraries
     register the same Python type with different behaviors. It is recommended to add a unique prefix
     to the namespace to avoid conflicts with other libraries. Namespaces can also be used to specify
@@ -244,6 +274,11 @@ def register_pytree_node_class(
         The same type as the input ``cls`` if the argument presents. Otherwise, return a decorator
         function that registers the class as a pytree node.
 
+    Raises:
+        TypeError: If the namespace is not a string.
+        ValueError: If the namespace is an empty string.
+        ValueError: If the type is already registered in the registry.
+
     This function is a thin wrapper around :func:`register_pytree_node`, and provides a
     class-oriented interface::
 
@@ -262,10 +297,6 @@ def register_pytree_node_class(
 
         @register_pytree_node_class('mylist')
         class MyList(UserList):
-            def __init__(self, x, y):
-                self.x = x
-                self.y = y
-
             def tree_flatten(self):
                 return self.data, None, None
 
@@ -293,6 +324,63 @@ def register_pytree_node_class(
         raise TypeError(f'Expected a class, got {cls}.')
     register_pytree_node(cls, methodcaller('tree_flatten'), cls.tree_unflatten, namespace)
     return cls
+
+
+def unregister_pytree_node(
+    cls: type[CustomTreeNode[T]],
+    *,
+    namespace: str,
+) -> PyTreeNodeRegistryEntry:
+    """Remove a type from the pytree node registry.
+
+    See also :func:`register_pytree_node` and :func:`register_pytree_node_class`.
+
+    This function is the inverse operation of function :func:`register_pytree_node`.
+
+    Args:
+        cls (type): A Python type to remove from the pytree node registry.
+        namespace (str): The namespace of the pytree node registry to remove the type from.
+
+    Returns:
+        The removed registry entry.
+
+    Raises:
+        TypeError: If the input type is not a class.
+        TypeError: If the namespace is not a string.
+        ValueError: If the namespace is an empty string.
+        ValueError: If the type is a built-in type that cannot be unregistered.
+        ValueError: If the type is not found in the registry.
+
+    Examples:
+        >>> # Register a Python type with lambda functions
+        >>> register_pytree_node(
+        ...     set,
+        ...     lambda s: (sorted(s), None, None),
+        ...     lambda _, children: set(children),
+        ...     namespace='temp',
+        ... )
+        <class 'set'>
+
+        >>> # Unregister the Python type
+        >>> unregister_pytree_node(set, namespace='temp')
+    """
+    if not inspect.isclass(cls):
+        raise TypeError(f'Expected a class, got {cls}.')
+    if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
+        raise TypeError(f'The namespace must be a string, got {namespace}.')
+    if namespace == '':
+        raise ValueError('The namespace cannot be an empty string.')
+
+    registration_key: type | tuple[str, type]
+    if namespace is __GLOBAL_NAMESPACE:
+        registration_key = cls
+        namespace = ''
+    else:
+        registration_key = (namespace, cls)
+
+    with __REGISTRY_LOCK:
+        _C.unregister_node(cls, namespace)
+        return _NODETYPE_REGISTRY.pop(registration_key)
 
 
 def _sorted_items(items: Iterable[tuple[KT, VT]]) -> list[tuple[KT, VT]]:
@@ -391,15 +479,15 @@ def _structseq_unflatten(cls: type[structseq[T]], children: Iterable[T]) -> stru
 
 # pylint: disable=all
 _NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {  # fmt: off
-    type(None): PyTreeNodeRegistryEntry(_none_flatten, _none_unflatten),  # type: ignore[arg-type]
-    tuple: PyTreeNodeRegistryEntry(_tuple_flatten, _tuple_unflatten),  # type: ignore[arg-type]
-    list: PyTreeNodeRegistryEntry(_list_flatten, _list_unflatten),  # type: ignore[arg-type]
-    dict: PyTreeNodeRegistryEntry(_dict_flatten, _dict_unflatten),  # type: ignore[arg-type]
-    namedtuple: PyTreeNodeRegistryEntry(_namedtuple_flatten, _namedtuple_unflatten),  # type: ignore[arg-type,dict-item] # noqa: PYI024
-    OrderedDict: PyTreeNodeRegistryEntry(_ordereddict_flatten, _ordereddict_unflatten),  # type: ignore[arg-type]
-    defaultdict: PyTreeNodeRegistryEntry(_defaultdict_flatten, _defaultdict_unflatten),  # type: ignore[arg-type]
-    deque: PyTreeNodeRegistryEntry(_deque_flatten, _deque_unflatten),  # type: ignore[arg-type]
-    structseq: PyTreeNodeRegistryEntry(_structseq_flatten, _structseq_unflatten),  # type: ignore[arg-type]
+    type(None): PyTreeNodeRegistryEntry(type(None), _none_flatten, _none_unflatten),  # type: ignore[arg-type]
+    tuple: PyTreeNodeRegistryEntry(tuple, _tuple_flatten, _tuple_unflatten),  # type: ignore[arg-type]
+    list: PyTreeNodeRegistryEntry(list, _list_flatten, _list_unflatten),  # type: ignore[arg-type]
+    dict: PyTreeNodeRegistryEntry(dict, _dict_flatten, _dict_unflatten),  # type: ignore[arg-type]
+    namedtuple: PyTreeNodeRegistryEntry(namedtuple, _namedtuple_flatten, _namedtuple_unflatten),  # type: ignore[arg-type,dict-item] # noqa: PYI024
+    OrderedDict: PyTreeNodeRegistryEntry(OrderedDict, _ordereddict_flatten, _ordereddict_unflatten),  # type: ignore[arg-type]
+    defaultdict: PyTreeNodeRegistryEntry(defaultdict, _defaultdict_flatten, _defaultdict_unflatten),  # type: ignore[arg-type]
+    deque: PyTreeNodeRegistryEntry(deque, _deque_flatten, _deque_unflatten),  # type: ignore[arg-type]
+    structseq: PyTreeNodeRegistryEntry(structseq, _structseq_flatten, _structseq_unflatten),  # type: ignore[arg-type]
 }
 # pylint: enable=all
 

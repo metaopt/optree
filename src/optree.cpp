@@ -47,6 +47,11 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             py::arg("flatten_func"),
             py::arg("unflatten_func"),
             py::arg("namespace") = "")
+        .def("unregister_node",
+             &PyTreeTypeRegistry::Unregister,
+             "Unregister a Python type.",
+             py::arg("cls"),
+             py::arg("namespace") = "")
         .def("flatten",
              &PyTreeSpec::Flatten,
              "Flattens a pytree.",

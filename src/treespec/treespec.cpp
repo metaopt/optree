@@ -168,19 +168,19 @@ namespace optree {
 
 template <bool NoneIsLeaf>
 /*static*/ PyTreeKind PyTreeSpec::GetKind(const py::handle& handle,
-                                          PyTreeTypeRegistry::Registration const** custom,
+                                          RegistrationPtr& custom,
                                           const std::string& registry_namespace) {
-    const PyTreeTypeRegistry::Registration* registration =
+    RegistrationPtr registration =
         PyTreeTypeRegistry::Lookup<NoneIsLeaf>(py::type::of(handle), registry_namespace);
     if (registration) [[likely]] {
         if (registration->kind == PyTreeKind::Custom) [[unlikely]] {
-            *custom = registration;
+            custom = registration;
         } else [[likely]] {
-            *custom = nullptr;
+            custom = nullptr;
         }
         return registration->kind;
     }
-    *custom = nullptr;
+    custom = nullptr;
     if (IsStructSequenceInstance(handle)) [[unlikely]] {
         return PyTreeKind::StructSequence;
     }
@@ -191,10 +191,10 @@ template <bool NoneIsLeaf>
 }
 
 template PyTreeKind PyTreeSpec::GetKind<NONE_IS_NODE>(const py::handle&,
-                                                      PyTreeTypeRegistry::Registration const**,
+                                                      RegistrationPtr&,
                                                       const std::string&);
 template PyTreeKind PyTreeSpec::GetKind<NONE_IS_LEAF>(const py::handle&,
-                                                      PyTreeTypeRegistry::Registration const**,
+                                                      RegistrationPtr&,
                                                       const std::string&);
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]

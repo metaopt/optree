@@ -177,6 +177,8 @@ class PyTreeSpec {
                           const std::string &registry_namespace = "");
 
  private:
+    using RegistrationPtr = PyTreeTypeRegistry::RegistrationPtr;
+
     struct Node {
         PyTreeKind kind = PyTreeKind::Leaf;
 
@@ -200,7 +202,7 @@ class PyTreeSpec {
         py::object node_entries{};
 
         // Custom type registration. Must be null for non-custom types.
-        const PyTreeTypeRegistry::Registration *custom = nullptr;
+        RegistrationPtr custom{nullptr};
 
         // Number of leaf nodes in the subtree rooted at this node.
         ssize_t num_leaves = 0;
@@ -233,7 +235,7 @@ class PyTreeSpec {
     // Compute the node kind of a given Python object.
     template <bool NoneIsLeaf>
     static PyTreeKind GetKind(const py::handle &handle,
-                              PyTreeTypeRegistry::Registration const **custom,
+                              RegistrationPtr &custom,  // NOLINT[runtime/references]
                               const std::string &registry_namespace);
 
     // Recursive helper used to implement Flatten().

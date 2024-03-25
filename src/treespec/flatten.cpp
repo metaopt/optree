@@ -51,7 +51,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
     if (leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) [[unlikely]] {
         leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
     } else [[likely]] {
-        node.kind = GetKind<NoneIsLeaf>(handle, &node.custom, registry_namespace);
+        node.kind = GetKind<NoneIsLeaf>(handle, node.custom, registry_namespace);
         // NOLINTNEXTLINE[misc-no-recursion]
         auto recurse = [this, &found_custom, &leaf_predicate, &registry_namespace, &leaves, &depth](
                            const py::handle& child) -> void {
@@ -230,7 +230,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
         leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
         paths.emplace_back(std::move(path));
     } else [[likely]] {
-        node.kind = GetKind<NoneIsLeaf>(handle, &node.custom, registry_namespace);
+        node.kind = GetKind<NoneIsLeaf>(handle, node.custom, registry_namespace);
         // NOLINTNEXTLINE[misc-no-recursion]
         auto recurse = [this,
                         &found_custom,
@@ -592,7 +592,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
             }
 
             case PyTreeKind::Custom: {
-                const PyTreeTypeRegistry::Registration* registration = nullptr;
+                RegistrationPtr registration{nullptr};
                 if (m_none_is_leaf) [[unlikely]] {
                     registration =
                         PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(py::type::of(object), m_namespace);
@@ -654,9 +654,9 @@ template <bool NoneIsLeaf>
 /*static*/ bool PyTreeSpec::ObjectIsLeafImpl(const py::handle& handle,
                                              const std::optional<py::function>& leaf_predicate,
                                              const std::string& registry_namespace) {
-    const PyTreeTypeRegistry::Registration* custom = nullptr;
+    RegistrationPtr custom{nullptr};
     return ((leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) ||
-            (GetKind<NoneIsLeaf>(handle, &custom, registry_namespace) == PyTreeKind::Leaf));
+            (GetKind<NoneIsLeaf>(handle, custom, registry_namespace) == PyTreeKind::Leaf));
 }
 
 /*static*/ bool PyTreeSpec::ObjectIsLeaf(const py::object& object,
@@ -674,12 +674,12 @@ template <bool NoneIsLeaf>
 /*static*/ bool PyTreeSpec::AllLeavesImpl(const py::iterable& iterable,
                                           const std::optional<py::function>& leaf_predicate,
                                           const std::string& registry_namespace) {
-    const PyTreeTypeRegistry::Registration* custom = nullptr;
+    RegistrationPtr custom{nullptr};
     for (const py::handle& h : iterable) {
         if (leaf_predicate && (*leaf_predicate)(h).cast<bool>()) [[unlikely]] {
             continue;
         }
-        if (GetKind<NoneIsLeaf>(h, &custom, registry_namespace) != PyTreeKind::Leaf) [[unlikely]] {
+        if (GetKind<NoneIsLeaf>(h, custom, registry_namespace) != PyTreeKind::Leaf) [[unlikely]] {
             return false;
         }
     }
