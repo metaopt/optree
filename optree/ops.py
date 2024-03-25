@@ -808,7 +808,7 @@ def tree_transpose_map(
     >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
     >>> tree_transpose_map(  # doctest: +IGNORE_WHITESPACE
     ...     lambda x: {'identity': x, 'double': 2 * x},
-    ...     tree
+    ...     tree,
     ... )
     {
         'identity': {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)},
@@ -817,7 +817,18 @@ def tree_transpose_map(
     >>> tree_transpose_map(  # doctest: +IGNORE_WHITESPACE
     ...     lambda x: {'identity': x, 'double': (x, x)},
     ...     tree,
-    ...     inner_treespec=tree_structure({'identity': 0, 'double': 0})
+    ... )
+    {
+        'identity': {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)},
+        'double': (
+            {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)},
+            {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
+        )
+    }
+    >>> tree_transpose_map(  # doctest: +IGNORE_WHITESPACE
+    ...     lambda x: {'identity': x, 'double': (x, x)},
+    ...     tree,
+    ...     inner_treespec=tree_structure({'identity': 0, 'double': 0}),
     ... )
     {
         'identity': {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)},
@@ -889,7 +900,7 @@ def tree_transpose_map_with_path(
     >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
     >>> tree_transpose_map_with_path(  # doctest: +IGNORE_WHITESPACE
     ...     lambda p, x: {'depth': len(p), 'value': x},
-    ...     tree
+    ...     tree,
     ... )
     {
         'depth': {'b': (2, [3, 3]), 'a': 1, 'c': (2, 2)},
@@ -898,7 +909,7 @@ def tree_transpose_map_with_path(
     >>> tree_transpose_map_with_path(  # doctest: +IGNORE_WHITESPACE
     ...     lambda p, x: {'path': p, 'value': x},
     ...     tree,
-    ...     inner_treespec=tree_structure({'path': 0, 'value': 0}))
+    ...     inner_treespec=tree_structure({'path': 0, 'value': 0})),
     ... )
     {
         'path': {'b': (('b', 0), [('b', 1, 0), ('b', 1, 1)]), 'a': ('a',), 'c': (('c', 0), ('c', 1))},
