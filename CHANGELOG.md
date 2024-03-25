@@ -13,6 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+-
+
+### Changed
+
+-
+
+### Fixed
+
+-
+
+### Removed
+
+-
+
+------
+
+## [0.11.0] - 2024-03-26
+
+### Added
+
 - Add function `is_namedtuple_instance` and `is_structseq_instance` and result caches by [@XuehaiPan](https://github.com/XuehaiPan) in [#121](https://github.com/metaopt/optree/pull/121).
 - Add `tree_iter` function by [@XuehaiPan](https://github.com/XuehaiPan) in [#130](https://github.com/metaopt/optree/pull/130).
 - Add API to unregister node type in the registry by [@XuehaiPan](https://github.com/XuehaiPan) in [#124](https://github.com/metaopt/optree/pull/124).
@@ -35,10 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix potential segmentation fault when modifying `treespec.entries()` by [@XuehaiPan](https://github.com/XuehaiPan) in [#116](https://github.com/metaopt/optree/pull/116).
-
-### Removed
-
--
 
 ------
 
@@ -266,7 +282,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/metaopt/optree/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/metaopt/optree/compare/v0.9.2...v0.10.0
 [0.9.2]: https://github.com/metaopt/optree/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/metaopt/optree/compare/v0.9.0...v0.9.1
