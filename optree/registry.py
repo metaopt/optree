@@ -19,6 +19,7 @@ from __future__ import annotations
 import dataclasses
 import functools
 import inspect
+import sys
 from collections import OrderedDict, defaultdict, deque, namedtuple
 from operator import methodcaller
 from threading import Lock
@@ -56,12 +57,18 @@ __all__ = [
 ]
 
 
-@dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True)
+SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}
+
+
+@dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, **SLOTS)
 class PyTreeNodeRegistryEntry:
     type: builtins.type
     flatten_func: FlattenFunc
     unflatten_func: UnflattenFunc
     namespace: str = ''
+
+
+del SLOTS
 
 
 # pylint: disable-next=missing-class-docstring,too-few-public-methods
