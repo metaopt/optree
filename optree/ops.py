@@ -44,8 +44,8 @@ from optree.typing import (
     S,
     T,
     U,
-    is_namedtuple_class,
-    is_structseq_class,
+    is_namedtuple_instance,
+    is_structseq_instance,
     namedtuple_fields,
 )
 from optree.typing import structseq as PyStructSequence  # noqa: N812
@@ -109,8 +109,8 @@ __all__ = [
     'prefix_errors',
 ]
 
-MAX_RECURSION_DEPTH: int = _C.MAX_RECURSION_DEPTH  # 2000
-"""Maximum recursion depth for pytree traversal. It is 2000.
+MAX_RECURSION_DEPTH: int = _C.MAX_RECURSION_DEPTH  # 1000
+"""Maximum recursion depth for pytree traversal. It is 1000.
 
 This limit prevents infinite recursion from causing an overflow of the C stack
 and crashing Python.
@@ -2418,7 +2418,7 @@ def treespec_namedtuple(
     Returns:
         A treespec representing a dict node with the given children.
     """
-    if not is_namedtuple_class(type(namedtuple)):
+    if not is_namedtuple_instance(namedtuple):
         raise ValueError(f'Expected a namedtuple of PyTreeSpec(s), got {namedtuple!r}.')
     return _C.make_from_collection(
         namedtuple,  # type: ignore[arg-type]
@@ -2595,7 +2595,7 @@ def treespec_structseq(
     Returns:
         A treespec representing a PyStructSequence node with the given children.
     """
-    if not is_structseq_class(type(structseq)):
+    if not is_structseq_instance(structseq):
         raise ValueError(f'Expected a PyStructSequence of PyTreeSpec(s), got {structseq!r}.')
     return _C.make_from_collection(
         structseq,  # type: ignore[arg-type]
@@ -2855,11 +2855,11 @@ def _child_keys(
     if handler:
         return list(handler(tree))
 
-    if is_structseq_class(type(tree)):
+    if is_structseq_instance(tree):
         # Handle PyStructSequence as a special case, based on heuristic
         return list(map(AttributeKeyPathEntry, structseq_fields(tree)))  # type: ignore[arg-type]
 
-    if is_namedtuple_class(type(tree)):
+    if is_namedtuple_instance(tree):
         # Handle namedtuple as a special case, based on heuristic
         return list(map(AttributeKeyPathEntry, namedtuple_fields(tree)))  # type: ignore[arg-type]
 

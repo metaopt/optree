@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add function `is_namedtuple_instance` and `is_structseq_instance` and result caches by [@XuehaiPan](https://github.com/XuehaiPan) in [#121](https://github.com/metaopt/optree/pull/121).
 - Add `tree_iter` function by [@XuehaiPan](https://github.com/XuehaiPan) in [#130](https://github.com/metaopt/optree/pull/130).
 - Add API to unregister node type in the registry by [@XuehaiPan](https://github.com/XuehaiPan) in [#124](https://github.com/metaopt/optree/pull/124).
 - Add tree map functions with transposed outputs `tree_transpose_map` and `tree_transpose_map_with_path` by [@XuehaiPan](https://github.com/XuehaiPan) in [#127](https://github.com/metaopt/optree/pull/127).
@@ -23,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Set recursion limit to 1000 for all platforms by [@XuehaiPan](https://github.com/XuehaiPan) in [#121](https://github.com/metaopt/optree/pull/121).
 - Allow types to be registered in both the global namespace and custom namespaces by [@XuehaiPan](https://github.com/XuehaiPan) in [#124](https://github.com/metaopt/optree/pull/124).
 - Set `treespec_is_leaf` as strict by default by [@XuehaiPan](https://github.com/XuehaiPan) in [#120](https://github.com/metaopt/optree/pull/120).
 - Reorder functions for better code correspondence between C++ and Python by [@XuehaiPan](https://github.com/XuehaiPan) in [#117](https://github.com/metaopt/optree/pull/117).

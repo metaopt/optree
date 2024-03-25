@@ -91,8 +91,10 @@ from optree.typing import (
     UnflattenFunc,
     is_namedtuple,
     is_namedtuple_class,
+    is_namedtuple_instance,
     is_structseq,
     is_structseq_class,
+    is_structseq_instance,
     namedtuple_fields,
     structseq_fields,
 )
@@ -174,14 +176,16 @@ __all__ = [
     'UnflattenFunc',
     'is_namedtuple',
     'is_namedtuple_class',
+    'is_namedtuple_instance',
     'namedtuple_fields',
     'is_structseq',
+    'is_structseq_instance',
     'is_structseq_class',
     'structseq_fields',
 ]
 
-MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH  # 2000
-"""Maximum recursion depth for pytree traversal. It is 2000.
+MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH  # 1000
+"""Maximum recursion depth for pytree traversal. It is 1000.
 
 This limit prevents infinite recursion from causing an overflow of the C stack
 and crashing Python.

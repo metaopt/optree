@@ -26,6 +26,8 @@ limitations under the License.
 #include <unordered_set>  // std::unordered_set
 #include <utility>        // std::pair
 
+#include "include/utils.h"
+
 namespace optree {
 
 namespace py = pybind11;
@@ -107,40 +109,6 @@ class PyTreeTypeRegistry {
     template <bool NoneIsLeaf>
     static RegistrationPtr UnregisterImpl(const py::object &cls,
                                           const std::string &registry_namespace);
-
-    class TypeHash {
-     public:
-        using is_transparent = void;
-        size_t operator()(const py::object &t) const;
-        size_t operator()(const py::handle &t) const;
-    };
-    class TypeEq {
-     public:
-        using is_transparent = void;
-        bool operator()(const py::object &a, const py::object &b) const;
-        bool operator()(const py::object &a, const py::handle &b) const;
-        bool operator()(const py::handle &a, const py::object &b) const;
-        bool operator()(const py::handle &a, const py::handle &b) const;
-    };
-
-    class NamedTypeHash {
-     public:
-        using is_transparent = void;
-        size_t operator()(const std::pair<std::string, py::object> &p) const;
-        size_t operator()(const std::pair<std::string, py::handle> &p) const;
-    };
-    class NamedTypeEq {
-     public:
-        using is_transparent = void;
-        bool operator()(const std::pair<std::string, py::object> &a,
-                        const std::pair<std::string, py::object> &b) const;
-        bool operator()(const std::pair<std::string, py::object> &a,
-                        const std::pair<std::string, py::handle> &b) const;
-        bool operator()(const std::pair<std::string, py::handle> &a,
-                        const std::pair<std::string, py::object> &b) const;
-        bool operator()(const std::pair<std::string, py::handle> &a,
-                        const std::pair<std::string, py::handle> &b) const;
-    };
 
     inline static std::unordered_set<py::object, TypeHash, TypeEq> sm_builtins_types{};
     std::unordered_map<py::object, RegistrationPtr, TypeHash, TypeEq> m_registrations{};

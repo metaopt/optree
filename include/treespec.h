@@ -38,7 +38,7 @@ using size_t = py::size_t;
 using ssize_t = py::ssize_t;
 
 // The maximum depth of a pytree.
-constexpr ssize_t MAX_RECURSION_DEPTH = 2000;
+constexpr ssize_t MAX_RECURSION_DEPTH = 1000;
 
 // Test whether the given object is a leaf node.
 bool IsLeaf(const py::object &object,

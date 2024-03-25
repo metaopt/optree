@@ -102,9 +102,8 @@ class Vector2D:
         return isinstance(other, Vector2D) and (self.x, self.y) == (other.x, other.y)
 
 
-@optree.register_pytree_node_class(
-    namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
-)
+# pylint: disable-next=protected-access
+@optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
 class FlatCache:
     def __init__(self, structured, *, leaves=None, treespec=None):
         if treespec is None:
