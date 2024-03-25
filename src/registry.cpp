@@ -19,7 +19,6 @@ limitations under the License.
 
 #include <Python.h>
 
-#include <functional>   // std::hash
 #include <memory>       // std::make_shared
 #include <sstream>      // std::ostringstream
 #include <string>       // std::string
