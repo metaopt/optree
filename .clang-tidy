@@ -18,6 +18,8 @@ modernize-*,
 performance-*,
 readability-*,
 -readability-convert-member-functions-to-static,
+-readability-redundant-inline-specifier,
+-readability-redundant-member-init,
 -readability-identifier-length,
 '
 HeaderFilterRegex: '^include/.*$'

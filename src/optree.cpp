@@ -19,6 +19,7 @@ limitations under the License.
 #include <pybind11/stl.h>
 
 #include <optional>  // std::nullopt
+#include <string>    // std::string
 
 #include "include/exceptions.h"
 #include "include/registry.h"
@@ -47,6 +48,11 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             py::arg("flatten_func"),
             py::arg("unflatten_func"),
             py::arg("namespace") = "")
+        .def("unregister_node",
+             &PyTreeTypeRegistry::Unregister,
+             "Unregister a Python type.",
+             py::arg("cls"),
+             py::arg("namespace") = "")
         .def("flatten",
              &PyTreeSpec::Flatten,
              "Flattens a pytree.",
@@ -62,14 +68,14 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
         .def("is_leaf",
-             &PyTreeSpec::ObjectIsLeaf,
+             &IsLeaf,
              "Test whether the given object is a leaf node.",
              py::arg("obj"),
              py::arg("leaf_predicate") = std::nullopt,
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
         .def("all_leaves",
-             &PyTreeSpec::AllLeaves,
+             &AllLeaves,
              "Test whether all elements in the given iterable are all leaves.",
              py::arg("iterable"),
              py::arg("leaf_predicate") = std::nullopt,
@@ -254,22 +260,44 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              "Serialization support for PyTreeSpec.",
              py::arg("state"));
 
+    auto PyTreeIterTypeObject =
+        py::class_<PyTreeIter>(mod, "PyTreeIter", "Iterator over the leaves of a pytree.");
+    reinterpret_cast<PyTypeObject*>(PyTreeIterTypeObject.ptr())->tp_name = "optree.PyTreeIter";
+    py::setattr(PyTreeIterTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
+
+    PyTreeIterTypeObject
+        .def(py::init<py::object, std::optional<py::function>, bool, std::string>(),
+             "Create a new iterator over the leaves of a pytree.",
+             py::arg("tree"),
+             py::arg("leaf_predicate") = std::nullopt,
+             py::arg("none_is_leaf") = false,
+             py::arg("namespace") = "")
+        .def("__iter__", &PyTreeIter::Iter, "Return the iterator object itself.")
+        .def("__next__", &PyTreeIter::Next, "Return the next leaf in the pytree.");
+
 #ifdef Py_TPFLAGS_IMMUTABLETYPE
-    reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_flags |=
-        Py_TPFLAGS_IMMUTABLETYPE;
     reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())->tp_flags |=
         Py_TPFLAGS_IMMUTABLETYPE;
-    reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_flags &= ~Py_TPFLAGS_READY;
+    reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_flags |=
+        Py_TPFLAGS_IMMUTABLETYPE;
+    reinterpret_cast<PyTypeObject*>(PyTreeIterTypeObject.ptr())->tp_flags |=
+        Py_TPFLAGS_IMMUTABLETYPE;
     reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())->tp_flags &= ~Py_TPFLAGS_READY;
+    reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_flags &= ~Py_TPFLAGS_READY;
+    reinterpret_cast<PyTypeObject*>(PyTreeIterTypeObject.ptr())->tp_flags &= ~Py_TPFLAGS_READY;
 #endif
 
+    if (PyType_Ready(reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())) < 0)
+        [[unlikely]] {
+        INTERNAL_ERROR("`PyType_Ready(&PyTreeKind_Type)` failed.");
+    }
     if (PyType_Ready(reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())) < 0)
         [[unlikely]] {
         INTERNAL_ERROR("`PyType_Ready(&PyTreeSpec_Type)` failed.");
     }
-    if (PyType_Ready(reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())) < 0)
+    if (PyType_Ready(reinterpret_cast<PyTypeObject*>(PyTreeIterTypeObject.ptr())) < 0)
         [[unlikely]] {
-        INTERNAL_ERROR("`PyType_Ready(&PyTreeKind_Type)` failed.");
+        INTERNAL_ERROR("`PyType_Ready(&PyTreeIter_Type)` failed.");
     }
 }
 

@@ -19,9 +19,11 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
-#include <memory>         // std::unique_ptr
+#include <cstdint>        // std::uint8_t
+#include <memory>         // std::shared_ptr
 #include <string>         // std::string
 #include <unordered_map>  // std::unordered_map
+#include <unordered_set>  // std::unordered_set
 #include <utility>        // std::pair
 
 #include "include/utils.h"
@@ -32,7 +34,7 @@ namespace py = pybind11;
 using size_t = py::size_t;
 using ssize_t = py::ssize_t;
 
-enum class PyTreeKind {
+enum class PyTreeKind : std::uint8_t {
     Custom = 0,      // A custom type
     Leaf,            // An opaque leaf node
     None,            // None
@@ -73,6 +75,8 @@ class PyTreeTypeRegistry {
         py::function unflatten_func{};
     };
 
+    using RegistrationPtr = std::shared_ptr<const Registration>;
+
     // Registers a new custom type. Objects of `cls` will be treated as container node types in
     // PyTrees.
     static void Register(const py::object &cls,
@@ -80,9 +84,17 @@ class PyTreeTypeRegistry {
                          const py::function &unflatten_func,
                          const std::string &registry_namespace = "");
 
+    static void Unregister(const py::object &cls, const std::string &registry_namespace = "");
+
     // Finds the custom type registration for `type`. Returns nullptr if none exists.
     template <bool NoneIsLeaf>
-    static const Registration *Lookup(const py::object &cls, const std::string &registry_namespace);
+    static RegistrationPtr Lookup(const py::object &cls, const std::string &registry_namespace);
+
+    // Compute the node kind of a given Python object.
+    template <bool NoneIsLeaf>
+    static PyTreeKind GetKind(const py::handle &handle,
+                              RegistrationPtr &custom,  // NOLINT[runtime/references]
+                              const std::string &registry_namespace);
 
  private:
     template <bool NoneIsLeaf>
@@ -94,10 +106,14 @@ class PyTreeTypeRegistry {
                              const py::function &unflatten_func,
                              const std::string &registry_namespace);
 
-    std::unordered_map<py::object, std::unique_ptr<Registration>, TypeHash, TypeEq>
-        m_registrations{};
+    template <bool NoneIsLeaf>
+    static RegistrationPtr UnregisterImpl(const py::object &cls,
+                                          const std::string &registry_namespace);
+
+    inline static std::unordered_set<py::object, TypeHash, TypeEq> sm_builtins_types{};
+    std::unordered_map<py::object, RegistrationPtr, TypeHash, TypeEq> m_registrations{};
     std::unordered_map<std::pair<std::string, py::object>,
-                       std::unique_ptr<Registration>,
+                       RegistrationPtr,
                        NamedTypeHash,
                        NamedTypeEq>
         m_named_registrations{};

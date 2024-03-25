@@ -17,7 +17,7 @@
 
 import builtins
 import enum
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from typing import Any
 
 from optree.typing import CustomTreeNode, FlattenFunc, MetaData, PyTree, T, U, UnflattenFunc
@@ -123,9 +123,24 @@ class PyTreeSpec:
     def __hash__(self) -> int: ...
     def __len__(self) -> int: ...
 
+class PyTreeIter(Iterator[T]):
+    def __init__(
+        self,
+        tree: PyTree[T],
+        leaf_predicate: Callable[[T], bool] | None = None,
+        node_is_leaf: bool = False,
+        namespace: str = '',
+    ) -> None: ...
+    def __iter__(self) -> PyTreeIter[T]: ...
+    def __next__(self) -> T: ...
+
 def register_node(
     cls: type[CustomTreeNode[T]],
     flatten_func: FlattenFunc,
     unflatten_func: UnflattenFunc,
-    namespace: str,
+    namespace: str = '',
+) -> None: ...
+def unregister_node(
+    cls: type[CustomTreeNode[T]],
+    namespace: str = '',
 ) -> None: ...

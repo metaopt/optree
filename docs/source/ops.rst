@@ -26,6 +26,7 @@ Tree Manipulation Functions
     tree_flatten
     tree_flatten_with_path
     tree_unflatten
+    tree_iter
     tree_leaves
     tree_structure
     tree_paths
@@ -37,6 +38,8 @@ Tree Manipulation Functions
     tree_map_with_path_
     tree_replace_nones
     tree_transpose
+    tree_transpose_map
+    tree_transpose_map_with_path
     tree_broadcast_prefix
     broadcast_prefix
     tree_broadcast_common
@@ -49,6 +52,7 @@ Tree Manipulation Functions
 .. autofunction:: tree_flatten
 .. autofunction:: tree_flatten_with_path
 .. autofunction:: tree_unflatten
+.. autofunction:: tree_iter
 .. autofunction:: tree_leaves
 .. autofunction:: tree_structure
 .. autofunction:: tree_paths
@@ -60,6 +64,8 @@ Tree Manipulation Functions
 .. autofunction:: tree_map_with_path_
 .. autofunction:: tree_replace_nones
 .. autofunction:: tree_transpose
+.. autofunction:: tree_transpose_map
+.. autofunction:: tree_transpose_map_with_path
 .. autofunction:: tree_broadcast_prefix
 .. autofunction:: broadcast_prefix
 .. autofunction:: tree_broadcast_common
