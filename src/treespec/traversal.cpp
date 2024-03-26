@@ -40,7 +40,7 @@ py::object PyTreeIter::NextImpl() {
             throw py::error_already_set();
         }
 
-        if (m_leaf_predicate && (*m_leaf_predicate)(object).cast<bool>()) [[unlikely]] {
+        if (m_leaf_predicate && py::cast<bool>((*m_leaf_predicate)(object))) [[unlikely]] {
             return object;
         }
 

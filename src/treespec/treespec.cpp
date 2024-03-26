@@ -290,7 +290,7 @@ namespace optree {
             ssize_t last_other_cur = other_cur;
             for (ssize_t i = root.arity - 1; i >= 0; --i) {
                 py::object key = GET_ITEM_BORROW<py::list>(expected_keys, i);
-                other_cur = other_curs[dict[key].cast<ssize_t>()];
+                other_cur = other_curs[py::cast<ssize_t>(dict[key])];
                 auto [num_nodes, other_num_nodes, new_num_nodes, new_num_leaves] =
                     // NOLINTNEXTLINE[misc-no-recursion]
                     BroadcastToCommonSuffixImpl(nodes, traversal, cur, other_traversal, other_cur);
@@ -583,7 +583,7 @@ py::list PyTreeSpec::Entries() const {
         case PyTreeKind::Deque:
         case PyTreeKind::StructSequence:
         case PyTreeKind::Custom: {
-            auto entries = py::list{root.arity};
+            py::list entries{root.arity};
             for (ssize_t i = 0; i < root.arity; ++i) {
                 SET_ITEM<py::list>(entries, i, py::int_(i));
             }
@@ -834,7 +834,7 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec& other, const bool& strict) const {
                     auto reordered_index_to_index = std::unordered_map<ssize_t, ssize_t>{};
                     for (ssize_t i = a->arity - 1; i >= 0; --i) {
                         py::object key = GET_ITEM_BORROW<py::list>(expected_keys, i);
-                        reordered_index_to_index.emplace(i, dict[key].cast<ssize_t>());
+                        reordered_index_to_index.emplace(i, py::cast<ssize_t>(dict[key]));
                     }
                     auto reordered_other_num_nodes = reserved_vector<ssize_t>(b->arity);
                     reordered_other_num_nodes.resize(b->arity);
@@ -1228,13 +1228,13 @@ py::object PyTreeSpec::ToPicklable() const {
     bool none_is_leaf = false;
     std::string registry_namespace{};
     auto out = std::make_unique<PyTreeSpec>();
-    out->m_none_is_leaf = none_is_leaf = state[1].cast<bool>();
-    out->m_namespace = registry_namespace = state[2].cast<std::string>();
+    out->m_none_is_leaf = none_is_leaf = py::cast<bool>(state[1]);
+    out->m_namespace = registry_namespace = py::cast<std::string>(state[2]);
     auto node_states = py::reinterpret_borrow<py::tuple>(state[0]);
     for (const auto& item : node_states) {
-        auto t = item.cast<py::tuple>();
+        auto t = py::cast<py::tuple>(item);
         Node& node = out->m_traversal.emplace_back();
-        node.kind = static_cast<PyTreeKind>(t[0].cast<ssize_t>());
+        node.kind = static_cast<PyTreeKind>(py::cast<ssize_t>(t[0]));
         if (t.size() != 7) [[unlikely]] {
             if (t.size() == 8) [[likely]] {
                 if (t[7].is_none()) [[likely]] {
@@ -1245,7 +1245,7 @@ py::object PyTreeSpec::ToPicklable() const {
                 } else [[unlikely]] {
                     if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict)
                         [[likely]] {
-                        node.original_keys = t[7].cast<py::list>();
+                        node.original_keys = py::cast<py::list>(t[7]);
                     } else [[unlikely]] {
                         throw std::runtime_error("Malformed pickled PyTreeSpec.");
                     }
@@ -1254,7 +1254,7 @@ py::object PyTreeSpec::ToPicklable() const {
                 throw std::runtime_error("Malformed pickled PyTreeSpec.");
             }
         }
-        node.arity = t[1].cast<ssize_t>();
+        node.arity = py::cast<ssize_t>(t[1]);
         switch (node.kind) {
             case PyTreeKind::Leaf:
             case PyTreeKind::None:
@@ -1268,13 +1268,13 @@ py::object PyTreeSpec::ToPicklable() const {
 
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict: {
-                node.node_data = t[2].cast<py::list>();
+                node.node_data = py::cast<py::list>(t[2]);
                 break;
             }
 
             case PyTreeKind::NamedTuple:
             case PyTreeKind::StructSequence: {
-                node.node_data = t[2].cast<py::type>();
+                node.node_data = py::cast<py::type>(t[2]);
                 break;
             }
 
@@ -1290,7 +1290,7 @@ py::object PyTreeSpec::ToPicklable() const {
         }
         if (node.kind == PyTreeKind::Custom) [[unlikely]] {  // NOLINT
             if (!t[3].is_none()) [[unlikely]] {
-                node.node_entries = t[3].cast<py::tuple>();
+                node.node_entries = py::cast<py::tuple>(t[3]);
             }
             if (t[4].is_none()) [[unlikely]] {
                 node.custom = nullptr;
@@ -1317,8 +1317,8 @@ py::object PyTreeSpec::ToPicklable() const {
         } else if (!t[3].is_none() || !t[4].is_none()) [[unlikely]] {
             throw std::runtime_error("Malformed pickled PyTreeSpec.");
         }
-        node.num_leaves = t[5].cast<ssize_t>();
-        node.num_nodes = t[6].cast<ssize_t>();
+        node.num_leaves = py::cast<ssize_t>(t[5]);
+        node.num_nodes = py::cast<ssize_t>(t[6]);
     }
     return out;
 }

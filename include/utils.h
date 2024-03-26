@@ -570,7 +570,7 @@ inline void AssertExactStructSequence(const py::handle& object) {
     }
 }
 inline py::tuple StructSequenceGetFieldsImpl(const py::handle& type) {
-    const auto n_sequence_fields = getattr(type, Py_Get_ID(n_sequence_fields)).cast<ssize_t>();
+    const auto n_sequence_fields = py::cast<ssize_t>(getattr(type, Py_Get_ID(n_sequence_fields)));
     auto* members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
     py::tuple fields{n_sequence_fields};
     for (ssize_t i = 0; i < n_sequence_fields; ++i) {
