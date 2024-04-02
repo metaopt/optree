@@ -32,7 +32,7 @@ py::module_ GetCxxModule(const std::optional<py::module_>& module) {
     static py::object this_module{};
     if (module.has_value()) [[unlikely]] {
         EXPECT_FALSE(this_module, "The module has already been initialized.");
-        this_module = module.value();
+        this_module = *module;
     } else [[likely]] {
         EXPECT_TRUE(this_module, "The module is not initialized.");
     }
