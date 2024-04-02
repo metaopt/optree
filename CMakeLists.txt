@@ -51,7 +51,7 @@ if(MSVC)
         APPEND CMAKE_CXX_FLAGS
         " /Zc:preprocessor"
         " /experimental:external /external:anglebrackets /external:W0"
-        " /Wall /Wv:19.34"  # Visual Studio 2022 version 17.4
+        " /Wall /Wv:19.37"  # Visual Studio 2022 version 17.7
         # Suppress following warnings
         " /wd4365"  # conversion from 'type_1' to 'type_2', signed/unsigned mismatch
         " /wd4514"  # unreferenced inline function has been removed
