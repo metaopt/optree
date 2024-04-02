@@ -94,7 +94,7 @@ def safe_zip(
     ...
 
 
-def safe_zip(*args):
+def safe_zip(*args: Iterable[Any]) -> zip[tuple[Any, ...]]:
     """Strict zip that requires all arguments to be the same length."""
     seqs = [arg if isinstance(arg, Sequence) else list(arg) for arg in args]
     if len(set(map(len, seqs))) > 1:

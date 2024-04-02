@@ -48,7 +48,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
     Node node;
     ssize_t start_num_nodes = py::ssize_t_cast(m_traversal.size());
     ssize_t start_num_leaves = py::ssize_t_cast(leaves.size());
-    if (leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) [[unlikely]] {
+    if (leaf_predicate && py::cast<bool>((*leaf_predicate)(handle))) [[unlikely]] {
         leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
     } else [[likely]] {
         node.kind =
@@ -224,7 +224,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
     Node node;
     ssize_t start_num_nodes = py::ssize_t_cast(m_traversal.size());
     ssize_t start_num_leaves = py::ssize_t_cast(leaves.size());
-    if (leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) [[unlikely]] {
+    if (leaf_predicate && py::cast<bool>((*leaf_predicate)(handle))) [[unlikely]] {
         py::tuple path{depth};
         for (ssize_t d = 0; d < depth; ++d) {
             SET_ITEM<py::tuple>(path, d, stack[d]);
@@ -659,7 +659,7 @@ bool IsLeafImpl(const py::handle& handle,
                 const std::optional<py::function>& leaf_predicate,
                 const std::string& registry_namespace) {
     PyTreeTypeRegistry::RegistrationPtr custom{nullptr};
-    return ((leaf_predicate && (*leaf_predicate)(handle).cast<bool>()) ||
+    return ((leaf_predicate && py::cast<bool>((*leaf_predicate)(handle))) ||
             (PyTreeTypeRegistry::GetKind<NoneIsLeaf>(handle, custom, registry_namespace) ==
              PyTreeKind::Leaf));
 }
@@ -680,11 +680,11 @@ bool AllLeavesImpl(const py::iterable& iterable,
                    const std::optional<py::function>& leaf_predicate,
                    const std::string& registry_namespace) {
     PyTreeTypeRegistry::RegistrationPtr custom{nullptr};
-    for (const py::handle& h : iterable) {
-        if (leaf_predicate && (*leaf_predicate)(h).cast<bool>()) [[unlikely]] {
+    for (const py::handle& handle : iterable) {
+        if (leaf_predicate && py::cast<bool>((*leaf_predicate)(handle))) [[unlikely]] {
             continue;
         }
-        if (PyTreeTypeRegistry::GetKind<NoneIsLeaf>(h, custom, registry_namespace) !=
+        if (PyTreeTypeRegistry::GetKind<NoneIsLeaf>(handle, custom, registry_namespace) !=
             PyTreeKind::Leaf) [[unlikely]] {
             return false;
         }

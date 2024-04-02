@@ -1556,14 +1556,14 @@ def tree_reduce(
 
 
 def tree_reduce(
-    func,
-    tree,
-    initial=__MISSING,
+    func: Callable[[T, S], T],
+    tree: PyTree[S],
+    initial: T = __MISSING,
     *,
-    is_leaf=None,
-    none_is_leaf=False,
-    namespace='',
-):
+    is_leaf: Callable[[S], bool] | None = None,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> T:
     """Traversal through a pytree and reduce the leaves in left-to-right depth-first order.
 
     See also :func:`tree_leaves` and :func:`tree_sum`.
@@ -1598,7 +1598,7 @@ def tree_reduce(
     """  # pylint: disable=line-too-long
     leaves = tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     if initial is __MISSING:
-        return functools.reduce(func, leaves)
+        return functools.reduce(func, leaves)  # type: ignore[arg-type,return-value]
     return functools.reduce(func, leaves, initial)
 
 
@@ -1678,7 +1678,15 @@ def tree_max(
     ...
 
 
-def tree_max(tree, *, default=__MISSING, key=None, is_leaf=None, none_is_leaf=False, namespace=''):
+def tree_max(
+    tree: PyTree[T],
+    *,
+    default: T = __MISSING,
+    key: Callable[[T], Any] | None = None,
+    is_leaf: Callable[[T], bool] | None = None,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> T:
     """Return the maximum leaf value in ``tree``.
 
     See also :func:`tree_leaves` and :func:`tree_min`.
@@ -1733,10 +1741,10 @@ def tree_max(tree, *, default=__MISSING, key=None, is_leaf=None, none_is_leaf=Fa
     leaves = tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     if default is __MISSING:
         if key is None:  # special handling for Python 3.7
-            return max(leaves)
+            return max(leaves)  # type: ignore[type-var]
         return max(leaves, key=key)
     if key is None:  # special handling for Python 3.7
-        return max(leaves, default=default)
+        return max(leaves, default=default)  # type: ignore[type-var]
     return max(leaves, default=default, key=key)
 
 
@@ -1765,7 +1773,15 @@ def tree_min(
     ...
 
 
-def tree_min(tree, *, default=__MISSING, key=None, is_leaf=None, none_is_leaf=False, namespace=''):
+def tree_min(
+    tree: PyTree[T],
+    *,
+    default: T = __MISSING,
+    key: Callable[[T], Any] | None = None,
+    is_leaf: Callable[[T], bool] | None = None,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> T:
     """Return the minimum leaf value in ``tree``.
 
     See also :func:`tree_leaves` and :func:`tree_max`.
@@ -1820,10 +1836,10 @@ def tree_min(tree, *, default=__MISSING, key=None, is_leaf=None, none_is_leaf=Fa
     leaves = tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     if default is __MISSING:
         if key is None:  # special handling for Python 3.7
-            return min(leaves)
+            return min(leaves)  # type: ignore[type-var]
         return min(leaves, key=key)
     if key is None:  # special handling for Python 3.7
-        return min(leaves, default=default)
+        return min(leaves, default=default)  # type: ignore[type-var]
     return min(leaves, default=default, key=key)
 
 

@@ -6,15 +6,9 @@ import shutil
 import sys
 import sysconfig
 
-from setuptools import setup
+from setuptools import Extension, setup
+from setuptools.command.build_ext import build_ext
 
-
-try:
-    from pybind11.setup_helpers import Pybind11Extension as Extension
-    from pybind11.setup_helpers import build_ext
-except ImportError:
-    from setuptools import Extension
-    from setuptools.command.build_ext import build_ext
 
 HERE = pathlib.Path(__file__).absolute().parent
 VERSION_FILE = HERE / 'optree' / 'version.py'
