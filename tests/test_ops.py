@@ -374,6 +374,9 @@ def test_paths_and_accessors(data):
         assert accessor.path == path
         assert tuple(e.entry for e in accessor) == path
         assert accessor(tree) == leaf
+        if all(e.__class__.pprint is not optree.PyTreeEntry.pprint for e in accessor):
+            # pylint: disable-next=eval-used
+            assert eval(accessor.pprint('__tree'), {'__tree': tree}) == leaf
 
     assert optree.treespec_paths(treespec) == expected_paths
     assert optree.treespec_accessors(treespec) == expected_accessors
@@ -431,6 +434,9 @@ def test_paths_and_accessors_with_is_leaf(tree, is_leaf, none_is_leaf, namespace
         assert accessor.path == path
         assert tuple(e.entry for e in accessor) == path
         assert accessor(tree) == leaf
+        if all(e.__class__.pprint is not optree.PyTreeEntry.pprint for e in accessor):
+            # pylint: disable-next=eval-used
+            assert eval(accessor.pprint('__tree'), {'__tree': tree}) == leaf
 
     assert optree.treespec_paths(treespec) == paths
     assert optree.treespec_accessors(treespec) == accessors
