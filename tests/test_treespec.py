@@ -484,13 +484,13 @@ def test_treespec_entries(tree, none_is_leaf, namespace):
     paths = list(gen_path(treespec))
     assert paths == expected_paths
 
-    expected_typed_paths, _, other_treespec = optree.tree_flatten_with_typed_path(
+    expected_accessors, _, other_treespec = optree.tree_flatten_with_accessor(
         tree,
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
-    assert optree.treespec_typed_paths(treespec) == expected_typed_paths
-    assert optree.treespec_typed_paths(other_treespec) == expected_typed_paths
+    assert optree.treespec_accessors(treespec) == expected_accessors
+    assert optree.treespec_accessors(other_treespec) == expected_accessors
     assert treespec == other_treespec
 
     def gen_typed_path(spec):
@@ -511,6 +511,9 @@ def test_treespec_entries(tree, none_is_leaf, namespace):
                 yield ((entry, node_type, node_kind), *suffix)
 
     typed_paths = list(gen_typed_path(treespec))
+    expected_typed_paths = [
+        tuple((e.entry, e.type, e.kind) for e in accessor) for accessor in expected_accessors
+    ]
     assert typed_paths == expected_typed_paths
 
 
@@ -652,7 +655,7 @@ def test_treespec_num_leaves(tree, none_is_leaf, namespace):
     assert treespec.num_leaves == len(leaves)
     assert treespec.num_leaves == len(treespec)
     assert treespec.num_leaves == len(treespec.paths())
-    assert treespec.num_leaves == len(treespec.typed_paths())
+    assert treespec.num_leaves == len(treespec.accessors())
 
 
 @parametrize(

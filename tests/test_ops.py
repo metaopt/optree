@@ -29,8 +29,8 @@ import optree
 # pylint: disable-next=wrong-import-order
 from helpers import (
     LEAVES,
+    TREE_ACCESSORS,
     TREE_PATHS,
-    TREE_TYPED_PATHS,
     TREES,
     Counter,
     CustomTuple,
@@ -339,44 +339,44 @@ def test_structure_is_leaf(structure_fn):
 @parametrize(
     data=list(
         itertools.chain(
-            zip(TREES, TREE_PATHS[False], TREE_TYPED_PATHS[False], itertools.repeat(False)),
-            zip(TREES, TREE_PATHS[True], TREE_TYPED_PATHS[True], itertools.repeat(True)),
+            zip(TREES, TREE_PATHS[False], TREE_ACCESSORS[False], itertools.repeat(False)),
+            zip(TREES, TREE_PATHS[True], TREE_ACCESSORS[True], itertools.repeat(True)),
         ),
     ),
 )
 def test_paths(data):
-    tree, expected_paths, expected_typed_paths, none_is_leaf = data
+    tree, expected_paths, expected_accessors, none_is_leaf = data
     expected_leaves, expected_treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
     paths, leaves, treespec = optree.tree_flatten_with_path(tree, none_is_leaf=none_is_leaf)
-    typed_paths, other_leaves, other_treespec = optree.tree_flatten_with_typed_path(
+    accessors, other_leaves, other_treespec = optree.tree_flatten_with_accessor(
         tree,
         none_is_leaf=none_is_leaf,
     )
     assert len(paths) == len(leaves)
-    assert len(typed_paths) == len(leaves)
+    assert len(accessors) == len(leaves)
     assert leaves == expected_leaves
     assert treespec == expected_treespec
     assert other_leaves == expected_leaves
     assert other_treespec == expected_treespec
     assert paths == expected_paths
-    assert typed_paths == expected_typed_paths
-    for typed_path, path in zip(typed_paths, paths):
-        assert isinstance(typed_path, tuple)
+    assert accessors == expected_accessors
+    for accessor, path in zip(accessors, paths):
+        assert isinstance(accessor, tuple)
         assert isinstance(path, tuple)
-        assert len(typed_path) == len(path)
+        assert len(accessor) == len(path)
         assert all(
-            isinstance(tp, tuple)
-            and len(tp) == 3
-            and isinstance(tp[1], type)
-            and isinstance(tp[2], optree.PyTreeKind)
-            for tp in typed_path
+            isinstance(e, optree.PyTreeEntry)
+            and isinstance(e.type, type)
+            and isinstance(e.kind, optree.PyTreeKind)
+            for e in accessor
         )
-        assert tuple(entry for entry, _, __ in typed_path) == path
+        assert accessor.path == path
+        assert tuple(e.entry for e in accessor) == path
 
     assert optree.treespec_paths(treespec) == expected_paths
-    assert optree.treespec_typed_paths(treespec) == expected_typed_paths
+    assert optree.treespec_accessors(treespec) == expected_accessors
     assert optree.tree_paths(tree, none_is_leaf=none_is_leaf) == expected_paths
-    assert optree.tree_typed_paths(tree, none_is_leaf=none_is_leaf) == expected_typed_paths
+    assert optree.tree_accessors(tree, none_is_leaf=none_is_leaf) == expected_accessors
 
 
 @parametrize(
@@ -404,33 +404,33 @@ def test_paths_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
-    typed_paths, other_leaves, other_treespec = optree.tree_flatten_with_typed_path(
+    accessors, other_leaves, other_treespec = optree.tree_flatten_with_accessor(
         tree,
         is_leaf=is_leaf,
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
     assert len(paths) == len(leaves)
-    assert len(typed_paths) == len(leaves)
+    assert len(accessors) == len(leaves)
     assert leaves == expected_leaves
     assert treespec == expected_treespec
     assert other_leaves == expected_leaves
     assert other_treespec == expected_treespec
-    for typed_path, path in zip(typed_paths, paths):
-        assert isinstance(typed_path, tuple)
+    for accessor, path in zip(accessors, paths):
+        assert isinstance(accessor, tuple)
         assert isinstance(path, tuple)
-        assert len(typed_path) == len(path)
+        assert len(accessor) == len(path)
         assert all(
-            isinstance(tp, tuple)
-            and len(tp) == 3
-            and isinstance(tp[1], type)
-            and isinstance(tp[2], optree.PyTreeKind)
-            for tp in typed_path
+            isinstance(e, optree.PyTreeEntry)
+            and isinstance(e.type, type)
+            and isinstance(e.kind, optree.PyTreeKind)
+            for e in accessor
         )
-        assert tuple(entry for entry, _, __ in typed_path) == path
+        assert accessor.path == path
+        assert tuple(e.entry for e in accessor) == path
 
     assert optree.treespec_paths(treespec) == paths
-    assert optree.treespec_typed_paths(treespec) == typed_paths
+    assert optree.treespec_accessors(treespec) == accessors
     assert (
         optree.tree_paths(
             tree,
@@ -441,13 +441,13 @@ def test_paths_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
         == paths
     )
     assert (
-        optree.tree_typed_paths(
+        optree.tree_accessors(
             tree,
             is_leaf=is_leaf,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
-        == typed_paths
+        == accessors
     )
 
 
@@ -1932,11 +1932,14 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
-    assert actual_typed_paths == optree.tree_typed_paths(
-        tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
+    assert actual_typed_paths == [
+        tuple((e.entry, e.type, e.kind) for e in accessor)
+        for accessor in optree.tree_accessors(
+            tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+    ]
 
 
 @parametrize(

@@ -23,18 +23,11 @@ import functools
 import itertools
 import textwrap
 from collections import OrderedDict, defaultdict, deque
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, overload
+from typing import Any, Callable, Iterable, Mapping, overload
 
 from optree import _C
-from optree.registry import (
-    AttributeKeyPathEntry,
-    FlattenedKeyPathEntry,
-    KeyPath,
-    KeyPathEntry,
-    PyTreeNodeRegistryEntry,
-    register_keypaths,
-    register_pytree_node,
-)
+from optree.accessor import PyTreeAccessor, PyTreeEntry
+from optree.registry import PyTreeNodeRegistryEntry, register_pytree_node
 from optree.typing import (
     CustomTreeNode,
     MetaData,
@@ -47,14 +40,8 @@ from optree.typing import (
     U,
     is_namedtuple_instance,
     is_structseq_instance,
-    namedtuple_fields,
 )
 from optree.typing import structseq as PyStructSequence  # noqa: N812
-from optree.typing import structseq_fields
-
-
-if TYPE_CHECKING:
-    from optree.accessor import PyTreeAccessor
 
 
 __all__ = [
@@ -2853,7 +2840,7 @@ def prefix_errors(
     """Return a list of errors that would be raised by :func:`broadcast_prefix`."""
     return list(
         _prefix_error(
-            KeyPath(),
+            PyTreeAccessor(),
             prefix_tree,
             full_tree,
             is_leaf=is_leaf,
@@ -2868,7 +2855,7 @@ STANDARD_DICT_TYPES = frozenset({dict, OrderedDict, defaultdict})
 
 # pylint: disable-next=too-many-locals
 def _prefix_error(
-    key_path: KeyPath,
+    accessor: PyTreeAccessor,
     prefix_tree: PyTree[T],
     full_tree: PyTree[S],
     is_leaf: Callable[[T], bool] | None = None,
@@ -2894,7 +2881,7 @@ def _prefix_error(
     ):
         yield lambda name: ValueError(
             f'pytree structure error: different types at key path\n'
-            f'    {{name}}{key_path.pprint()}\n'
+            f'    {{name}}{accessor.pprint("") if accessor else " tree root"}\n'
             f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
             f'    {type(prefix_tree)}\n'
             f'but at the same key path the full pytree has a subtree of different type\n'
@@ -2939,7 +2926,7 @@ def _prefix_error(
                 key_difference += f'\nextra key(s):\n    {extra_keys}'
             yield lambda name: ValueError(
                 f'pytree structure error: different pytree keys at key path\n'
-                f'    {{name}}{key_path.pprint()}\n'
+                f'    {{name}}{accessor.pprint("") if accessor else " tree root"}\n'
                 f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
                 f'    {prefix_tree_type}\n'
                 f'with {len(prefix_tree_keys)} key(s)\n'
@@ -2957,7 +2944,7 @@ def _prefix_error(
     if len(prefix_tree_children) != len(full_tree_children):
         yield lambda name: ValueError(
             f'pytree structure error: different numbers of pytree children at key path\n'
-            f'    {{name}}{key_path.pprint()}\n'
+            f'    {{name}}{accessor.pprint("") if accessor else " tree root"}\n'
             f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
             f'    {prefix_tree_type}\n'
             f'with {len(prefix_tree_children)} children, '
@@ -2988,7 +2975,7 @@ def _prefix_error(
         )
         yield lambda name: ValueError(
             f'pytree structure error: different pytree metadata at key path\n'
-            f'    {{name}}{key_path.pprint()}\n'
+            f'    {{name}}{accessor.pprint("") if accessor else " tree root"}\n'
             f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
             f'    {prefix_tree_type}\n'
             f'with metadata\n'
@@ -3003,26 +2990,26 @@ def _prefix_error(
 
     # If the root types and numbers of children agree, there must be an error in a subtree,
     # so recurse:
-    keys = _child_keys(
+    entries = _child_entries(
         prefix_tree,
         is_leaf=is_leaf,
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
-    keys_ = _child_keys(
+    entries_ = _child_entries(
         full_tree,
         is_leaf=is_leaf,  # type: ignore[arg-type]
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
-    assert keys == keys_ or (
+    assert entries == entries_ or (
         # Special handling for dictionary types already done in the keys check above
         both_standard_dict
-    ), f'equal pytree nodes gave different keys: {keys} and {keys_}'
+    ), f'equal pytree nodes gave different keys: {entries} and {entries_}'
     # pylint: disable-next=invalid-name
-    for k, t1, t2 in zip(keys, prefix_tree_children, full_tree_children):
+    for e, t1, t2 in zip(entries, prefix_tree_children, full_tree_children):
         yield from _prefix_error(
-            key_path + k,
+            accessor + e,
             t1,
             t2,
             is_leaf=is_leaf,
@@ -3031,27 +3018,23 @@ def _prefix_error(
         )
 
 
-def _child_keys(
+def _child_entries(
     tree: PyTree[T],
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> list[KeyPathEntry]:
+) -> list[PyTreeEntry]:
     treespec = tree_structure(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     assert not treespec_is_strict_leaf(treespec), 'treespec must be a non-leaf node'
 
-    handler = register_keypaths.get(type(tree))  # type: ignore[attr-defined]
-    if handler:
-        return list(handler(tree))
+    counter = itertools.count()
+    one_level_accessors = tree_accessors(
+        tree,
+        is_leaf=lambda x: next(counter) > 0 or (is_leaf is not None and is_leaf(x)),
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
-    if is_structseq_instance(tree):
-        # Handle PyStructSequence as a special case, based on heuristic
-        return list(map(AttributeKeyPathEntry, structseq_fields(tree)))  # type: ignore[arg-type]
-
-    if is_namedtuple_instance(tree):
-        # Handle namedtuple as a special case, based on heuristic
-        return list(map(AttributeKeyPathEntry, namedtuple_fields(tree)))  # type: ignore[arg-type]
-
-    num_children = treespec.num_children
-    return list(map(FlattenedKeyPathEntry, range(num_children)))
+    assert all(len(a) == 1 for a in one_level_accessors)
+    return [a[0] for a in one_level_accessors]

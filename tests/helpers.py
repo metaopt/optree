@@ -141,6 +141,8 @@ class FlatCache:
     namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
 )
 class MyDict(UserDict):
+    TREE_PATH_ENTRY_TYPE = optree.MappingEntry
+
     def tree_flatten(self):
         reversed_keys = sorted(self.keys(), reverse=True)
         return [self[key] for key in reversed_keys], reversed_keys, reversed_keys
@@ -326,389 +328,723 @@ TREE_PATHS = {
 }
 
 
-TREE_TYPED_PATHS_NONE_IS_NODE = [
-    [()],
+TREE_ACCESSORS_NONE_IS_NODE = [
+    [optree.PyTreeAccessor()],
     [],
     [],
-    [((0, tuple, optree.PyTreeKind.TUPLE),)],
-    [],
-    [],
-    [((0, tuple, optree.PyTreeKind.TUPLE),), ((1, tuple, optree.PyTreeKind.TUPLE),)],
     [
-        (
-            (0, tuple, optree.PyTreeKind.TUPLE),
-            (0, tuple, optree.PyTreeKind.TUPLE),
-        ),
-        (
-            (0, tuple, optree.PyTreeKind.TUPLE),
-            (1, tuple, optree.PyTreeKind.TUPLE),
-        ),
-        (
-            (1, tuple, optree.PyTreeKind.TUPLE),
-            (0, list, optree.PyTreeKind.LIST),
-        ),
-        (
-            (1, tuple, optree.PyTreeKind.TUPLE),
-            (1, list, optree.PyTreeKind.LIST),
-            (0, tuple, optree.PyTreeKind.TUPLE),
-        ),
-        (
-            (1, tuple, optree.PyTreeKind.TUPLE),
-            (1, list, optree.PyTreeKind.LIST),
-            (2, tuple, optree.PyTreeKind.TUPLE),
-        ),
-    ],
-    [((0, list, optree.PyTreeKind.LIST),)],
-    [
-        ((0, list, optree.PyTreeKind.LIST),),
-        (
-            (1, list, optree.PyTreeKind.LIST),
-            (0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
-            (0, tuple, optree.PyTreeKind.TUPLE),
-        ),
-        (
-            (1, list, optree.PyTreeKind.LIST),
-            (0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
-            (1, tuple, optree.PyTreeKind.TUPLE),
-            (0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
-        ),
-        (
-            (1, list, optree.PyTreeKind.LIST),
-            (1, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
-            ('baz', dict, optree.PyTreeKind.DICT),
-        ),
-    ],
-    [
-        ((0, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((1, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((3, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((4, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((5, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((6, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((7, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((8, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-    ],
-    [
-        ((0, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((1, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((2, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((3, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((4, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((5, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((6, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((7, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((8, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (0, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (1, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (2, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (3, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (4, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (6, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (7, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (8, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-    ],
-    [((0, list, optree.PyTreeKind.LIST), (0, Vector3D, optree.PyTreeKind.CUSTOM))],
-    [((0, Vector2D, optree.PyTreeKind.CUSTOM),), ((1, Vector2D, optree.PyTreeKind.CUSTOM),)],
-    [(('a', dict, optree.PyTreeKind.DICT),), (('b', dict, optree.PyTreeKind.DICT),)],
-    [
-        (('a', dict, optree.PyTreeKind.DICT),),
-        (('b', dict, optree.PyTreeKind.DICT), (0, tuple, optree.PyTreeKind.TUPLE)),
-        (('b', dict, optree.PyTreeKind.DICT), (1, tuple, optree.PyTreeKind.TUPLE)),
-        (('d', dict, optree.PyTreeKind.DICT), ('f', dict, optree.PyTreeKind.DICT)),
-    ],
-    [
-        (('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-    ],
-    [
-        (('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (
-            ('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
-            (1, deque, optree.PyTreeKind.DEQUE),
-        ),
-        (
-            ('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
-            (2, deque, optree.PyTreeKind.DEQUE),
-        ),
-    ],
-    [
-        (('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (
-            ('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
-            (1, deque, optree.PyTreeKind.DEQUE),
-        ),
-    ],
-    [
-        (('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (
-            ('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
-            (0, deque, optree.PyTreeKind.DEQUE),
-        ),
-        (
-            ('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
-            (1, deque, optree.PyTreeKind.DEQUE),
-        ),
-    ],
-    [
-        (('baz', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
-        (('foo', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
-        (('something', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
-    ],
-    [((1, deque, optree.PyTreeKind.DEQUE),), ((2, deque, optree.PyTreeKind.DEQUE),)],
-    [((1, deque, optree.PyTreeKind.DEQUE),)],
-    [
-        (('foo', MyDict, optree.PyTreeKind.CUSTOM), ('b', MyDict, optree.PyTreeKind.CUSTOM)),
-        (('foo', MyDict, optree.PyTreeKind.CUSTOM), ('a', MyDict, optree.PyTreeKind.CUSTOM)),
-        (('baz', MyDict, optree.PyTreeKind.CUSTOM),),
-    ],
-    [()],
-    [
-        ((0, CustomNamedTupleSubclass, optree.PyTreeKind.NAMEDTUPLE),),
-        ((1, CustomNamedTupleSubclass, optree.PyTreeKind.NAMEDTUPLE),),
+        optree.PyTreeAccessor((optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),)),
     ],
     [],
-    [((0, FlatCache, optree.PyTreeKind.CUSTOM),)],
-    [((0, FlatCache, optree.PyTreeKind.CUSTOM),), ((1, FlatCache, optree.PyTreeKind.CUSTOM),)],
+    [],
+    [
+        optree.PyTreeAccessor((optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),)),
+        optree.PyTreeAccessor((optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),)),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+    ],
+    [optree.PyTreeAccessor((optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),))],
+    [
+        optree.PyTreeAccessor((optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),)),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                optree.NamedTupleEntry(0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                optree.NamedTupleEntry(0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                optree.NamedTupleEntry(0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                optree.NamedTupleEntry(1, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
+                optree.MappingEntry('baz', dict, optree.PyTreeKind.DICT),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(0, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(1, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(3, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(4, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(5, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(6, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(7, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(8, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(0, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(1, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(2, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(3, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(4, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(5, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(6, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(7, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(8, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(0, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(1, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(2, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(3, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(4, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(6, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(7, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(8, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                optree.FlattenedEntry(0, Vector3D, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor((optree.FlattenedEntry(0, Vector2D, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.FlattenedEntry(1, Vector2D, optree.PyTreeKind.CUSTOM),)),
+    ],
+    [
+        optree.PyTreeAccessor((optree.MappingEntry('a', dict, optree.PyTreeKind.DICT),)),
+        optree.PyTreeAccessor((optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),)),
+    ],
+    [
+        optree.PyTreeAccessor((optree.MappingEntry('a', dict, optree.PyTreeKind.DICT),)),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('d', dict, optree.PyTreeKind.DICT),
+                optree.MappingEntry('f', dict, optree.PyTreeKind.DICT),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
+                optree.SequenceEntry(1, deque, optree.PyTreeKind.DEQUE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
+                optree.SequenceEntry(2, deque, optree.PyTreeKind.DEQUE),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
+                optree.SequenceEntry(1, deque, optree.PyTreeKind.DEQUE),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
+                optree.SequenceEntry(0, deque, optree.PyTreeKind.DEQUE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
+                optree.SequenceEntry(1, deque, optree.PyTreeKind.DEQUE),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('foo', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('something', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor((optree.SequenceEntry(1, deque, optree.PyTreeKind.DEQUE),)),
+        optree.PyTreeAccessor((optree.SequenceEntry(2, deque, optree.PyTreeKind.DEQUE),)),
+    ],
+    [optree.PyTreeAccessor((optree.SequenceEntry(1, deque, optree.PyTreeKind.DEQUE),))],
+    [
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('b', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('a', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor((optree.MappingEntry('baz', MyDict, optree.PyTreeKind.CUSTOM),)),
+    ],
+    [optree.PyTreeAccessor()],
+    [
+        optree.PyTreeAccessor(
+            (optree.NamedTupleEntry(0, CustomNamedTupleSubclass, optree.PyTreeKind.NAMEDTUPLE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.NamedTupleEntry(1, CustomNamedTupleSubclass, optree.PyTreeKind.NAMEDTUPLE),),
+        ),
+    ],
+    [],
+    [optree.PyTreeAccessor((optree.FlattenedEntry(0, FlatCache, optree.PyTreeKind.CUSTOM),))],
+    [
+        optree.PyTreeAccessor((optree.FlattenedEntry(0, FlatCache, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.FlattenedEntry(1, FlatCache, optree.PyTreeKind.CUSTOM),)),
+    ],
 ]
 
-TREE_TYPED_PATHS_NONE_IS_LEAF = [
-    [()],
-    [()],
-    [((0, tuple, optree.PyTreeKind.TUPLE),)],
-    [((0, tuple, optree.PyTreeKind.TUPLE),), ((1, tuple, optree.PyTreeKind.TUPLE),)],
-    [],
-    [],
-    [((0, tuple, optree.PyTreeKind.TUPLE),), ((1, tuple, optree.PyTreeKind.TUPLE),)],
+TREE_ACCESSORS_NONE_IS_LEAF = [
+    [optree.PyTreeAccessor()],
+    [optree.PyTreeAccessor()],
+    [optree.PyTreeAccessor((optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),))],
     [
-        (
-            (0, tuple, optree.PyTreeKind.TUPLE),
-            (0, tuple, optree.PyTreeKind.TUPLE),
-        ),
-        (
-            (0, tuple, optree.PyTreeKind.TUPLE),
-            (1, tuple, optree.PyTreeKind.TUPLE),
-        ),
-        (
-            (1, tuple, optree.PyTreeKind.TUPLE),
-            (0, list, optree.PyTreeKind.LIST),
-        ),
-        (
-            (1, tuple, optree.PyTreeKind.TUPLE),
-            (1, list, optree.PyTreeKind.LIST),
-            (0, tuple, optree.PyTreeKind.TUPLE),
-        ),
-        (
-            (1, tuple, optree.PyTreeKind.TUPLE),
-            (1, list, optree.PyTreeKind.LIST),
-            (1, tuple, optree.PyTreeKind.TUPLE),
-        ),
-        (
-            (1, tuple, optree.PyTreeKind.TUPLE),
-            (1, list, optree.PyTreeKind.LIST),
-            (2, tuple, optree.PyTreeKind.TUPLE),
-        ),
-    ],
-    [((0, list, optree.PyTreeKind.LIST),)],
-    [
-        ((0, list, optree.PyTreeKind.LIST),),
-        (
-            (1, list, optree.PyTreeKind.LIST),
-            (0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
-            (0, tuple, optree.PyTreeKind.TUPLE),
-        ),
-        (
-            (1, list, optree.PyTreeKind.LIST),
-            (0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
-            (1, tuple, optree.PyTreeKind.TUPLE),
-            (0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
-        ),
-        (
-            (1, list, optree.PyTreeKind.LIST),
-            (0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
-            (1, tuple, optree.PyTreeKind.TUPLE),
-            (1, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
-        ),
-        (
-            (1, list, optree.PyTreeKind.LIST),
-            (1, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
-            ('baz', dict, optree.PyTreeKind.DICT),
-        ),
-    ],
-    [
-        ((0, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((1, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((2, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((3, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((4, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((5, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((6, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((7, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((8, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
-    ],
-    [
-        ((0, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((1, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((2, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((3, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((4, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((5, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((6, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((7, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((8, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        ((9, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (0, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (1, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (2, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (3, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (4, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (5, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (6, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (7, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-        (
-            (10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
-            (8, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
-        ),
-    ],
-    [
-        ((0, list, optree.PyTreeKind.LIST), (0, Vector3D, optree.PyTreeKind.CUSTOM)),
-        ((0, list, optree.PyTreeKind.LIST), (1, Vector3D, optree.PyTreeKind.CUSTOM)),
-    ],
-    [((0, Vector2D, optree.PyTreeKind.CUSTOM),), ((1, Vector2D, optree.PyTreeKind.CUSTOM),)],
-    [(('a', dict, optree.PyTreeKind.DICT),), (('b', dict, optree.PyTreeKind.DICT),)],
-    [
-        (('a', dict, optree.PyTreeKind.DICT),),
-        (('b', dict, optree.PyTreeKind.DICT), (0, tuple, optree.PyTreeKind.TUPLE)),
-        (('b', dict, optree.PyTreeKind.DICT), (1, tuple, optree.PyTreeKind.TUPLE)),
-        (('c', dict, optree.PyTreeKind.DICT),),
-        (('d', dict, optree.PyTreeKind.DICT), ('e', dict, optree.PyTreeKind.DICT)),
-        (('d', dict, optree.PyTreeKind.DICT), ('f', dict, optree.PyTreeKind.DICT)),
-    ],
-    [
-        (('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-    ],
-    [
-        (('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (
-            ('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
-            (0, deque, optree.PyTreeKind.DEQUE),
-        ),
-        (
-            ('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
-            (1, deque, optree.PyTreeKind.DEQUE),
-        ),
-        (
-            ('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
-            (2, deque, optree.PyTreeKind.DEQUE),
-        ),
-    ],
-    [
-        (('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (
-            ('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
-            (0, deque, optree.PyTreeKind.DEQUE),
-        ),
-        (
-            ('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
-            (1, deque, optree.PyTreeKind.DEQUE),
-        ),
-    ],
-    [
-        (('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
-        (
-            ('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
-            (0, deque, optree.PyTreeKind.DEQUE),
-        ),
-        (
-            ('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
-            (1, deque, optree.PyTreeKind.DEQUE),
-        ),
-    ],
-    [
-        (('baz', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
-        (('foo', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
-        (('something', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
-    ],
-    [
-        ((0, deque, optree.PyTreeKind.DEQUE),),
-        ((1, deque, optree.PyTreeKind.DEQUE),),
-        ((2, deque, optree.PyTreeKind.DEQUE),),
-    ],
-    [((0, deque, optree.PyTreeKind.DEQUE),), ((1, deque, optree.PyTreeKind.DEQUE),)],
-    [
-        (('foo', MyDict, optree.PyTreeKind.CUSTOM), ('c', MyDict, optree.PyTreeKind.CUSTOM)),
-        (('foo', MyDict, optree.PyTreeKind.CUSTOM), ('b', MyDict, optree.PyTreeKind.CUSTOM)),
-        (('foo', MyDict, optree.PyTreeKind.CUSTOM), ('a', MyDict, optree.PyTreeKind.CUSTOM)),
-        (('baz', MyDict, optree.PyTreeKind.CUSTOM),),
-    ],
-    [()],
-    [
-        ((0, CustomNamedTupleSubclass, optree.PyTreeKind.NAMEDTUPLE),),
-        ((1, CustomNamedTupleSubclass, optree.PyTreeKind.NAMEDTUPLE),),
+        optree.PyTreeAccessor((optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),)),
+        optree.PyTreeAccessor((optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),)),
     ],
     [],
-    [((0, FlatCache, optree.PyTreeKind.CUSTOM),)],
-    [((0, FlatCache, optree.PyTreeKind.CUSTOM),), ((1, FlatCache, optree.PyTreeKind.CUSTOM),)],
+    [],
+    [
+        optree.PyTreeAccessor((optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),)),
+        optree.PyTreeAccessor((optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),)),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+    ],
+    [optree.PyTreeAccessor((optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),))],
+    [
+        optree.PyTreeAccessor((optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),)),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                optree.NamedTupleEntry(0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                optree.NamedTupleEntry(0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                optree.NamedTupleEntry(0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                optree.NamedTupleEntry(0, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                optree.NamedTupleEntry(1, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                optree.NamedTupleEntry(1, CustomTuple, optree.PyTreeKind.NAMEDTUPLE),
+                optree.MappingEntry('baz', dict, optree.PyTreeKind.DICT),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(0, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(1, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(2, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(3, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(4, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(5, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(6, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(7, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(8, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(0, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(1, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(2, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(3, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(4, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(5, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(6, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(7, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(8, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.StructSequenceEntry(9, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(0, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(1, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(2, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(3, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(4, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(5, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(6, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(7, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.StructSequenceEntry(10, SysFloatInfoType, optree.PyTreeKind.STRUCTSEQUENCE),
+                optree.StructSequenceEntry(8, TimeStructTimeType, optree.PyTreeKind.STRUCTSEQUENCE),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                optree.FlattenedEntry(0, Vector3D, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                optree.FlattenedEntry(1, Vector3D, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor((optree.FlattenedEntry(0, Vector2D, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.FlattenedEntry(1, Vector2D, optree.PyTreeKind.CUSTOM),)),
+    ],
+    [
+        optree.PyTreeAccessor((optree.MappingEntry('a', dict, optree.PyTreeKind.DICT),)),
+        optree.PyTreeAccessor((optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),)),
+    ],
+    [
+        optree.PyTreeAccessor((optree.MappingEntry('a', dict, optree.PyTreeKind.DICT),)),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor((optree.MappingEntry('c', dict, optree.PyTreeKind.DICT),)),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('d', dict, optree.PyTreeKind.DICT),
+                optree.MappingEntry('e', dict, optree.PyTreeKind.DICT),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('d', dict, optree.PyTreeKind.DICT),
+                optree.MappingEntry('f', dict, optree.PyTreeKind.DICT),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
+                optree.SequenceEntry(0, deque, optree.PyTreeKind.DEQUE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
+                optree.SequenceEntry(1, deque, optree.PyTreeKind.DEQUE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
+                optree.SequenceEntry(2, deque, optree.PyTreeKind.DEQUE),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
+                optree.SequenceEntry(0, deque, optree.PyTreeKind.DEQUE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
+                optree.SequenceEntry(1, deque, optree.PyTreeKind.DEQUE),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
+                optree.SequenceEntry(0, deque, optree.PyTreeKind.DEQUE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('something', OrderedDict, optree.PyTreeKind.ORDEREDDICT),
+                optree.SequenceEntry(1, deque, optree.PyTreeKind.DEQUE),
+            ),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('foo', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('something', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
+        ),
+    ],
+    [
+        optree.PyTreeAccessor((optree.SequenceEntry(0, deque, optree.PyTreeKind.DEQUE),)),
+        optree.PyTreeAccessor((optree.SequenceEntry(1, deque, optree.PyTreeKind.DEQUE),)),
+        optree.PyTreeAccessor((optree.SequenceEntry(2, deque, optree.PyTreeKind.DEQUE),)),
+    ],
+    [
+        optree.PyTreeAccessor((optree.SequenceEntry(0, deque, optree.PyTreeKind.DEQUE),)),
+        optree.PyTreeAccessor((optree.SequenceEntry(1, deque, optree.PyTreeKind.DEQUE),)),
+    ],
+    [
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('c', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('b', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('a', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor((optree.MappingEntry('baz', MyDict, optree.PyTreeKind.CUSTOM),)),
+    ],
+    [optree.PyTreeAccessor()],
+    [
+        optree.PyTreeAccessor(
+            (optree.NamedTupleEntry(0, CustomNamedTupleSubclass, optree.PyTreeKind.NAMEDTUPLE),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.NamedTupleEntry(1, CustomNamedTupleSubclass, optree.PyTreeKind.NAMEDTUPLE),),
+        ),
+    ],
+    [],
+    [optree.PyTreeAccessor((optree.FlattenedEntry(0, FlatCache, optree.PyTreeKind.CUSTOM),))],
+    [
+        optree.PyTreeAccessor((optree.FlattenedEntry(0, FlatCache, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.FlattenedEntry(1, FlatCache, optree.PyTreeKind.CUSTOM),)),
+    ],
 ]
-TREE_TYPED_PATHS = {
-    optree.NONE_IS_NODE: TREE_TYPED_PATHS_NONE_IS_NODE,
-    optree.NONE_IS_LEAF: TREE_TYPED_PATHS_NONE_IS_LEAF,
+TREE_ACCESSORS = {
+    optree.NONE_IS_NODE: TREE_ACCESSORS_NONE_IS_NODE,
+    optree.NONE_IS_LEAF: TREE_ACCESSORS_NONE_IS_LEAF,
 }
 
 

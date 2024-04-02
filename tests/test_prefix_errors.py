@@ -657,15 +657,3 @@ def test_key_path():
     assert (
         sequence_key_path + dict_key_path + namedtuple_key_path + fallback_key_path
     ).pprint() == "[0]['a'].attr[<flat index 1>]"
-
-    for node, key_paths in (
-        ([0, 1], [GetitemKeyPathEntry(0), GetitemKeyPathEntry(1)]),
-        ((0, 1), [GetitemKeyPathEntry(0), GetitemKeyPathEntry(1)]),
-        ({'b': 1, 'a': 2}, [GetitemKeyPathEntry('a'), GetitemKeyPathEntry('b')]),
-        (OrderedDict([('b', 1), ('a', 2)]), [GetitemKeyPathEntry('b'), GetitemKeyPathEntry('a')]),
-        (defaultdict(int, {'b': 1, 'a': 2}), [GetitemKeyPathEntry('a'), GetitemKeyPathEntry('b')]),
-        (deque([0, 1]), [GetitemKeyPathEntry(0), GetitemKeyPathEntry(1)]),
-        (CustomTuple(0, 1), [AttributeKeyPathEntry('foo'), AttributeKeyPathEntry('bar')]),
-        (Vector2D(1, 2), [FlattenedKeyPathEntry(0), FlattenedKeyPathEntry(1)]),
-    ):
-        assert optree.ops._child_keys(node) == key_paths

@@ -240,7 +240,7 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...], tuple):
         """Get the path of the accessor."""
         return tuple(e.entry for e in self)
 
-    def __new__(cls, path: Iterable[PyTreeEntry]) -> Self:
+    def __new__(cls, path: Iterable[PyTreeEntry] = ()) -> Self:
         """Create a new accessor instance."""
         if not isinstance(path, (list, tuple)):
             path = tuple(path)

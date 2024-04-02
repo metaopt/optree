@@ -568,12 +568,14 @@ _NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {  
 def _pytree_node_registry_get(
     cls: type,
     *,
-    namespace: str = __GLOBAL_NAMESPACE,
+    namespace: str = '',
 ) -> PyTreeNodeRegistryEntry | None:
-    handler: PyTreeNodeRegistryEntry | None = _NODETYPE_REGISTRY.get(cls)
-    if handler is not None:
-        return handler
-    handler = _NODETYPE_REGISTRY.get((namespace, cls))
+    handler: PyTreeNodeRegistryEntry | None = None
+    if namespace is not __GLOBAL_NAMESPACE and namespace != '':
+        handler = _NODETYPE_REGISTRY.get((namespace, cls))
+        if handler is not None:
+            return handler
+    handler = _NODETYPE_REGISTRY.get(cls)
     if handler is not None:
         return handler
     if is_structseq_class(cls):
