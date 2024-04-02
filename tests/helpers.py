@@ -72,10 +72,17 @@ class Vector3D:
         return f'{self.__class__.__name__}(x={self.x}, y={self.y}, z={self.z})'
 
 
+class Vector3DEntry(optree.PyTreeEntry):
+    def __call__(self, obj):
+        assert self.entry in {0, 1}
+        return obj.x if self.entry == 0 else obj.y
+
+
 optree.register_pytree_node(
     Vector3D,
     lambda o: ((o.x, o.y), o.z),
     lambda z, xy: Vector3D(xy[0], xy[1], z),
+    path_entry_type=Vector3DEntry,
     namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
 )
 
@@ -88,6 +95,16 @@ class Vector2D:
         self.x = x
         self.y = y
 
+    def __getitem__(self, index):
+        assert index in {0, 1}
+        return self.x if index == 0 else self.y
+
+    def __eq__(self, other):
+        return isinstance(other, Vector2D) and (self.x, self.y) == (other.x, other.y)
+
+    def __hash__(self):
+        return hash((self.x, self.y))
+
     def __repr__(self):
         return f'{self.__class__.__name__}(x={self.x}, y={self.y})'
 
@@ -97,9 +114,6 @@ class Vector2D:
     @classmethod
     def tree_unflatten(cls, metadata, children):  # pylint: disable=unused-argument
         return cls(*children)
-
-    def __eq__(self, other):
-        return isinstance(other, Vector2D) and (self.x, self.y) == (other.x, other.y)
 
 
 # pylint: disable-next=protected-access
@@ -112,11 +126,14 @@ class FlatCache:
         self.treespec = treespec
         self.leaves = leaves
 
-    def __hash__(self):
-        return hash(self.structured)
+    def __getitem__(self, index):
+        return self.leaves[index]
 
     def __eq__(self, other):
         return isinstance(other, FlatCache) and self.structured == other.structured
+
+    def __hash__(self):
+        return hash(self.structured)
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.structured!r})'
@@ -508,7 +525,7 @@ TREE_ACCESSORS_NONE_IS_NODE = [
         optree.PyTreeAccessor(
             (
                 optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
-                optree.FlattenedEntry(0, Vector3D, optree.PyTreeKind.CUSTOM),
+                Vector3DEntry(0, Vector3D, optree.PyTreeKind.CUSTOM),
             ),
         ),
     ],
@@ -862,13 +879,13 @@ TREE_ACCESSORS_NONE_IS_LEAF = [
         optree.PyTreeAccessor(
             (
                 optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
-                optree.FlattenedEntry(0, Vector3D, optree.PyTreeKind.CUSTOM),
+                Vector3DEntry(0, Vector3D, optree.PyTreeKind.CUSTOM),
             ),
         ),
         optree.PyTreeAccessor(
             (
                 optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
-                optree.FlattenedEntry(1, Vector3D, optree.PyTreeKind.CUSTOM),
+                Vector3DEntry(1, Vector3D, optree.PyTreeKind.CUSTOM),
             ),
         ),
     ],

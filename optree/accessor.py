@@ -65,7 +65,7 @@ class PyTreeEntry:
     type: builtins.type
     kind: PyTreeKind
 
-    def __post_init__(self) -> Self:
+    def __post_init__(self) -> None:
         """Post-initialize the path entry."""
         from optree.typing import PyTreeKind  # pylint: disable=import-outside-toplevel
 
@@ -76,7 +76,12 @@ class PyTreeEntry:
 
     def __call__(self, obj: Any) -> Any:
         """Get the child object."""
-        return obj[self.entry]  # should be overridden
+        try:
+            return obj[self.entry]  # should be overridden
+        except (TypeError, LookupError) as ex:
+            raise TypeError(
+                f'{self.__class__!r} cannot access through {obj!r} via entry {self.entry!r}',
+            ) from ex
 
     def __add__(self, other: object) -> PyTreeAccessor:
         """Join the path entry with another path entry or accessor."""
@@ -232,7 +237,7 @@ class DataclassEntry(GetAttrEntry):
         return f'{self.__class__.__name__}(field={self.entry!r}, type={self.type!r})'
 
 
-class PyTreeAccessor(Tuple[PyTreeEntry, ...], tuple):
+class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
     """A path class for PyTrees."""
 
     @property
@@ -254,12 +259,12 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...], tuple):
             obj = entry(obj)
         return obj
 
-    @overload
-    def __getitem__(self, index: int) -> PyTreeEntry:  # noqa: D105,RUF100 # pragma: no cover
+    @overload  # type: ignore[override]
+    def __getitem__(self, index: int) -> PyTreeEntry:  # noqa: D105,RUF100
         ...
 
     @overload
-    def __getitem__(self, index: slice) -> PyTreeAccessor:  # noqa: D105,RUF100 # pragma: no cover
+    def __getitem__(self, index: slice) -> PyTreeAccessor:  # noqa: D105,RUF100
         ...
 
     def __getitem__(self, index: int | slice) -> PyTreeEntry | PyTreeAccessor:
@@ -276,11 +281,11 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...], tuple):
             return PyTreeAccessor((*self, *other))
         return NotImplemented
 
-    def __mul__(self, value: int) -> PyTreeAccessor:
+    def __mul__(self, value: int) -> PyTreeAccessor:  # type: ignore[override]
         """Repeat the accessor."""
         return PyTreeAccessor(super().__mul__(value))
 
-    def __rmul__(self, value: int) -> PyTreeAccessor:
+    def __rmul__(self, value: int) -> PyTreeAccessor:  # type: ignore[override]
         """Repeat the accessor."""
         return PyTreeAccessor(super().__rmul__(value))
 

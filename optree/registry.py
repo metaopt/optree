@@ -372,7 +372,11 @@ def register_pytree_node_class(  # noqa: C901
             raise ValueError('Cannot specify `namespace` when the first argument is a string.')
         if cls == '':
             raise ValueError('The namespace cannot be an empty string.')
-        return functools.partial(register_pytree_node_class, namespace=cls)  # type: ignore[return-value]
+        return functools.partial(
+            register_pytree_node_class,
+            path_entry_type=path_entry_type,
+            namespace=cls,
+        )  # type: ignore[return-value]
 
     if namespace is None:
         raise ValueError('Must specify `namespace` when the first argument is a class.')
@@ -382,7 +386,11 @@ def register_pytree_node_class(  # noqa: C901
         raise ValueError('The namespace cannot be an empty string.')
 
     if cls is None:
-        return functools.partial(register_pytree_node_class, namespace=namespace)  # type: ignore[return-value]
+        return functools.partial(
+            register_pytree_node_class,
+            path_entry_type=path_entry_type,
+            namespace=namespace,
+        )  # type: ignore[return-value]
     if not inspect.isclass(cls):
         raise TypeError(f'Expected a class, got {cls}.')
     if path_entry_type is None:
@@ -657,7 +665,7 @@ class Partial(functools.partial, CustomTreeNode[T]):  # pylint: disable=too-few-
     a :class:`TypeError` or :class:`AttributeError`.
     """
 
-    __module__: ClassVar[str] = 'optree'
+    __module__: ClassVar[str] = 'optree'  # type: ignore[misc]
 
     func: Callable[..., Any]
     args: tuple[T, ...]
@@ -683,7 +691,7 @@ class Partial(functools.partial, CustomTreeNode[T]):  # pylint: disable=too-few-
 
         return super().__new__(cls, func, *args, **keywords)
 
-    def tree_flatten(self) -> tuple[
+    def tree_flatten(self) -> tuple[  # type: ignore[override]
         tuple[tuple[T, ...], dict[str, T]],
         Callable[..., Any],
         tuple[str, str],

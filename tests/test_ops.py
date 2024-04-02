@@ -108,6 +108,7 @@ def test_round_trip_with_flatten_up_to(tree, none_is_leaf, namespace):
     leaves = treespec.flatten_up_to(tree)
     actual = optree.tree_unflatten(treespec, leaves)
     assert actual == tree
+    assert leaves == [accessor(tree) for accessor in optree.treespec_accessors(treespec)]
 
 
 @parametrize(
@@ -270,19 +271,19 @@ def test_walk():
 
 
 def test_flatten_up_to():
-    _, treespec = optree.tree_flatten([(1, 2), None, CustomTuple(foo=3, bar=7)])
-    subtrees = treespec.flatten_up_to(
-        [({'foo': 7}, (3, 4)), None, CustomTuple(foo=(11, 9), bar=None)],
-    )
+    treespec = optree.tree_structure([(1, 2), None, CustomTuple(foo=3, bar=7)])
+    tree = [({'foo': 7}, (3, 4)), None, CustomTuple(foo=(11, 9), bar=None)]
+    subtrees = treespec.flatten_up_to(tree)
     assert subtrees == [{'foo': 7}, (3, 4), (11, 9), None]
+    assert subtrees == [accessor(tree) for accessor in optree.treespec_accessors(treespec)]
 
 
 def test_flatten_up_to_none_is_leaf():
-    _, treespec = optree.tree_flatten([(1, 2), None, CustomTuple(foo=3, bar=7)], none_is_leaf=True)
-    subtrees = treespec.flatten_up_to(
-        [({'foo': 7}, (3, 4)), None, CustomTuple(foo=(11, 9), bar=None)],
-    )
+    treespec = optree.tree_structure([(1, 2), None, CustomTuple(foo=3, bar=7)], none_is_leaf=True)
+    tree = [({'foo': 7}, (3, 4)), None, CustomTuple(foo=(11, 9), bar=None)]
+    subtrees = treespec.flatten_up_to(tree)
     assert subtrees == [{'foo': 7}, (3, 4), None, (11, 9), None]
+    assert subtrees == [accessor(tree) for accessor in optree.treespec_accessors(treespec)]
 
 
 @parametrize(
@@ -344,7 +345,7 @@ def test_structure_is_leaf(structure_fn):
         ),
     ),
 )
-def test_paths(data):
+def test_paths_and_accessors(data):
     tree, expected_paths, expected_accessors, none_is_leaf = data
     expected_leaves, expected_treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
     paths, leaves, treespec = optree.tree_flatten_with_path(tree, none_is_leaf=none_is_leaf)
@@ -360,8 +361,8 @@ def test_paths(data):
     assert other_treespec == expected_treespec
     assert paths == expected_paths
     assert accessors == expected_accessors
-    for accessor, path in zip(accessors, paths):
-        assert isinstance(accessor, tuple)
+    for leaf, accessor, path in zip(leaves, accessors, paths):
+        assert isinstance(accessor, optree.PyTreeAccessor)
         assert isinstance(path, tuple)
         assert len(accessor) == len(path)
         assert all(
@@ -372,6 +373,7 @@ def test_paths(data):
         )
         assert accessor.path == path
         assert tuple(e.entry for e in accessor) == path
+        assert accessor(tree) == leaf
 
     assert optree.treespec_paths(treespec) == expected_paths
     assert optree.treespec_accessors(treespec) == expected_accessors
@@ -391,7 +393,7 @@ def test_paths(data):
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
 )
-def test_paths_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
+def test_paths_and_accessors_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
     expected_leaves, expected_treespec = optree.tree_flatten(
         tree,
         is_leaf=is_leaf,
@@ -416,8 +418,8 @@ def test_paths_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
     assert treespec == expected_treespec
     assert other_leaves == expected_leaves
     assert other_treespec == expected_treespec
-    for accessor, path in zip(accessors, paths):
-        assert isinstance(accessor, tuple)
+    for leaf, accessor, path in zip(leaves, accessors, paths):
+        assert isinstance(accessor, optree.PyTreeAccessor)
         assert isinstance(path, tuple)
         assert len(accessor) == len(path)
         assert all(
@@ -428,6 +430,7 @@ def test_paths_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
         )
         assert accessor.path == path
         assert tuple(e.entry for e in accessor) == path
+        assert accessor(tree) == leaf
 
     assert optree.treespec_paths(treespec) == paths
     assert optree.treespec_accessors(treespec) == accessors

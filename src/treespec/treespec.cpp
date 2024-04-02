@@ -168,18 +168,13 @@ namespace optree {
 }
 
 /*static*/ py::object PyTreeSpec::GetPathEntryClass(const Node& node) {
-    static auto [SequenceEntry,
-                 MappingEntry,
-                 NamedTupleEntry,
-                 StructSequenceEntry,
-                 FlattenedEntry] =
-        []() -> std::tuple<py::object, py::object, py::object, py::object, py::object> {
+    static auto [SequenceEntry, MappingEntry, NamedTupleEntry, StructSequenceEntry] =
+        []() -> std::tuple<py::object, py::object, py::object, py::object> {
         const py::module_& mod = GetCxxModule();
         return {py::getattr(mod, "SequenceEntry"),
                 py::getattr(mod, "MappingEntry"),
                 py::getattr(mod, "NamedTupleEntry"),
-                py::getattr(mod, "StructSequenceEntry"),
-                py::getattr(mod, "FlattenedEntry")};
+                py::getattr(mod, "StructSequenceEntry")};
     }();
 
     switch (node.kind) {

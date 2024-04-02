@@ -33,7 +33,6 @@ from optree.typing import (
     MetaData,
     NamedTuple,
     PyTree,
-    PyTreeKind,
     PyTreeSpec,
     S,
     T,
@@ -2177,9 +2176,7 @@ def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
     return treespec.paths()
 
 
-def treespec_accessors(
-    treespec: PyTreeSpec,
-) -> list[tuple[tuple[Any, type[Any], PyTreeKind], ...]]:
+def treespec_accessors(treespec: PyTreeSpec) -> list[PyTreeAccessor]:
     """Return a list of accessors to the leaves of a treespec.
 
     See also :func:`tree_flatten_with_accessor`, :func:`tree_accessors` and
