@@ -2175,7 +2175,7 @@ def tree_max(
     >>> tree_max({})
     Traceback (most recent call last):
         ...
-    ValueError: max() iterable argument is empty
+    ValueError: max() arg is an empty sequence
     >>> tree_max({}, default=0)
     0
     >>> tree_max({'x': 0, 'y': (2, 1)})
@@ -2185,7 +2185,7 @@ def tree_max(
     >>> tree_max({'a': None})  # `None` is a non-leaf node with arity 0 by default
     Traceback (most recent call last):
         ...
-    ValueError: max() iterable argument is empty
+    ValueError: max() arg is an empty sequence
     >>> tree_max({'a': None}, default=0)  # `None` is a non-leaf node with arity 0 by default
     0
     >>> tree_max({'a': None}, none_is_leaf=True)
@@ -2193,7 +2193,7 @@ def tree_max(
     >>> tree_max(None)  # `None` is a non-leaf node with arity 0 by default
     Traceback (most recent call last):
         ...
-    ValueError: max() iterable argument is empty
+    ValueError: max() arg is an empty sequence
     >>> tree_max(None, default=0)
     0
     >>> tree_max(None, none_is_leaf=True)
@@ -2268,7 +2268,7 @@ def tree_min(
     >>> tree_min({})
     Traceback (most recent call last):
         ...
-    ValueError: min() iterable argument is empty
+    ValueError: min() arg is an empty sequence
     >>> tree_min({}, default=0)
     0
     >>> tree_min({'x': 0, 'y': (2, 1)})
@@ -2278,7 +2278,7 @@ def tree_min(
     >>> tree_min({'a': None})  # `None` is a non-leaf node with arity 0 by default
     Traceback (most recent call last):
         ...
-    ValueError: min() iterable argument is empty
+    ValueError: min() arg is an empty sequence
     >>> tree_min({'a': None}, default=0)  # `None` is a non-leaf node with arity 0 by default
     0
     >>> tree_min({'a': None}, none_is_leaf=True)
@@ -2286,7 +2286,7 @@ def tree_min(
     >>> tree_min(None)  # `None` is a non-leaf node with arity 0 by default
     Traceback (most recent call last):
         ...
-    ValueError: min() iterable argument is empty
+    ValueError: min() arg is an empty sequence
     >>> tree_min(None, default=0)
     0
     >>> tree_min(None, none_is_leaf=True)
