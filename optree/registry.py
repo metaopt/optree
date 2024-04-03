@@ -40,7 +40,7 @@ from typing_extensions import TypeAlias  # Python 3.10+
 
 try:
     from typing_extensions import deprecated  # Python 3.13+
-except ImportError:  # Python 3.7 # pragma: no cover
+except ImportError:  # Python 3.7
 
     def deprecated(  # type: ignore[no-redef]
         *args: Any,
