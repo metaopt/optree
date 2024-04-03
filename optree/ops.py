@@ -2023,8 +2023,7 @@ def tree_reduce(
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> T:  # pragma: no cover
-    ...
+) -> T: ...
 
 
 @overload
@@ -2036,8 +2035,7 @@ def tree_reduce(
     is_leaf: Callable[[S], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> T:  # pragma: no cover
-    ...
+) -> T: ...
 
 
 def tree_reduce(
@@ -2146,8 +2144,7 @@ def tree_max(
     key: Callable[[T], Any] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> T:  # pragma: no cover
-    ...
+) -> T: ...
 
 
 @overload
@@ -2159,8 +2156,7 @@ def tree_max(
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> T:  # pragma: no cover
-    ...
+) -> T: ...
 
 
 def tree_max(
@@ -2241,8 +2237,7 @@ def tree_min(
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> T:  # pragma: no cover
-    ...
+) -> T: ...
 
 
 @overload
@@ -2254,8 +2249,7 @@ def tree_min(
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> T:  # pragma: no cover
-    ...
+) -> T: ...
 
 
 def tree_min(

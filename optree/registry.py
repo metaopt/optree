@@ -288,8 +288,7 @@ def register_pytree_node_class(
     *,
     path_entry_type: type[PyTreeEntry] | None = None,
     namespace: str | None = None,
-) -> Callable[[CustomTreeNodeT], CustomTreeNodeT]:  # pragma: no cover
-    ...
+) -> Callable[[CustomTreeNodeT], CustomTreeNodeT]: ...
 
 
 @overload
@@ -298,8 +297,7 @@ def register_pytree_node_class(
     *,
     path_entry_type: type[PyTreeEntry] | None,
     namespace: str,
-) -> CustomTreeNodeT:  # pragma: no cover
-    ...
+) -> CustomTreeNodeT: ...
 
 
 def register_pytree_node_class(  # noqa: C901
