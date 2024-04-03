@@ -955,13 +955,13 @@ def tree_map_with_accessor(
 
 
 def tree_map_with_accessor_(
-    func: Callable[..., U],
+    func: Callable[..., Any],
     tree: PyTree[T],
     *rests: PyTree[S],
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> PyTree[U]:
+) -> PyTree[T]:
     """Like :func:`tree_map_with_accessor`, but do an inplace call on each leaf and return the original tree.
 
     See also :func:`tree_map`, :func:`tree_map_`, and :func:`tree_map_with_accessor`.

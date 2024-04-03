@@ -35,6 +35,7 @@ from typing import (
     overload,
 )
 from typing_extensions import Self  # Python 3.11+
+from typing_extensions import TypeAlias  # Python 3.10+
 
 
 try:
@@ -94,22 +95,30 @@ __all__ = [
 ]
 
 
-SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}  # Python 3.10+
+if sys.version_info >= (3, 10):
 
+    @dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, slots=True)
+    class PyTreeNodeRegistryEntry:
+        """A dataclass that stores the information of a pytree node type."""
 
-@dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, **SLOTS)
-class PyTreeNodeRegistryEntry:
-    """A dataclass that stores the information of a pytree node type."""
+        type: builtins.type
+        flatten_func: FlattenFunc
+        unflatten_func: UnflattenFunc
+        _: dataclasses.KW_ONLY  # Python 3.10+
+        path_entry_type: builtins.type[PyTreeEntry] = FlattenedEntry
+        namespace: str = ''
 
-    type: builtins.type
-    flatten_func: FlattenFunc
-    unflatten_func: UnflattenFunc
-    _: dataclasses.KW_ONLY
-    path_entry_type: builtins.type[PyTreeEntry] = FlattenedEntry
-    namespace: str = ''
+else:
 
+    @dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True)
+    class PyTreeNodeRegistryEntry:
+        """A dataclass that stores the information of a pytree node type."""
 
-del SLOTS
+        type: builtins.type
+        flatten_func: FlattenFunc
+        unflatten_func: UnflattenFunc
+        path_entry_type: builtins.type[PyTreeEntry] = FlattenedEntry
+        namespace: str = ''
 
 
 # pylint: disable-next=missing-class-docstring,too-few-public-methods
@@ -123,7 +132,7 @@ __REGISTRY_LOCK: Lock = Lock()
 del GlobalNamespace
 
 
-CustomTreeNodeT = Type[CustomTreeNode[T]]
+CustomTreeNodeT: TypeAlias = Type[CustomTreeNode[T]]
 
 
 def register_pytree_node(
@@ -471,10 +480,6 @@ def _sorted_items(items: Iterable[tuple[KT, VT]]) -> list[tuple[KT, VT]]:
     return total_order_sorted(items, key=lambda kv: kv[0])
 
 
-def _sorted_keys(dct: dict[KT, VT]) -> list[KT]:
-    return total_order_sorted(dct)
-
-
 def _none_flatten(none: None) -> tuple[tuple[()], None]:
     return (), None
 
@@ -714,6 +719,11 @@ class Partial(functools.partial, CustomTreeNode[T]):  # pylint: disable=too-few-
 
 
 ####################################################################################################
+
+
+@deprecated('The function `_sorted_keys` is deprecated and will be removed in a future version.')
+def _sorted_keys(dct: dict[KT, VT]) -> list[KT]:
+    return total_order_sorted(dct)
 
 
 @deprecated('The key path API is deprecated and will be removed in a future version.')

@@ -29,7 +29,7 @@ from typing import (
     TypeVar,
     overload,
 )
-from typing_extensions import Self
+from typing_extensions import Self  # Python 3.11+
 
 from optree import _C
 
@@ -59,7 +59,7 @@ SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}  # Python 3.10+
 
 @dataclasses.dataclass(init=True, repr=False, eq=False, frozen=True, **SLOTS)
 class PyTreeEntry:
-    """A path entry class for sequences and dictionaries."""
+    """Base class for path entries."""
 
     entry: Any
     type: builtins.type
