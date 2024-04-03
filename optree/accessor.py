@@ -54,7 +54,7 @@ __all__ = [
 ]
 
 
-SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}
+SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}  # Python 3.10+
 
 
 @dataclasses.dataclass(init=True, repr=False, eq=False, frozen=True, **SLOTS)
@@ -250,7 +250,7 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
         if not isinstance(path, (list, tuple)):
             path = tuple(path)
         if not all(isinstance(p, PyTreeEntry) for p in path):
-            raise TypeError(f'Expected a path of Entry, got {path}.')
+            raise TypeError(f'Expected a path of Entry, got {path!r}.')
         return super().__new__(cls, path)
 
     def __call__(self, obj: PyTree) -> Any:

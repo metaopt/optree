@@ -94,14 +94,17 @@ __all__ = [
 ]
 
 
-SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}
+SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}  # Python 3.10+
 
 
 @dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, **SLOTS)
 class PyTreeNodeRegistryEntry:
+    """A dataclass that stores the information of a pytree node type."""
+
     type: builtins.type
     flatten_func: FlattenFunc
     unflatten_func: UnflattenFunc
+    _: dataclasses.KW_ONLY
     path_entry_type: builtins.type[PyTreeEntry] = FlattenedEntry
     namespace: str = ''
 
@@ -249,11 +252,11 @@ def register_pytree_node(
         )
     """
     if not inspect.isclass(cls):
-        raise TypeError(f'Expected a class, got {cls}.')
+        raise TypeError(f'Expected a class, got {cls!r}.')
     if not issubclass(path_entry_type, PyTreeEntry):
-        raise TypeError(f'Expected a subclass of PyTreeEntry, got {path_entry_type}.')
+        raise TypeError(f'Expected a subclass of PyTreeEntry, got {path_entry_type!r}.')
     if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
-        raise TypeError(f'The namespace must be a string, got {namespace}.')
+        raise TypeError(f'The namespace must be a string, got {namespace!r}.')
     if namespace == '':
         raise ValueError('The namespace cannot be an empty string.')
 
@@ -381,7 +384,7 @@ def register_pytree_node_class(  # noqa: C901
     if namespace is None:
         raise ValueError('Must specify `namespace` when the first argument is a class.')
     if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
-        raise TypeError(f'The namespace must be a string, got {namespace}')
+        raise TypeError(f'The namespace must be a string, got {namespace!r}')
     if namespace == '':
         raise ValueError('The namespace cannot be an empty string.')
 
@@ -392,11 +395,11 @@ def register_pytree_node_class(  # noqa: C901
             namespace=namespace,
         )  # type: ignore[return-value]
     if not inspect.isclass(cls):
-        raise TypeError(f'Expected a class, got {cls}.')
+        raise TypeError(f'Expected a class, got {cls!r}.')
     if path_entry_type is None:
         path_entry_type = getattr(cls, 'TREE_PATH_ENTRY_TYPE', FlattenedEntry)
     if not issubclass(path_entry_type, PyTreeEntry):
-        raise TypeError(f'Expected a subclass of PyTreeEntry, got {path_entry_type}.')
+        raise TypeError(f'Expected a subclass of PyTreeEntry, got {path_entry_type!r}.')
     register_pytree_node(
         cls,
         methodcaller('tree_flatten'),
@@ -446,9 +449,9 @@ def unregister_pytree_node(
         >>> unregister_pytree_node(set, namespace='temp')
     """
     if not inspect.isclass(cls):
-        raise TypeError(f'Expected a class, got {cls}.')
+        raise TypeError(f'Expected a class, got {cls!r}.')
     if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
-        raise TypeError(f'The namespace must be a string, got {namespace}.')
+        raise TypeError(f'The namespace must be a string, got {namespace!r}.')
     if namespace == '':
         raise ValueError('The namespace cannot be an empty string.')
 
@@ -560,15 +563,15 @@ def _structseq_unflatten(cls: type[structseq[T]], children: Iterable[T]) -> stru
 
 # pylint: disable=all
 _NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {  # fmt: off
-    type(None): PyTreeNodeRegistryEntry(type(None), _none_flatten, _none_unflatten, PyTreeEntry),  # type: ignore[arg-type]
-    tuple: PyTreeNodeRegistryEntry(tuple, _tuple_flatten, _tuple_unflatten, SequenceEntry),  # type: ignore[arg-type]
-    list: PyTreeNodeRegistryEntry(list, _list_flatten, _list_unflatten, SequenceEntry),  # type: ignore[arg-type]
-    dict: PyTreeNodeRegistryEntry(dict, _dict_flatten, _dict_unflatten, MappingEntry),  # type: ignore[arg-type]
-    namedtuple: PyTreeNodeRegistryEntry(namedtuple, _namedtuple_flatten, _namedtuple_unflatten, NamedTupleEntry),  # type: ignore[arg-type,dict-item] # noqa: PYI024
-    OrderedDict: PyTreeNodeRegistryEntry(OrderedDict, _ordereddict_flatten, _ordereddict_unflatten, MappingEntry),  # type: ignore[arg-type]
-    defaultdict: PyTreeNodeRegistryEntry(defaultdict, _defaultdict_flatten, _defaultdict_unflatten, MappingEntry),  # type: ignore[arg-type]
-    deque: PyTreeNodeRegistryEntry(deque, _deque_flatten, _deque_unflatten, SequenceEntry),  # type: ignore[arg-type]
-    structseq: PyTreeNodeRegistryEntry(structseq, _structseq_flatten, _structseq_unflatten, StructSequenceEntry),  # type: ignore[arg-type]
+    type(None): PyTreeNodeRegistryEntry(type(None), _none_flatten, _none_unflatten, path_entry_type=PyTreeEntry),  # type: ignore[arg-type]
+    tuple: PyTreeNodeRegistryEntry(tuple, _tuple_flatten, _tuple_unflatten, path_entry_type=SequenceEntry),  # type: ignore[arg-type]
+    list: PyTreeNodeRegistryEntry(list, _list_flatten, _list_unflatten, path_entry_type=SequenceEntry),  # type: ignore[arg-type]
+    dict: PyTreeNodeRegistryEntry(dict, _dict_flatten, _dict_unflatten, path_entry_type=MappingEntry),  # type: ignore[arg-type]
+    namedtuple: PyTreeNodeRegistryEntry(namedtuple, _namedtuple_flatten, _namedtuple_unflatten, path_entry_type=NamedTupleEntry),  # type: ignore[arg-type,dict-item] # noqa: PYI024
+    OrderedDict: PyTreeNodeRegistryEntry(OrderedDict, _ordereddict_flatten, _ordereddict_unflatten, path_entry_type=MappingEntry),  # type: ignore[arg-type]
+    defaultdict: PyTreeNodeRegistryEntry(defaultdict, _defaultdict_flatten, _defaultdict_unflatten, path_entry_type=MappingEntry),  # type: ignore[arg-type]
+    deque: PyTreeNodeRegistryEntry(deque, _deque_flatten, _deque_unflatten, path_entry_type=SequenceEntry),  # type: ignore[arg-type]
+    structseq: PyTreeNodeRegistryEntry(structseq, _structseq_flatten, _structseq_unflatten, path_entry_type=StructSequenceEntry),  # type: ignore[arg-type]
 }
 # pylint: enable=all
 
@@ -791,9 +794,9 @@ def register_keypaths(
 ) -> KeyPathHandler:
     """Register a key path handler for a custom pytree node type."""
     if not inspect.isclass(cls):
-        raise TypeError(f'Expected a class, got {cls}.')
+        raise TypeError(f'Expected a class, got {cls!r}.')
     if cls in _KEYPATH_REGISTRY:
-        raise ValueError(f'Key path handler for {cls} has already been registered.')
+        raise ValueError(f'Key path handler for {cls!r} has already been registered.')
 
     _KEYPATH_REGISTRY[cls] = handler
     return handler
