@@ -38,16 +38,20 @@ Tree Manipulation Functions
     tree_map_
     tree_map_with_path
     tree_map_with_path_
+    tree_map_with_accessor
+    tree_map_with_accessor_
     tree_replace_nones
     tree_transpose
     tree_transpose_map
     tree_transpose_map_with_path
+    tree_transpose_map_with_accessor
     tree_broadcast_prefix
     broadcast_prefix
     tree_broadcast_common
     broadcast_common
     tree_broadcast_map
     tree_broadcast_map_with_path
+    tree_broadcast_map_with_accessor
     tree_flatten_one_level
     prefix_errors
 
@@ -66,16 +70,20 @@ Tree Manipulation Functions
 .. autofunction:: tree_map_
 .. autofunction:: tree_map_with_path
 .. autofunction:: tree_map_with_path_
+.. autofunction:: tree_map_with_accessor
+.. autofunction:: tree_map_with_accessor_
 .. autofunction:: tree_replace_nones
 .. autofunction:: tree_transpose
 .. autofunction:: tree_transpose_map
 .. autofunction:: tree_transpose_map_with_path
+.. autofunction:: tree_transpose_map_with_accessor
 .. autofunction:: tree_broadcast_prefix
 .. autofunction:: broadcast_prefix
 .. autofunction:: tree_broadcast_common
 .. autofunction:: broadcast_common
 .. autofunction:: tree_broadcast_map
 .. autofunction:: tree_broadcast_map_with_path
+.. autofunction:: tree_broadcast_map_with_accessor
 .. autofunction:: tree_flatten_one_level
 .. autofunction:: prefix_errors
 

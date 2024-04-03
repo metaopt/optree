@@ -167,6 +167,7 @@ def register_pytree_node(
 
     Raises:
         TypeError: If the input type is not a class.
+        TypeError: If the path entry class is not a subclass of :class:`PyTreeEntry`.
         TypeError: If the namespace is not a string.
         ValueError: If the namespace is an empty string.
         ValueError: If the type is already registered in the registry.
@@ -334,6 +335,7 @@ def register_pytree_node_class(  # noqa: C901
         function that registers the class as a pytree node.
 
     Raises:
+        TypeError: If the path entry class is not a subclass of :class:`PyTreeEntry`.
         TypeError: If the namespace is not a string.
         ValueError: If the namespace is an empty string.
         ValueError: If the type is already registered in the registry.
@@ -598,7 +600,7 @@ del _pytree_node_registry_get
 
 
 class _HashablePartialShim:
-    """Object that delegates :meth:`__call__`, :meth:`__hash__`, and :meth:`__eq__` to another object."""
+    """Object that delegates :meth:`__call__`, :meth:`__eq__`, and :meth:`__hash__` to another object."""
 
     func: Callable[..., Any]
     args: tuple[Any, ...]
@@ -610,13 +612,13 @@ class _HashablePartialShim:
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         return self.partial_func(*args, **kwargs)
 
-    def __hash__(self) -> int:
-        return hash(self.partial_func)
-
     def __eq__(self, other: object) -> bool:
         if isinstance(other, _HashablePartialShim):
             return self.partial_func == other.partial_func
         return self.partial_func == other
+
+    def __hash__(self) -> int:
+        return hash(self.partial_func)
 
 
 @register_pytree_node_class(namespace=__GLOBAL_NAMESPACE)
