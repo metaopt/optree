@@ -29,15 +29,17 @@ limitations under the License.
 namespace optree {
 
 py::module_ GetCxxModule(const std::optional<py::module_>& module) {
-    static py::object this_module{};
+    static py::object* this_module_ptr = nullptr;
     if (module.has_value()) [[unlikely]] {
-        EXPECT_FALSE(this_module, "The module has already been initialized.");
-        this_module = *module;
+        EXPECT_EQ(this_module_ptr, nullptr, "The module has already been initialized.");
+        // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation
+        // and garbage collection.
+        this_module_ptr = new py::object{*module};  // NOLINT[cppcoreguidelines-owning-memory]
     } else [[likely]] {
-        EXPECT_TRUE(this_module, "The module is not initialized.");
+        EXPECT_NE(this_module_ptr, nullptr, "The module is not initialized.");
     }
 
-    return py::reinterpret_borrow<py::module_>(this_module);
+    return py::reinterpret_borrow<py::module_>(*this_module_ptr);
 }
 
 void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]

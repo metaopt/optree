@@ -14,7 +14,7 @@
 # ==============================================================================
 """OpTree: Optimized PyTree Utilities."""
 
-from optree import integration, typing
+from optree import accessor, integration, typing
 from optree.accessor import (
     DataclassEntry,
     FlattenedEntry,

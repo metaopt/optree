@@ -78,7 +78,7 @@ class PyTreeEntry:
         """Get the child object."""
         try:
             return obj[self.entry]  # should be overridden
-        except (TypeError, LookupError) as ex:
+        except TypeError as ex:
             raise TypeError(
                 f'{self.__class__!r} cannot access through {obj!r} via entry {self.entry!r}',
             ) from ex

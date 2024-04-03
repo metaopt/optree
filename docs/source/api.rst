@@ -6,3 +6,4 @@ API References
     :undoc-members:
     :show-inheritance:
     :noindex:
+    :exclude-members: register_keypaths, AttributeKeyPathEntry, GetitemKeyPathEntry

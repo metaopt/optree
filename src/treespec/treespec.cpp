@@ -167,14 +167,19 @@ namespace optree {
     }
 }
 
-/*static*/ py::object PyTreeSpec::GetPathEntryClass(const Node& node) {
-    static auto [SequenceEntry, MappingEntry, NamedTupleEntry, StructSequenceEntry] =
-        []() -> std::tuple<py::object, py::object, py::object, py::object> {
+/*static*/ py::object PyTreeSpec::GetPathEntryType(const Node& node) {
+    static const auto [SequenceEntry_ptr,
+                       MappingEntry_ptr,
+                       NamedTupleEntry_ptr,
+                       StructSequenceEntry_ptr] = []()
+        -> std::tuple<const py::object*, const py::object*, const py::object*, const py::object*> {
         const py::module_& mod = GetCxxModule();
-        return {py::getattr(mod, "SequenceEntry"),
-                py::getattr(mod, "MappingEntry"),
-                py::getattr(mod, "NamedTupleEntry"),
-                py::getattr(mod, "StructSequenceEntry")};
+        // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation
+        // and garbage collection.
+        return {new py::object{py::getattr(mod, "SequenceEntry")},
+                new py::object{py::getattr(mod, "MappingEntry")},
+                new py::object{py::getattr(mod, "NamedTupleEntry")},
+                new py::object{py::getattr(mod, "StructSequenceEntry")}};
     }();
 
     switch (node.kind) {
@@ -186,21 +191,21 @@ namespace optree {
         case PyTreeKind::Tuple:
         case PyTreeKind::List:
         case PyTreeKind::Deque: {
-            return SequenceEntry;
+            return *SequenceEntry_ptr;
         }
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
         case PyTreeKind::DefaultDict: {
-            return MappingEntry;
+            return *MappingEntry_ptr;
         }
 
         case PyTreeKind::NamedTuple: {
-            return NamedTupleEntry;
+            return *NamedTupleEntry_ptr;
         }
 
         case PyTreeKind::StructSequence: {
-            return StructSequenceEntry;
+            return *StructSequenceEntry_ptr;
         }
 
         case PyTreeKind::Custom: {
@@ -638,7 +643,7 @@ ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,
         return num_nodes;
     };
 
-    py::object path_entry_type = GetPathEntryClass(root);
+    py::object path_entry_type = GetPathEntryType(root);
     if (root.node_entries) [[unlikely]] {
         EXPECT_EQ(
             root.kind, PyTreeKind::Custom, "Node entries are only supported for custom nodes.");

@@ -246,7 +246,7 @@ class PyTreeSpec {
                                const size_t &num_children);
 
     // Helper that identifies the path entry class for a node.
-    static py::object GetPathEntryClass(const Node &node);
+    static py::object GetPathEntryType(const Node &node);
 
     // Recursive helper used to implement Flatten().
     bool FlattenInto(const py::handle &handle,
