@@ -1220,7 +1220,7 @@ def tree_transpose_map_with_path(
     >>> tree_transpose_map_with_path(  # doctest: +IGNORE_WHITESPACE
     ...     lambda p, x: {'path': p, 'value': x},
     ...     tree,
-    ...     inner_treespec=tree_structure({'path': 0, 'value': 0})),
+    ...     inner_treespec=tree_structure({'path': 0, 'value': 0}),
     ... )
     {
         'path': {
@@ -1319,7 +1319,7 @@ def tree_transpose_map_with_accessor(
     >>> tree_transpose_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
     ...     lambda a, x: {'path': a.path, 'accessor': a, 'value': x},
     ...     tree,
-    ...     inner_treespec=tree_structure({'path': 0, 'accessor': 0, 'value': 0})),
+    ...     inner_treespec=tree_structure({'path': 0, 'accessor': 0, 'value': 0}),
     ... )
     {
         'path': {
