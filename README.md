@@ -204,6 +204,8 @@ from collections import UserDict
 
 @optree.register_pytree_node_class(namespace='mydict')
 class MyDict(UserDict):
+    TREE_PATH_ENTRY_TYPE = optree.MappingEntry  # used by accessor APIs
+
     def tree_flatten(self):  # -> (children, metadata, entries)
         reversed_keys = sorted(self.keys(), reverse=True)
         return (
@@ -238,6 +240,21 @@ class MyDict(UserDict):
         namespace='mydict'
     )
 )
+>>> optree.tree_flatten_with_accessor(tree, namespace='mydict')
+(
+    [
+        PyTreeAccessor(*['c']['f'], (MappingEntry(key='c', type=<class 'MyDict'>), MappingEntry(key='f', type=<class 'MyDict'>))),
+        PyTreeAccessor(*['c']['d'], (MappingEntry(key='c', type=<class 'MyDict'>), MappingEntry(key='d', type=<class 'MyDict'>))),
+        PyTreeAccessor(*['b'], (MappingEntry(key='b', type=<class 'MyDict'>),)),
+        PyTreeAccessor(*['a'][0], (MappingEntry(key='a', type=<class 'MyDict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
+        PyTreeAccessor(*['a'][1], (MappingEntry(key='a', type=<class 'MyDict'>), SequenceEntry(index=1, type=<class 'tuple'>)))
+    ],
+    [6, 5, 4, 2, 3],
+    PyTreeSpec(
+        CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyDict[['f', 'd']], [*, *]), *, (*, *)]),
+        namespace='mydict'
+    )
+)
 ```
 
 #### Notes about the PyTree Type Registry
@@ -262,6 +279,8 @@ There are several key attributes of the pytree type registry:
 
     @optree.register_pytree_node_class(namespace='mydict')
     class MyDict(UserDict):
+        TREE_PATH_ENTRY_TYPE = optree.MappingEntry  # used by accessor APIs
+
         def __init_subclass__(cls):  # define this in the base class
             super().__init_subclass__()
             # Register a subclass to namespace 'mydict'
@@ -295,6 +314,14 @@ There are several key attributes of the pytree type registry:
             namespace='mydict'
         )
     )
+    >>> optree.tree_accessors(tree, namespace='mydict')
+    [
+        PyTreeAccessor(*['c']['f'], (MappingEntry(key='c', type=<class 'MyDict'>), MappingEntry(key='f', type=<class 'MyAnotherDict'>))),
+        PyTreeAccessor(*['c']['d'], (MappingEntry(key='c', type=<class 'MyDict'>), MappingEntry(key='d', type=<class 'MyAnotherDict'>))),
+        PyTreeAccessor(*['b'], (MappingEntry(key='b', type=<class 'MyDict'>),)),
+        PyTreeAccessor(*['a'][0], (MappingEntry(key='a', type=<class 'MyDict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
+        PyTreeAccessor(*['a'][1], (MappingEntry(key='a', type=<class 'MyDict'>), SequenceEntry(index=1, type=<class 'tuple'>)))
+    ]
     ```
 
 5. **Be careful about the potential infinite recursion of the custom flatten function.** The returned `children` from the custom flatten function are considered subtrees. They will be further flattened recursively. The `children` can have the same type as the current node. Users must design their termination condition carefully.
@@ -433,7 +460,7 @@ While flattening a tree, it will remain in the tree structure definitions rather
 ```
 
 OpTree provides a keyword argument `none_is_leaf` to determine whether to consider the `None` object as a leaf, like other opaque objects.
-If `none_is_leaf=True`, the `None` object will place in the leaves list.
+If `none_is_leaf=True`, the `None` object will be placed in the leaves list.
 Otherwise, the `None` object will remain in the tree specification (structure).
 
 ```python
