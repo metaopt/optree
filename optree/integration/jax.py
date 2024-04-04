@@ -127,21 +127,33 @@ def tree_ravel(
     ...         'bias': jnp.arange(10, 11, dtype=jnp.float32).reshape((1,))
     ...     },
     ... }
-    >>> tree
-    {'layer1': {'weight': Array([[0., 1., 2.],
-                                 [3., 4., 5.]], dtype=float32),
-                'bias': Array([6., 7.], dtype=float32)},
-     'layer2': {'weight': Array([[8., 9.]], dtype=float32),
-                'bias': Array([10.], dtype=float32)}}
+    >>> tree  # doctest: +IGNORE_WHITESPACE
+    {
+        'layer1': {
+            'weight': Array([[0., 1., 2.],
+                             [3., 4., 5.]], dtype=float32),
+            'bias': Array([6., 7.], dtype=float32)
+        },
+        'layer2': {
+            'weight': Array([[8., 9.]], dtype=float32),
+            'bias': Array([10.], dtype=float32)
+        }
+    }
     >>> flat, unravel_func = tree_ravel(tree)
     >>> flat
     Array([ 6.,  7.,  0.,  1.,  2.,  3.,  4.,  5., 10.,  8.,  9.], dtype=float32)
-    >>> unravel_func(flat)
-    {'layer1': {'weight': Array([[0., 1., 2.],
-                                 [3., 4., 5.]], dtype=float32),
-                'bias': Array([6., 7.], dtype=float32)},
-     'layer2': {'weight': Array([[8., 9.]], dtype=float32),
-                'bias': Array([10.], dtype=float32)}}
+    >>> unravel_func(flat)  # doctest: +IGNORE_WHITESPACE
+    {
+        'layer1': {
+            'weight': Array([[0., 1., 2.],
+                             [3., 4., 5.]], dtype=float32),
+            'bias': Array([6., 7.], dtype=float32)
+        },
+        'layer2': {
+            'weight': Array([[8., 9.]], dtype=float32),
+            'bias': Array([10.], dtype=float32)
+        }
+    }
 
     Args:
         tree (pytree): a pytree of arrays and scalars to ravel.
