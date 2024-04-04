@@ -624,7 +624,10 @@ ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,
                                   Stack& stack,
                                   const ssize_t& pos,
                                   const ssize_t& depth) const {
-    static const py::object& PyTreeAccessor = py::getattr(GetCxxModule(), "PyTreeAccessor");
+    // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
+    // garbage collection.
+    static const py::object* PyTreeAccessor_ptr =
+        new py::object{py::getattr(GetCxxModule(), "PyTreeAccessor")};
 
     const Node& root = m_traversal.at(pos);
     EXPECT_GE(pos + 1, root.num_nodes, "PyTreeSpec::TypedPaths() walked off start of array.");
@@ -658,7 +661,7 @@ ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,
                 for (ssize_t d = 0; d < depth; ++d) {
                     SET_ITEM<py::tuple>(typed_path, d, stack[d]);
                 }
-                accessors.emplace_back(PyTreeAccessor(typed_path));
+                accessors.emplace_back((*PyTreeAccessor_ptr)(typed_path));
                 break;
             }
 
