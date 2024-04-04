@@ -160,12 +160,12 @@ def tree_flatten(
     >>> tree_flatten(tree)  # doctest: +IGNORE_WHITESPACE
     (
         [2, 3, 4, 1, 5],
-        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)]))
+        PyTreeSpec(OrderedDict({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}))
     )
     >>> tree_flatten(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
     (
         [2, 3, 4, 1, None, 5],
-        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf)
+        PyTreeSpec(OrderedDict({'b': (*, [*, *]), 'a': *, 'c': *, 'd': *}), NoneIsLeaf)
     )
 
     Args:
@@ -231,13 +231,13 @@ def tree_flatten_with_path(
     (
         [('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('d',)],
         [2, 3, 4, 1, 5],
-        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)]))
+        PyTreeSpec(OrderedDict({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}))
     )
     >>> tree_flatten_with_path(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
     (
         [('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('c',), ('d',)],
         [2, 3, 4, 1, None, 5],
-        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf)
+        PyTreeSpec(OrderedDict({'b': (*, [*, *]), 'a': *, 'c': *, 'd': *}), NoneIsLeaf)
     )
 
     Args:
@@ -2175,7 +2175,7 @@ def tree_max(
     >>> tree_max({})
     Traceback (most recent call last):
         ...
-    ValueError: max() arg is an empty sequence
+    ValueError: max() iterable argument is empty
     >>> tree_max({}, default=0)
     0
     >>> tree_max({'x': 0, 'y': (2, 1)})
@@ -2185,7 +2185,7 @@ def tree_max(
     >>> tree_max({'a': None})  # `None` is a non-leaf node with arity 0 by default
     Traceback (most recent call last):
         ...
-    ValueError: max() arg is an empty sequence
+    ValueError: max() iterable argument is empty
     >>> tree_max({'a': None}, default=0)  # `None` is a non-leaf node with arity 0 by default
     0
     >>> tree_max({'a': None}, none_is_leaf=True)
@@ -2193,7 +2193,7 @@ def tree_max(
     >>> tree_max(None)  # `None` is a non-leaf node with arity 0 by default
     Traceback (most recent call last):
         ...
-    ValueError: max() arg is an empty sequence
+    ValueError: max() iterable argument is empty
     >>> tree_max(None, default=0)
     0
     >>> tree_max(None, none_is_leaf=True)
@@ -2268,7 +2268,7 @@ def tree_min(
     >>> tree_min({})
     Traceback (most recent call last):
         ...
-    ValueError: min() arg is an empty sequence
+    ValueError: min() iterable argument is empty
     >>> tree_min({}, default=0)
     0
     >>> tree_min({'x': 0, 'y': (2, 1)})
@@ -2278,7 +2278,7 @@ def tree_min(
     >>> tree_min({'a': None})  # `None` is a non-leaf node with arity 0 by default
     Traceback (most recent call last):
         ...
-    ValueError: min() arg is an empty sequence
+    ValueError: min() iterable argument is empty
     >>> tree_min({'a': None}, default=0)  # `None` is a non-leaf node with arity 0 by default
     0
     >>> tree_min({'a': None}, none_is_leaf=True)
@@ -2286,7 +2286,7 @@ def tree_min(
     >>> tree_min(None)  # `None` is a non-leaf node with arity 0 by default
     Traceback (most recent call last):
         ...
-    ValueError: min() arg is an empty sequence
+    ValueError: min() iterable argument is empty
     >>> tree_min(None, default=0)
     0
     >>> tree_min(None, none_is_leaf=True)
@@ -2943,15 +2943,15 @@ def treespec_ordereddict(
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
     >>> treespec_ordereddict({'a': treespec_leaf(), 'b': treespec_leaf()})
-    PyTreeSpec(OrderedDict([('a', *), ('b', *)]))
+    PyTreeSpec(OrderedDict({'a': *, 'b': *}))
     >>> treespec_ordereddict([('b', treespec_leaf()), ('c', treespec_leaf()), ('a', treespec_none())])
-    PyTreeSpec(OrderedDict([('b', *), ('c', *), ('a', None)]))
+    PyTreeSpec(OrderedDict({'b': *, 'c': *, 'a': None}))
     >>> treespec_ordereddict()
-    PyTreeSpec(OrderedDict([]))
+    PyTreeSpec(OrderedDict())
     >>> treespec_ordereddict(a=treespec_leaf(), b=treespec_tuple([treespec_leaf(), treespec_leaf()]))
-    PyTreeSpec(OrderedDict([('a', *), ('b', (*, *))]))
+    PyTreeSpec(OrderedDict({'a': *, 'b': (*, *)}))
     >>> treespec_ordereddict({'a': treespec_leaf(), 'b': tree_structure([1, 2])})
-    PyTreeSpec(OrderedDict([('a', *), ('b', [*, *])]))
+    PyTreeSpec(OrderedDict({'a': *, 'b': [*, *]}))
     >>> treespec_ordereddict({'a': treespec_leaf(), 'b': tree_structure([1, 2], none_is_leaf=True)})
     Traceback (most recent call last):
         ...

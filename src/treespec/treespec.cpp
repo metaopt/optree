@@ -1111,11 +1111,17 @@ std::string PyTreeSpec::ToStringImpl() const {
                 break;
             }
 
-            case PyTreeKind::Dict: {
+            case PyTreeKind::Dict:
+            case PyTreeKind::OrderedDict: {
                 EXPECT_EQ(GET_SIZE<py::list>(node.node_data),
                           node.arity,
                           "Number of keys and entries does not match.");
-                sstream << "{";
+                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
+                    sstream << "OrderedDict(";
+                }
+                if (node.kind == PyTreeKind::Dict || node.arity > 0) [[likely]] {
+                    sstream << "{";
+                }
                 bool first = true;
                 auto child_iter = agenda.end() - node.arity;
                 for (const py::handle& key : node.node_data) {
@@ -1126,7 +1132,12 @@ std::string PyTreeSpec::ToStringImpl() const {
                     ++child_iter;
                     first = false;
                 }
-                sstream << "}";
+                if (node.kind == PyTreeKind::Dict || node.arity > 0) [[likely]] {
+                    sstream << "}";
+                }
+                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
+                    sstream << ")";
+                }
                 break;
             }
 
@@ -1151,25 +1162,6 @@ std::string PyTreeSpec::ToStringImpl() const {
                     first = false;
                 }
                 sstream << ")";
-                break;
-            }
-
-            case PyTreeKind::OrderedDict: {
-                EXPECT_EQ(GET_SIZE<py::list>(node.node_data),
-                          node.arity,
-                          "Number of keys and entries does not match.");
-                sstream << "OrderedDict([";
-                bool first = true;
-                auto child_iter = agenda.end() - node.arity;
-                for (const py::handle& key : node.node_data) {
-                    if (!first) [[likely]] {
-                        sstream << ", ";
-                    }
-                    sstream << "(" << PyRepr(key) << ", " << *child_iter << ")";
-                    ++child_iter;
-                    first = false;
-                }
-                sstream << "])";
                 break;
             }
 

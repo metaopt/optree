@@ -20,6 +20,7 @@ import itertools
 import sys
 import time
 from collections import OrderedDict, UserDict, defaultdict, deque, namedtuple
+from typing import NamedTuple
 
 import pytest
 
@@ -47,6 +48,10 @@ CustomTuple = namedtuple('CustomTuple', ('foo', 'bar'))  # noqa: PYI024
 
 
 class CustomNamedTupleSubclass(CustomTuple):
+    pass
+
+
+class EmptyTuple(NamedTuple):
     pass
 
 
@@ -208,10 +213,12 @@ TREES = (
     (None,),
     (1, None),
     (),
+    [],
     ([()]),
     (1, 2),
     ((1, 'foo'), ['bar', (3, None, 7)]),
     [3],
+    EmptyTuple(),
     [3, CustomTuple(foo=(3, CustomTuple(foo=3, bar=None)), bar={'baz': 34})],
     TimeStructTimeType((*range(1, 3), None, *range(3, 9))),
     SysFloatInfoType(
@@ -219,13 +226,19 @@ TREES = (
     ),
     [Vector3D(3, None, [4, 'foo'])],
     Vector2D(2, 3.0),
+    {},
     {'a': 1, 'b': 2},
     {'b': (2, 3), 'a': 1, 'c': None, 'd': {'f': 4, 'e': None}},
+    OrderedDict(),
     OrderedDict([('foo', 34), ('baz', 101), ('something', -42)]),
     OrderedDict([('foo', 34), ('baz', 101), ('something', deque([None, 2, 3]))]),
     OrderedDict([('foo', 34), ('baz', 101), ('something', deque([None, None, 3], maxlen=2))]),
     OrderedDict([('foo', 34), ('baz', 101), ('something', deque([None, 2, 3], maxlen=2))]),
+    defaultdict(),
+    defaultdict(int),
     defaultdict(dict, [('foo', 34), ('baz', 101), ('something', -42)]),
+    deque(),
+    deque(maxlen=0),
     deque([None, 2, 3]),
     deque([None, None, 3], maxlen=2),
     MyDict([('baz', 101), ('foo', MyDict(a=1, b=2, c=None))]),
@@ -244,9 +257,11 @@ TREE_PATHS_NONE_IS_NODE = [
     [(0,)],
     [],
     [],
+    [],
     [(0,), (1,)],
     [(0, 0), (0, 1), (1, 0), (1, 1, 0), (1, 1, 2)],
     [(0,)],
+    [],
     [(0,), (1, 0, 0), (1, 0, 1, 0), (1, 1, 'baz')],
     [(0,), (1,), (3,), (4,), (5,), (6,), (7,), (8,)],
     [
@@ -270,13 +285,19 @@ TREE_PATHS_NONE_IS_NODE = [
     ],
     [(0, 0)],
     [(0,), (1,)],
+    [],
     [('a',), ('b',)],
     [('a',), ('b', 0), ('b', 1), ('d', 'f')],
+    [],
     [('foo',), ('baz',), ('something',)],
     [('foo',), ('baz',), ('something', 1), ('something', 2)],
     [('foo',), ('baz',), ('something', 1)],
     [('foo',), ('baz',), ('something', 0), ('something', 1)],
+    [],
+    [],
     [('baz',), ('foo',), ('something',)],
+    [],
+    [],
     [(1,), (2,)],
     [(1,)],
     [('foo', 'b'), ('foo', 'a'), ('baz',)],
@@ -294,9 +315,11 @@ TREE_PATHS_NONE_IS_LEAF = [
     [(0,), (1,)],
     [],
     [],
+    [],
     [(0,), (1,)],
     [(0, 0), (0, 1), (1, 0), (1, 1, 0), (1, 1, 1), (1, 1, 2)],
     [(0,)],
+    [],
     [(0,), (1, 0, 0), (1, 0, 1, 0), (1, 0, 1, 1), (1, 1, 'baz')],
     [(0,), (1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)],
     [
@@ -322,13 +345,19 @@ TREE_PATHS_NONE_IS_LEAF = [
     ],
     [(0, 0), (0, 1)],
     [(0,), (1,)],
+    [],
     [('a',), ('b',)],
     [('a',), ('b', 0), ('b', 1), ('c',), ('d', 'e'), ('d', 'f')],
+    [],
     [('foo',), ('baz',), ('something',)],
     [('foo',), ('baz',), ('something', 0), ('something', 1), ('something', 2)],
     [('foo',), ('baz',), ('something', 0), ('something', 1)],
     [('foo',), ('baz',), ('something', 0), ('something', 1)],
+    [],
+    [],
     [('baz',), ('foo',), ('something',)],
+    [],
+    [],
     [(0,), (1,), (2,)],
     [(0,), (1,)],
     [('foo', 'c'), ('foo', 'b'), ('foo', 'a'), ('baz',)],
@@ -352,6 +381,7 @@ TREE_ACCESSORS_NONE_IS_NODE = [
     [
         optree.PyTreeAccessor((optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),)),
     ],
+    [],
     [],
     [],
     [
@@ -393,6 +423,7 @@ TREE_ACCESSORS_NONE_IS_NODE = [
         ),
     ],
     [optree.PyTreeAccessor((optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),))],
+    [],
     [
         optree.PyTreeAccessor((optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),)),
         optree.PyTreeAccessor(
@@ -533,6 +564,7 @@ TREE_ACCESSORS_NONE_IS_NODE = [
         optree.PyTreeAccessor((optree.FlattenedEntry(0, Vector2D, optree.PyTreeKind.CUSTOM),)),
         optree.PyTreeAccessor((optree.FlattenedEntry(1, Vector2D, optree.PyTreeKind.CUSTOM),)),
     ],
+    [],
     [
         optree.PyTreeAccessor((optree.MappingEntry('a', dict, optree.PyTreeKind.DICT),)),
         optree.PyTreeAccessor((optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),)),
@@ -558,6 +590,7 @@ TREE_ACCESSORS_NONE_IS_NODE = [
             ),
         ),
     ],
+    [],
     [
         optree.PyTreeAccessor(
             (optree.MappingEntry('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
@@ -623,6 +656,8 @@ TREE_ACCESSORS_NONE_IS_NODE = [
             ),
         ),
     ],
+    [],
+    [],
     [
         optree.PyTreeAccessor(
             (optree.MappingEntry('baz', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
@@ -634,6 +669,8 @@ TREE_ACCESSORS_NONE_IS_NODE = [
             (optree.MappingEntry('something', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
         ),
     ],
+    [],
+    [],
     [
         optree.PyTreeAccessor((optree.SequenceEntry(1, deque, optree.PyTreeKind.DEQUE),)),
         optree.PyTreeAccessor((optree.SequenceEntry(2, deque, optree.PyTreeKind.DEQUE),)),
@@ -679,6 +716,7 @@ TREE_ACCESSORS_NONE_IS_LEAF = [
         optree.PyTreeAccessor((optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),)),
         optree.PyTreeAccessor((optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),)),
     ],
+    [],
     [],
     [],
     [
@@ -727,6 +765,7 @@ TREE_ACCESSORS_NONE_IS_LEAF = [
         ),
     ],
     [optree.PyTreeAccessor((optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),))],
+    [],
     [
         optree.PyTreeAccessor((optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),)),
         optree.PyTreeAccessor(
@@ -893,6 +932,7 @@ TREE_ACCESSORS_NONE_IS_LEAF = [
         optree.PyTreeAccessor((optree.FlattenedEntry(0, Vector2D, optree.PyTreeKind.CUSTOM),)),
         optree.PyTreeAccessor((optree.FlattenedEntry(1, Vector2D, optree.PyTreeKind.CUSTOM),)),
     ],
+    [],
     [
         optree.PyTreeAccessor((optree.MappingEntry('a', dict, optree.PyTreeKind.DICT),)),
         optree.PyTreeAccessor((optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),)),
@@ -925,6 +965,7 @@ TREE_ACCESSORS_NONE_IS_LEAF = [
             ),
         ),
     ],
+    [],
     [
         optree.PyTreeAccessor(
             (optree.MappingEntry('foo', OrderedDict, optree.PyTreeKind.ORDEREDDICT),),
@@ -1002,6 +1043,8 @@ TREE_ACCESSORS_NONE_IS_LEAF = [
             ),
         ),
     ],
+    [],
+    [],
     [
         optree.PyTreeAccessor(
             (optree.MappingEntry('baz', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
@@ -1013,6 +1056,8 @@ TREE_ACCESSORS_NONE_IS_LEAF = [
             (optree.MappingEntry('something', defaultdict, optree.PyTreeKind.DEFAULTDICT),),
         ),
     ],
+    [],
+    [],
     [
         optree.PyTreeAccessor((optree.SequenceEntry(0, deque, optree.PyTreeKind.DEQUE),)),
         optree.PyTreeAccessor((optree.SequenceEntry(1, deque, optree.PyTreeKind.DEQUE),)),
@@ -1071,22 +1116,30 @@ TREE_STRINGS_NONE_IS_NODE = (
     'PyTreeSpec((None,))',
     'PyTreeSpec((*, None))',
     'PyTreeSpec(())',
+    'PyTreeSpec([])',
     'PyTreeSpec([()])',
     'PyTreeSpec((*, *))',
     'PyTreeSpec(((*, *), [*, (*, None, *)]))',
     'PyTreeSpec([*])',
+    'PyTreeSpec(EmptyTuple())',
     "PyTreeSpec([*, CustomTuple(foo=(*, CustomTuple(foo=*, bar=None)), bar={'baz': *})])",
     'PyTreeSpec(time.struct_time(tm_year=*, tm_mon=*, tm_mday=None, tm_hour=*, tm_min=*, tm_sec=*, tm_wday=*, tm_yday=*, tm_isdst=*))',
     'PyTreeSpec(sys.float_info(max=*, max_exp=*, max_10_exp=*, min=*, min_exp=*, min_10_exp=*, dig=*, mant_dig=*, epsilon=*, radix=None, rounds=time.struct_time(tm_year=*, tm_mon=*, tm_mday=*, tm_hour=*, tm_min=*, tm_sec=None, tm_wday=*, tm_yday=*, tm_isdst=*)))',
     "PyTreeSpec([CustomTreeNode(Vector3D[[4, 'foo']], [*, None])])",
     'PyTreeSpec(CustomTreeNode(Vector2D[None], [*, *]))',
+    'PyTreeSpec({})',
     "PyTreeSpec({'a': *, 'b': *})",
     "PyTreeSpec({'a': *, 'b': (*, *), 'c': None, 'd': {'e': None, 'f': *}})",
-    "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', *)]))",
-    "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', deque([None, *, *]))]))",
-    "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', deque([None, *], maxlen=2))]))",
-    "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', deque([*, *], maxlen=2))]))",
+    'PyTreeSpec(OrderedDict())',
+    "PyTreeSpec(OrderedDict({'foo': *, 'baz': *, 'something': *}))",
+    "PyTreeSpec(OrderedDict({'foo': *, 'baz': *, 'something': deque([None, *, *])}))",
+    "PyTreeSpec(OrderedDict({'foo': *, 'baz': *, 'something': deque([None, *], maxlen=2)}))",
+    "PyTreeSpec(OrderedDict({'foo': *, 'baz': *, 'something': deque([*, *], maxlen=2)}))",
+    'PyTreeSpec(defaultdict(None, {}))',
+    "PyTreeSpec(defaultdict(<class 'int'>, {}))",
     "PyTreeSpec(defaultdict(<class 'dict'>, {'baz': *, 'foo': *, 'something': *}))",
+    'PyTreeSpec(deque([]))',
+    'PyTreeSpec(deque([], maxlen=0))',
     'PyTreeSpec(deque([None, *, *]))',
     'PyTreeSpec(deque([None, *], maxlen=2))',
     "PyTreeSpec(CustomTreeNode(MyDict[['foo', 'baz']], [CustomTreeNode(MyDict[['c', 'b', 'a']], [None, *, *]), *]))",
@@ -1103,22 +1156,30 @@ TREE_STRINGS_NONE_IS_LEAF = (
     'PyTreeSpec((*,), NoneIsLeaf)',
     'PyTreeSpec((*, *), NoneIsLeaf)',
     'PyTreeSpec((), NoneIsLeaf)',
+    'PyTreeSpec([], NoneIsLeaf)',
     'PyTreeSpec([()], NoneIsLeaf)',
     'PyTreeSpec((*, *), NoneIsLeaf)',
     'PyTreeSpec(((*, *), [*, (*, *, *)]), NoneIsLeaf)',
     'PyTreeSpec([*], NoneIsLeaf)',
+    'PyTreeSpec(EmptyTuple(), NoneIsLeaf)',
     "PyTreeSpec([*, CustomTuple(foo=(*, CustomTuple(foo=*, bar=*)), bar={'baz': *})], NoneIsLeaf)",
     'PyTreeSpec(time.struct_time(tm_year=*, tm_mon=*, tm_mday=*, tm_hour=*, tm_min=*, tm_sec=*, tm_wday=*, tm_yday=*, tm_isdst=*), NoneIsLeaf)',
     'PyTreeSpec(sys.float_info(max=*, max_exp=*, max_10_exp=*, min=*, min_exp=*, min_10_exp=*, dig=*, mant_dig=*, epsilon=*, radix=*, rounds=time.struct_time(tm_year=*, tm_mon=*, tm_mday=*, tm_hour=*, tm_min=*, tm_sec=*, tm_wday=*, tm_yday=*, tm_isdst=*)), NoneIsLeaf)',
     "PyTreeSpec([CustomTreeNode(Vector3D[[4, 'foo']], [*, *])], NoneIsLeaf)",
     'PyTreeSpec(CustomTreeNode(Vector2D[None], [*, *]), NoneIsLeaf)',
+    'PyTreeSpec({}, NoneIsLeaf)',
     "PyTreeSpec({'a': *, 'b': *}, NoneIsLeaf)",
     "PyTreeSpec({'a': *, 'b': (*, *), 'c': *, 'd': {'e': *, 'f': *}}, NoneIsLeaf)",
-    "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', *)]), NoneIsLeaf)",
-    "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', deque([*, *, *]))]), NoneIsLeaf)",
-    "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', deque([*, *], maxlen=2))]), NoneIsLeaf)",
-    "PyTreeSpec(OrderedDict([('foo', *), ('baz', *), ('something', deque([*, *], maxlen=2))]), NoneIsLeaf)",
+    'PyTreeSpec(OrderedDict(), NoneIsLeaf)',
+    "PyTreeSpec(OrderedDict({'foo': *, 'baz': *, 'something': *}), NoneIsLeaf)",
+    "PyTreeSpec(OrderedDict({'foo': *, 'baz': *, 'something': deque([*, *, *])}), NoneIsLeaf)",
+    "PyTreeSpec(OrderedDict({'foo': *, 'baz': *, 'something': deque([*, *], maxlen=2)}), NoneIsLeaf)",
+    "PyTreeSpec(OrderedDict({'foo': *, 'baz': *, 'something': deque([*, *], maxlen=2)}), NoneIsLeaf)",
+    'PyTreeSpec(defaultdict(None, {}), NoneIsLeaf)',
+    "PyTreeSpec(defaultdict(<class 'int'>, {}), NoneIsLeaf)",
     "PyTreeSpec(defaultdict(<class 'dict'>, {'baz': *, 'foo': *, 'something': *}), NoneIsLeaf)",
+    'PyTreeSpec(deque([]), NoneIsLeaf)',
+    'PyTreeSpec(deque([], maxlen=0), NoneIsLeaf)',
     'PyTreeSpec(deque([*, *, *]), NoneIsLeaf)',
     'PyTreeSpec(deque([*, *], maxlen=2), NoneIsLeaf)',
     "PyTreeSpec(CustomTreeNode(MyDict[['foo', 'baz']], [CustomTreeNode(MyDict[['c', 'b', 'a']], [*, *, *]), *]), NoneIsLeaf)",

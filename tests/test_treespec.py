@@ -117,9 +117,10 @@ def test_treespec_rich_compare(tree, none_is_leaf, namespace):
     ),
 )
 def test_treespec_string_representation(data):
-    tree, correct_string, none_is_leaf = data
+    tree, expected_string, none_is_leaf = data
     treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf)
-    assert str(treespec) == correct_string
+    assert str(treespec) == expected_string
+    assert repr(treespec) == expected_string
 
 
 def test_treespec_self_referential():
