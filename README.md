@@ -433,7 +433,7 @@ While flattening a tree, it will remain in the tree structure definitions rather
 ```
 
 OpTree provides a keyword argument `none_is_leaf` to determine whether to consider the `None` object as a leaf, like other opaque objects.
-If `none_is_leaf=True`, the `None` object will place in the leaves list.
+If `none_is_leaf=True`, the `None` object will be placed in the leaves list.
 Otherwise, the `None` object will remain in the tree specification (structure).
 
 ```python
@@ -441,19 +441,19 @@ Otherwise, the `None` object will remain in the tree specification (structure).
 
 >>> linear = torch.nn.Linear(in_features=3, out_features=2, bias=False)
 >>> linear._parameters  # a container has None
-OrderedDict([
-    ('weight', Parameter containing:
-               tensor([[-0.6677,  0.5209,  0.3295],
-                       [-0.4876, -0.3142,  0.1785]], requires_grad=True)),
-    ('bias', None)
-])
+OrderedDict({
+    'weight': Parameter containing:
+              tensor([[-0.6677,  0.5209,  0.3295],
+                      [-0.4876, -0.3142,  0.1785]], requires_grad=True),
+    'bias': None
+})
 
 >>> optree.tree_map(torch.zeros_like, linear._parameters)
-OrderedDict([
-    ('weight', tensor([[0., 0., 0.],
-                       [0., 0., 0.]])),
-    ('bias', None)
-])
+OrderedDict({
+    'weight': tensor([[0., 0., 0.],
+                      [0., 0., 0.]]),
+    'bias': None
+})
 
 >>> optree.tree_map(torch.zeros_like, linear._parameters, none_is_leaf=True)
 Traceback (most recent call last):
@@ -461,11 +461,11 @@ Traceback (most recent call last):
 TypeError: zeros_like(): argument 'input' (position 1) must be Tensor, not NoneType
 
 >>> optree.tree_map(lambda t: torch.zeros_like(t) if t is not None else 0, linear._parameters, none_is_leaf=True)
-OrderedDict([
-    ('weight', tensor([[0., 0., 0.],
-                       [0., 0., 0.]])),
-    ('bias', 0)
-])
+OrderedDict({
+    'weight': tensor([[0., 0., 0.],
+                      [0., 0., 0.]]),
+    'bias': 0
+})
 ```
 
 ### Key Ordering for Dictionaries
@@ -489,9 +489,9 @@ If users want to keep the values in the insertion order in pytree traversal, the
 >>> OrderedDict([('a', [1, 2]), ('b', [3])]) == OrderedDict([('b', [3]), ('a', [1, 2])])
 False
 >>> optree.tree_flatten(OrderedDict([('a', [1, 2]), ('b', [3])]))
-([1, 2, 3], PyTreeSpec(OrderedDict([('a', [*, *]), ('b', [*])])))
+([1, 2, 3], PyTreeSpec(OrderedDict({'a': [*, *], 'b': [*]})))
 >>> optree.tree_flatten(OrderedDict([('b', [3]), ('a', [1, 2])]))
-([3, 1, 2], PyTreeSpec(OrderedDict([('b', [*]), ('a', [*, *])])))
+([3, 1, 2], PyTreeSpec(OrderedDict({'b': [*], 'a': [*, *]})))
 ```
 
 **Since OpTree v0.9.0, the key order of the reconstructed output dictionaries from `tree_unflatten` is guaranteed to be consistent with the key order of the input dictionaries in `tree_flatten`.**
