@@ -152,6 +152,15 @@ optree.register_pytree_node(
 # Register a Python type into a namespace
 import torch
 
+class Torch2NumpyEntry(optree.PyTreeEntry):
+    def __call__(self, obj):
+        assert self.entry == 0
+        return obj.cpu().detach().numpy()
+
+    def pprint(self, root=''):
+        assert self.entry == 0
+        return f'{root}.cpu().detach().numpy()'
+
 optree.register_pytree_node(
     torch.Tensor,
     # (tensor) -> (children, metadata)
@@ -161,6 +170,7 @@ optree.register_pytree_node(
     ),
     # (metadata, children) -> tensor
     unflatten_func=lambda metadata, children: torch.tensor(children[0], **metadata),
+    path_entry_type=Torch2NumpyEntry,
     namespace='torch2numpy',
 )
 ```
@@ -191,6 +201,13 @@ optree.register_pytree_node(
 # `entries` are not defined and use `range(len(children))`
 >>> optree.tree_paths(tree, namespace='torch2numpy')
 [('bias', 0), ('weight', 0)]
+
+# Custom path entry type defines the pytree access behavior
+>>> optree.tree_accessors(tree, namespace='torch2numpy')
+[
+    PyTreeAccessor(*['bias'].cpu().detach().numpy(), (MappingEntry(key='bias', type=<class 'dict'>), Torch2NumpyEntry(entry=0, type=<class 'torch.Tensor'>))),
+    PyTreeAccessor(*['weight'].cpu().detach().numpy(), (MappingEntry(key='weight', type=<class 'dict'>), Torch2NumpyEntry(entry=0, type=<class 'torch.Tensor'>)))
+]
 
 # Unflatten back to a copy of the original object
 >>> optree.tree_unflatten(treespec, leaves)
