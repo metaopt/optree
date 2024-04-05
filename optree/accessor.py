@@ -96,15 +96,13 @@ class PyTreeEntry:
         """Check if the path entries are equal."""
         return (
             isinstance(other, PyTreeEntry)
-            and self.entry == other.entry
-            and self.type == other.type
-            and self.kind == other.kind
+            and (self.entry, self.type, self.kind) == (other.entry, other.type, other.kind)
             and self.__class__.__call__ is other.__class__.__call__
         )
 
     def __hash__(self) -> int:
         """Get the hash of the path entry."""
-        return hash((self.__class__, self.entry, self.type, self.kind))
+        return hash((self.entry, self.type, self.kind, self.__class__.__call__))
 
     def __repr__(self) -> str:
         """Get the representation of the path entry."""
@@ -307,6 +305,10 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
     def __eq__(self, other: object) -> bool:
         """Check if the accessors are equal."""
         return isinstance(other, PyTreeAccessor) and super().__eq__(other)
+
+    def __hash__(self) -> int:
+        """Get the hash of the accessor."""
+        return super().__hash__()
 
     def __repr__(self) -> str:
         """Get the representation of the accessor."""
