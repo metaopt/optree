@@ -323,7 +323,7 @@ def tree_flatten_with_accessor(
             PyTreeAccessor(*['d'], (MappingEntry(key='d', type=<class 'collections.OrderedDict'>),))
         ],
         [2, 3, 4, 1, 5],
-        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', None), ('d', *)]))
+        PyTreeSpec(OrderedDict({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}))
     )
     >>> tree_flatten_with_accessor(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
     (
@@ -336,7 +336,7 @@ def tree_flatten_with_accessor(
             PyTreeAccessor(*['d'], (MappingEntry(key='d', type=<class 'collections.OrderedDict'>),))
         ],
         [2, 3, 4, 1, None, 5],
-        PyTreeSpec(OrderedDict([('b', (*, [*, *])), ('a', *), ('c', *), ('d', *)]), NoneIsLeaf)
+        PyTreeSpec(OrderedDict({'b': (*, [*, *]), 'a': *, 'c': *, 'd': *}), NoneIsLeaf)
     )
 
     Args:

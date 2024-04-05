@@ -18,7 +18,7 @@
 import copy
 import functools
 import itertools
-import math
+import operator
 import pickle
 import re
 from collections import OrderedDict, defaultdict, deque
@@ -650,7 +650,13 @@ def test_tree_broadcast_map():
     tree2 = [8, [9, 10, 11], 12, {'x': 13, 'y': 14}]
     tree3 = 15
     tree4 = [16, 17, {'a': 18, 'b': 19, 'c': 20}, 21]
-    out = optree.tree_broadcast_map(lambda *args: math.prod(args), tree1, tree2, tree3, tree4)
+    out = optree.tree_broadcast_map(
+        lambda *args: functools.reduce(operator.mul, args, 1),
+        tree1,
+        tree2,
+        tree3,
+        tree4,
+    )
     assert out == [
         (1920, 3840, 5760),
         [9180, 10200, 11220],
@@ -658,7 +664,10 @@ def test_tree_broadcast_map():
         OrderedDict([('y', 30870), ('x', 24570)]),
     ]
     for trees in itertools.permutations([tree1, tree2, tree3, tree4], 4):
-        new_out = optree.tree_broadcast_map(lambda *args: math.prod(args), *trees)
+        new_out = optree.tree_broadcast_map(
+            lambda *args: functools.reduce(operator.mul, args, 1),
+            *trees,
+        )
         assert new_out == out
         if trees.index(tree1) < trees.index(tree2):
             assert type(new_out[-1]) is OrderedDict
