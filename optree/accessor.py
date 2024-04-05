@@ -137,6 +137,8 @@ class GetItemEntry(PyTreeEntry):
 class GetAttrEntry(PyTreeEntry):
     """A generic path entry class for nodes that access their children by :meth:`__getattr__`."""
 
+    entry: str
+
     def __call__(self, obj: Any) -> Any:
         """Get the child object."""
         return getattr(obj, self.entry)
@@ -153,6 +155,8 @@ class FlattenedEntry(PyTreeEntry):  # pylint: disable=too-few-public-methods
 class SequenceEntry(GetItemEntry, Generic[_T_co]):
     """A path entry class for sequences."""
 
+    entry: int
+
     @property
     def index(self) -> int:
         """Get the index."""
@@ -160,15 +164,17 @@ class SequenceEntry(GetItemEntry, Generic[_T_co]):
 
     def __call__(self, obj: Sequence[_T_co]) -> _T_co:
         """Get the child object."""
-        return obj[self.entry]
+        return obj[self.index]
 
     def __repr__(self) -> str:
         """Get the representation of the path entry."""
-        return f'{self.__class__.__name__}(index={self.entry!r}, type={self.type!r})'
+        return f'{self.__class__.__name__}(index={self.index!r}, type={self.type!r})'
 
 
 class MappingEntry(GetItemEntry, Generic[_KT_co, _VT_co]):
     """A path entry class for mappings."""
+
+    entry: _KT_co
 
     @property
     def key(self) -> _KT_co:
@@ -177,15 +183,17 @@ class MappingEntry(GetItemEntry, Generic[_KT_co, _VT_co]):
 
     def __call__(self, obj: Mapping[_KT_co, _VT_co]) -> _VT_co:
         """Get the child object."""
-        return obj[self.entry]
+        return obj[self.key]
 
     def __repr__(self) -> str:
         """Get the representation of the path entry."""
-        return f'{self.__class__.__name__}(key={self.entry!r}, type={self.type!r})'
+        return f'{self.__class__.__name__}(key={self.key!r}, type={self.type!r})'
 
 
-class NamedTupleEntry(SequenceEntry, Generic[_T_co]):
+class NamedTupleEntry(SequenceEntry):
     """A path entry class for namedtuple objects."""
+
+    entry: int
 
     @property
     def fields(self) -> tuple[str, ...]:
@@ -201,15 +209,17 @@ class NamedTupleEntry(SequenceEntry, Generic[_T_co]):
 
     def __repr__(self) -> str:
         """Get the representation of the path entry."""
-        return f'{self.__class__.__name__}(field={self.entry!r}, type={self.type!r})'
+        return f'{self.__class__.__name__}(field={self.field!r}, type={self.type!r})'
 
     def pprint(self, root: str = '') -> str:
         """Pretty name of the path entry."""
         return f'{root}.{self.field}'
 
 
-class StructSequenceEntry(NamedTupleEntry[_T_co]):
+class StructSequenceEntry(NamedTupleEntry):
     """A path entry class for PyStructSequence objects."""
+
+    entry: int
 
     @property
     def fields(self) -> tuple[str, ...]:
@@ -221,6 +231,8 @@ class StructSequenceEntry(NamedTupleEntry[_T_co]):
 
 class DataclassEntry(GetAttrEntry):
     """A path entry class for dataclasses."""
+
+    entry: str
 
     @property
     def fields(self) -> tuple[str, ...]:
@@ -303,7 +315,10 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
 
     def pprint(self, root: str = '*') -> str:
         """Pretty name of the path."""
-        return root + ''.join(p.pprint() for p in self)
+        string = root
+        for entry in self:
+            string = entry.pprint(string)
+        return string
 
 
 # These classes are used internally in the C++ side for accessor APIs
