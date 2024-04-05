@@ -21,6 +21,7 @@ import sys
 from typing import (
     TYPE_CHECKING,
     Any,
+    ClassVar,
     Generic,
     Iterable,
     Mapping,
@@ -37,7 +38,7 @@ from optree import _C
 if TYPE_CHECKING:
     import builtins
 
-    from optree.typing import PyTree, PyTreeKind
+    from optree.typing import PyTreeKind
 
 
 __all__ = [
@@ -252,6 +253,8 @@ class DataclassEntry(GetAttrEntry):
 class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
     """A path class for PyTrees."""
 
+    __slots__: ClassVar[tuple[()]] = ()
+
     @property
     def path(self) -> tuple[Any, ...]:
         """Get the path of the accessor."""
@@ -265,7 +268,7 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
             raise TypeError(f'Expected a path of Entry, got {path!r}.')
         return super().__new__(cls, path)
 
-    def __call__(self, obj: PyTree) -> Any:
+    def __call__(self, obj: Any) -> Any:
         """Get the child object."""
         for entry in self:
             obj = entry(obj)
