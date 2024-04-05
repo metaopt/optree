@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-# pylint: disable=missing-function-docstring,invalid-name,implicit-str-concat
+# pylint: disable=missing-function-docstring,invalid-name,wrong-import-order
 
 import random
 import re
@@ -23,8 +23,6 @@ from collections import OrderedDict, defaultdict, deque
 import pytest
 
 import optree
-
-# pylint: disable-next=wrong-import-order
 from helpers import TREES, CustomTuple, FlatCache, TimeStructTimeType, Vector2D, parametrize
 from optree.registry import (
     AttributeKeyPathEntry,

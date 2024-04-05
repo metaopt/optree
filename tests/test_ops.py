@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-# pylint: disable=missing-function-docstring,invalid-name
+# pylint: disable=missing-function-docstring,invalid-name,wrong-import-order
 
 import copy
 import functools
@@ -26,8 +26,6 @@ from collections import OrderedDict, defaultdict, deque
 import pytest
 
 import optree
-
-# pylint: disable-next=wrong-import-order
 from helpers import (
     LEAVES,
     TREE_ACCESSORS,
