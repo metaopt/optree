@@ -531,7 +531,7 @@ def _defaultdict_flatten(
     dct: defaultdict[KT, VT],
 ) -> tuple[tuple[VT, ...], tuple[Callable[[], VT] | None, list[KT]], tuple[KT, ...]]:
     values, keys, entries = _dict_flatten(dct)
-    return values, (dct.default_factory, list(keys)), entries
+    return values, (dct.default_factory, keys), entries
 
 
 def _defaultdict_unflatten(
@@ -539,7 +539,7 @@ def _defaultdict_unflatten(
     values: Iterable[VT],
 ) -> defaultdict[KT, VT]:
     default_factory, keys = metadata
-    return defaultdict(default_factory, safe_zip(keys, values))
+    return defaultdict(default_factory, _dict_unflatten(keys, values))
 
 
 def _deque_flatten(deq: deque[T]) -> tuple[deque[T], int | None]:
