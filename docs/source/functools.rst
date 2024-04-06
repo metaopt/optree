@@ -1,5 +1,5 @@
-PyTree integration with :mod:`functools.partial`
-================================================
+Integration with :mod:`functools`
+=================================
 
 .. currentmodule:: optree.functools
 
