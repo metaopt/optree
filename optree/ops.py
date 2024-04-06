@@ -2695,7 +2695,7 @@ def prefix_errors(
     )
 
 
-STANDARD_DICT_TYPES = frozenset({dict, OrderedDict, defaultdict})
+STANDARD_DICT_TYPES: frozenset[type] = frozenset({dict, OrderedDict, defaultdict})
 
 
 # pylint: disable-next=too-many-locals
