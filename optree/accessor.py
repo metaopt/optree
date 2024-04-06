@@ -124,6 +124,8 @@ _VT_co = TypeVar('_VT_co', covariant=True)
 class GetItemEntry(PyTreeEntry):
     """A generic path entry class for nodes that access their children by :meth:`__getitem__`."""
 
+    __slots__: ClassVar[tuple[()]] = ()
+
     def __call__(self, obj: Any) -> Any:
         """Get the child object."""
         return obj[self.entry]
@@ -135,6 +137,8 @@ class GetItemEntry(PyTreeEntry):
 
 class GetAttrEntry(PyTreeEntry):
     """A generic path entry class for nodes that access their children by :meth:`__getattr__`."""
+
+    __slots__: ClassVar[tuple[()]] = ()
 
     entry: str
 
@@ -150,9 +154,13 @@ class GetAttrEntry(PyTreeEntry):
 class FlattenedEntry(PyTreeEntry):  # pylint: disable=too-few-public-methods
     """A fallback path entry class for flattened objects."""
 
+    __slots__: ClassVar[tuple[()]] = ()
+
 
 class SequenceEntry(GetItemEntry, Generic[_T_co]):
     """A path entry class for sequences."""
+
+    __slots__: ClassVar[tuple[()]] = ()
 
     entry: int
 
@@ -173,6 +181,8 @@ class SequenceEntry(GetItemEntry, Generic[_T_co]):
 class MappingEntry(GetItemEntry, Generic[_KT_co, _VT_co]):
     """A path entry class for mappings."""
 
+    __slots__: ClassVar[tuple[()]] = ()
+
     entry: _KT_co
 
     @property
@@ -191,6 +201,8 @@ class MappingEntry(GetItemEntry, Generic[_KT_co, _VT_co]):
 
 class NamedTupleEntry(SequenceEntry):
     """A path entry class for namedtuple objects."""
+
+    __slots__: ClassVar[tuple[()]] = ()
 
     entry: int
 
@@ -218,6 +230,8 @@ class NamedTupleEntry(SequenceEntry):
 class StructSequenceEntry(NamedTupleEntry):
     """A path entry class for PyStructSequence objects."""
 
+    __slots__: ClassVar[tuple[()]] = ()
+
     entry: int
 
     @property
@@ -230,6 +244,8 @@ class StructSequenceEntry(NamedTupleEntry):
 
 class DataclassEntry(GetAttrEntry):
     """A path entry class for dataclasses."""
+
+    __slots__: ClassVar[tuple[()]] = ()
 
     entry: str
 

@@ -124,6 +124,8 @@ else:
 
 # pylint: disable-next=missing-class-docstring,too-few-public-methods
 class GlobalNamespace:  # pragma: no cover
+    __slots__: ClassVar[tuple[()]] = ()
+
     def __repr__(self) -> str:
         return '<GLOBAL NAMESPACE>'
 
