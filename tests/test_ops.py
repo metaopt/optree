@@ -27,6 +27,7 @@ import pytest
 
 import optree
 from helpers import (
+    IS_LEAF_FUNCTIONS,
     LEAVES,
     TREE_PATHS,
     TREES,
@@ -36,26 +37,6 @@ from helpers import (
     MyAnotherDict,
     parametrize,
 )
-
-
-def is_tuple(tup):
-    return isinstance(tup, tuple)
-
-
-def is_list(lst):
-    return isinstance(lst, list)
-
-
-def is_none(none):
-    return none is None
-
-
-def always(obj):  # pylint: disable=unused-argument
-    return True
-
-
-def never(obj):  # pylint: disable=unused-argument
-    return False
 
 
 def test_max_depth():
@@ -352,13 +333,7 @@ def test_paths(data):
 
 @parametrize(
     tree=TREES,
-    is_leaf=[
-        is_tuple,
-        is_list,
-        is_none,
-        always,
-        never,
-    ],
+    is_leaf=IS_LEAF_FUNCTIONS,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
 )
@@ -388,13 +363,7 @@ def test_paths_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
 
 @parametrize(
     tree=TREES,
-    is_leaf=[
-        is_tuple,
-        is_list,
-        is_none,
-        always,
-        never,
-    ],
+    is_leaf=IS_LEAF_FUNCTIONS,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
 )
@@ -435,12 +404,7 @@ def test_tree_is_leaf_with_leaves(leaf, none_is_leaf, namespace):
 
 @parametrize(
     tree=TREES,
-    is_leaf=[
-        is_tuple,
-        is_none,
-        always,
-        never,
-    ],
+    is_leaf=IS_LEAF_FUNCTIONS,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
 )
@@ -497,12 +461,7 @@ def test_all_leaves_with_leaves(leaf, none_is_leaf, namespace):
 
 @parametrize(
     tree=TREES,
-    is_leaf=[
-        is_tuple,
-        is_none,
-        always,
-        never,
-    ],
+    is_leaf=IS_LEAF_FUNCTIONS,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
 )
