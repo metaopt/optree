@@ -727,7 +727,10 @@ def _sorted_keys(dct: dict[KT, VT]) -> list[KT]:
     return total_order_sorted(dct)
 
 
-@deprecated('The key path API is deprecated and will be removed in a future version.')
+@deprecated(
+    'The key path API is deprecated and will be removed in a future version. '
+    'Please use the accessor API instead.',
+)
 class KeyPathEntry(NamedTuple):
     key: Any
 
@@ -746,7 +749,10 @@ class KeyPathEntry(NamedTuple):
         raise NotImplementedError
 
 
-@deprecated('The key path API is deprecated and will be removed in a future version.')
+@deprecated(
+    'The key path API is deprecated and will be removed in a future version. '
+    'Please use the accessor API instead.',
+)
 class KeyPath(NamedTuple):
     keys: tuple[KeyPathEntry, ...] = ()
 
@@ -767,7 +773,10 @@ class KeyPath(NamedTuple):
         return ''.join(k.pprint() for k in self.keys)
 
 
-@deprecated('The key path API is deprecated and will be removed in a future version.')
+@deprecated(
+    'The key path API is deprecated and will be removed in a future version. '
+    'Please use the accessor API instead.',
+)
 class GetitemKeyPathEntry(KeyPathEntry):
     """The key path entry class for sequences and dictionaries."""
 
@@ -776,7 +785,10 @@ class GetitemKeyPathEntry(KeyPathEntry):
         return f'[{self.key!r}]'
 
 
-@deprecated('The key path API is deprecated and will be removed in a future version.')
+@deprecated(
+    'The key path API is deprecated and will be removed in a future version. '
+    'Please use the accessor API instead.',
+)
 class AttributeKeyPathEntry(KeyPathEntry):
     """The key path entry class for namedtuples."""
 
@@ -785,7 +797,10 @@ class AttributeKeyPathEntry(KeyPathEntry):
         return f'.{self.key}'
 
 
-@deprecated('The key path API is deprecated and will be removed in a future version.')
+@deprecated(
+    'The key path API is deprecated and will be removed in a future version. '
+    'Please use the accessor API instead.',
+)
 class FlattenedKeyPathEntry(KeyPathEntry):  # fallback
     """The fallback key path entry class."""
 
@@ -798,7 +813,10 @@ KeyPathHandler = Callable[[PyTree], Sequence[KeyPathEntry]]
 _KEYPATH_REGISTRY: dict[type[CustomTreeNode], KeyPathHandler] = {}
 
 
-@deprecated('The key path API is deprecated and will be removed in a future version.')
+@deprecated(
+    'The key path API is deprecated and will be removed in a future version. '
+    'Please use the accessor API instead.',
+)
 def register_keypaths(
     cls: type[CustomTreeNode[T]],
     handler: KeyPathHandler,
