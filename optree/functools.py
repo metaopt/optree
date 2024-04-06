@@ -92,7 +92,7 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
     ...
     >>> # doctest: +SKIP
     >>> tree_map(lambda t: t.cuda(), add_one)
-    partial(<built-in function add>, tensor(1., device='cuda:0'))
+    optree.functools.partial(<built-in function add>, tensor(1., device='cuda:0'))
     >>> call_func_on_cuda(add_one, torch.tensor([[1, 2], [3, 4]]))
     tensor([[2., 3.],
             [4., 5.]], device='cuda:0')
@@ -134,12 +134,10 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
 
     def __repr__(self) -> str:
         """Return a string representation of the :class:`partial` instance."""
-        string = super().__repr__()
-        if string.startswith('functools.partial'):
-            string = string[len('functools.partial') :]
-        elif string.startswith('partial'):
-            string = string[len('partial') :]
-        return f'{self.__class__.__module__}.{self.__class__.__qualname__}{string}'
+        args = [repr(self.func)]
+        args.extend(repr(x) for x in self.args)
+        args.extend(f'{k}={v!r}' for (k, v) in self.keywords.items())
+        return f'{self.__class__.__module__}.{self.__class__.__qualname__}({", ".join(args)})'
 
     def tree_flatten(self) -> tuple[  # type: ignore[override]
         tuple[tuple[T, ...], dict[str, T]],
