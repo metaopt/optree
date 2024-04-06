@@ -19,25 +19,7 @@ from __future__ import annotations
 import functools
 from typing import Any, Callable, ClassVar
 from typing_extensions import Self  # Python 3.11+
-
-
-try:
-    from typing_extensions import deprecated  # Python 3.13+
-except ImportError:  # Python 3.7 # pragma: no cover
-    from typing import TypeVar
-
-    F = TypeVar('F', bound=Callable[..., Any])
-
-    # pylint: disable=unused-argument
-    def deprecated(*args: Any, **kwargs: Any) -> Callable[[F], F]:  # type: ignore[no-redef]
-        """A decorator that marks a function or class as deprecated."""
-
-        def decorator(func_or_cls: F) -> F:
-            """A decorator that wraps the input function or class."""
-            return func_or_cls
-
-        return decorator
-
+from typing_extensions import deprecated  # Python 3.13+
 
 from optree import registry
 from optree.ops import tree_reduce as reduce
