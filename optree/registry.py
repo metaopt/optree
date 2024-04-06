@@ -23,7 +23,17 @@ import sys
 from collections import OrderedDict, defaultdict, deque, namedtuple
 from operator import methodcaller
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Callable, Iterable, NamedTuple, Sequence, Type, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Iterable,
+    NamedTuple,
+    Sequence,
+    Type,
+    overload,
+)
 from typing_extensions import TypeAlias  # Python 3.10+
 
 from optree import _C
@@ -72,6 +82,8 @@ del SLOTS
 
 # pylint: disable-next=missing-class-docstring,too-few-public-methods
 class GlobalNamespace:  # pragma: no cover
+    __slots__: ClassVar[tuple[()]] = ()
+
     def __repr__(self) -> str:
         return '<GLOBAL NAMESPACE>'
 

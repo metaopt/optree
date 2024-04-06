@@ -23,7 +23,7 @@ import functools
 import itertools
 import textwrap
 from collections import OrderedDict, defaultdict, deque
-from typing import Any, Callable, Iterable, Mapping, overload
+from typing import Any, Callable, ClassVar, Iterable, Mapping, overload
 
 from optree import _C
 from optree.registry import (
@@ -1532,6 +1532,8 @@ def tree_broadcast_map_with_path(
 
 # pylint: disable-next=missing-class-docstring,too-few-public-methods
 class MissingSentinel:  # pragma: no cover
+    __slots__: ClassVar[tuple[()]] = ()
+
     def __repr__(self) -> str:
         return '<MISSING>'
 

@@ -80,3 +80,4 @@ getattr
 setattr
 delattr
 typecheck
+subclassed
