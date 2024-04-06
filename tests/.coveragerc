@@ -10,5 +10,6 @@ exclude_lines =
     class .*\bProtocol\):
     @(abc\.)?abstractmethod
     @(typing\.)?overload
+    @(warnings\.)?deprecated\(.*
     if __name__ == ('__main__'|"__main__"):
     if TYPE_CHECKING:

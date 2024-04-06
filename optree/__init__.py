@@ -15,7 +15,7 @@
 """OpTree: Optimized PyTree Utilities."""
 
 from optree import functools, integration, typing
-from optree.functools import partial as Partial  # noqa: N812
+from optree.functools import Partial
 from optree.ops import (
     MAX_RECURSION_DEPTH,
     NONE_IS_LEAF,

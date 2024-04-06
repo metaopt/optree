@@ -20,6 +20,25 @@ import functools
 from typing import Any, Callable, ClassVar
 from typing_extensions import Self  # Python 3.11+
 
+
+try:
+    from typing_extensions import deprecated  # Python 3.13+
+except ImportError:  # Python 3.7
+    from typing import TypeVar
+
+    F = TypeVar('F', bound=Callable[..., Any])
+
+    # pylint: disable=unused-argument
+    def deprecated(*args: Any, **kwargs: Any) -> Callable[[F], F]:  # type: ignore[no-redef]
+        """A decorator that marks a function or class as deprecated."""
+
+        def decorator(func_or_cls: F) -> F:
+            """A decorator that wraps the input function or class."""
+            return func_or_cls
+
+        return decorator
+
+
 from optree import registry
 from optree.ops import tree_reduce as reduce
 from optree.typing import CustomTreeNode, T
@@ -156,3 +175,15 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
         """Unflatten the children and auxiliary data into a :class:`partial` instance."""
         args, keywords = children
         return cls(metadata, *args, **keywords)
+
+
+# pylint: disable-next=protected-access
+@registry.register_pytree_node_class(namespace=registry.__GLOBAL_NAMESPACE)
+@deprecated(
+    'The class `optree.Partial` is deprecated and will be removed in a future version. '
+    'Please use `optree.functools.partial` instead.',
+)
+class Partial(partial):
+    """Deprecated alias for :class:`partial`."""
+
+    __slots__: ClassVar[tuple[()]] = ()
