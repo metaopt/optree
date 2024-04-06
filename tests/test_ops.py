@@ -13,11 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
-# pylint: disable=missing-function-docstring,invalid-name
+# pylint: disable=missing-function-docstring,invalid-name,wrong-import-order
 
 import copy
 import functools
 import itertools
+import operator
 import pickle
 import re
 from collections import OrderedDict, defaultdict, deque
@@ -25,8 +26,6 @@ from collections import OrderedDict, defaultdict, deque
 import pytest
 
 import optree
-
-# pylint: disable-next=wrong-import-order
 from helpers import (
     LEAVES,
     TREE_PATHS,
@@ -572,6 +571,34 @@ def test_tree_broadcast_map():
         ([(1, 7)], None, None),
         ({'foo': (3, 'bar')}, ((4, 9), [(5, 9)]), [(6, 10), (6, 11)]),
     )
+
+    tree1 = [(1, 2, 3), 4, 5, OrderedDict([('y', 7), ('x', 6)])]
+    tree2 = [8, [9, 10, 11], 12, {'x': 13, 'y': 14}]
+    tree3 = 15
+    tree4 = [16, 17, {'a': 18, 'b': 19, 'c': 20}, 21]
+    out = optree.tree_broadcast_map(
+        lambda *args: functools.reduce(operator.mul, args, 1),
+        tree1,
+        tree2,
+        tree3,
+        tree4,
+    )
+    assert out == [
+        (1920, 3840, 5760),
+        [9180, 10200, 11220],
+        {'a': 16200, 'b': 17100, 'c': 18000},
+        OrderedDict([('y', 30870), ('x', 24570)]),
+    ]
+    for trees in itertools.permutations([tree1, tree2, tree3, tree4], 4):
+        new_out = optree.tree_broadcast_map(
+            lambda *args: functools.reduce(operator.mul, args, 1),
+            *trees,
+        )
+        assert new_out == out
+        if trees.index(tree1) < trees.index(tree2):
+            assert type(new_out[-1]) is OrderedDict
+        else:
+            assert type(new_out[-1]) is dict  # noqa: E721
 
 
 def test_tree_broadcast_map_with_path():

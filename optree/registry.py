@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""OpTree: Optimized PyTree Utilities."""
+"""Registry for custom pytree node types."""
 
 from __future__ import annotations
 
@@ -23,8 +23,19 @@ import sys
 from collections import OrderedDict, defaultdict, deque, namedtuple
 from operator import methodcaller
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Callable, Iterable, NamedTuple, Sequence, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Iterable,
+    NamedTuple,
+    Sequence,
+    Type,
+    overload,
+)
 from typing_extensions import Self  # Python 3.11+
+from typing_extensions import TypeAlias  # Python 3.10+
 
 from optree import _C
 from optree.typing import (
@@ -82,12 +93,16 @@ __REGISTRY_LOCK: Lock = Lock()
 del GlobalNamespace
 
 
+CustomTreeNodeT: TypeAlias = Type[CustomTreeNode[T]]
+
+
 def register_pytree_node(
-    cls: type[CustomTreeNode[T]],
+    cls: CustomTreeNodeT,
     flatten_func: FlattenFunc,
     unflatten_func: UnflattenFunc,
+    *,
     namespace: str,
-) -> type[CustomTreeNode[T]]:
+) -> CustomTreeNodeT:
     """Extend the set of types that are considered internal nodes in pytrees.
 
     See also :func:`register_pytree_node_class` and :func:`unregister_pytree_node`.
@@ -203,9 +218,9 @@ def register_pytree_node(
         )
     """
     if not inspect.isclass(cls):
-        raise TypeError(f'Expected a class, got {cls}.')
+        raise TypeError(f'Expected a class, got {cls!r}.')
     if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
-        raise TypeError(f'The namespace must be a string, got {namespace}.')
+        raise TypeError(f'The namespace must be a string, got {namespace!r}.')
     if namespace == '':
         raise ValueError('The namespace cannot be an empty string.')
 
@@ -217,7 +232,12 @@ def register_pytree_node(
         registration_key = (namespace, cls)
 
     with __REGISTRY_LOCK:
-        _C.register_node(cls, flatten_func, unflatten_func, namespace)
+        _C.register_node(
+            cls,
+            flatten_func,
+            unflatten_func,
+            namespace,
+        )
         _NODETYPE_REGISTRY[registration_key] = PyTreeNodeRegistryEntry(
             cls,
             flatten_func,
@@ -232,24 +252,22 @@ def register_pytree_node_class(
     cls: str | None = None,
     *,
     namespace: str | None = None,
-) -> Callable[[type[CustomTreeNode[T]]], type[CustomTreeNode[T]]]:  # pragma: no cover
-    ...
+) -> Callable[[CustomTreeNodeT], CustomTreeNodeT]: ...
 
 
 @overload
 def register_pytree_node_class(
-    cls: type[CustomTreeNode[T]],
+    cls: CustomTreeNodeT,
     *,
     namespace: str,
-) -> type[CustomTreeNode[T]]:  # pragma: no cover
-    ...
+) -> CustomTreeNodeT: ...
 
 
 def register_pytree_node_class(
-    cls: type[CustomTreeNode[T]] | str | None = None,
+    cls: CustomTreeNodeT | str | None = None,
     *,
     namespace: str | None = None,
-) -> type[CustomTreeNode[T]] | Callable[[type[CustomTreeNode[T]]], type[CustomTreeNode[T]]]:
+) -> CustomTreeNodeT | Callable[[CustomTreeNodeT], CustomTreeNodeT]:
     """Extend the set of types that are considered internal nodes in pytrees.
 
     See also :func:`register_pytree_node` and :func:`unregister_pytree_node`.
@@ -309,20 +327,31 @@ def register_pytree_node_class(
             raise ValueError('Cannot specify `namespace` when the first argument is a string.')
         if cls == '':
             raise ValueError('The namespace cannot be an empty string.')
-        return functools.partial(register_pytree_node_class, namespace=cls)  # type: ignore[return-value]
+        return functools.partial(
+            register_pytree_node_class,
+            namespace=cls,
+        )  # type: ignore[return-value]
 
     if namespace is None:
         raise ValueError('Must specify `namespace` when the first argument is a class.')
     if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
-        raise TypeError(f'The namespace must be a string, got {namespace}')
+        raise TypeError(f'The namespace must be a string, got {namespace!r}')
     if namespace == '':
         raise ValueError('The namespace cannot be an empty string.')
 
     if cls is None:
-        return functools.partial(register_pytree_node_class, namespace=namespace)  # type: ignore[return-value]
+        return functools.partial(
+            register_pytree_node_class,
+            namespace=namespace,
+        )  # type: ignore[return-value]
     if not inspect.isclass(cls):
-        raise TypeError(f'Expected a class, got {cls}.')
-    register_pytree_node(cls, methodcaller('tree_flatten'), cls.tree_unflatten, namespace)
+        raise TypeError(f'Expected a class, got {cls!r}.')
+    register_pytree_node(
+        cls,
+        methodcaller('tree_flatten'),
+        cls.tree_unflatten,
+        namespace=namespace,
+    )
     return cls
 
 
@@ -365,9 +394,9 @@ def unregister_pytree_node(
         >>> unregister_pytree_node(set, namespace='temp')
     """
     if not inspect.isclass(cls):
-        raise TypeError(f'Expected a class, got {cls}.')
+        raise TypeError(f'Expected a class, got {cls!r}.')
     if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
-        raise TypeError(f'The namespace must be a string, got {namespace}.')
+        raise TypeError(f'The namespace must be a string, got {namespace!r}.')
     if namespace == '':
         raise ValueError('The namespace cannot be an empty string.')
 
@@ -442,7 +471,7 @@ def _defaultdict_flatten(
     dct: defaultdict[KT, VT],
 ) -> tuple[tuple[VT, ...], tuple[Callable[[], VT] | None, list[KT]], tuple[KT, ...]]:
     values, keys, entries = _dict_flatten(dct)
-    return values, (dct.default_factory, list(keys)), entries
+    return values, (dct.default_factory, keys), entries
 
 
 def _defaultdict_unflatten(
@@ -450,7 +479,7 @@ def _defaultdict_unflatten(
     values: Iterable[VT],
 ) -> defaultdict[KT, VT]:
     default_factory, keys = metadata
-    return defaultdict(default_factory, safe_zip(keys, values))
+    return defaultdict(default_factory, _dict_unflatten(keys, values))
 
 
 def _deque_flatten(deq: deque[T]) -> tuple[deque[T], int | None]:
@@ -495,12 +524,14 @@ _NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {  
 def _pytree_node_registry_get(
     cls: type,
     *,
-    namespace: str = __GLOBAL_NAMESPACE,
+    namespace: str = '',
 ) -> PyTreeNodeRegistryEntry | None:
-    handler: PyTreeNodeRegistryEntry | None = _NODETYPE_REGISTRY.get(cls)
-    if handler is not None:
-        return handler
-    handler = _NODETYPE_REGISTRY.get((namespace, cls))
+    handler: PyTreeNodeRegistryEntry | None = None
+    if namespace is not __GLOBAL_NAMESPACE and namespace != '':
+        handler = _NODETYPE_REGISTRY.get((namespace, cls))
+        if handler is not None:
+            return handler
+    handler = _NODETYPE_REGISTRY.get(cls)
     if handler is not None:
         return handler
     if is_structseq_class(cls):
@@ -515,7 +546,7 @@ del _pytree_node_registry_get
 
 
 class _HashablePartialShim:
-    """Object that delegates :meth:`__call__`, :meth:`__hash__`, and :meth:`__eq__` to another object."""
+    """Object that delegates :meth:`__call__`, :meth:`__eq__`, and :meth:`__hash__` to another object."""
 
     func: Callable[..., Any]
     args: tuple[Any, ...]
@@ -527,17 +558,17 @@ class _HashablePartialShim:
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         return self.partial_func(*args, **kwargs)
 
-    def __hash__(self) -> int:
-        return hash(self.partial_func)
-
     def __eq__(self, other: object) -> bool:
         if isinstance(other, _HashablePartialShim):
             return self.partial_func == other.partial_func
         return self.partial_func == other
 
+    def __hash__(self) -> int:
+        return hash(self.partial_func)
+
 
 @register_pytree_node_class(namespace=__GLOBAL_NAMESPACE)
-class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-few-public-methods
+class Partial(functools.partial, CustomTreeNode[T]):  # pylint: disable=too-few-public-methods
     """A version of :func:`functools.partial` that works in pytrees.
 
     Use it for partial function evaluation in a way that is compatible with transformations,
@@ -582,11 +613,13 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
     a :class:`TypeError` or :class:`AttributeError`.
     """
 
-    func: Callable[..., Any]
-    args: tuple[Any, ...]
-    keywords: dict[str, Any]
+    __module__: ClassVar[str] = 'optree'  # type: ignore[misc]
 
-    def __new__(cls, func: Callable[..., Any], *args: Any, **keywords: Any) -> Self:
+    func: Callable[..., Any]
+    args: tuple[T, ...]
+    keywords: dict[str, T]
+
+    def __new__(cls, func: Callable[..., Any], *args: T, **keywords: T) -> Self:
         """Create a new :class:`Partial` instance."""
         # In Python 3.10+, if func is itself a functools.partial instance, functools.partial.__new__
         # would merge the arguments of this Partial instance with the arguments of the func. We box
@@ -604,15 +637,19 @@ class Partial(functools.partial, CustomTreeNode[Any]):  # pylint: disable=too-fe
 
         return super().__new__(cls, func, *args, **keywords)
 
-    def tree_flatten(self) -> tuple[tuple[tuple[Any, ...], dict[str, Any]], Callable[..., Any]]:
+    def tree_flatten(self) -> tuple[  # type: ignore[override]
+        tuple[tuple[T, ...], dict[str, T]],
+        Callable[..., Any],
+        tuple[str, str],
+    ]:
         """Flatten the :class:`Partial` instance to children and auxiliary data."""
-        return (self.args, self.keywords), self.func
+        return (self.args, self.keywords), self.func, ('args', 'keywords')
 
     @classmethod
     def tree_unflatten(  # type: ignore[override]
         cls,
         metadata: Callable[..., Any],
-        children: tuple[tuple[Any, ...], dict[str, Any]],
+        children: tuple[tuple[T, ...], dict[str, T]],
     ) -> Self:
         """Unflatten the children and auxiliary data into a :class:`Partial` instance."""
         args, keywords = children
@@ -691,9 +728,9 @@ def register_keypaths(
 ) -> KeyPathHandler:
     """Register a key path handler for a custom pytree node type."""
     if not inspect.isclass(cls):
-        raise TypeError(f'Expected a class, got {cls}.')
+        raise TypeError(f'Expected a class, got {cls!r}.')
     if cls in _KEYPATH_REGISTRY:
-        raise ValueError(f'Key path handler for {cls} has already been registered.')
+        raise ValueError(f'Key path handler for {cls!r} has already been registered.')
 
     _KEYPATH_REGISTRY[cls] = handler
     return handler

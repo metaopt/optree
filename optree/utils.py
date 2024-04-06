@@ -62,16 +62,14 @@ def total_order_sorted(
 @overload
 def safe_zip(
     __iter1: Iterable[T],
-) -> zip[tuple[T]]:  # pragma: no cover
-    ...
+) -> zip[tuple[T]]: ...
 
 
 @overload
 def safe_zip(
     __iter1: Iterable[T],
     __iter2: Iterable[S],
-) -> zip[tuple[T, S]]:  # pragma: no cover
-    ...
+) -> zip[tuple[T, S]]: ...
 
 
 @overload
@@ -79,8 +77,7 @@ def safe_zip(
     __iter1: Iterable[T],
     __iter2: Iterable[S],
     __iter3: Iterable[U],
-) -> zip[tuple[T, S, U]]:  # pragma: no cover
-    ...
+) -> zip[tuple[T, S, U]]: ...
 
 
 @overload
@@ -90,8 +87,7 @@ def safe_zip(
     __iter3: Iterable[Any],
     __iter4: Iterable[Any],
     *__iters: Iterable[Any],
-) -> zip[tuple[Any, ...]]:  # pragma: no cover
-    ...
+) -> zip[tuple[Any, ...]]: ...
 
 
 def safe_zip(*args: Iterable[Any]) -> zip[tuple[Any, ...]]:

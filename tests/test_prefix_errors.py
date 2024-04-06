@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-# pylint: disable=missing-function-docstring,invalid-name,implicit-str-concat
+# pylint: disable=missing-function-docstring,invalid-name,wrong-import-order
 
 import random
 import re
@@ -23,9 +23,7 @@ from collections import OrderedDict, defaultdict, deque
 import pytest
 
 import optree
-
-# pylint: disable-next=wrong-import-order
-from helpers import TREES, CustomTuple, FlatCache, TimeStructTime, Vector2D, parametrize
+from helpers import TREES, CustomTuple, FlatCache, TimeStructTimeType, Vector2D, parametrize
 from optree.registry import (
     AttributeKeyPathEntry,
     FlattenedKeyPathEntry,
@@ -503,7 +501,10 @@ def test_namedtuple():
 
 
 def test_structseq():
-    lhs, rhs = TimeStructTime((1, [2, [3]], *range(7))), TimeStructTime((4, [5, 6], *range(7)))
+    lhs, rhs = (
+        TimeStructTimeType((1, [2, [3]], *range(7))),
+        TimeStructTimeType((4, [5, 6], *range(7))),
+    )
     lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     with pytest.raises(ValueError):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
