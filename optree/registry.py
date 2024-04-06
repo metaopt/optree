@@ -23,18 +23,7 @@ import sys
 from collections import OrderedDict, defaultdict, deque, namedtuple
 from operator import methodcaller
 from threading import Lock
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Iterable,
-    NamedTuple,
-    Sequence,
-    Type,
-    overload,
-)
-from typing_extensions import Self  # Python 3.11+
+from typing import TYPE_CHECKING, Any, Callable, Iterable, NamedTuple, Sequence, Type, overload
 from typing_extensions import TypeAlias  # Python 3.10+
 
 from optree import _C
@@ -61,7 +50,6 @@ __all__ = [
     'register_pytree_node',
     'register_pytree_node_class',
     'unregister_pytree_node',
-    'Partial',
     'register_keypaths',
     'AttributeKeyPathEntry',
     'GetitemKeyPathEntry',
@@ -543,117 +531,6 @@ def _pytree_node_registry_get(
 
 register_pytree_node.get = _pytree_node_registry_get  # type: ignore[attr-defined]
 del _pytree_node_registry_get
-
-
-class _HashablePartialShim:
-    """Object that delegates :meth:`__call__`, :meth:`__eq__`, and :meth:`__hash__` to another object."""
-
-    func: Callable[..., Any]
-    args: tuple[Any, ...]
-    keywords: dict[str, Any]
-
-    def __init__(self, partial_func: functools.partial) -> None:
-        self.partial_func: functools.partial = partial_func
-
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        return self.partial_func(*args, **kwargs)
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, _HashablePartialShim):
-            return self.partial_func == other.partial_func
-        return self.partial_func == other
-
-    def __hash__(self) -> int:
-        return hash(self.partial_func)
-
-
-@register_pytree_node_class(namespace=__GLOBAL_NAMESPACE)
-class Partial(functools.partial, CustomTreeNode[T]):  # pylint: disable=too-few-public-methods
-    """A version of :func:`functools.partial` that works in pytrees.
-
-    Use it for partial function evaluation in a way that is compatible with transformations,
-    e.g., ``Partial(func, *args, **kwargs)``.
-
-    (You need to explicitly opt-in to this behavior because we did not want to give
-    :func:`functools.partial` different semantics than normal function closures.)
-
-    For example, here is a basic usage of :class:`Partial` in a manner similar to
-    :func:`functools.partial`:
-
-    >>> import operator
-    >>> import torch
-    >>> add_one = Partial(operator.add, torch.ones(()))
-    >>> add_one(torch.tensor([[1, 2], [3, 4]]))
-    tensor([[2., 3.],
-            [4., 5.]])
-
-    Pytree compatibility means that the resulting partial function can be passed as an argument
-    within tree-map functions, which is not possible with a standard :func:`functools.partial`
-    function:
-
-    >>> def call_func_on_cuda(f, *args, **kwargs):
-    ...     f, args, kwargs = tree_map(lambda t: t.cuda(), (f, args, kwargs))
-    ...     return f(*args, **kwargs)
-    ...
-    >>> # doctest: +SKIP
-    >>> tree_map(lambda t: t.cuda(), add_one)
-    Partial(<built-in function add>, tensor(1., device='cuda:0'))
-    >>> call_func_on_cuda(add_one, torch.tensor([[1, 2], [3, 4]]))
-    tensor([[2., 3.],
-            [4., 5.]], device='cuda:0')
-
-    Passing zero arguments to :class:`Partial` effectively wraps the original function, making it a
-    valid argument in tree-map functions:
-
-    >>> # doctest: +SKIP
-    >>> call_func_on_cuda(Partial(torch.add), torch.tensor(1), torch.tensor(2))
-    tensor(3, device='cuda:0')
-
-    Had we passed :func:`operator.add` to ``call_func_on_cuda`` directly, it would have resulted in
-    a :class:`TypeError` or :class:`AttributeError`.
-    """
-
-    __module__: ClassVar[str] = 'optree'  # type: ignore[misc]
-
-    func: Callable[..., Any]
-    args: tuple[T, ...]
-    keywords: dict[str, T]
-
-    def __new__(cls, func: Callable[..., Any], *args: T, **keywords: T) -> Self:
-        """Create a new :class:`Partial` instance."""
-        # In Python 3.10+, if func is itself a functools.partial instance, functools.partial.__new__
-        # would merge the arguments of this Partial instance with the arguments of the func. We box
-        # func in a class that does not (yet) have a `func` attribute to defeat this optimization,
-        # since we care exactly which arguments are considered part of the pytree.
-        if isinstance(func, functools.partial):
-            original_func = func
-            func = _HashablePartialShim(original_func)
-            assert not hasattr(func, 'func'), 'shimmed function should not have a `func` attribute'
-            out = super().__new__(cls, func, *args, **keywords)
-            func.func = original_func.func
-            func.args = original_func.args
-            func.keywords = original_func.keywords
-            return out
-
-        return super().__new__(cls, func, *args, **keywords)
-
-    def tree_flatten(self) -> tuple[  # type: ignore[override]
-        tuple[tuple[T, ...], dict[str, T]],
-        Callable[..., Any],
-        tuple[str, str],
-    ]:
-        """Flatten the :class:`Partial` instance to children and auxiliary data."""
-        return (self.args, self.keywords), self.func, ('args', 'keywords')
-
-    @classmethod
-    def tree_unflatten(  # type: ignore[override]
-        cls,
-        metadata: Callable[..., Any],
-        children: tuple[tuple[T, ...], dict[str, T]],
-    ) -> Self:
-        """Unflatten the children and auxiliary data into a :class:`Partial` instance."""
-        args, keywords = children
-        return cls(metadata, *args, **keywords)
 
 
 class KeyPathEntry(NamedTuple):
