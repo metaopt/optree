@@ -38,13 +38,6 @@ from helpers import (
 )
 
 
-def dummy_func(*args, **kwargs):  # pylint: disable=unused-argument
-    return
-
-
-dummy_partial_func = functools.partial(dummy_func, a=1)
-
-
 def is_tuple(tup):
     return isinstance(tup, tuple)
 
@@ -1879,43 +1872,3 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
             stack.extend(reversed(children))
 
     assert actual_leaves == expected_leaves
-
-
-@parametrize(
-    tree=[
-        optree.Partial(dummy_func),
-        optree.Partial(dummy_func, 1, 2),
-        optree.Partial(dummy_func, x='a'),
-        optree.Partial(dummy_func, 1, 2, 3, x=4, y=5),
-        optree.Partial(dummy_func, 1, None, x=4, y=5, z=None),
-        optree.Partial(dummy_partial_func, 1, 2, 3, x=4, y=5),
-    ],
-    none_is_leaf=[False, True],
-)
-def test_partial_round_trip(tree, none_is_leaf):
-    leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
-    actual = optree.tree_unflatten(treespec, leaves)
-    assert actual.func == tree.func
-    assert actual.args == tree.args
-    assert actual.keywords == tree.keywords
-
-
-def test_partial_does_not_merge_with_other_partials():
-    def f(a=None, b=None, c=None):
-        return a, b, c
-
-    g = functools.partial(f, 2)
-    h = optree.Partial(g, 3)
-    assert h.args == (3,)
-    assert g() == (2, None, None)
-    assert h() == (2, 3, None)
-
-
-def test_partial_func_attribute_has_stable_hash():
-    fun = functools.partial(print, 1)
-    p1 = optree.Partial(fun, 2)
-    p2 = optree.Partial(fun, 2)
-    assert p1.func == fun  # pylint: disable=comparison-with-callable
-    assert fun == p1.func  # pylint: disable=comparison-with-callable
-    assert p1.func == p2.func
-    assert hash(p1.func) == hash(p2.func)
