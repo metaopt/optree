@@ -23,7 +23,7 @@ from typing_extensions import Self  # Python 3.11+
 
 try:
     from typing_extensions import deprecated  # Python 3.13+
-except ImportError:  # Python 3.7
+except ImportError:  # Python 3.7 # pragma: no cover
     from typing import TypeVar
 
     F = TypeVar('F', bound=Callable[..., Any])
