@@ -14,31 +14,30 @@
 # ==============================================================================
 """Integration with third-party libraries."""
 
-import sys
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 
-current_module = sys.modules[__name__]
+if TYPE_CHECKING:
+    from types import ModuleType
 
 
-SUBMODULES = frozenset({'jax', 'numpy', 'torch'})
+SUBMODULES: frozenset[str] = frozenset({'jax', 'numpy', 'torch'})
 
 
-# pylint: disable-next=too-few-public-methods
-class _LazyModule(type(current_module)):  # type: ignore[misc]
-    def __getattribute__(self, name: str) -> Any:  # noqa: N804
-        try:
-            return super().__getattribute__(name)
-        except AttributeError:
-            if name in SUBMODULES:
-                import importlib  # pylint: disable=import-outside-toplevel
+def __getattr__(name: str) -> ModuleType:
+    if name in SUBMODULES:
+        import importlib  # pylint: disable=import-outside-toplevel
+        import sys  # pylint: disable=import-outside-toplevel
 
-                submodule = importlib.import_module(f'{__name__}.{name}')
-                setattr(self, name, submodule)
-                return submodule
-            raise
+        module = sys.modules[__name__]
+
+        submodule = importlib.import_module(f'{__name__}.{name}')
+        setattr(module, name, submodule)
+        return submodule
+
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
 
 
-current_module.__class__ = _LazyModule
-
-del sys, Any, current_module, _LazyModule
+del TYPE_CHECKING

@@ -41,7 +41,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Utilities",
 ]
-dependencies = ["typing-extensions >= 4.0.0"]
+dependencies = ["typing-extensions >= 4.5.0"]
 dynamic = ["version"]
 
 [project.urls]
@@ -262,5 +262,6 @@ ban-relative-imports = "all"
 [tool.pytest.ini_options]
 filterwarnings = [
     "error",
+    "ignore:The class `optree.Partial` is deprecated and will be removed in a future version. Please use `optree.functools.partial` instead.:DeprecationWarning",
     "ignore:The key path API is deprecated and will be removed in a future version. Please use the accessor API instead.:DeprecationWarning",
 ]

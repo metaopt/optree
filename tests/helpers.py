@@ -44,6 +44,54 @@ def parametrize(**argvalues) -> pytest.mark.parametrize:
     return pytest.mark.parametrize(arguments, argvalues, ids=ids)
 
 
+def is_tuple(tup):
+    return isinstance(tup, tuple)
+
+
+def is_list(lst):
+    return isinstance(lst, list)
+
+
+def is_dict(dct):
+    return isinstance(dct, dict)
+
+
+def is_primitive_collection(obj):
+    if type(obj) in {tuple, list, deque}:
+        return all(isinstance(item, (int, float, str, bool, type(None))) for item in obj)
+    if type(obj) in {dict, OrderedDict, defaultdict}:
+        return all(isinstance(value, (int, float, str, bool, type(None))) for value in obj.values())
+    return False
+
+
+def is_none(none):
+    return none is None
+
+
+def is_not_none(none):
+    return none is not None
+
+
+def always(obj):  # pylint: disable=unused-argument
+    return True
+
+
+def never(obj):  # pylint: disable=unused-argument
+    return False
+
+
+IS_LEAF_FUNCTIONS = (
+    is_tuple,
+    is_list,
+    is_dict,
+    is_primitive_collection,
+    is_none,
+    is_not_none,
+    always,
+    never,
+)
+
+
 CustomTuple = namedtuple('CustomTuple', ('foo', 'bar'))  # noqa: PYI024
 
 
