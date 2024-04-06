@@ -9,5 +9,7 @@ exclude_lines =
     raise NotImplementedError
     class .*\bProtocol\):
     @(abc\.)?abstractmethod
+    @(typing\.)?overload
+    @(warnings\.)?deprecated\(.*
     if __name__ == ('__main__'|"__main__"):
     if TYPE_CHECKING:

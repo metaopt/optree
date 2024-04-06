@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-# pylint: disable=missing-function-docstring,invalid-name
+# pylint: disable=missing-function-docstring,invalid-name,wrong-import-order
 
 import itertools
 import pickle
@@ -25,9 +25,8 @@ from collections import OrderedDict, UserList, defaultdict, deque
 
 import pytest
 
+import helpers
 import optree
-
-# pylint: disable-next=wrong-import-order
 from helpers import NAMESPACED_TREE, TREE_STRINGS, TREES, parametrize
 
 
@@ -122,6 +121,46 @@ def test_treespec_string_representation(data):
     assert str(treespec) == expected_string
     assert repr(treespec) == expected_string
 
+    assert expected_string.startswith('PyTreeSpec(')
+    assert expected_string.endswith(')')
+    if none_is_leaf:
+        assert expected_string.endswith(', NoneIsLeaf)')
+        representation = expected_string[len('PyTreeSpec(') : -len(', NoneIsLeaf)')]
+    else:
+        representation = expected_string[len('PyTreeSpec(') : -len(')')]
+
+    if (
+        'CustomTreeNode' not in representation
+        and 'sys.float_info' not in representation
+        and 'time.struct_time' not in representation
+    ):
+        representation = re.sub(
+            r"<class '([\w\.]+)'>",
+            lambda match: match.group(1),
+            representation,
+        )
+        counter = itertools.count()
+        representation = re.sub(r'\*', lambda _: str(next(counter)), representation)
+        new_tree = optree.tree_unflatten(treespec, range(treespec.num_leaves))
+        reconstructed_tree = eval(representation, helpers.__dict__.copy())
+        assert new_tree == reconstructed_tree
+
+
+def test_treespec_with_empty_tuple_string_representation():
+    assert str(optree.tree_structure(())) == r'PyTreeSpec(())'
+
+
+def test_treespec_with_single_element_tuple_string_representation():
+    assert str(optree.tree_structure((1,))) == r'PyTreeSpec((*,))'
+
+
+def test_treespec_with_empty_list_string_representation():
+    assert str(optree.tree_structure([])) == r'PyTreeSpec([])'
+
+
+def test_treespec_with_empty_dict_string_representation():
+    assert str(optree.tree_structure({})) == r'PyTreeSpec({})'
+
 
 def test_treespec_self_referential():
     class Holder:
@@ -181,7 +220,7 @@ def test_treespec_self_referential():
         assert treespec != other
 
 
-def test_with_namespace():
+def test_treespec_with_namespace():
     tree = NAMESPACED_TREE
 
     for namespace in ('', 'undefined'):
@@ -324,22 +363,6 @@ def test_treespec_type(tree, none_is_leaf, namespace):
         assert treespec.type is None
     else:
         assert type(tree) is treespec.type
-
-
-def test_treespec_with_empty_tuple_string_representation():
-    assert str(optree.tree_structure(())) == r'PyTreeSpec(())'
-
-
-def test_treespec_with_single_element_tuple_string_representation():
-    assert str(optree.tree_structure((1,))) == r'PyTreeSpec((*,))'
-
-
-def test_treespec_with_empty_list_string_representation():
-    assert str(optree.tree_structure([])) == r'PyTreeSpec([])'
-
-
-def test_treespec_with_empty_dict_string_representation():
-    assert str(optree.tree_structure({})) == r'PyTreeSpec({})'
 
 
 @parametrize(

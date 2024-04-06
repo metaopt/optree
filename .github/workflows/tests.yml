@@ -116,3 +116,13 @@ jobs:
       - name: Test with pytest
         run: |
           make pytest
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./tests/coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false

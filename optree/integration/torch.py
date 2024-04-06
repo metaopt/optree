@@ -157,7 +157,7 @@ def _ravel_leaves(
 
 def _unravel_empty(flat: torch.Tensor) -> list[torch.Tensor]:
     if not torch.is_tensor(flat):
-        raise ValueError(f'Expected a tensor to unravel, got {type(flat)}.')
+        raise ValueError(f'Expected a tensor to unravel, got {type(flat)!r}.')
     if flat.shape != (0,):
         raise ValueError(
             f'The unravel function expected a tensor of shape {(0,)}, got shape {flat.shape}.',
@@ -171,7 +171,7 @@ def _unravel_leaves_single_dtype(
     flat: torch.Tensor,
 ) -> list[torch.Tensor]:
     if not torch.is_tensor(flat):
-        raise ValueError(f'Expected a tensor to unravel, got {type(flat)}.')
+        raise ValueError(f'Expected a tensor to unravel, got {type(flat)!r}.')
     if flat.shape != (sum(sizes),):
         raise ValueError(
             f'The unravel function expected a tensor of shape {(sum(sizes),)}, '
@@ -190,7 +190,7 @@ def _unravel_leaves(
     flat: torch.Tensor,
 ) -> list[torch.Tensor]:
     if not torch.is_tensor(flat):
-        raise ValueError(f'Expected a tensor to unravel, got {type(flat)}.')
+        raise ValueError(f'Expected a tensor to unravel, got {type(flat)!r}.')
     if flat.shape != (sum(sizes),):
         raise ValueError(
             f'The unravel function expected a tensor of shape {(sum(sizes),)}, '

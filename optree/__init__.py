@@ -14,7 +14,8 @@
 # ==============================================================================
 """OpTree: Optimized PyTree Utilities."""
 
-from optree import integration, typing
+from optree import functools, integration, typing
+from optree.functools import Partial
 from optree.ops import (
     MAX_RECURSION_DEPTH,
     NONE_IS_LEAF,
@@ -74,7 +75,6 @@ from optree.ops import (
 from optree.registry import (
     AttributeKeyPathEntry,
     GetitemKeyPathEntry,
-    Partial,
     register_keypaths,
     register_pytree_node,
     register_pytree_node_class,
@@ -161,7 +161,6 @@ __all__ = [
     'register_pytree_node',
     'register_pytree_node_class',
     'unregister_pytree_node',
-    'Partial',
     'register_keypaths',
     'AttributeKeyPathEntry',
     'GetitemKeyPathEntry',

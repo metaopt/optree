@@ -41,7 +41,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Utilities",
 ]
-dependencies = ["typing-extensions >= 4.0.0"]
+dependencies = ["typing-extensions >= 4.5.0"]
 dynamic = ["version"]
 
 [project.urls]
@@ -143,7 +143,7 @@ show_traceback = true
 allow_redefinition = true
 check_untyped_defs = true
 disallow_incomplete_defs = true
-disallow_untyped_defs =  true
+disallow_untyped_defs = true
 ignore_missing_imports = true
 no_implicit_optional = true
 strict_equality = true
@@ -260,4 +260,7 @@ inline-quotes = "single"
 ban-relative-imports = "all"
 
 [tool.pytest.ini_options]
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    "ignore:The class `optree.Partial` is deprecated and will be removed in a future version. Please use `optree.functools.partial` instead.:DeprecationWarning"
+]

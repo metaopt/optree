@@ -23,7 +23,7 @@ import functools
 import itertools
 import textwrap
 from collections import OrderedDict, defaultdict, deque
-from typing import Any, Callable, Iterable, Mapping, overload
+from typing import Any, Callable, ClassVar, Iterable, Mapping, overload
 
 from optree import _C
 from optree.registry import (
@@ -954,7 +954,11 @@ def tree_transpose_map_with_path(
     ...     inner_treespec=tree_structure({'path': 0, 'value': 0}),
     ... )
     {
-        'path': {'b': (('b', 0), [('b', 1, 0), ('b', 1, 1)]), 'a': ('a',), 'c': (('c', 0), ('c', 1))},
+        'path': {
+            'b': (('b', 0), [('b', 1, 0), ('b', 1, 1)]),
+            'a': ('a',),
+            'c': (('c', 0), ('c', 1))
+        },
         'value': {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
     }
 
@@ -1460,10 +1464,16 @@ def tree_broadcast_map_with_path(
     If multiple inputs are given, all input trees will be broadcasted to the common suffix structure
     of all inputs:
 
-    >>> tree_broadcast_map_with_path(lambda p, x, y: (p, x * y), [5, 6, (3, 4)], [{'a': 7, 'b': 9}, [1, 2], 8])
-    [{'a': ((0, 'a'), 35), 'b': ((0, 'b'), 45)},
-     [((1, 0), 6), ((1, 1), 12)],
-     (((2, 0), 24), ((2, 1), 32))]
+    >>> tree_broadcast_map_with_path(  # doctest: +IGNORE_WHITESPACE
+    ...     lambda p, x, y: (p, x * y),
+    ...     [5, 6, (3, 4)],
+    ...     [{'a': 7, 'b': 9}, [1, 2], 8],
+    ... )
+    [
+        {'a': ((0, 'a'), 35), 'b': ((0, 'b'), 45)},
+        [((1, 0), 6), ((1, 1), 12)],
+        (((2, 0), 24), ((2, 1), 32))
+    ]
 
     Args:
         func (callable): A function that takes ``2 + len(rests)`` arguments, to be applied at the
@@ -1522,6 +1532,8 @@ def tree_broadcast_map_with_path(
 
 # pylint: disable-next=missing-class-docstring,too-few-public-methods
 class MissingSentinel:  # pragma: no cover
+    __slots__: ClassVar[tuple[()]] = ()
+
     def __repr__(self) -> str:
         return '<MISSING>'
 
@@ -1538,8 +1550,7 @@ def tree_reduce(
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> T:  # pragma: no cover
-    ...
+) -> T: ...
 
 
 @overload
@@ -1551,8 +1562,7 @@ def tree_reduce(
     is_leaf: Callable[[S], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> T:  # pragma: no cover
-    ...
+) -> T: ...
 
 
 def tree_reduce(
@@ -1661,8 +1671,7 @@ def tree_max(
     key: Callable[[T], Any] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> T:  # pragma: no cover
-    ...
+) -> T: ...
 
 
 @overload
@@ -1674,8 +1683,7 @@ def tree_max(
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> T:  # pragma: no cover
-    ...
+) -> T: ...
 
 
 def tree_max(
@@ -1756,8 +1764,7 @@ def tree_min(
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> T:  # pragma: no cover
-    ...
+) -> T: ...
 
 
 @overload
@@ -1769,8 +1776,7 @@ def tree_min(
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> T:  # pragma: no cover
-    ...
+) -> T: ...
 
 
 def tree_min(
@@ -2689,7 +2695,7 @@ def prefix_errors(
     )
 
 
-STANDARD_DICT_TYPES = frozenset({dict, OrderedDict, defaultdict})
+STANDARD_DICT_TYPES: frozenset[type] = frozenset({dict, OrderedDict, defaultdict})
 
 
 # pylint: disable-next=too-many-locals
@@ -2710,8 +2716,7 @@ def _prefix_error(
     prefix_tree_type = type(prefix_tree)
     full_tree_type = type(full_tree)
     both_standard_dict = (
-        prefix_tree_type in STANDARD_DICT_TYPES  # type: ignore[comparison-overlap]
-        and full_tree_type in STANDARD_DICT_TYPES  # type: ignore[comparison-overlap]
+        prefix_tree_type in STANDARD_DICT_TYPES and full_tree_type in STANDARD_DICT_TYPES
     )
     both_deque = prefix_tree_type is deque and full_tree_type is deque  # type: ignore[comparison-overlap]
     if prefix_tree_type is not full_tree_type and (

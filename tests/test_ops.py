@@ -13,11 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
-# pylint: disable=missing-function-docstring,invalid-name
+# pylint: disable=missing-function-docstring,invalid-name,wrong-import-order
 
 import copy
 import functools
 import itertools
+import operator
 import pickle
 import re
 from collections import OrderedDict, defaultdict, deque
@@ -25,9 +26,8 @@ from collections import OrderedDict, defaultdict, deque
 import pytest
 
 import optree
-
-# pylint: disable-next=wrong-import-order
 from helpers import (
+    IS_LEAF_FUNCTIONS,
     LEAVES,
     TREE_PATHS,
     TREES,
@@ -37,33 +37,6 @@ from helpers import (
     MyAnotherDict,
     parametrize,
 )
-
-
-def dummy_func(*args, **kwargs):  # pylint: disable=unused-argument
-    return
-
-
-dummy_partial_func = functools.partial(dummy_func, a=1)
-
-
-def is_tuple(tup):
-    return isinstance(tup, tuple)
-
-
-def is_list(lst):
-    return isinstance(lst, list)
-
-
-def is_none(none):
-    return none is None
-
-
-def always(obj):  # pylint: disable=unused-argument
-    return True
-
-
-def never(obj):  # pylint: disable=unused-argument
-    return False
 
 
 def test_max_depth():
@@ -360,13 +333,7 @@ def test_paths(data):
 
 @parametrize(
     tree=TREES,
-    is_leaf=[
-        is_tuple,
-        is_list,
-        is_none,
-        always,
-        never,
-    ],
+    is_leaf=IS_LEAF_FUNCTIONS,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
 )
@@ -396,13 +363,7 @@ def test_paths_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
 
 @parametrize(
     tree=TREES,
-    is_leaf=[
-        is_tuple,
-        is_list,
-        is_none,
-        always,
-        never,
-    ],
+    is_leaf=IS_LEAF_FUNCTIONS,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
 )
@@ -443,12 +404,7 @@ def test_tree_is_leaf_with_leaves(leaf, none_is_leaf, namespace):
 
 @parametrize(
     tree=TREES,
-    is_leaf=[
-        is_tuple,
-        is_none,
-        always,
-        never,
-    ],
+    is_leaf=IS_LEAF_FUNCTIONS,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
 )
@@ -505,12 +461,7 @@ def test_all_leaves_with_leaves(leaf, none_is_leaf, namespace):
 
 @parametrize(
     tree=TREES,
-    is_leaf=[
-        is_tuple,
-        is_none,
-        always,
-        never,
-    ],
+    is_leaf=IS_LEAF_FUNCTIONS,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
 )
@@ -572,6 +523,34 @@ def test_tree_broadcast_map():
         ([(1, 7)], None, None),
         ({'foo': (3, 'bar')}, ((4, 9), [(5, 9)]), [(6, 10), (6, 11)]),
     )
+
+    tree1 = [(1, 2, 3), 4, 5, OrderedDict([('y', 7), ('x', 6)])]
+    tree2 = [8, [9, 10, 11], 12, {'x': 13, 'y': 14}]
+    tree3 = 15
+    tree4 = [16, 17, {'a': 18, 'b': 19, 'c': 20}, 21]
+    out = optree.tree_broadcast_map(
+        lambda *args: functools.reduce(operator.mul, args, 1),
+        tree1,
+        tree2,
+        tree3,
+        tree4,
+    )
+    assert out == [
+        (1920, 3840, 5760),
+        [9180, 10200, 11220],
+        {'a': 16200, 'b': 17100, 'c': 18000},
+        OrderedDict([('y', 30870), ('x', 24570)]),
+    ]
+    for trees in itertools.permutations([tree1, tree2, tree3, tree4], 4):
+        new_out = optree.tree_broadcast_map(
+            lambda *args: functools.reduce(operator.mul, args, 1),
+            *trees,
+        )
+        assert new_out == out
+        if trees.index(tree1) < trees.index(tree2):
+            assert type(new_out[-1]) is OrderedDict
+        else:
+            assert type(new_out[-1]) is dict  # noqa: E721
 
 
 def test_tree_broadcast_map_with_path():
@@ -1852,43 +1831,3 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
             stack.extend(reversed(children))
 
     assert actual_leaves == expected_leaves
-
-
-@parametrize(
-    tree=[
-        optree.Partial(dummy_func),
-        optree.Partial(dummy_func, 1, 2),
-        optree.Partial(dummy_func, x='a'),
-        optree.Partial(dummy_func, 1, 2, 3, x=4, y=5),
-        optree.Partial(dummy_func, 1, None, x=4, y=5, z=None),
-        optree.Partial(dummy_partial_func, 1, 2, 3, x=4, y=5),
-    ],
-    none_is_leaf=[False, True],
-)
-def test_partial_round_trip(tree, none_is_leaf):
-    leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
-    actual = optree.tree_unflatten(treespec, leaves)
-    assert actual.func == tree.func
-    assert actual.args == tree.args
-    assert actual.keywords == tree.keywords
-
-
-def test_partial_does_not_merge_with_other_partials():
-    def f(a=None, b=None, c=None):
-        return a, b, c
-
-    g = functools.partial(f, 2)
-    h = optree.Partial(g, 3)
-    assert h.args == (3,)
-    assert g() == (2, None, None)
-    assert h() == (2, 3, None)
-
-
-def test_partial_func_attribute_has_stable_hash():
-    fun = functools.partial(print, 1)
-    p1 = optree.Partial(fun, 2)
-    p2 = optree.Partial(fun, 2)
-    assert p1.func == fun  # pylint: disable=comparison-with-callable
-    assert fun == p1.func  # pylint: disable=comparison-with-callable
-    assert p1.func == p2.func
-    assert hash(p1.func) == hash(p2.func)

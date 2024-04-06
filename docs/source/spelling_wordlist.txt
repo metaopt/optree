@@ -75,7 +75,9 @@ jax
 numpy
 torch
 dtype
+cuda
 getattr
 setattr
 delattr
 typecheck
+subclassed

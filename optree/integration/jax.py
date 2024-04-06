@@ -84,8 +84,7 @@ class HashablePartial:  # pragma: no cover
         return (
             type(other) is HashablePartial  # pylint: disable=unidiomatic-typecheck
             and self.func.__code__ == other.func.__code__  # type: ignore[attr-defined]
-            and self.args == other.args
-            and self.kwargs == other.kwargs
+            and (self.args, self.kwargs) == (other.args, other.kwargs)
         )
 
     def __hash__(self) -> int:
@@ -98,7 +97,8 @@ class HashablePartial:  # pragma: no cover
         )
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        return self.func(*self.args, *args, **self.kwargs, **kwargs)
+        kwargs = {**self.kwargs, **kwargs}
+        return self.func(*self.args, *args, **kwargs)
 
 
 try:  # noqa: SIM105 # pragma: no cover
