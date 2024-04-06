@@ -41,14 +41,15 @@ from typing_extensions import TypeAlias  # Python 3.10+
 try:
     from typing_extensions import deprecated  # Python 3.13+
 except ImportError:  # Python 3.7
+    from typing import TypeVar
 
-    def deprecated(  # type: ignore[no-redef]
-        *args: Any,
-        **kwargs: Any,
-    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    F = TypeVar('F', bound=Callable[..., Any])
+
+    # pylint: disable=unused-argument
+    def deprecated(*args: Any, **kwargs: Any) -> Callable[[F], F]:  # type: ignore[no-redef]
         """A decorator that marks a function or class as deprecated."""
 
-        def decorator(func_or_cls: Callable[..., Any]) -> Callable[..., Any]:
+        def decorator(func_or_cls: F) -> F:
             """A decorator that wraps the input function or class."""
             return func_or_cls
 
