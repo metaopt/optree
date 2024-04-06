@@ -2716,8 +2716,7 @@ def _prefix_error(
     prefix_tree_type = type(prefix_tree)
     full_tree_type = type(full_tree)
     both_standard_dict = (
-        prefix_tree_type in STANDARD_DICT_TYPES  # type: ignore[comparison-overlap]
-        and full_tree_type in STANDARD_DICT_TYPES  # type: ignore[comparison-overlap]
+        prefix_tree_type in STANDARD_DICT_TYPES and full_tree_type in STANDARD_DICT_TYPES
     )
     both_deque = prefix_tree_type is deque and full_tree_type is deque  # type: ignore[comparison-overlap]
     if prefix_tree_type is not full_tree_type and (
