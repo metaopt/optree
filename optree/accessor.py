@@ -46,6 +46,7 @@ __all__ = [
     'GetItemEntry',
     'GetAttrEntry',
     'FlattenedEntry',
+    'AutoEntry',
     'SequenceEntry',
     'MappingEntry',
     'NamedTupleEntry',
@@ -70,9 +71,9 @@ class PyTreeEntry:
         """Post-initialize the path entry."""
         from optree.typing import PyTreeKind  # pylint: disable=import-outside-toplevel
 
-        if self.kind is PyTreeKind.LEAF:
+        if self.kind == PyTreeKind.LEAF:
             raise ValueError('Cannot create a leaf path entry.')
-        if self.kind is PyTreeKind.NONE:
+        if self.kind == PyTreeKind.NONE:
             raise ValueError('Cannot create a path entry for None.')
 
     def __call__(self, obj: Any) -> Any:
@@ -116,9 +117,56 @@ class PyTreeEntry:
 del SLOTS
 
 
-_T_co = TypeVar('_T_co', covariant=True)
-_KT_co = TypeVar('_KT_co', covariant=True)
-_VT_co = TypeVar('_VT_co', covariant=True)
+T_co = TypeVar('T_co', covariant=True)
+KT_co = TypeVar('KT_co', covariant=True)
+VT_co = TypeVar('VT_co', covariant=True)
+
+
+class AutoEntry(PyTreeEntry):
+    """A generic path entry class that determines the entry type on creation automatically."""
+
+    __slots__: ClassVar[tuple[()]] = ()
+
+    def __new__(  # type: ignore[misc]
+        cls,
+        entry: Any,
+        type: builtins.type,  # pylint: disable=redefined-builtin
+        kind: PyTreeKind,
+    ) -> PyTreeEntry:
+        """Create a new path entry."""
+        # pylint: disable-next=import-outside-toplevel
+        from optree.typing import PyTreeKind, is_namedtuple_class, is_structseq_class
+
+        if cls is not AutoEntry:
+            # Use the subclass type if the type is explicitly specified
+            return super().__new__(cls)
+
+        if kind != PyTreeKind.CUSTOM:
+            raise ValueError(f'Cannot create an automatic path entry for {kind!r}.')
+
+        path_entry_type: builtins.type[PyTreeEntry]
+        if is_structseq_class(type):
+            path_entry_type = StructSequenceEntry
+        elif is_namedtuple_class(type):
+            path_entry_type = NamedTupleEntry
+        elif dataclasses.is_dataclass(type):
+            path_entry_type = DataclassEntry
+        elif issubclass(type, Mapping):
+            path_entry_type = MappingEntry
+        elif issubclass(type, Sequence):
+            path_entry_type = SequenceEntry
+        else:
+            path_entry_type = FlattenedEntry
+
+        if not issubclass(path_entry_type, AutoEntry):
+            # The __init__() method will not be called if the returned instance is not a subtype of
+            # AutoEntry.
+            # We should return an initialized instance.
+            return path_entry_type(entry, type, kind)
+
+        # The __init__() method will be called if the returned instance is a subtype of AutoEntry.
+        # We should return an uninitialized instance.
+        return super().__new__(path_entry_type)
 
 
 class GetItemEntry(PyTreeEntry):
@@ -157,7 +205,7 @@ class FlattenedEntry(PyTreeEntry):  # pylint: disable=too-few-public-methods
     __slots__: ClassVar[tuple[()]] = ()
 
 
-class SequenceEntry(GetItemEntry, Generic[_T_co]):
+class SequenceEntry(GetItemEntry, Generic[T_co]):
     """A path entry class for sequences."""
 
     __slots__: ClassVar[tuple[()]] = ()
@@ -169,7 +217,7 @@ class SequenceEntry(GetItemEntry, Generic[_T_co]):
         """Get the index."""
         return self.entry
 
-    def __call__(self, obj: Sequence[_T_co]) -> _T_co:
+    def __call__(self, obj: Sequence[T_co]) -> T_co:
         """Get the child object."""
         return obj[self.index]
 
@@ -178,19 +226,19 @@ class SequenceEntry(GetItemEntry, Generic[_T_co]):
         return f'{self.__class__.__name__}(index={self.index!r}, type={self.type!r})'
 
 
-class MappingEntry(GetItemEntry, Generic[_KT_co, _VT_co]):
+class MappingEntry(GetItemEntry, Generic[KT_co, VT_co]):
     """A path entry class for mappings."""
 
     __slots__: ClassVar[tuple[()]] = ()
 
-    entry: _KT_co
+    entry: KT_co
 
     @property
-    def key(self) -> _KT_co:
+    def key(self) -> KT_co:
         """Get the key."""
         return self.entry
 
-    def __call__(self, obj: Mapping[_KT_co, _VT_co]) -> _VT_co:
+    def __call__(self, obj: Mapping[KT_co, VT_co]) -> VT_co:
         """Get the child object."""
         return obj[self.key]
 
@@ -347,6 +395,7 @@ setattr(_C, 'PyTreeEntry', PyTreeEntry)  # noqa: B010
 setattr(_C, 'GetItemEntry', GetItemEntry)  # noqa: B010
 setattr(_C, 'GetAttrEntry', GetAttrEntry)  # noqa: B010
 setattr(_C, 'FlattenedEntry', FlattenedEntry)  # noqa: B010
+setattr(_C, 'AutoEntry', AutoEntry)  # noqa: B010
 setattr(_C, 'SequenceEntry', SequenceEntry)  # noqa: B010
 setattr(_C, 'MappingEntry', MappingEntry)  # noqa: B010
 setattr(_C, 'NamedTupleEntry', NamedTupleEntry)  # noqa: B010

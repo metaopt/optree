@@ -88,3 +88,4 @@ subpath
 accessor
 accessors
 pprint
+subtype

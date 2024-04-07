@@ -39,7 +39,7 @@ from typing_extensions import deprecated  # Python 3.13+
 
 from optree import _C
 from optree.accessor import (
-    FlattenedEntry,
+    AutoEntry,
     MappingEntry,
     NamedTupleEntry,
     PyTreeEntry,
@@ -69,9 +69,6 @@ __all__ = [
     'register_pytree_node',
     'register_pytree_node_class',
     'unregister_pytree_node',
-    'register_keypaths',
-    'AttributeKeyPathEntry',
-    'GetitemKeyPathEntry',
 ]
 
 
@@ -85,7 +82,7 @@ if sys.version_info >= (3, 10):
         flatten_func: FlattenFunc
         unflatten_func: UnflattenFunc
         _: dataclasses.KW_ONLY  # Python 3.10+
-        path_entry_type: builtins.type[PyTreeEntry] = FlattenedEntry
+        path_entry_type: builtins.type[PyTreeEntry] = AutoEntry
         namespace: str = ''
 
 else:
@@ -97,7 +94,7 @@ else:
         type: builtins.type
         flatten_func: FlattenFunc
         unflatten_func: UnflattenFunc
-        path_entry_type: builtins.type[PyTreeEntry] = FlattenedEntry
+        path_entry_type: builtins.type[PyTreeEntry] = AutoEntry
         namespace: str = ''
 
 
@@ -122,7 +119,7 @@ def register_pytree_node(
     flatten_func: FlattenFunc,
     unflatten_func: UnflattenFunc,
     *,
-    path_entry_type: type[PyTreeEntry] = FlattenedEntry,
+    path_entry_type: type[PyTreeEntry] = AutoEntry,
     namespace: str,
 ) -> CustomTreeNodeT:
     """Extend the set of types that are considered internal nodes in pytrees.
@@ -151,7 +148,7 @@ def register_pytree_node(
             returned by ``flatten_func`` and stored in the treespec, and the unflattened children.
             The function should return an instance of ``cls``.
         path_entry_type (type, optional): The type of the path entry to be used in the treespec.
-            (default: :class:`FlattenedEntry`)
+            (default: :class:`AutoEntry`)
         namespace (str): A non-empty string that uniquely identifies the namespace of the type registry.
             This is used to isolate the registry from other modules that might register a different
             custom behavior for the same type.
@@ -317,7 +314,7 @@ def register_pytree_node_class(  # noqa: C901
     Args:
         cls (type, optional): A Python type to treat as an internal pytree node.
         path_entry_type (type, optional): The type of the path entry to be used in the treespec.
-            (default: :class:`FlattenedEntry`)
+            (default: :class:`AutoEntry`)
         namespace (str, optional): A non-empty string that uniquely identifies the namespace of the
             type registry. This is used to isolate the registry from other modules that might
             register a different custom behavior for the same type.
@@ -388,7 +385,7 @@ def register_pytree_node_class(  # noqa: C901
     if not inspect.isclass(cls):
         raise TypeError(f'Expected a class, got {cls!r}.')
     if path_entry_type is None:
-        path_entry_type = getattr(cls, 'TREE_PATH_ENTRY_TYPE', FlattenedEntry)
+        path_entry_type = getattr(cls, 'TREE_PATH_ENTRY_TYPE', AutoEntry)
     if not issubclass(path_entry_type, PyTreeEntry):
         raise TypeError(f'Expected a subclass of PyTreeEntry, got {path_entry_type!r}.')
     register_pytree_node(

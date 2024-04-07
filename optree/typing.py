@@ -44,6 +44,7 @@ from typing_extensions import Final, Protocol, runtime_checkable  # Python 3.8+
 from optree import _C
 from optree._C import PyTreeKind, PyTreeSpec
 from optree.accessor import (
+    AutoEntry,
     DataclassEntry,
     FlattenedEntry,
     GetAttrEntry,
@@ -72,6 +73,7 @@ __all__ = [
     'GetItemEntry',
     'GetAttrEntry',
     'FlattenedEntry',
+    'AutoEntry',
     'SequenceEntry',
     'MappingEntry',
     'NamedTupleEntry',

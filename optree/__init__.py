@@ -16,6 +16,7 @@
 
 from optree import accessor, functools, integration, typing
 from optree.accessor import (
+    AutoEntry,
     DataclassEntry,
     FlattenedEntry,
     GetAttrEntry,
@@ -188,6 +189,7 @@ __all__ = [
     'GetAttrEntry',
     'GetItemEntry',
     'FlattenedEntry',
+    'AutoEntry',
     'SequenceEntry',
     'MappingEntry',
     'NamedTupleEntry',
