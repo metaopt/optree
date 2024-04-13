@@ -34,12 +34,13 @@ from typing_extensions import Literal  # Python 3.8+
 from typing_extensions import Self  # Python 3.11+
 
 from optree import _C
+from optree._C import PyTreeKind
 
 
 if TYPE_CHECKING:
     import builtins
 
-    from optree.typing import NamedTuple, PyTreeKind, structseq
+    from optree.typing import NamedTuple, structseq
 
 
 __all__ = [
@@ -70,8 +71,6 @@ class PyTreeEntry:
 
     def __post_init__(self) -> None:
         """Post-initialize the path entry."""
-        from optree.typing import PyTreeKind  # pylint: disable=import-outside-toplevel
-
         if self.kind == PyTreeKind.LEAF:
             raise ValueError('Cannot create a leaf path entry.')
         if self.kind == PyTreeKind.NONE:
@@ -137,7 +136,7 @@ class AutoEntry(PyTreeEntry):
     ) -> PyTreeEntry:
         """Create a new path entry."""
         # pylint: disable-next=import-outside-toplevel
-        from optree.typing import PyTreeKind, is_namedtuple_class, is_structseq_class
+        from optree.typing import is_namedtuple_class, is_structseq_class
 
         if cls is not AutoEntry:
             # Use the subclass type if the type is explicitly specified
@@ -257,7 +256,7 @@ class NamedTupleEntry(SequenceEntry[T]):
     __slots__: ClassVar[tuple[()]] = ()
 
     entry: int
-    type: builtins.type[NamedTuple[T]]
+    type: builtins.type[NamedTuple[T]]  # type: ignore[type-arg]
     kind: Literal[PyTreeKind.NAMEDTUPLE]
 
     @property
@@ -281,7 +280,7 @@ class NamedTupleEntry(SequenceEntry[T]):
         return f'{root}.{self.field}'
 
 
-class StructSequenceEntry(NamedTupleEntry[T]):
+class StructSequenceEntry(SequenceEntry[T]):
     """A path entry class for PyStructSequence objects."""
 
     __slots__: ClassVar[tuple[()]] = ()
@@ -296,6 +295,19 @@ class StructSequenceEntry(NamedTupleEntry[T]):
         from optree.typing import structseq_fields  # pylint: disable=import-outside-toplevel
 
         return structseq_fields(self.type)
+
+    @property
+    def field(self) -> str:
+        """Get the field name."""
+        return self.fields[self.entry]
+
+    def __repr__(self) -> str:
+        """Get the representation of the path entry."""
+        return f'{self.__class__.__name__}(field={self.field!r}, type={self.type!r})'
+
+    def pprint(self, root: str = '') -> str:
+        """Pretty name of the path entry."""
+        return f'{root}.{self.field}'
 
 
 class DataclassEntry(GetAttrEntry):
