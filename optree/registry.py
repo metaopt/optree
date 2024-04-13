@@ -72,30 +72,25 @@ __all__ = [
 ]
 
 
-if sys.version_info >= (3, 10):
+SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}  # Python 3.10+
 
-    @dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, slots=True)
-    class PyTreeNodeRegistryEntry:
-        """A dataclass that stores the information of a pytree node type."""
 
-        type: builtins.type
-        flatten_func: FlattenFunc
-        unflatten_func: UnflattenFunc
+@dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, **SLOTS)
+class PyTreeNodeRegistryEntry:
+    """A dataclass that stores the information of a pytree node type."""
+
+    type: builtins.type
+    flatten_func: FlattenFunc
+    unflatten_func: UnflattenFunc
+
+    if sys.version_info >= (3, 10):
         _: dataclasses.KW_ONLY  # Python 3.10+
-        path_entry_type: builtins.type[PyTreeEntry] = AutoEntry
-        namespace: str = ''
 
-else:
+    path_entry_type: builtins.type[PyTreeEntry] = AutoEntry
+    namespace: str = ''
 
-    @dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True)
-    class PyTreeNodeRegistryEntry:
-        """A dataclass that stores the information of a pytree node type."""
 
-        type: builtins.type
-        flatten_func: FlattenFunc
-        unflatten_func: UnflattenFunc
-        path_entry_type: builtins.type[PyTreeEntry] = AutoEntry
-        namespace: str = ''
+del SLOTS
 
 
 # pylint: disable-next=missing-class-docstring,too-few-public-methods
