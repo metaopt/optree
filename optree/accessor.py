@@ -30,6 +30,7 @@ from typing import (
     TypeVar,
     overload,
 )
+from typing_extensions import Literal  # Python 3.8+
 from typing_extensions import Self  # Python 3.11+
 
 from optree import _C
@@ -38,7 +39,7 @@ from optree import _C
 if TYPE_CHECKING:
     import builtins
 
-    from optree.typing import PyTreeKind
+    from optree.typing import NamedTuple, PyTreeKind, structseq
 
 
 __all__ = [
@@ -117,6 +118,7 @@ class PyTreeEntry:
 del SLOTS
 
 
+T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
 KT_co = TypeVar('KT_co', covariant=True)
 VT_co = TypeVar('VT_co', covariant=True)
@@ -211,6 +213,7 @@ class SequenceEntry(GetItemEntry, Generic[T_co]):
     __slots__: ClassVar[tuple[()]] = ()
 
     entry: int
+    type: builtins.type[Sequence[T_co]]
 
     @property
     def index(self) -> int:
@@ -232,6 +235,7 @@ class MappingEntry(GetItemEntry, Generic[KT_co, VT_co]):
     __slots__: ClassVar[tuple[()]] = ()
 
     entry: KT_co
+    type: builtins.type[Mapping[KT_co, VT_co]]
 
     @property
     def key(self) -> KT_co:
@@ -247,12 +251,14 @@ class MappingEntry(GetItemEntry, Generic[KT_co, VT_co]):
         return f'{self.__class__.__name__}(key={self.key!r}, type={self.type!r})'
 
 
-class NamedTupleEntry(SequenceEntry):
+class NamedTupleEntry(SequenceEntry[T]):
     """A path entry class for namedtuple objects."""
 
     __slots__: ClassVar[tuple[()]] = ()
 
     entry: int
+    type: builtins.type[NamedTuple[T]]
+    kind: Literal[PyTreeKind.NAMEDTUPLE]
 
     @property
     def fields(self) -> tuple[str, ...]:
@@ -275,12 +281,14 @@ class NamedTupleEntry(SequenceEntry):
         return f'{root}.{self.field}'
 
 
-class StructSequenceEntry(NamedTupleEntry):
+class StructSequenceEntry(NamedTupleEntry[T]):
     """A path entry class for PyStructSequence objects."""
 
     __slots__: ClassVar[tuple[()]] = ()
 
     entry: int
+    type: builtins.type[structseq[T]]
+    kind: Literal[PyTreeKind.STRUCTSEQUENCE]
 
     @property
     def fields(self) -> tuple[str, ...]:
