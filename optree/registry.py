@@ -236,7 +236,7 @@ def register_pytree_node(
     """
     if not inspect.isclass(cls):
         raise TypeError(f'Expected a class, got {cls!r}.')
-    if not issubclass(path_entry_type, PyTreeEntry):
+    if not (inspect.isclass(path_entry_type) and issubclass(path_entry_type, PyTreeEntry)):
         raise TypeError(f'Expected a subclass of PyTreeEntry, got {path_entry_type!r}.')
     if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
         raise TypeError(f'The namespace must be a string, got {namespace!r}.')
@@ -381,7 +381,7 @@ def register_pytree_node_class(  # noqa: C901
         raise TypeError(f'Expected a class, got {cls!r}.')
     if path_entry_type is None:
         path_entry_type = getattr(cls, 'TREE_PATH_ENTRY_TYPE', AutoEntry)
-    if not issubclass(path_entry_type, PyTreeEntry):
+    if not (inspect.isclass(path_entry_type) and issubclass(path_entry_type, PyTreeEntry)):
         raise TypeError(f'Expected a subclass of PyTreeEntry, got {path_entry_type!r}.')
     register_pytree_node(
         cls,

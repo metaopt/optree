@@ -171,6 +171,74 @@ def test_register_pytree_node_with_invalid_namespace():
         )
 
 
+def test_register_pytree_node_with_invalid_path_entry_type():
+    with pytest.raises(TypeError, match=r'Expected a subclass of PyTreeEntry, got .*\.'):
+
+        @optree.register_pytree_node_class(namespace='error')
+        class MyList1(UserList):
+            TREE_PATH_ENTRY_TYPE = None
+
+            def tree_flatten(self):
+                return self.data, None, None
+
+            @classmethod
+            def tree_unflatten(cls, metadata, children):
+                return cls(children)
+
+    with pytest.raises(TypeError, match=r'Expected a subclass of PyTreeEntry, got .*\.'):
+
+        @optree.register_pytree_node_class(namespace='error')
+        class MyList2(UserList):
+            TREE_PATH_ENTRY_TYPE = int
+
+            def tree_flatten(self):
+                return self.data, None, None
+
+            @classmethod
+            def tree_unflatten(cls, metadata, children):
+                return cls(children)
+
+    with pytest.raises(TypeError, match=r'Expected a subclass of PyTreeEntry, got .*\.'):
+
+        @optree.register_pytree_node_class(path_entry_type=1, namespace='error')
+        class MyList3(UserList):
+            def tree_flatten(self):
+                return self.data, None, None
+
+            @classmethod
+            def tree_unflatten(cls, metadata, children):
+                return cls(children)
+
+    with pytest.raises(TypeError, match=r'Expected a subclass of PyTreeEntry, got .*\.'):
+
+        @optree.register_pytree_node_class(path_entry_type=int, namespace='error')
+        class MyList4(UserList):
+            def tree_flatten(self):
+                return self.data, None, None
+
+            @classmethod
+            def tree_unflatten(cls, metadata, children):
+                return cls(children)
+
+    with pytest.raises(TypeError, match=r'Expected a subclass of PyTreeEntry, got .*\.'):
+        optree.register_pytree_node(
+            set,
+            lambda s: (sorted(s), None, None),
+            lambda _, s: set(s),
+            path_entry_type=1,
+            namespace='error',
+        )
+
+    with pytest.raises(TypeError, match=r'Expected a subclass of PyTreeEntry, got .*\.'):
+        optree.register_pytree_node(
+            set,
+            lambda s: (sorted(s), None, None),
+            lambda _, s: set(s),
+            path_entry_type=int,
+            namespace='error',
+        )
+
+
 def test_register_pytree_node_duplicate_builtins():
     with pytest.raises(
         ValueError,
