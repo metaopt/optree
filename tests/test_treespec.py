@@ -27,7 +27,7 @@ import pytest
 
 import helpers
 import optree
-from helpers import NAMESPACED_TREE, TREE_STRINGS, TREES, parametrize
+from helpers import NAMESPACED_TREE, TREE_STRINGS, TREES, MyAnotherDict, MyDict, parametrize
 
 
 def test_treespec_equal_hash():
@@ -236,6 +236,15 @@ def test_treespec_with_namespace():
         assert leaves == [tree]
         assert paths == treespec.paths()
         assert str(treespec) == 'PyTreeSpec(*)'
+        accessors, leaves, treespec = optree.tree_flatten_with_accessor(
+            tree,
+            none_is_leaf=False,
+            namespace=namespace,
+        )
+        assert accessors == [optree.PyTreeAccessor()]
+        assert leaves == [tree]
+        assert accessors == treespec.accessors()
+        assert str(treespec) == 'PyTreeSpec(*)'
     for namespace in ('', 'undefined'):
         leaves, treespec = optree.tree_flatten(tree, none_is_leaf=True, namespace=namespace)
         assert leaves == [tree]
@@ -249,8 +258,17 @@ def test_treespec_with_namespace():
         assert leaves == [tree]
         assert paths == treespec.paths()
         assert str(treespec) == 'PyTreeSpec(*, NoneIsLeaf)'
+        accessors, leaves, treespec = optree.tree_flatten_with_accessor(
+            tree,
+            none_is_leaf=True,
+            namespace=namespace,
+        )
+        assert accessors == [optree.PyTreeAccessor()]
+        assert leaves == [tree]
+        assert accessors == treespec.accessors()
+        assert str(treespec) == 'PyTreeSpec(*, NoneIsLeaf)'
 
-    expected_string = "PyTreeSpec(CustomTreeNode(MyAnotherDict[['foo', 'baz']], [CustomTreeNode(MyAnotherDict[['c', 'b', 'a']], [None, *, *]), *]), namespace='namespace')"
+    expected_string = "PyTreeSpec(CustomTreeNode(MyAnotherDict[['foo', 'baz']], [CustomTreeNode(MyDict[['c', 'b', 'a']], [None, *, *]), *]), namespace='namespace')"
     leaves, treespec = optree.tree_flatten(tree, none_is_leaf=False, namespace='namespace')
     assert leaves == [2, 1, 101]
     assert str(treespec) == expected_string
@@ -263,8 +281,33 @@ def test_treespec_with_namespace():
     assert leaves == [2, 1, 101]
     assert paths == treespec.paths()
     assert str(treespec) == expected_string
+    accessors, leaves, treespec = optree.tree_flatten_with_accessor(
+        tree,
+        none_is_leaf=False,
+        namespace='namespace',
+    )
+    assert accessors == [
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('b', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('a', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', MyAnotherDict, optree.PyTreeKind.CUSTOM),),
+        ),
+    ]
+    assert leaves == [2, 1, 101]
+    assert accessors == treespec.accessors()
+    assert str(treespec) == expected_string
 
-    expected_string = "PyTreeSpec(CustomTreeNode(MyAnotherDict[['foo', 'baz']], [CustomTreeNode(MyAnotherDict[['c', 'b', 'a']], [*, *, *]), *]), NoneIsLeaf, namespace='namespace')"
+    expected_string = "PyTreeSpec(CustomTreeNode(MyAnotherDict[['foo', 'baz']], [CustomTreeNode(MyDict[['c', 'b', 'a']], [*, *, *]), *]), NoneIsLeaf, namespace='namespace')"
     leaves, treespec = optree.tree_flatten(tree, none_is_leaf=True, namespace='namespace')
     assert leaves == [None, 2, 1, 101]
     assert str(treespec) == expected_string
@@ -276,6 +319,37 @@ def test_treespec_with_namespace():
     assert paths == [('foo', 'c'), ('foo', 'b'), ('foo', 'a'), ('baz',)]
     assert leaves == [None, 2, 1, 101]
     assert paths == treespec.paths()
+    assert str(treespec) == expected_string
+    accessors, leaves, treespec = optree.tree_flatten_with_accessor(
+        tree,
+        none_is_leaf=True,
+        namespace='namespace',
+    )
+    assert accessors == [
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('c', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('b', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('a', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', MyAnotherDict, optree.PyTreeKind.CUSTOM),),
+        ),
+    ]
+    assert leaves == [None, 2, 1, 101]
+    assert accessors == treespec.accessors()
     assert str(treespec) == expected_string
 
 

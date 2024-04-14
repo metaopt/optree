@@ -251,7 +251,7 @@ class Counter:
         return self.increment()
 
 
-NAMESPACED_TREE = MyAnotherDict([('baz', 101), ('foo', MyAnotherDict(a=1, b=2, c=None))])
+NAMESPACED_TREE = MyAnotherDict([('baz', 101), ('foo', MyDict(a=1, b=2, c=None))])
 
 
 # pylint: disable=line-too-long

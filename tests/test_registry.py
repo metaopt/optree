@@ -513,6 +513,12 @@ def test_pytree_node_registry_with_init_subclass():
         pass
 
     tree = MyDict(b=4, a=(2, 3), c=MyAnotherDict({'d': 5, 'f': 6}))
+    leaves, treespec = optree.tree_flatten(tree, namespace='mydict')
+    assert leaves == [6, 5, 4, 2, 3]
+    assert (
+        str(treespec)
+        == "PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyAnotherDict[['f', 'd']], [*, *]), *, (*, *)]), namespace='mydict')"
+    )
     paths, leaves, treespec = optree.tree_flatten_with_path(tree, namespace='mydict')
     assert paths == [('c', 'f'), ('c', 'd'), ('b',), ('a', 0), ('a', 1)]
     assert leaves == [6, 5, 4, 2, 3]
@@ -521,8 +527,36 @@ def test_pytree_node_registry_with_init_subclass():
         str(treespec)
         == "PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyAnotherDict[['f', 'd']], [*, *]), *, (*, *)]), namespace='mydict')"
     )
-    leaves, treespec = optree.tree_flatten(tree, namespace='mydict')
+    accessors, leaves, treespec = optree.tree_flatten_with_accessor(tree, namespace='mydict')
+    assert accessors == [
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('c', MyDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('f', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('c', MyDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('d', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor((optree.MappingEntry('b', MyDict, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('a', MyDict, optree.PyTreeKind.CUSTOM),
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('a', MyDict, optree.PyTreeKind.CUSTOM),
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+    ]
     assert leaves == [6, 5, 4, 2, 3]
+    assert accessors == treespec.accessors()
     assert (
         str(treespec)
         == "PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyAnotherDict[['f', 'd']], [*, *]), *, (*, *)]), namespace='mydict')"
