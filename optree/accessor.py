@@ -95,15 +95,34 @@ class PyTreeEntry:
 
     def __eq__(self, other: object) -> bool:
         """Check if the path entries are equal."""
-        return (
-            isinstance(other, PyTreeEntry)
-            and (self.entry, self.type, self.kind) == (other.entry, other.type, other.kind)
-            and self.__class__.__call__ is other.__class__.__call__
+        return isinstance(other, PyTreeEntry) and (
+            (
+                self.entry,
+                self.type,
+                self.kind,
+                self.__class__.__call__.__code__.co_code,
+                self.__class__.pprint.__code__.co_code,
+            )
+            == (
+                other.entry,
+                other.type,
+                other.kind,
+                other.__class__.__call__.__code__.co_code,
+                other.__class__.pprint.__code__.co_code,
+            )
         )
 
     def __hash__(self) -> int:
         """Get the hash of the path entry."""
-        return hash((self.entry, self.type, self.kind, self.__class__.__call__))
+        return hash(
+            (
+                self.entry,
+                self.type,
+                self.kind,
+                self.__class__.__call__.__code__.co_code,
+                self.__class__.pprint.__code__.co_code,
+            ),
+        )
 
     def __repr__(self) -> str:
         """Get the representation of the path entry."""
