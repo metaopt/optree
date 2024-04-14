@@ -366,7 +366,7 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
         if not isinstance(path, (list, tuple)):
             path = tuple(path)
         if not all(isinstance(p, PyTreeEntry) for p in path):
-            raise TypeError(f'Expected a path of Entry, got {path!r}.')
+            raise TypeError(f'Expected a path of PyTreeEntry, got {path!r}.')
         return super().__new__(cls, path)
 
     def __call__(self, obj: Any) -> Any:
