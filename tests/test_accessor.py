@@ -16,6 +16,7 @@
 # pylint: disable=missing-function-docstring,invalid-name,wrong-import-order
 
 import itertools
+import re
 
 import pytest
 
@@ -69,6 +70,14 @@ def test_pytree_accessor_add():
         optree.PyTreeAccessor(),
     )
     assert_equal_type_and_value(
+        optree.PyTreeAccessor() + optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+        optree.PyTreeAccessor((optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),)),
+    )
+    assert_equal_type_and_value(
+        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE) + optree.PyTreeAccessor(),
+        optree.PyTreeAccessor((optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),)),
+    )
+    assert_equal_type_and_value(
         (
             optree.PyTreeAccessor()
             + optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE)
@@ -112,6 +121,33 @@ def test_pytree_accessor_add():
             ),
         ),
     )
+    assert_equal_type_and_value(
+        (
+            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE)
+            + optree.PyTreeAccessor(
+                (
+                    optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                    optree.MappingEntry('c', dict, optree.PyTreeKind.DICT),
+                ),
+            )
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                optree.MappingEntry('c', dict, optree.PyTreeKind.DICT),
+            ),
+        ),
+    )
+
+    with pytest.raises(TypeError, match=re.escape(r'unsupported operand type(s) for +')):
+        optree.PyTreeAccessor() + 'a'
+    with pytest.raises(TypeError, match=re.escape(r'unsupported operand type(s) for +')):
+        1 + optree.PyTreeAccessor()
+    with pytest.raises(TypeError, match=re.escape(r'unsupported operand type(s) for +')):
+        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE) + 'a'
+    with pytest.raises(TypeError, match=re.escape(r'unsupported operand type(s) for +')):
+        1 + optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE)
 
 
 def test_pytree_accessor_mul():
