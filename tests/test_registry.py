@@ -564,21 +564,19 @@ def test_pytree_node_registry_with_init_subclass():
 
 
 def test_unregister_pytree_node_with_non_class():
+    def func1():
+        pass
+
     with pytest.raises(TypeError, match='Expected a class'):
-
-        def func1():
-            pass
-
         optree.unregister_pytree_node(func1, namespace=optree.registry.__GLOBAL_NAMESPACE)
 
     with pytest.raises(TypeError, match='Expected a class'):
         optree.unregister_pytree_node(1, namespace=optree.registry.__GLOBAL_NAMESPACE)
 
+    def func2():
+        pass
+
     with pytest.raises(TypeError, match='Expected a class'):
-
-        def func2():
-            pass
-
         optree.unregister_pytree_node(func2, namespace='func')
 
     with pytest.raises(TypeError, match='Expected a class'):

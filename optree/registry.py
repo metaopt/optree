@@ -21,7 +21,7 @@ import functools
 import inspect
 import sys
 from collections import OrderedDict, defaultdict, deque, namedtuple
-from operator import methodcaller
+from operator import itemgetter, methodcaller
 from threading import Lock
 from typing import (
     TYPE_CHECKING,
@@ -451,7 +451,7 @@ def unregister_pytree_node(
 
 
 def _sorted_items(items: Iterable[tuple[KT, VT]]) -> list[tuple[KT, VT]]:
-    return total_order_sorted(items, key=lambda kv: kv[0])
+    return total_order_sorted(items, key=itemgetter(0))
 
 
 def _none_flatten(none: None) -> tuple[tuple[()], None]:

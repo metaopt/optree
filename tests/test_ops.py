@@ -2867,8 +2867,8 @@ def test_broadcast_common():
 
 
 def test_tree_reduce():
-    assert optree.tree_reduce(lambda x, y: x + y, {'x': 1, 'y': (2, 3)}) == 6
-    assert optree.tree_reduce(lambda x, y: x + y, {'x': 1, 'y': (2, None), 'z': 3}) == 6
+    assert optree.tree_reduce(operator.add, {'x': 1, 'y': (2, 3)}) == 6
+    assert optree.tree_reduce(operator.add, {'x': 1, 'y': (2, None), 'z': 3}) == 6
     assert optree.tree_reduce(lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3}) == 3
     assert (
         optree.tree_reduce(
@@ -2882,7 +2882,7 @@ def test_tree_reduce():
         optree.tree_reduce(
             lambda x, y: x and y,
             {'x': 1, 'y': (2, None), 'z': 3},
-            False,
+            initial=False,
             none_is_leaf=True,
         )
         is False
@@ -2911,7 +2911,7 @@ def test_tree_max():
         optree.tree_max({})
     assert optree.tree_max({}, default=0) == 0
     assert optree.tree_max({'x': 0, 'y': (2, 1)}) == 2
-    assert optree.tree_max({'x': 0, 'y': (2, 1)}, key=lambda x: -x) == 0
+    assert optree.tree_max({'x': 0, 'y': (2, 1)}, key=operator.neg) == 0
     with pytest.raises(ValueError, match='empty'):
         optree.tree_max({'a': None})
     assert optree.tree_max({'a': None}, default=0) == 0
@@ -2920,9 +2920,9 @@ def test_tree_max():
         optree.tree_max(None)
     assert optree.tree_max(None, default=0) == 0
     assert optree.tree_max(None, none_is_leaf=True) is None
-    assert optree.tree_max(None, default=0, key=lambda x: -x) == 0
+    assert optree.tree_max(None, default=0, key=operator.neg) == 0
     with pytest.raises(TypeError, match=re.escape("bad operand type for unary -: 'NoneType'")):
-        assert optree.tree_max(None, default=0, key=lambda x: -x, none_is_leaf=True) is None
+        assert optree.tree_max(None, default=0, key=operator.neg, none_is_leaf=True) is None
 
 
 def test_tree_min():
@@ -2930,7 +2930,7 @@ def test_tree_min():
         optree.tree_min({})
     assert optree.tree_min({}, default=0) == 0
     assert optree.tree_min({'x': 0, 'y': (2, 1)}) == 0
-    assert optree.tree_min({'x': 0, 'y': (2, 1)}, key=lambda x: -x) == 2
+    assert optree.tree_min({'x': 0, 'y': (2, 1)}, key=operator.neg) == 2
     with pytest.raises(ValueError, match='empty'):
         optree.tree_min({'a': None})
     assert optree.tree_min({'a': None}, default=0) == 0
@@ -2939,9 +2939,9 @@ def test_tree_min():
         optree.tree_min(None)
     assert optree.tree_min(None, default=0) == 0
     assert optree.tree_min(None, none_is_leaf=True) is None
-    assert optree.tree_min(None, default=0, key=lambda x: -x) == 0
+    assert optree.tree_min(None, default=0, key=operator.neg) == 0
     with pytest.raises(TypeError, match=re.escape("bad operand type for unary -: 'NoneType'")):
-        assert optree.tree_min(None, default=0, key=lambda x: -x, none_is_leaf=True) is None
+        assert optree.tree_min(None, default=0, key=operator.neg, none_is_leaf=True) is None
 
 
 def test_tree_all():
@@ -3003,7 +3003,7 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
                 namespace=namespace,
             )
             assert children == expected_children
-            if node_type in (type(None), tuple, list):
+            if node_type in {type(None), tuple, list}:
                 assert metadata is None
                 if node_type is tuple:
                     assert node_kind == optree.PyTreeKind.TUPLE

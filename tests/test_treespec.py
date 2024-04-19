@@ -971,7 +971,7 @@ def test_treespec_constructor(tree, none_is_leaf, namespace):  # noqa: C901
                     == expected_treespec
                 )
 
-                if node_type in (type(None), tuple, list):
+                if node_type in {type(None), tuple, list}:
                     if node_type is tuple:
                         assert (
                             optree.treespec_tuple(

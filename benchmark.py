@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import argparse
+import operator
 import sys
 import textwrap
 import timeit
@@ -447,7 +448,7 @@ def check(tree: Any) -> None:
 
     optree_flat = optree.tree_leaves(tree, none_is_leaf=False)
     jax_flat = jax.tree_util.tree_leaves(tree)
-    if len(optree_flat) == len(jax_flat) and all(map(lambda a, b: a is b, optree_flat, jax_flat)):
+    if len(optree_flat) == len(jax_flat) and all(map(operator.is_, optree_flat, jax_flat)):
         cprint(
             f'{CMARK} FLATTEN (OpTree vs. JAX XLA): '
             f'optree.tree_leaves(tree, none_is_leaf=False)'
@@ -462,9 +463,7 @@ def check(tree: Any) -> None:
 
     optree_flat = optree.tree_leaves(tree, none_is_leaf=True)
     torch_flat = torch_utils_pytree.tree_flatten(tree)[0]
-    if len(optree_flat) == len(torch_flat) and all(
-        map(lambda a, b: a is b, optree_flat, torch_flat),
-    ):
+    if len(optree_flat) == len(torch_flat) and all(map(operator.is_, optree_flat, torch_flat)):
         cprint(
             f'{CMARK} FLATTEN (OpTree vs. PyTorch): '
             f'optree.tree_leaves(tree, none_is_leaf=True)'
