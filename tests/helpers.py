@@ -228,6 +228,9 @@ class Counter:
     def __eq__(self, other):
         return isinstance(other, Counter) and self.count == other.count
 
+    def __hash__(self):
+        return hash(self.count)
+
     def __repr__(self):
         return f'Counter({self.count})'
 

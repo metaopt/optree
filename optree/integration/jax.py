@@ -33,7 +33,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import itertools
+import operator
 import warnings
 from types import FunctionType
 from typing import Any, Callable
@@ -92,7 +94,7 @@ class HashablePartial:  # pragma: no cover
             (
                 self.func.__code__,  # type: ignore[attr-defined]
                 self.args,
-                tuple(total_order_sorted(self.kwargs.items(), key=lambda kv: kv[0])),
+                tuple(total_order_sorted(self.kwargs.items(), key=operator.itemgetter(0))),
             ),
         )
 
@@ -101,11 +103,9 @@ class HashablePartial:  # pragma: no cover
         return self.func(*self.args, *args, **kwargs)
 
 
-try:  # noqa: SIM105 # pragma: no cover
-    # pylint: disable=ungrouped-imports
+with contextlib.suppress(ImportError):  # pragma: no cover
+    # pylint: disable-next=ungrouped-imports
     from jax._src.util import HashablePartial  # type: ignore[assignment] # noqa: F811,RUF100
-except ImportError:  # pragma: no cover
-    pass
 
 
 def tree_ravel(
