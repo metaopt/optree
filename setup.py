@@ -119,7 +119,7 @@ def vcs_version(name, path):
                 file.write(content)
 
 
-with vcs_version(name='optree.version', path=HERE.joinpath('optree', 'version.py')) as version:
+with vcs_version(name='optree.version', path=(HERE / 'optree' / 'version.py')) as version:
     setup(
         name='optree',
         version=version.__version__,

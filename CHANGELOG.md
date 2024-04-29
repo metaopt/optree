@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- Update CI runner image for Python 3.7 on macOS by [@XuehaiPan](https://github.com/XuehaiPan) in [#135](https://github.com/metaopt/optree/pull/135).
 
 ### Removed
 
