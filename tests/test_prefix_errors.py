@@ -441,7 +441,7 @@ def test_standard_dictionary(tree, none_is_leaf, namespace):
     shuffled_tree = optree.tree_map(
         shuffle_dictionary,
         tree,
-        is_leaf=lambda x: type(x) in (dict, OrderedDict, defaultdict),
+        is_leaf=lambda x: type(x) in {dict, OrderedDict, defaultdict},
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
@@ -453,7 +453,7 @@ def test_standard_dictionary(tree, none_is_leaf, namespace):
     shuffled_suffix_tree = optree.tree_map(
         shuffle_dictionary,
         suffix_tree,
-        is_leaf=lambda x: type(x) in (dict, OrderedDict, defaultdict),
+        is_leaf=lambda x: type(x) in {dict, OrderedDict, defaultdict},
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )

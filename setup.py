@@ -1,3 +1,4 @@
+import contextlib
 import os
 import pathlib
 import platform
@@ -5,16 +6,13 @@ import re
 import shutil
 import sys
 import sysconfig
+from importlib.util import module_from_spec, spec_from_file_location
 
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
 
 HERE = pathlib.Path(__file__).absolute().parent
-VERSION_FILE = HERE / 'optree' / 'version.py'
-
-sys.path.insert(0, str(VERSION_FILE.parent))
-import version  # noqa
 
 
 class CMakeExtension(Extension):
@@ -72,39 +70,59 @@ class cmake_build_ext(build_ext):  # noqa: N801
 
         build_args.extend(['--target', ext.target, '--'])
 
+        cwd = os.getcwd()
         try:
             os.chdir(build_temp)
             self.spawn([cmake, ext.source_dir, *cmake_args])
             if not self.dry_run:
                 self.spawn([cmake, '--build', '.', *build_args])
         finally:
-            os.chdir(HERE)
+            os.chdir(cwd)
 
 
-VERSION_CONTENT = None
+@contextlib.contextmanager
+def vcs_version(name, path):
+    path = pathlib.Path(path).absolute()
+    assert path.is_file()
+    module_spec = spec_from_file_location(name=name, location=path)
+    assert module_spec is not None
+    assert module_spec.loader is not None
+    module = sys.modules.get(name)
+    if module is None:
+        module = module_from_spec(module_spec)
+        sys.modules[name] = module
+    module_spec.loader.exec_module(module)
 
-try:
-    if not version.__release__:
+    if module.__release__:
+        yield module
+        return
+
+    content = None
+    try:
         try:
-            VERSION_CONTENT = VERSION_FILE.read_text(encoding='utf-8')
-            VERSION_FILE.write_text(
+            content = path.read_text(encoding='utf-8')
+            path.write_text(
                 data=re.sub(
                     r"""__version__\s*=\s*('[^']+'|"[^"]+")""",
-                    f'__version__ = {version.__version__!r}',
-                    string=VERSION_CONTENT,
+                    f'__version__ = {module.__version__!r}',
+                    string=content,
                 ),
                 encoding='utf-8',
             )
         except OSError:
-            VERSION_CONTENT = None
+            content = None
 
+        yield module
+    finally:
+        if content is not None:
+            with path.open(mode='wt', encoding='utf-8', newline='') as file:
+                file.write(content)
+
+
+with vcs_version(name='optree.version', path=(HERE / 'optree' / 'version.py')) as version:
     setup(
         name='optree',
         version=version.__version__,
         cmdclass={'build_ext': cmake_build_ext},
         ext_modules=[CMakeExtension('optree._C', source_dir=HERE)],
     )
-finally:
-    if VERSION_CONTENT is not None:
-        with VERSION_FILE.open(mode='wt', encoding='utf-8', newline='') as file:
-            file.write(VERSION_CONTENT)
