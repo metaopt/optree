@@ -338,7 +338,7 @@ class PyTreeIter {
         : m_agenda({std::make_pair(tree, 0)}),
           m_leaf_predicate(leaf_predicate),
           m_none_is_leaf(none_is_leaf),
-          m_namespace(std::move(registry_namespace)){};
+          m_namespace(std::move(registry_namespace)) {};
 
     PyTreeIter() = delete;
 
