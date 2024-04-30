@@ -781,7 +781,7 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList1, namespace=optree.registry.__GLOBAL_NAMESPACE)
     del MyList1
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is None
 
     @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
@@ -802,13 +802,13 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList2, namespace=optree.registry.__GLOBAL_NAMESPACE)
     del MyList2
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is not None
     assert wr() is treespec.type
     assert optree.tree_unflatten(treespec, leaves) == wr()([1, 2, 3])
 
     del treespec
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is None
 
     @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
@@ -832,13 +832,13 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList3, namespace=optree.registry.__GLOBAL_NAMESPACE)
     del MyList3
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is not None
     assert wr() is treespec.type
     assert optree.tree_unflatten(treespec, leaves) == wr()([1, 2, 3])
 
     del treespec
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is None
 
     @optree.register_pytree_node_class(namespace='mylist')
@@ -855,7 +855,7 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList4, namespace='mylist')
     del MyList4
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is None
 
     @optree.register_pytree_node_class(namespace='mylist')
@@ -878,11 +878,11 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList5, namespace='mylist')
     del MyList5
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is not None
     assert wr() is treespec.type
     assert optree.tree_unflatten(treespec, leaves) == wr()([1, 2, 3])
 
     del treespec
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is None

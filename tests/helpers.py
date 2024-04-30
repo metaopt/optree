@@ -28,17 +28,17 @@ import optree
 
 
 def getrefcount(obj=None):
-    for _ in range(10):
+    for _ in range(3):
         gc.collect()
     return sys.getrefcount(obj)
 
 
-def parametrize(**argvalues) -> pytest.mark.parametrize:
+def parametrize(**argvalues):
     arguments = list(argvalues)
     argvalues = list(itertools.product(*tuple(map(argvalues.get, arguments))))
 
     ids = tuple(
-        '-'.join(f'{arg}({val})' for arg, val in zip(arguments, values)) for values in argvalues
+        '-'.join(f'{arg}({val!r})' for arg, val in zip(arguments, values)) for values in argvalues
     )
 
     return pytest.mark.parametrize(arguments, argvalues, ids=ids)
