@@ -181,13 +181,14 @@ class AutoEntry(PyTreeEntry):
 
         if not issubclass(path_entry_type, AutoEntry):
             # The __init__() method will not be called if the returned instance is not a subtype of
-            # AutoEntry.
-            # We should return an initialized instance.
+            # AutoEntry. We should return an initialized instance. Return a fully-initialized
+            # instance of the dispatched type.
             return path_entry_type(entry, type, kind)
 
         # The __init__() method will be called if the returned instance is a subtype of AutoEntry.
-        # We should return an uninitialized instance.
-        return super().__new__(path_entry_type)
+        # We should return an uninitialized instance. The __init__() method will initialize it.
+        # But we will never reach here because the dispatched type is never a subtype of AutoEntry.
+        raise NotImplementedError('Unreachable code.')
 
 
 class GetItemEntry(PyTreeEntry):

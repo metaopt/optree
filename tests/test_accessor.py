@@ -279,16 +279,33 @@ def test_pytree_auto_entry_new_invalid_kind():
         match=r'Cannot create an automatic path entry for PyTreeKind .*\.',
     ):
         optree.AutoEntry(0, int, optree.PyTreeKind.LEAF)
+
     with pytest.raises(
         ValueError,
         match=r'Cannot create an automatic path entry for PyTreeKind .*\.',
     ):
         optree.AutoEntry(None, type(None), optree.PyTreeKind.NONE)
+
     with pytest.raises(
         ValueError,
         match=r'Cannot create an automatic path entry for PyTreeKind .*\.',
     ):
         optree.AutoEntry(0, tuple, optree.PyTreeKind.TUPLE)
+
+    class SubclassedAutoEntry(optree.AutoEntry):
+        pass
+
+    with pytest.raises(ValueError, match=re.escape('Cannot create a leaf path entry.')):
+        SubclassedAutoEntry(0, int, optree.PyTreeKind.LEAF)
+
+    with pytest.raises(ValueError, match=re.escape('Cannot create a path entry for None.')):
+        SubclassedAutoEntry(None, type(None), optree.PyTreeKind.NONE)
+
+    assert_equal_type_and_value(
+        SubclassedAutoEntry(0, tuple, optree.PyTreeKind.TUPLE),
+        optree.PyTreeEntry(0, tuple, optree.PyTreeKind.TUPLE),
+        expected_type=SubclassedAutoEntry,
+    )
 
 
 def test_pytree_auto_entry_new_dispatch():
