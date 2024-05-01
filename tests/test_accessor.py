@@ -228,3 +228,41 @@ def test_pytree_accessor_equal_hash(none_is_leaf):
                 assert hash(accessor1) == hash(accessor2)
             else:
                 assert hash(accessor1) != hash(accessor2)
+
+
+def test_pytree_entry_init():
+    for path_entry_type in (
+        optree.PyTreeEntry,
+        optree.GetAttrEntry,
+        optree.GetItemEntry,
+        optree.FlattenedEntry,
+        optree.AutoEntry,
+        optree.SequenceEntry,
+        optree.MappingEntry,
+        optree.NamedTupleEntry,
+        optree.StructSequenceEntry,
+        optree.DataclassEntry,
+    ):
+        entry = path_entry_type(0, int, optree.PyTreeKind.CUSTOM)
+        assert entry.entry == 0
+        assert entry.type is int
+        assert entry.kind is optree.PyTreeKind.CUSTOM
+
+        with pytest.raises(
+            ValueError,
+            match=(
+                re.escape('Cannot create a leaf path entry.')
+                if path_entry_type is not optree.AutoEntry
+                else r'Cannot create an automatic path entry for PyTreeKind .*\.'
+            ),
+        ):
+            path_entry_type(0, int, optree.PyTreeKind.LEAF)
+        with pytest.raises(
+            ValueError,
+            match=(
+                re.escape('Cannot create a path entry for None.')
+                if path_entry_type is not optree.AutoEntry
+                else r'Cannot create an automatic path entry for PyTreeKind .*\.'
+            ),
+        ):
+            path_entry_type(None, type(None), optree.PyTreeKind.NONE)

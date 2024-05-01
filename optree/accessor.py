@@ -162,7 +162,7 @@ class AutoEntry(PyTreeEntry):
             return super().__new__(cls)
 
         if kind != PyTreeKind.CUSTOM:
-            raise ValueError(f'Cannot create an automatic path entry for {kind!r}.')
+            raise ValueError(f'Cannot create an automatic path entry for PyTreeKind {kind!r}.')
 
         path_entry_type: builtins.type[PyTreeEntry]
         if is_structseq_class(type):
