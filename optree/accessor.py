@@ -186,8 +186,8 @@ class AutoEntry(PyTreeEntry):
             return path_entry_type(entry, type, kind)
 
         # The __init__() method will be called if the returned instance is a subtype of AutoEntry.
-        # We should return an uninitialized instance. But we will never reach this point.
-        raise NotImplementedError('Unreachable code.')
+        # We should return an uninitialized instance.
+        return super().__new__(path_entry_type)
 
 
 class GetItemEntry(PyTreeEntry):

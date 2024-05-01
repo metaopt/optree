@@ -18,7 +18,7 @@
 import dataclasses
 import itertools
 import re
-from collections import UserDict, UserList
+from collections import OrderedDict, UserDict, UserList, defaultdict, deque
 from typing import Any, NamedTuple
 
 import pytest
@@ -27,9 +27,11 @@ import optree
 from helpers import TREE_ACCESSORS, SysFloatInfoType, parametrize
 
 
-def assert_equal_type_and_value(a, b):
-    assert type(a) == type(b)
-    assert a == b
+def assert_equal_type_and_value(actual, expected, expected_type=None):
+    if expected_type is None:
+        expected_type = type(expected)
+    assert type(actual) == expected_type
+    assert actual == expected
 
 
 def test_pytree_accessor_new():
@@ -309,68 +311,95 @@ def test_pytree_auto_entry_new_dispatch():
     class MyObject:
         pass
 
-    entry = optree.AutoEntry(0, SysFloatInfoType, optree.PyTreeKind.CUSTOM)
-    assert entry.entry == 0
-    assert entry.type is SysFloatInfoType
-    assert entry.kind == optree.PyTreeKind.CUSTOM
-    assert type(entry) is optree.StructSequenceEntry
+    assert_equal_type_and_value(
+        optree.AutoEntry(0, SysFloatInfoType, optree.PyTreeKind.CUSTOM),
+        optree.StructSequenceEntry(0, SysFloatInfoType, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.StructSequenceEntry,
+    )
 
-    entry = optree.AutoEntry(0, CustomTuple, optree.PyTreeKind.CUSTOM)
-    assert entry.entry == 0
-    assert entry.type is CustomTuple
-    assert entry.kind == optree.PyTreeKind.CUSTOM
-    assert type(entry) is optree.NamedTupleEntry
+    assert_equal_type_and_value(
+        optree.AutoEntry(0, CustomTuple, optree.PyTreeKind.CUSTOM),
+        optree.NamedTupleEntry(0, CustomTuple, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.NamedTupleEntry,
+    )
 
-    entry = optree.AutoEntry('foo', CustomDataclass, optree.PyTreeKind.CUSTOM)
-    assert entry.entry == 'foo'
-    assert entry.type is CustomDataclass
-    assert entry.kind == optree.PyTreeKind.CUSTOM
-    assert type(entry) is optree.DataclassEntry
+    assert_equal_type_and_value(
+        optree.AutoEntry('foo', CustomDataclass, optree.PyTreeKind.CUSTOM),
+        optree.DataclassEntry('foo', CustomDataclass, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.DataclassEntry,
+    )
 
-    entry = optree.AutoEntry('foo', dict, optree.PyTreeKind.CUSTOM)
-    assert entry.entry == 'foo'
-    assert entry.type is dict
-    assert entry.kind == optree.PyTreeKind.CUSTOM
-    assert type(entry) is optree.MappingEntry
+    assert_equal_type_and_value(
+        optree.AutoEntry('foo', dict, optree.PyTreeKind.CUSTOM),
+        optree.MappingEntry('foo', dict, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.MappingEntry,
+    )
 
-    entry = optree.AutoEntry('foo', MyMapping, optree.PyTreeKind.CUSTOM)
-    assert entry.entry == 'foo'
-    assert entry.type is MyMapping
-    assert entry.kind == optree.PyTreeKind.CUSTOM
-    assert type(entry) is optree.MappingEntry
+    assert_equal_type_and_value(
+        optree.AutoEntry('foo', OrderedDict, optree.PyTreeKind.CUSTOM),
+        optree.MappingEntry('foo', OrderedDict, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.MappingEntry,
+    )
 
-    entry = optree.AutoEntry(0, tuple, optree.PyTreeKind.CUSTOM)
-    assert entry.entry == 0
-    assert entry.type is tuple
-    assert entry.kind == optree.PyTreeKind.CUSTOM
-    assert type(entry) is optree.SequenceEntry
+    assert_equal_type_and_value(
+        optree.AutoEntry('foo', defaultdict, optree.PyTreeKind.CUSTOM),
+        optree.MappingEntry('foo', defaultdict, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.MappingEntry,
+    )
 
-    entry = optree.AutoEntry(0, list, optree.PyTreeKind.CUSTOM)
-    assert entry.entry == 0
-    assert entry.type is list
-    assert entry.kind == optree.PyTreeKind.CUSTOM
-    assert type(entry) is optree.SequenceEntry
+    assert_equal_type_and_value(
+        optree.AutoEntry('foo', MyMapping, optree.PyTreeKind.CUSTOM),
+        optree.MappingEntry('foo', MyMapping, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.MappingEntry,
+    )
 
-    entry = optree.AutoEntry(0, str, optree.PyTreeKind.CUSTOM)
-    assert entry.entry == 0
-    assert entry.type is str
-    assert entry.kind == optree.PyTreeKind.CUSTOM
-    assert type(entry) is optree.SequenceEntry
+    assert_equal_type_and_value(
+        optree.AutoEntry(0, tuple, optree.PyTreeKind.CUSTOM),
+        optree.SequenceEntry(0, tuple, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.SequenceEntry,
+    )
 
-    entry = optree.AutoEntry(0, bytes, optree.PyTreeKind.CUSTOM)
-    assert entry.entry == 0
-    assert entry.type is bytes
-    assert entry.kind == optree.PyTreeKind.CUSTOM
-    assert type(entry) is optree.SequenceEntry
+    assert_equal_type_and_value(
+        optree.AutoEntry(0, list, optree.PyTreeKind.CUSTOM),
+        optree.SequenceEntry(0, list, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.SequenceEntry,
+    )
 
-    entry = optree.AutoEntry(0, MySequence, optree.PyTreeKind.CUSTOM)
-    assert entry.entry == 0
-    assert entry.type is MySequence
-    assert entry.kind == optree.PyTreeKind.CUSTOM
-    assert type(entry) is optree.SequenceEntry
+    assert_equal_type_and_value(
+        optree.AutoEntry(0, deque, optree.PyTreeKind.CUSTOM),
+        optree.SequenceEntry(0, deque, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.SequenceEntry,
+    )
 
-    entry = optree.AutoEntry(0, MyObject, optree.PyTreeKind.CUSTOM)
-    assert entry.entry == 0
-    assert entry.type is MyObject
-    assert entry.kind == optree.PyTreeKind.CUSTOM
-    assert type(entry) is optree.FlattenedEntry
+    assert_equal_type_and_value(
+        optree.AutoEntry(0, str, optree.PyTreeKind.CUSTOM),
+        optree.SequenceEntry(0, str, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.SequenceEntry,
+    )
+
+    assert_equal_type_and_value(
+        optree.AutoEntry(0, bytes, optree.PyTreeKind.CUSTOM),
+        optree.SequenceEntry(0, bytes, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.SequenceEntry,
+    )
+
+    assert_equal_type_and_value(
+        optree.AutoEntry(0, MySequence, optree.PyTreeKind.CUSTOM),
+        optree.SequenceEntry(0, MySequence, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.SequenceEntry,
+    )
+
+    assert_equal_type_and_value(
+        optree.AutoEntry(0, MyObject, optree.PyTreeKind.CUSTOM),
+        optree.FlattenedEntry(0, MyObject, optree.PyTreeKind.CUSTOM),
+        expected_type=optree.FlattenedEntry,
+    )
+
+    class SubclassedAutoEntry(optree.AutoEntry):
+        pass
+
+    assert_equal_type_and_value(
+        SubclassedAutoEntry(0, MyObject, optree.PyTreeKind.CUSTOM),
+        optree.PyTreeEntry(0, MyObject, optree.PyTreeKind.CUSTOM),
+        expected_type=SubclassedAutoEntry,
+    )
