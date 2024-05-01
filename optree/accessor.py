@@ -164,6 +164,7 @@ class AutoEntry(PyTreeEntry):
         if kind != PyTreeKind.CUSTOM:
             raise ValueError(f'Cannot create an automatic path entry for PyTreeKind {kind!r}.')
 
+        # Dispatch the path entry type based on the node type
         path_entry_type: builtins.type[PyTreeEntry]
         if is_structseq_class(type):
             path_entry_type = StructSequenceEntry
@@ -185,8 +186,8 @@ class AutoEntry(PyTreeEntry):
             return path_entry_type(entry, type, kind)
 
         # The __init__() method will be called if the returned instance is a subtype of AutoEntry.
-        # We should return an uninitialized instance.
-        return super().__new__(path_entry_type)
+        # We should return an uninitialized instance. But we will never reach this point.
+        raise NotImplementedError('Unreachable code.')
 
 
 class GetItemEntry(PyTreeEntry):

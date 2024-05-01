@@ -15,12 +15,13 @@
 
 # pylint: disable=missing-class-docstring,missing-function-docstring,invalid-name
 
+import dataclasses
 import gc
 import itertools
 import sys
 import time
 from collections import OrderedDict, UserDict, defaultdict, deque, namedtuple
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import pytest
 
@@ -101,6 +102,14 @@ class CustomNamedTupleSubclass(CustomTuple):
 
 class EmptyTuple(NamedTuple):
     pass
+
+
+@dataclasses.dataclass
+class CustomDataclass:
+    alpha: Any
+    beta: Any
+    gamma: Any
+    delta: Any
 
 
 # sys.float_info(max=*, max_exp=*, max_10_exp=*, min=*, min_exp=*, min_10_exp=*, dig=*, mant_dig=*, epsilon=*, radix=*, rounds=*)
