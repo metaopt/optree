@@ -141,9 +141,8 @@ optree.register_pytree_node(
 )
 
 
-@optree.register_pytree_node_class(
-    namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
-)
+# pylint: disable-next=protected-access
+@optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
 class Vector2D:
     def __init__(self, x, y):
         self.x = x
@@ -163,16 +162,15 @@ class Vector2D:
         return f'{self.__class__.__name__}(x={self.x}, y={self.y})'
 
     def tree_flatten(self):
-        return ((self.x, self.y), None)
+        return (self.x, self.y), None
 
     @classmethod
     def tree_unflatten(cls, metadata, children):  # pylint: disable=unused-argument
         return cls(*children)
 
 
-@optree.register_pytree_node_class(
-    namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
-)
+# pylint: disable-next=protected-access
+@optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
 @dataclasses.dataclass
 class MyDataclass:
     alpha: Any
@@ -217,9 +215,8 @@ class MyOtherDataclass:
         return cls(a, b, c, d)
 
 
-@optree.register_pytree_node_class(
-    namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
-)
+# pylint: disable-next=protected-access
+@optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
 @dataclasses.dataclass
 class MyAnotherDataclass:
     x: Any
@@ -237,6 +234,8 @@ class MyAnotherDataclass:
 # pylint: disable-next=protected-access
 @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
 class FlatCache:
+    TREE_PATH_ENTRY_TYPE = optree.GetItemEntry
+
     def __init__(self, structured, *, leaves=None, treespec=None):
         if treespec is None:
             leaves, treespec = optree.tree_flatten(structured)
@@ -877,10 +876,10 @@ TREE_ACCESSORS_NONE_IS_NODE = [
         ),
     ],
     [],
-    [optree.PyTreeAccessor((optree.FlattenedEntry(0, FlatCache, optree.PyTreeKind.CUSTOM),))],
+    [optree.PyTreeAccessor((optree.GetItemEntry(0, FlatCache, optree.PyTreeKind.CUSTOM),))],
     [
-        optree.PyTreeAccessor((optree.FlattenedEntry(0, FlatCache, optree.PyTreeKind.CUSTOM),)),
-        optree.PyTreeAccessor((optree.FlattenedEntry(1, FlatCache, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.GetItemEntry(0, FlatCache, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.GetItemEntry(1, FlatCache, optree.PyTreeKind.CUSTOM),)),
     ],
 ]
 
@@ -1337,10 +1336,10 @@ TREE_ACCESSORS_NONE_IS_LEAF = [
         ),
     ],
     [],
-    [optree.PyTreeAccessor((optree.FlattenedEntry(0, FlatCache, optree.PyTreeKind.CUSTOM),))],
+    [optree.PyTreeAccessor((optree.GetItemEntry(0, FlatCache, optree.PyTreeKind.CUSTOM),))],
     [
-        optree.PyTreeAccessor((optree.FlattenedEntry(0, FlatCache, optree.PyTreeKind.CUSTOM),)),
-        optree.PyTreeAccessor((optree.FlattenedEntry(1, FlatCache, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.GetItemEntry(0, FlatCache, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.GetItemEntry(1, FlatCache, optree.PyTreeKind.CUSTOM),)),
     ],
 ]
 TREE_ACCESSORS = {

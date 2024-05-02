@@ -116,7 +116,7 @@ pytest: pytest-install
 	$(PYTHON) -m pytest --version
 	cd tests && $(PYTHON) -c 'import $(PROJECT_PATH)' && \
 	$(PYTHON) -c 'import $(PROJECT_PATH)._C; print(f"GLIBCXX_USE_CXX11_ABI={$(PROJECT_PATH)._C.GLIBCXX_USE_CXX11_ABI}")' && \
-	$(PYTHON) -m pytest --verbose --color=yes --durations=0 \
+	$(PYTHON) -m pytest --verbose --color=yes \
 		--cov="$(PROJECT_PATH)" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
 		$(PYTESTOPTS) .
 
