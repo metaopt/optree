@@ -341,7 +341,7 @@ class DataclassEntry(GetAttrEntry):
 
     __slots__: ClassVar[tuple[()]] = ()
 
-    entry: str | int
+    entry: str | int  # type: ignore[assignment]
 
     @property
     def fields(self) -> tuple[str, ...]:
@@ -430,10 +430,6 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
     def __repr__(self) -> str:
         """Get the representation of the accessor."""
         return f'{self.__class__.__name__}({self.pprint()}, {super().__repr__()})'
-
-    def __str__(self) -> str:
-        """Get the string representation of the accessor."""
-        return f'{self.__class__.__name__}({self.pprint()}'
 
     def pprint(self, root: str = '*') -> str:
         """Pretty name of the path."""
