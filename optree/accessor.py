@@ -101,14 +101,14 @@ class PyTreeEntry:
                 self.type,
                 self.kind,
                 self.__class__.__call__.__code__.co_code,
-                self.__class__.pprint.__code__.co_code,
+                self.__class__.codegen.__code__.co_code,
             )
             == (
                 other.entry,
                 other.type,
                 other.kind,
                 other.__class__.__call__.__code__.co_code,
-                other.__class__.pprint.__code__.co_code,
+                other.__class__.codegen.__code__.co_code,
             )
         )
 
@@ -120,7 +120,7 @@ class PyTreeEntry:
                 self.type,
                 self.kind,
                 self.__class__.__call__.__code__.co_code,
-                self.__class__.pprint.__code__.co_code,
+                self.__class__.codegen.__code__.co_code,
             ),
         )
 
@@ -128,9 +128,9 @@ class PyTreeEntry:
         """Get the representation of the path entry."""
         return f'{self.__class__.__name__}(entry={self.entry!r}, type={self.type!r})'
 
-    def pprint(self, root: str = '') -> str:
-        """Pretty name of the path entry."""
-        return f'{root}[<flat index {self.entry!r}>]'  # should be overridden
+    def codegen(self, node: str = '') -> str:
+        """Generate code for accessing the path entry."""
+        return f'{node}[<flat index {self.entry!r}>]'  # should be overridden
 
 
 del SLOTS
@@ -200,9 +200,9 @@ class GetItemEntry(PyTreeEntry):
         """Get the child object."""
         return obj[self.entry]
 
-    def pprint(self, root: str = '') -> str:
-        """Pretty name of the path entry."""
-        return f'{root}[{self.entry!r}]'
+    def codegen(self, node: str = '') -> str:
+        """Generate code for accessing the path entry."""
+        return f'{node}[{self.entry!r}]'
 
 
 class GetAttrEntry(PyTreeEntry):
@@ -221,9 +221,9 @@ class GetAttrEntry(PyTreeEntry):
         """Get the child object."""
         return getattr(obj, self.name)
 
-    def pprint(self, root: str = '') -> str:
-        """Pretty name of the path entry."""
-        return f'{root}.{self.name}'
+    def codegen(self, node: str = '') -> str:
+        """Generate code for accessing the path entry."""
+        return f'{node}.{self.name}'
 
 
 class FlattenedEntry(PyTreeEntry):  # pylint: disable=too-few-public-methods
@@ -301,9 +301,9 @@ class NamedTupleEntry(SequenceEntry[T]):
         """Get the representation of the path entry."""
         return f'{self.__class__.__name__}(field={self.field!r}, type={self.type!r})'
 
-    def pprint(self, root: str = '') -> str:
-        """Pretty name of the path entry."""
-        return f'{root}.{self.field}'
+    def codegen(self, node: str = '') -> str:
+        """Generate code for accessing the path entry."""
+        return f'{node}.{self.field}'
 
 
 class StructSequenceEntry(SequenceEntry[T]):
@@ -331,9 +331,9 @@ class StructSequenceEntry(SequenceEntry[T]):
         """Get the representation of the path entry."""
         return f'{self.__class__.__name__}(field={self.field!r}, type={self.type!r})'
 
-    def pprint(self, root: str = '') -> str:
-        """Pretty name of the path entry."""
-        return f'{root}.{self.field}'
+    def codegen(self, node: str = '') -> str:
+        """Generate code for accessing the path entry."""
+        return f'{node}.{self.field}'
 
 
 class DataclassEntry(GetAttrEntry):
@@ -429,13 +429,13 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
 
     def __repr__(self) -> str:
         """Get the representation of the accessor."""
-        return f'{self.__class__.__name__}({self.pprint()}, {super().__repr__()})'
+        return f'{self.__class__.__name__}({self.codegen()}, {super().__repr__()})'
 
-    def pprint(self, root: str = '*') -> str:
-        """Pretty name of the path."""
+    def codegen(self, root: str = '*') -> str:
+        """Generate code for accessing the path."""
         string = root
         for entry in self:
-            string = entry.pprint(string)
+            string = entry.codegen(string)
         return string
 
 

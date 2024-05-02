@@ -157,9 +157,9 @@ class Torch2NumpyEntry(optree.PyTreeEntry):
         assert self.entry == 0
         return obj.cpu().detach().numpy()
 
-    def pprint(self, root=''):
+    def codegen(self, node=''):
         assert self.entry == 0
-        return f'{root}.cpu().detach().numpy()'
+        return f'{node}.cpu().detach().numpy()'
 
 optree.register_pytree_node(
     torch.Tensor,

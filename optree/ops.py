@@ -893,7 +893,7 @@ def tree_map_with_accessor(
 
     See also :func:`tree_map`, :func:`tree_map_`, and :func:`tree_map_with_accessor_`.
 
-    >>> tree_map_with_accessor(lambda a, x: f'{a.pprint("tree")} = {x!r}', {'x': 7, 'y': (42, 64)})
+    >>> tree_map_with_accessor(lambda a, x: f'{a.codegen("tree")} = {x!r}', {'x': 7, 'y': (42, 64)})
     {'x': "tree['x'] = 7", 'y': ("tree['y'][0] = 42", "tree['y'][1] = 64")}
     >>> tree_map_with_accessor(lambda a, x: x + len(a), {'x': 7, 'y': (42, 64), 'z': None})
     {'x': 8, 'y': (44, 66), 'z': None}
@@ -1296,7 +1296,7 @@ def tree_transpose_map_with_accessor(
 
     >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
     >>> tree_transpose_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
-    ...     lambda a, x: {'depth': len(a), 'code': a.pprint('tree'), 'value': x},
+    ...     lambda a, x: {'depth': len(a), 'code': a.codegen('tree'), 'value': x},
     ...     tree,
     ... )
     {
@@ -1933,7 +1933,7 @@ def tree_broadcast_map_with_accessor(
     >>> tree_broadcast_map_with_accessor(lambda a, x: x + len(a), {'x': 7, 'y': (42, 64), 'z': None})
     {'x': 8, 'y': (44, 66), 'z': None}
     >>> tree_broadcast_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
-    ...     lambda a, x: a.pprint('tree'),
+    ...     lambda a, x: a.codegen('tree'),
     ...     {'x': 7, 'y': (42, 64), 'z': {1.5: None}},
     ... )
     {
@@ -1942,7 +1942,7 @@ def tree_broadcast_map_with_accessor(
         'z': {1.5: None}
     }
     >>> tree_broadcast_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
-    ...     lambda a, x: a.pprint('tree'),
+    ...     lambda a, x: a.codegen('tree'),
     ...     {'x': 7, 'y': (42, 64), 'z': {1.5: None}},
     ...     none_is_leaf=True,
     ... )
@@ -1956,7 +1956,7 @@ def tree_broadcast_map_with_accessor(
     of all inputs:
 
     >>> tree_broadcast_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
-    ...     lambda a, x, y: f'{a.pprint("tree")} = {x * y}',
+    ...     lambda a, x, y: f'{a.codegen("tree")} = {x * y}',
     ...     [5, 6, (3, 4)],
     ...     [{'a': 7, 'b': 9}, [1, 2], 8],
     ... )
@@ -3209,7 +3209,7 @@ def _prefix_error(
     ):
         yield lambda name: ValueError(
             f'pytree structure error: different types at key path\n'
-            f'    {{name}}{accessor.pprint("") if accessor else " tree root"}\n'
+            f'    {{name}}{accessor.codegen("") if accessor else " tree root"}\n'
             f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
             f'    {type(prefix_tree)}\n'
             f'but at the same key path the full pytree has a subtree of different type\n'
@@ -3254,7 +3254,7 @@ def _prefix_error(
                 key_difference += f'\nextra key(s):\n    {extra_keys}'
             yield lambda name: ValueError(
                 f'pytree structure error: different pytree keys at key path\n'
-                f'    {{name}}{accessor.pprint("") if accessor else " tree root"}\n'
+                f'    {{name}}{accessor.codegen("") if accessor else " tree root"}\n'
                 f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
                 f'    {prefix_tree_type}\n'
                 f'with {len(prefix_tree_keys)} key(s)\n'
@@ -3272,7 +3272,7 @@ def _prefix_error(
     if len(prefix_tree_children) != len(full_tree_children):
         yield lambda name: ValueError(
             f'pytree structure error: different numbers of pytree children at key path\n'
-            f'    {{name}}{accessor.pprint("") if accessor else " tree root"}\n'
+            f'    {{name}}{accessor.codegen("") if accessor else " tree root"}\n'
             f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
             f'    {prefix_tree_type}\n'
             f'with {len(prefix_tree_children)} children, '
@@ -3303,7 +3303,7 @@ def _prefix_error(
         )
         yield lambda name: ValueError(
             f'pytree structure error: different pytree metadata at key path\n'
-            f'    {{name}}{accessor.pprint("") if accessor else " tree root"}\n'
+            f'    {{name}}{accessor.codegen("") if accessor else " tree root"}\n'
             f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
             f'    {prefix_tree_type}\n'
             f'with metadata\n'
