@@ -285,7 +285,7 @@ def test_pytree_entry_init():
             path_entry_type(None, type(None), optree.PyTreeKind.NONE)
 
 
-def test_pytree_auto_entry_new_invalid_kind():
+def test_auto_entry_new_invalid_kind():
     with pytest.raises(
         ValueError,
         match=r'Cannot create an automatic path entry for PyTreeKind .*\.',
@@ -320,7 +320,7 @@ def test_pytree_auto_entry_new_invalid_kind():
     )
 
 
-def test_pytree_auto_entry_new_dispatch():
+def test_auto_entry_new_dispatch():
     class CustomTuple(NamedTuple):
         x: Any
         y: Any
@@ -432,3 +432,53 @@ def test_pytree_auto_entry_new_dispatch():
         optree.PyTreeEntry(0, MyObject, optree.PyTreeKind.CUSTOM),
         expected_type=SubclassedAutoEntry,
     )
+
+
+def test_flattened_entry_call():
+
+    @optree.register_pytree_node_class(namespace='namespace')
+    class MyObject:
+        def __init__(self, x, y, z):
+            self.x = x
+            self.y = y
+            self.z = z
+
+        def __eq__(self, other):
+            return isinstance(other, MyObject) and (self.x, self.y, self.z) == (
+                other.x,
+                other.y,
+                other.z,
+            )
+
+        def __hash__(self):
+            return hash((self.x, self.y, self.z))
+
+        def tree_flatten(self):
+            return (self.x, self.y, self.z), None
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            return cls(*children)
+
+    obj = MyObject(1, 2, 3)
+    expected_accessors = [
+        optree.PyTreeAccessor(
+            (optree.FlattenedEntry(0, MyObject, optree.PyTreeKind.CUSTOM),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.FlattenedEntry(1, MyObject, optree.PyTreeKind.CUSTOM),),
+        ),
+        optree.PyTreeAccessor(
+            (optree.FlattenedEntry(2, MyObject, optree.PyTreeKind.CUSTOM),),
+        ),
+    ]
+
+    accessors, leaves, _ = optree.tree_flatten_with_accessor(obj, namespace='namespace')
+    assert leaves == [1, 2, 3]
+    assert accessors == expected_accessors
+    for a, b in zip(accessors, expected_accessors):
+        assert_equal_type_and_value(a, b)
+
+    for accessor in accessors:
+        with pytest.raises(TypeError, match=r"<class '.*'> cannot access through .* via entry .*"):
+            accessor(obj)
