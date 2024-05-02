@@ -217,6 +217,23 @@ class MyOtherDataclass:
         return cls(a, b, c, d)
 
 
+@optree.register_pytree_node_class(
+    namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
+)
+@dataclasses.dataclass
+class MyAnotherDataclass:
+    x: Any
+    y: Any
+    z: Any
+
+    def tree_flatten(self):
+        return (self.x, self.y, self.z), None
+
+    @classmethod
+    def tree_unflatten(cls, metadata, children):
+        return cls(*children)
+
+
 # pylint: disable-next=protected-access
 @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
 class FlatCache:
@@ -345,7 +362,7 @@ TREES = (
     CustomNamedTupleSubclass(foo='hello', bar=3.5),
     MyDataclass(2, None, 3, 5),
     MyOtherDataclass(7, 11, None, 13),
-    MyOtherDataclass(MyDataclass(2, 3, None, 5), 7, MyOtherDataclass(11, None, 13, 19), 23),
+    MyAnotherDataclass(MyDataclass(2, 3, None, 5), 7, MyOtherDataclass(11, None, 13, 19)),
     FlatCache(None),
     FlatCache(1),
     FlatCache({'a': [1, 2]}),
@@ -407,7 +424,7 @@ TREE_PATHS_NONE_IS_NODE = [
     [(0,), (1,)],
     [('alpha',), ('gamma',), ('delta',)],
     [('a',)],
-    [('a', 'alpha'), ('a', 'beta'), ('a', 'delta'), ('c', 'a'), ('c', 'c')],
+    [(0, 'alpha'), (0, 'beta'), (0, 'delta'), (1,), (2, 'a'), (2, 'c')],
     [],
     [(0,)],
     [(0,), (1,)],
@@ -470,7 +487,7 @@ TREE_PATHS_NONE_IS_LEAF = [
     [(0,), (1,)],
     [('alpha',), ('beta',), ('gamma',), ('delta',)],
     [('a',), ('c',)],
-    [('a', 'alpha'), ('a', 'beta'), ('a', 'gamma'), ('a', 'delta'), ('c', 'a'), ('c', 'c')],
+    [(0, 'alpha'), (0, 'beta'), (0, 'gamma'), (0, 'delta'), (1,), (2, 'a'), (2, 'c')],
     [],
     [(0,)],
     [(0,), (1,)],
@@ -827,31 +844,34 @@ TREE_ACCESSORS_NONE_IS_NODE = [
     [
         optree.PyTreeAccessor(
             (
-                optree.GetAttrEntry('a', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
+                optree.DataclassEntry(0, MyAnotherDataclass, optree.PyTreeKind.CUSTOM),
                 optree.DataclassEntry('alpha', MyDataclass, optree.PyTreeKind.CUSTOM),
             ),
         ),
         optree.PyTreeAccessor(
             (
-                optree.GetAttrEntry('a', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
+                optree.DataclassEntry(0, MyAnotherDataclass, optree.PyTreeKind.CUSTOM),
                 optree.DataclassEntry('beta', MyDataclass, optree.PyTreeKind.CUSTOM),
             ),
         ),
         optree.PyTreeAccessor(
             (
-                optree.GetAttrEntry('a', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
+                optree.DataclassEntry(0, MyAnotherDataclass, optree.PyTreeKind.CUSTOM),
                 optree.DataclassEntry('delta', MyDataclass, optree.PyTreeKind.CUSTOM),
             ),
         ),
         optree.PyTreeAccessor(
+            (optree.DataclassEntry(1, MyAnotherDataclass, optree.PyTreeKind.CUSTOM),),
+        ),
+        optree.PyTreeAccessor(
             (
-                optree.GetAttrEntry('c', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
+                optree.DataclassEntry(2, MyAnotherDataclass, optree.PyTreeKind.CUSTOM),
                 optree.GetAttrEntry('a', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
             ),
         ),
         optree.PyTreeAccessor(
             (
-                optree.GetAttrEntry('c', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
+                optree.DataclassEntry(2, MyAnotherDataclass, optree.PyTreeKind.CUSTOM),
                 optree.GetAttrEntry('c', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
             ),
         ),
@@ -1278,37 +1298,40 @@ TREE_ACCESSORS_NONE_IS_LEAF = [
     [
         optree.PyTreeAccessor(
             (
-                optree.GetAttrEntry('a', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
+                optree.DataclassEntry(0, MyAnotherDataclass, optree.PyTreeKind.CUSTOM),
                 optree.DataclassEntry('alpha', MyDataclass, optree.PyTreeKind.CUSTOM),
             ),
         ),
         optree.PyTreeAccessor(
             (
-                optree.GetAttrEntry('a', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
+                optree.DataclassEntry(0, MyAnotherDataclass, optree.PyTreeKind.CUSTOM),
                 optree.DataclassEntry('beta', MyDataclass, optree.PyTreeKind.CUSTOM),
             ),
         ),
         optree.PyTreeAccessor(
             (
-                optree.GetAttrEntry('a', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
+                optree.DataclassEntry(0, MyAnotherDataclass, optree.PyTreeKind.CUSTOM),
                 optree.DataclassEntry('gamma', MyDataclass, optree.PyTreeKind.CUSTOM),
             ),
         ),
         optree.PyTreeAccessor(
             (
-                optree.GetAttrEntry('a', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
+                optree.DataclassEntry(0, MyAnotherDataclass, optree.PyTreeKind.CUSTOM),
                 optree.DataclassEntry('delta', MyDataclass, optree.PyTreeKind.CUSTOM),
             ),
         ),
         optree.PyTreeAccessor(
+            (optree.DataclassEntry(1, MyAnotherDataclass, optree.PyTreeKind.CUSTOM),),
+        ),
+        optree.PyTreeAccessor(
             (
-                optree.GetAttrEntry('c', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
+                optree.DataclassEntry(2, MyAnotherDataclass, optree.PyTreeKind.CUSTOM),
                 optree.GetAttrEntry('a', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
             ),
         ),
         optree.PyTreeAccessor(
             (
-                optree.GetAttrEntry('c', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
+                optree.DataclassEntry(2, MyAnotherDataclass, optree.PyTreeKind.CUSTOM),
                 optree.GetAttrEntry('c', MyOtherDataclass, optree.PyTreeKind.CUSTOM),
             ),
         ),
@@ -1363,7 +1386,7 @@ TREE_STRINGS_NONE_IS_NODE = (
     'PyTreeSpec(CustomNamedTupleSubclass(foo=*, bar=*))',
     'PyTreeSpec(CustomTreeNode(MyDataclass[None], [*, None, *, *]))',
     'PyTreeSpec(CustomTreeNode(MyOtherDataclass[(11, 13)], [*, None]))',
-    'PyTreeSpec(CustomTreeNode(MyOtherDataclass[(7, 23)], [CustomTreeNode(MyDataclass[None], [*, *, None, *]), CustomTreeNode(MyOtherDataclass[(None, 19)], [*, *])]))',
+    'PyTreeSpec(CustomTreeNode(MyAnotherDataclass[None], [CustomTreeNode(MyDataclass[None], [*, *, None, *]), *, CustomTreeNode(MyOtherDataclass[(None, 19)], [*, *])]))',
     'PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec(None)], []))',
     'PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec(*)], [*]))',
     "PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec({'a': [*, *]})], [*, *]))",
@@ -1406,7 +1429,7 @@ TREE_STRINGS_NONE_IS_LEAF = (
     'PyTreeSpec(CustomNamedTupleSubclass(foo=*, bar=*), NoneIsLeaf)',
     'PyTreeSpec(CustomTreeNode(MyDataclass[None], [*, *, *, *]), NoneIsLeaf)',
     'PyTreeSpec(CustomTreeNode(MyOtherDataclass[(11, 13)], [*, *]), NoneIsLeaf)',
-    'PyTreeSpec(CustomTreeNode(MyOtherDataclass[(7, 23)], [CustomTreeNode(MyDataclass[None], [*, *, *, *]), CustomTreeNode(MyOtherDataclass[(None, 19)], [*, *])]), NoneIsLeaf)',
+    'PyTreeSpec(CustomTreeNode(MyAnotherDataclass[None], [CustomTreeNode(MyDataclass[None], [*, *, *, *]), *, CustomTreeNode(MyOtherDataclass[(None, 19)], [*, *])]), NoneIsLeaf)',
     'PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec(None)], []), NoneIsLeaf)',
     'PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec(*)], [*]), NoneIsLeaf)',
     "PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec({'a': [*, *]})], [*, *]), NoneIsLeaf)",

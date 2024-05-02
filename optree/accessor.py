@@ -212,13 +212,18 @@ class GetAttrEntry(PyTreeEntry):
 
     entry: str
 
+    @property
+    def name(self) -> str:
+        """Get the attribute name."""
+        return self.entry
+
     def __call__(self, obj: Any) -> Any:
         """Get the child object."""
-        return getattr(obj, self.entry)
+        return getattr(obj, self.name)
 
     def pprint(self, root: str = '') -> str:
         """Pretty name of the path entry."""
-        return f'{root}.{self.entry}'
+        return f'{root}.{self.name}'
 
 
 class FlattenedEntry(PyTreeEntry):  # pylint: disable=too-few-public-methods
@@ -336,7 +341,7 @@ class DataclassEntry(GetAttrEntry):
 
     __slots__: ClassVar[tuple[()]] = ()
 
-    entry: str
+    entry: str | int
 
     @property
     def fields(self) -> tuple[str, ...]:
@@ -346,11 +351,18 @@ class DataclassEntry(GetAttrEntry):
     @property
     def field(self) -> str:
         """Get the field name."""
+        if isinstance(self.entry, int):
+            return self.fields[self.entry]
         return self.entry
+
+    @property
+    def name(self) -> str:
+        """Get the attribute name."""
+        return self.field
 
     def __repr__(self) -> str:
         """Get the representation of the path entry."""
-        return f'{self.__class__.__name__}(field={self.entry!r}, type={self.type!r})'
+        return f'{self.__class__.__name__}(field={self.field!r}, type={self.type!r})'
 
 
 class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
