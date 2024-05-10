@@ -3,10 +3,10 @@
 pytest
 pytest-cov
 pytest-xdist
-isort >= 5.11.0
-black >= 22.6.0
-pylint[spelling] >= 2.15.0
-mypy >= 0.990
+isort
+black
+pylint[spelling]
+mypy
 flake8
 flake8-bugbear
 flake8-comprehensions
@@ -21,6 +21,6 @@ xdoctest
 cpplint
 pre-commit
 
-jax[cpu] >= 0.3
+jax[cpu] >= 0.4.6
 numpy
 torch
