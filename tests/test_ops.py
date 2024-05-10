@@ -29,6 +29,7 @@ import optree
 from helpers import (
     IS_LEAF_FUNCTIONS,
     LEAVES,
+    TREE_ACCESSORS,
     TREE_PATHS,
     TREES,
     Counter,
@@ -43,10 +44,17 @@ def test_max_depth():
     lst = [1]
     for _ in range(optree.MAX_RECURSION_DEPTH - 1):
         lst = [lst]
+    list(optree.tree_iter(lst))
     optree.tree_flatten(lst)
     optree.tree_flatten_with_path(lst)
+    optree.tree_flatten_with_accessor(lst)
 
     lst = [lst]
+    with pytest.raises(
+        RecursionError,
+        match='Maximum recursion depth exceeded during flattening the tree.',
+    ):
+        list(optree.tree_iter(lst))
     with pytest.raises(
         RecursionError,
         match='Maximum recursion depth exceeded during flattening the tree.',
@@ -57,6 +65,11 @@ def test_max_depth():
         match='Maximum recursion depth exceeded during flattening the tree.',
     ):
         optree.tree_flatten_with_path(lst)
+    with pytest.raises(
+        RecursionError,
+        match='Maximum recursion depth exceeded during flattening the tree.',
+    ):
+        optree.tree_flatten_with_accessor(lst)
 
 
 @parametrize(
@@ -80,6 +93,7 @@ def test_round_trip_with_flatten_up_to(tree, none_is_leaf, namespace):
     leaves = treespec.flatten_up_to(tree)
     actual = optree.tree_unflatten(treespec, leaves)
     assert actual == tree
+    assert leaves == [accessor(tree) for accessor in optree.treespec_accessors(treespec)]
 
 
 @parametrize(
@@ -242,19 +256,19 @@ def test_walk():
 
 
 def test_flatten_up_to():
-    _, treespec = optree.tree_flatten([(1, 2), None, CustomTuple(foo=3, bar=7)])
-    subtrees = treespec.flatten_up_to(
-        [({'foo': 7}, (3, 4)), None, CustomTuple(foo=(11, 9), bar=None)],
-    )
+    treespec = optree.tree_structure([(1, 2), None, CustomTuple(foo=3, bar=7)])
+    tree = [({'foo': 7}, (3, 4)), None, CustomTuple(foo=(11, 9), bar=None)]
+    subtrees = treespec.flatten_up_to(tree)
     assert subtrees == [{'foo': 7}, (3, 4), (11, 9), None]
+    assert subtrees == [accessor(tree) for accessor in optree.treespec_accessors(treespec)]
 
 
 def test_flatten_up_to_none_is_leaf():
-    _, treespec = optree.tree_flatten([(1, 2), None, CustomTuple(foo=3, bar=7)], none_is_leaf=True)
-    subtrees = treespec.flatten_up_to(
-        [({'foo': 7}, (3, 4)), None, CustomTuple(foo=(11, 9), bar=None)],
-    )
+    treespec = optree.tree_structure([(1, 2), None, CustomTuple(foo=3, bar=7)], none_is_leaf=True)
+    tree = [({'foo': 7}, (3, 4)), None, CustomTuple(foo=(11, 9), bar=None)]
+    subtrees = treespec.flatten_up_to(tree)
     assert subtrees == [{'foo': 7}, (3, 4), None, (11, 9), None]
+    assert subtrees == [accessor(tree) for accessor in optree.treespec_accessors(treespec)]
 
 
 @parametrize(
@@ -263,6 +277,7 @@ def test_flatten_up_to_none_is_leaf():
         lambda tree, is_leaf: list(optree.tree_iter(tree, is_leaf)),
         lambda tree, is_leaf: optree.tree_flatten(tree, is_leaf)[0],
         lambda tree, is_leaf: optree.tree_flatten_with_path(tree, is_leaf)[1],
+        lambda tree, is_leaf: optree.tree_flatten_with_accessor(tree, is_leaf)[1],
     ],
 )
 def test_flatten_is_leaf(leaves_fn):
@@ -290,6 +305,7 @@ def test_flatten_is_leaf(leaves_fn):
         optree.tree_structure,
         lambda tree, is_leaf: optree.tree_flatten(tree, is_leaf)[1],
         lambda tree, is_leaf: optree.tree_flatten_with_path(tree, is_leaf)[2],
+        lambda tree, is_leaf: optree.tree_flatten_with_accessor(tree, is_leaf)[2],
     ],
 )
 def test_structure_is_leaf(structure_fn):
@@ -311,24 +327,52 @@ def test_structure_is_leaf(structure_fn):
 @parametrize(
     data=list(
         itertools.chain(
-            zip(TREES, TREE_PATHS[False], itertools.repeat(False)),
-            zip(TREES, TREE_PATHS[True], itertools.repeat(True)),
+            zip(TREES, TREE_PATHS[False], TREE_ACCESSORS[False], itertools.repeat(False)),
+            zip(TREES, TREE_PATHS[True], TREE_ACCESSORS[True], itertools.repeat(True)),
         ),
     ),
 )
-def test_paths(data):
-    tree, expected_paths, none_is_leaf = data
+def test_paths_and_accessors(data):
+    tree, expected_paths, expected_accessors, none_is_leaf = data
     expected_leaves, expected_treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
     paths, leaves, treespec = optree.tree_flatten_with_path(tree, none_is_leaf=none_is_leaf)
-    treespec_paths = optree.treespec_paths(treespec)
+    accessors, other_leaves, other_treespec = optree.tree_flatten_with_accessor(
+        tree,
+        none_is_leaf=none_is_leaf,
+    )
     assert len(paths) == len(leaves)
+    assert len(accessors) == len(leaves)
     assert leaves == expected_leaves
     assert treespec == expected_treespec
+    assert other_leaves == expected_leaves
+    assert other_treespec == expected_treespec
     assert paths == expected_paths
-    assert len(treespec_paths) == len(leaves)
-    assert treespec_paths == expected_paths
-    paths = optree.tree_paths(tree, none_is_leaf=none_is_leaf)
-    assert paths == expected_paths
+    assert accessors == expected_accessors
+    for leaf, accessor, path in zip(leaves, accessors, paths):
+        assert isinstance(accessor, optree.PyTreeAccessor)
+        assert isinstance(path, tuple)
+        assert len(accessor) == len(path)
+        assert all(
+            isinstance(e, optree.PyTreeEntry)
+            and isinstance(e.type, type)
+            and isinstance(e.kind, optree.PyTreeKind)
+            for e in accessor
+        )
+        assert accessor.path == path
+        assert tuple(e.entry for e in accessor) == path
+        assert accessor(tree) == leaf
+        if all(e.__class__.codegen is not optree.PyTreeEntry.codegen for e in accessor):
+            # pylint: disable-next=eval-used
+            assert eval(accessor.codegen('__tree'), {'__tree': tree}, {}) == leaf
+            # pylint: disable-next=eval-used
+            assert eval(f'lambda __tree: {accessor.codegen("__tree")}', {}, {})(tree) == leaf
+        else:
+            assert 'flat index' in accessor.codegen('')
+
+    assert optree.treespec_paths(treespec) == expected_paths
+    assert optree.treespec_accessors(treespec) == expected_accessors
+    assert optree.tree_paths(tree, none_is_leaf=none_is_leaf) == expected_paths
+    assert optree.tree_accessors(tree, none_is_leaf=none_is_leaf) == expected_accessors
 
 
 @parametrize(
@@ -337,7 +381,7 @@ def test_paths(data):
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
 )
-def test_paths_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
+def test_paths_and_accessors_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
     expected_leaves, expected_treespec = optree.tree_flatten(
         tree,
         is_leaf=is_leaf,
@@ -350,15 +394,59 @@ def test_paths_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
-    treespec_paths = optree.treespec_paths(treespec)
+    accessors, other_leaves, other_treespec = optree.tree_flatten_with_accessor(
+        tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
     assert len(paths) == len(leaves)
+    assert len(accessors) == len(leaves)
     assert leaves == expected_leaves
     assert treespec == expected_treespec
-    assert len(treespec_paths) == len(leaves)
-    assert paths == treespec_paths
-    paths = optree.tree_paths(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
-    assert len(paths) == len(leaves)
-    assert paths == treespec_paths
+    assert other_leaves == expected_leaves
+    assert other_treespec == expected_treespec
+    for leaf, accessor, path in zip(leaves, accessors, paths):
+        assert isinstance(accessor, optree.PyTreeAccessor)
+        assert isinstance(path, tuple)
+        assert len(accessor) == len(path)
+        assert all(
+            isinstance(e, optree.PyTreeEntry)
+            and isinstance(e.type, type)
+            and isinstance(e.kind, optree.PyTreeKind)
+            for e in accessor
+        )
+        assert accessor.path == path
+        assert tuple(e.entry for e in accessor) == path
+        assert accessor(tree) == leaf
+        if all(e.__class__.codegen is not optree.PyTreeEntry.codegen for e in accessor):
+            # pylint: disable-next=eval-used
+            assert eval(accessor.codegen('__tree'), {'__tree': tree}, {}) == leaf
+            # pylint: disable-next=eval-used
+            assert eval(f'lambda __tree: {accessor.codegen("__tree")}', {}, {})(tree) == leaf
+        else:
+            assert 'flat index' in accessor.codegen('')
+
+    assert optree.treespec_paths(treespec) == paths
+    assert optree.treespec_accessors(treespec) == accessors
+    assert (
+        optree.tree_paths(
+            tree,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        == paths
+    )
+    assert (
+        optree.tree_accessors(
+            tree,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        == accessors
+    )
 
 
 @parametrize(
@@ -487,7 +575,7 @@ def test_tree_map():
     assert out == (((1, [6]), (2, None), None), ((3, {'foo': 'bar'}), (4, 7), (5, [8, 9])))
 
     x = ((1, 2, None), (3, 4, 5))
-    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 0]))
+    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 10]))
     with pytest.raises(ValueError, match=re.escape('Expected None, got 7.')):
         optree.tree_map(lambda *xs: tuple(xs), x, y)
 
@@ -502,9 +590,77 @@ def test_tree_map_with_path():
     )
 
     x = ((1, 2, None), (3, 4, 5))
-    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 0]))
+    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 10]))
     with pytest.raises(ValueError, match=re.escape('Expected None, got 7.')):
         optree.tree_map_with_path(lambda *xs: tuple(xs), x, y)
+
+
+def test_tree_map_with_accessor():
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
+    out = optree.tree_map_with_accessor(lambda *xs: tuple(xs), x, y)
+    assert out == (
+        (
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                1,
+                [6],
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                2,
+                None,
+            ),
+            None,
+        ),
+        (
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                3,
+                {'foo': 'bar'},
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                4,
+                7,
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                5,
+                [8, 9],
+            ),
+        ),
+    )
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 10]))
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 7.')):
+        optree.tree_map_with_accessor(lambda *xs: tuple(xs), x, y)
 
 
 def test_tree_broadcast_map():
@@ -575,6 +731,186 @@ def test_tree_broadcast_map_with_path():
             {'foo': ((1, 0, 'foo'), 3, 'bar')},
             (((1, 1, 0), 4, 9), [((1, 1, 1, 0), 5, 9)]),
             [((1, 2, 0), 6, 10), ((1, 2, 1), 6, 11)],
+        ),
+    )
+
+
+def test_tree_broadcast_map_with_accessor():
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, None), ({'foo': 'bar'}, 8, [9, 10]))
+    out = optree.tree_broadcast_map_with_accessor(lambda *xs: tuple(xs), x, y)
+    assert out == (
+        (
+            [
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                        ),
+                    ),
+                    1,
+                    7,
+                ),
+            ],
+            None,
+            None,
+        ),
+        (
+            {
+                'foo': (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                            optree.MappingEntry('foo', dict, optree.PyTreeKind.DICT),
+                        ),
+                    ),
+                    3,
+                    'bar',
+                ),
+            },
+            (
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        ),
+                    ),
+                    4,
+                    8,
+                ),
+                [
+                    (
+                        optree.PyTreeAccessor(
+                            (
+                                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                                optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                            ),
+                        ),
+                        5,
+                        8,
+                    ),
+                ],
+            ),
+            [
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                        ),
+                    ),
+                    6,
+                    9,
+                ),
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                        ),
+                    ),
+                    6,
+                    10,
+                ),
+            ],
+        ),
+    )
+
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, 8), ({'foo': 'bar'}, 9, [10, 11]))
+    out = optree.tree_broadcast_map_with_accessor(lambda *xs: tuple(xs), x, y)
+    assert out == (
+        (
+            [
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                        ),
+                    ),
+                    1,
+                    7,
+                ),
+            ],
+            None,
+            None,
+        ),
+        (
+            {
+                'foo': (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                            optree.MappingEntry('foo', dict, optree.PyTreeKind.DICT),
+                        ),
+                    ),
+                    3,
+                    'bar',
+                ),
+            },
+            (
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        ),
+                    ),
+                    4,
+                    9,
+                ),
+                [
+                    (
+                        optree.PyTreeAccessor(
+                            (
+                                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                                optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                            ),
+                        ),
+                        5,
+                        9,
+                    ),
+                ],
+            ),
+            [
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                        ),
+                    ),
+                    6,
+                    10,
+                ),
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                        ),
+                    ),
+                    6,
+                    11,
+                ),
+            ],
         ),
     )
 
@@ -670,11 +1006,104 @@ def test_tree_transpose_map_with_path():
     x = ((1, 2, None), (3, 4, 5))
     y = ((6, [None], 7), ({'foo': 'bar'}, 8, [9, 0]))
     with pytest.raises(ValueError, match=re.escape('Expected None, got 7.')):
-        optree.tree_transpose_map(
+        optree.tree_transpose_map_with_path(
             lambda p, a, b: {'p': p, 'a': a, 'b': b},
             x,
             y,
             inner_treespec=optree.tree_structure({'p': 0, 'a': 1, 'b': 2}),
+        )
+
+
+def test_tree_transpose_map_with_accessor():
+    with pytest.raises(
+        ValueError,
+        match=r'The outer structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map_with_accessor(lambda p, u, v: {'p': p, 'u': u, 'v': v}, (), ())
+    with pytest.raises(
+        ValueError,
+        match=r'The inner structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map_with_accessor(lambda a, u, v: None, (1,), (2,))
+    with pytest.raises(
+        ValueError,
+        match=r'The inner structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map_with_accessor(lambda a, u, v: (), (1,), (2,))
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9]))
+    out = optree.tree_transpose_map_with_accessor(
+        lambda a, u, v: {'d': len(a), 'u': u, 'v': v},
+        x,
+        y,
+    )
+    assert out == {
+        'd': ((2, 2, None), (2, 2, 2)),
+        'u': ((1, 2, None), (3, 4, 5)),
+        'v': ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9])),
+    }
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
+    with pytest.raises(ValueError, match=re.escape('Expected an instance of list, got None.')):
+        optree.tree_transpose_map_with_accessor(lambda a, u, v: {'a': a, 'u': u, 'v': v}, x, y)
+    out = optree.tree_transpose_map_with_accessor(
+        lambda a, u, v: {'a': a, 'u': u, 'v': v},
+        x,
+        y,
+        inner_treespec=optree.tree_structure({'a': 0, 'u': 1, 'v': 2}),
+    )
+    assert out == {
+        'a': (
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                None,
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+            ),
+        ),
+        'u': ((1, 2, None), (3, 4, 5)),
+        'v': (([6], None, None), ({'foo': 'bar'}, 7, [8, 9])),
+    }
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = ((6, [None], 7), ({'foo': 'bar'}, 8, [9, 0]))
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 7.')):
+        optree.tree_transpose_map_with_accessor(
+            lambda a, u, v: {'a': a, 'u': u, 'v': v},
+            x,
+            y,
+            inner_treespec=optree.tree_structure({'a': 0, 'u': 1, 'v': 2}),
         )
 
 
@@ -685,9 +1114,9 @@ def test_tree_map_none_is_leaf():
     assert out == (((1, [6]), (2, None), (None, None)), ((3, {'foo': 'bar'}), (4, 7), (5, [8, 9])))
 
     x = ((1, 2, None), (3, 4, 5))
-    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 0]))
+    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 10]))
     out = optree.tree_map(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
-    assert out == (((1, [6]), (2, None), (None, 7)), ((3, {'foo': 'bar'}), (4, 8), (5, [9, 0])))
+    assert out == (((1, [6]), (2, None), (None, 7)), ((3, {'foo': 'bar'}), (4, 8), (5, [9, 10])))
 
 
 def test_tree_map_with_path_none_is_leaf():
@@ -700,21 +1129,163 @@ def test_tree_map_with_path_none_is_leaf():
     )
 
     x = ((1, 2, None), (3, 4, 5))
-    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 0]))
+    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 10]))
     out = optree.tree_map_with_path(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
     assert out == (
         (((0, 0), 1, [6]), ((0, 1), 2, None), ((0, 2), None, 7)),
-        (((1, 0), 3, {'foo': 'bar'}), ((1, 1), 4, 8), ((1, 2), 5, [9, 0])),
+        (((1, 0), 3, {'foo': 'bar'}), ((1, 1), 4, 8), ((1, 2), 5, [9, 10])),
+    )
+
+
+def test_tree_map_with_accessor_none_is_leaf():
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
+    out = optree.tree_map_with_accessor(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
+    assert out == (
+        (
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                1,
+                [6],
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                2,
+                None,
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                None,
+                None,
+            ),
+        ),
+        (
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                3,
+                {'foo': 'bar'},
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                4,
+                7,
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                5,
+                [8, 9],
+            ),
+        ),
+    )
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 10]))
+    out = optree.tree_map_with_accessor(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
+    assert out == (
+        (
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                1,
+                [6],
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                2,
+                None,
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                None,
+                7,
+            ),
+        ),
+        (
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                3,
+                {'foo': 'bar'},
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                4,
+                8,
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                5,
+                [9, 10],
+            ),
+        ),
     )
 
 
 def test_tree_broadcast_map_none_is_leaf():
     x = ((1, 2, None), (3, (4, [5]), 6))
-    y = (([7], None, None), ({'foo': 'bar'}, 9, [10, 11]))
+    y = (([7], None, None), ({'foo': 'bar'}, 8, [9, 10]))
     out = optree.tree_broadcast_map(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
     assert out == (
         ([(1, 7)], (2, None), (None, None)),
-        ({'foo': (3, 'bar')}, ((4, 9), [(5, 9)]), [(6, 10), (6, 11)]),
+        ({'foo': (3, 'bar')}, ((4, 8), [(5, 8)]), [(6, 9), (6, 10)]),
     )
 
     x = ((1, 2, None), (3, (4, [5]), 6))
@@ -728,14 +1299,14 @@ def test_tree_broadcast_map_none_is_leaf():
 
 def test_tree_broadcast_map_with_path_none_is_leaf():
     x = ((1, 2, None), (3, (4, [5]), 6))
-    y = (([7], None, None), ({'foo': 'bar'}, 9, [10, 11]))
+    y = (([7], None, None), ({'foo': 'bar'}, 8, [9, 10]))
     out = optree.tree_broadcast_map_with_path(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
     assert out == (
         ([((0, 0, 0), 1, 7)], ((0, 1), 2, None), ((0, 2), None, None)),
         (
             {'foo': ((1, 0, 'foo'), 3, 'bar')},
-            (((1, 1, 0), 4, 9), [((1, 1, 1, 0), 5, 9)]),
-            [((1, 2, 0), 6, 10), ((1, 2, 1), 6, 11)],
+            (((1, 1, 0), 4, 8), [((1, 1, 1, 0), 5, 8)]),
+            [((1, 2, 0), 6, 9), ((1, 2, 1), 6, 10)],
         ),
     )
 
@@ -748,6 +1319,222 @@ def test_tree_broadcast_map_with_path_none_is_leaf():
             {'foo': ((1, 0, 'foo'), 3, 'bar')},
             (((1, 1, 0), 4, 9), [((1, 1, 1, 0), 5, 9)]),
             [((1, 2, 0), 6, 10), ((1, 2, 1), 6, 11)],
+        ),
+    )
+
+
+def test_tree_broadcast_map_with_accessor_none_is_leaf():
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, None), ({'foo': 'bar'}, 8, [9, 10]))
+    out = optree.tree_broadcast_map_with_accessor(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
+    assert out == (
+        (
+            [
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                        ),
+                    ),
+                    1,
+                    7,
+                ),
+            ],
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                2,
+                None,
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                None,
+                None,
+            ),
+        ),
+        (
+            {
+                'foo': (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                            optree.MappingEntry('foo', dict, optree.PyTreeKind.DICT),
+                        ),
+                    ),
+                    3,
+                    'bar',
+                ),
+            },
+            (
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        ),
+                    ),
+                    4,
+                    8,
+                ),
+                [
+                    (
+                        optree.PyTreeAccessor(
+                            (
+                                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                                optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                            ),
+                        ),
+                        5,
+                        8,
+                    ),
+                ],
+            ),
+            [
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                        ),
+                    ),
+                    6,
+                    9,
+                ),
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                        ),
+                    ),
+                    6,
+                    10,
+                ),
+            ],
+        ),
+    )
+
+    x = ((1, 2, None), (3, (4, [5]), 6))
+    y = (([7], None, 8), ({'foo': 'bar'}, 9, [10, 11]))
+    out = optree.tree_broadcast_map_with_accessor(lambda *xs: tuple(xs), x, y, none_is_leaf=True)
+    assert out == (
+        (
+            [
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                        ),
+                    ),
+                    1,
+                    7,
+                ),
+            ],
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                2,
+                None,
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                None,
+                8,
+            ),
+        ),
+        (
+            {
+                'foo': (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                            optree.MappingEntry('foo', dict, optree.PyTreeKind.DICT),
+                        ),
+                    ),
+                    3,
+                    'bar',
+                ),
+            },
+            (
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        ),
+                    ),
+                    4,
+                    9,
+                ),
+                [
+                    (
+                        optree.PyTreeAccessor(
+                            (
+                                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                                optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                            ),
+                        ),
+                        5,
+                        9,
+                    ),
+                ],
+            ),
+            [
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(0, list, optree.PyTreeKind.LIST),
+                        ),
+                    ),
+                    6,
+                    10,
+                ),
+                (
+                    optree.PyTreeAccessor(
+                        (
+                            optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                            optree.SequenceEntry(1, list, optree.PyTreeKind.LIST),
+                        ),
+                    ),
+                    6,
+                    11,
+                ),
+            ],
         ),
     )
 
@@ -885,6 +1672,169 @@ def test_tree_transpose_map_with_path_none_is_leaf():
     }
 
 
+def test_tree_transpose_map_with_accessor_none_is_leaf():
+    with pytest.raises(
+        ValueError,
+        match=r'The outer structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map_with_accessor(
+            lambda a, u, v: {'a': a, 'u': u, 'v': v},
+            (),
+            (),
+            none_is_leaf=True,
+        )
+    out = optree.tree_transpose_map_with_accessor(
+        lambda a, u, v: None,
+        (1,),
+        (2,),
+        none_is_leaf=True,
+    )
+    assert out == (None,)
+    with pytest.raises(
+        ValueError,
+        match=r'The inner structure must have at least one leaf\. Got: .*\.',
+    ):
+        optree.tree_transpose_map_with_accessor(
+            lambda a, u, v: (),
+            (1,),
+            (2,),
+            none_is_leaf=True,
+        )
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9]))
+    out = optree.tree_transpose_map_with_accessor(
+        lambda a, u, v: {'d': len(a), 'u': u, 'v': v},
+        x,
+        y,
+        none_is_leaf=True,
+    )
+    assert out == {
+        'd': ((2, 2, 2), (2, 2, 2)),
+        'u': ((1, 2, None), (3, 4, 5)),
+        'v': ((6, [None], None), ({'foo': 'bar'}, 7, [8, 9])),
+    }
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
+    with pytest.raises(ValueError, match=re.escape('Expected an instance of list, got None.')):
+        optree.tree_transpose_map_with_accessor(
+            lambda a, u, v: {'a': a, 'u': u, 'v': v},
+            x,
+            y,
+            none_is_leaf=True,
+        )
+    out = optree.tree_transpose_map_with_accessor(
+        lambda a, u, v: {'a': a, 'u': u, 'v': v},
+        x,
+        y,
+        inner_treespec=optree.tree_structure({'a': 0, 'u': 1, 'v': 2}),
+        none_is_leaf=True,
+    )
+    assert out == {
+        'a': (
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+            ),
+        ),
+        'u': ((1, 2, None), (3, 4, 5)),
+        'v': (([6], None, None), ({'foo': 'bar'}, 7, [8, 9])),
+    }
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = ((6, [None], 7), ({'foo': 'bar'}, 8, [9, 0]))
+    out = optree.tree_transpose_map_with_accessor(
+        lambda a, u, v: {'a': a, 'u': u, 'v': v},
+        x,
+        y,
+        inner_treespec=optree.tree_structure({'a': 0, 'u': 1, 'v': 2}),
+        none_is_leaf=True,
+    )
+    assert out == {
+        'a': (
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+            ),
+            (
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+                optree.PyTreeAccessor(
+                    (
+                        optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+                        optree.SequenceEntry(2, tuple, optree.PyTreeKind.TUPLE),
+                    ),
+                ),
+            ),
+        ),
+        'u': ((1, 2, None), (3, 4, 5)),
+        'v': ((6, [None], 7), ({'foo': 'bar'}, 8, [9, 0])),
+    }
+
+
 def test_tree_map_key_order():
     tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
     leaves = []
@@ -893,7 +1843,7 @@ def test_tree_map_key_order():
         leaves.append(x)
         return x
 
-    for tree_map in (optree.tree_map, optree.tree_broadcast_map):
+    for tree_map in (optree.tree_map, optree.tree_broadcast_map, optree.tree_transpose_map):
         leaves.clear()
         mapped = tree_map(add_leaves, tree)
         assert mapped == tree
@@ -932,6 +1882,55 @@ def test_tree_map_with_path_key_order():
         assert leaves == [1, 2, 3, 4]
 
 
+def test_tree_map_with_accessor_key_order():
+    tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
+    accessors = []
+    leaves = []
+
+    def add_leaves(a, x):
+        accessors.append(a)
+        leaves.append(x)
+        return a, x
+
+    for tree_map_with_accessor in (
+        optree.tree_map_with_accessor,
+        optree.tree_broadcast_map_with_accessor,
+    ):
+        accessors.clear()
+        leaves.clear()
+        mapped = tree_map_with_accessor(add_leaves, tree)
+        expected = {
+            'b': (
+                optree.PyTreeAccessor((optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),)),
+                2,
+            ),
+            'a': (
+                optree.PyTreeAccessor((optree.MappingEntry('a', dict, optree.PyTreeKind.DICT),)),
+                1,
+            ),
+            'c': (
+                optree.PyTreeAccessor((optree.MappingEntry('c', dict, optree.PyTreeKind.DICT),)),
+                3,
+            ),
+            'd': None,
+            'e': (
+                optree.PyTreeAccessor((optree.MappingEntry('e', dict, optree.PyTreeKind.DICT),)),
+                4,
+            ),
+        }
+        assert mapped == expected
+        assert list(mapped.keys()) == list(expected.keys())
+        assert list(mapped.values()) == list(expected.values())
+        assert list(mapped.items()) == list(expected.items())
+        assert accessors == [
+            optree.PyTreeAccessor((optree.MappingEntry('a', dict, optree.PyTreeKind.DICT),)),
+            optree.PyTreeAccessor((optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),)),
+            optree.PyTreeAccessor((optree.MappingEntry('c', dict, optree.PyTreeKind.DICT),)),
+            optree.PyTreeAccessor((optree.MappingEntry('e', dict, optree.PyTreeKind.DICT),)),
+        ]
+        assert leaves == [1, 2, 3, 4]
+
+
 def test_tree_map_key_order_none_is_leaf():
     tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
     leaves = []
@@ -940,7 +1939,7 @@ def test_tree_map_key_order_none_is_leaf():
         leaves.append(x)
         return x
 
-    for tree_map in (optree.tree_map, optree.tree_broadcast_map):
+    for tree_map in (optree.tree_map, optree.tree_broadcast_map, optree.tree_transpose_map):
         leaves.clear()
         mapped = tree_map(add_leaves, tree, none_is_leaf=True)
         assert mapped == tree
@@ -976,6 +1975,59 @@ def test_tree_map_with_path_key_order_none_is_leaf():
         assert list(mapped.values()) == list(expected.values())
         assert list(mapped.items()) == list(expected.items())
         assert paths == [('a',), ('b',), ('c',), ('d',), ('e',)]
+        assert leaves == [1, 2, 3, None, 4]
+
+
+def test_tree_map_with_accessor_key_order_none_is_leaf():
+    tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
+    accessors = []
+    leaves = []
+
+    def add_leaves(a, x):
+        accessors.append(a)
+        leaves.append(x)
+        return a, x
+
+    for tree_map_with_accessor in (
+        optree.tree_map_with_accessor,
+        optree.tree_broadcast_map_with_accessor,
+    ):
+        accessors.clear()
+        leaves.clear()
+        mapped = tree_map_with_accessor(add_leaves, tree, none_is_leaf=True)
+        expected = {
+            'b': (
+                optree.PyTreeAccessor((optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),)),
+                2,
+            ),
+            'a': (
+                optree.PyTreeAccessor((optree.MappingEntry('a', dict, optree.PyTreeKind.DICT),)),
+                1,
+            ),
+            'c': (
+                optree.PyTreeAccessor((optree.MappingEntry('c', dict, optree.PyTreeKind.DICT),)),
+                3,
+            ),
+            'd': (
+                optree.PyTreeAccessor((optree.MappingEntry('d', dict, optree.PyTreeKind.DICT),)),
+                None,
+            ),
+            'e': (
+                optree.PyTreeAccessor((optree.MappingEntry('e', dict, optree.PyTreeKind.DICT),)),
+                4,
+            ),
+        }
+        assert mapped == expected
+        assert list(mapped.keys()) == list(expected.keys())
+        assert list(mapped.values()) == list(expected.values())
+        assert list(mapped.items()) == list(expected.items())
+        assert accessors == [
+            optree.PyTreeAccessor((optree.MappingEntry('a', dict, optree.PyTreeKind.DICT),)),
+            optree.PyTreeAccessor((optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),)),
+            optree.PyTreeAccessor((optree.MappingEntry('c', dict, optree.PyTreeKind.DICT),)),
+            optree.PyTreeAccessor((optree.MappingEntry('d', dict, optree.PyTreeKind.DICT),)),
+            optree.PyTreeAccessor((optree.MappingEntry('e', dict, optree.PyTreeKind.DICT),)),
+        ]
         assert leaves == [1, 2, 3, None, 4]
 
 
@@ -1138,6 +2190,62 @@ def test_tree_map_with_path_ignore_return():
         optree.tree_map_with_path_(fn2, x, y)
 
 
+def test_tree_map_with_accessor_ignore_return():
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([3], None, None), ({'foo': 'bar'}, 7, [5, 6]))
+
+    def fn1(a, *xs):
+        if a[1].entry >= 1:
+            leaves.append(xs)
+        return 0
+
+    leaves = []
+    out = optree.tree_map_with_accessor_(fn1, x, y)
+    assert out is x
+    assert x == ((1, 2, None), (3, 4, 5))
+    assert leaves == [(2, None), (4, 7), (5, [5, 6])]
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+
+    def fn2(a, *xs):
+        if a[1].entry >= 1:
+            leaves.append(xs)
+        return 0
+
+    leaves = []
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 4.')):
+        optree.tree_map_with_accessor_(fn2, x, y)
+
+
+def test_tree_map_ignore_return_none_is_leaf():
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([3], None, None), ({'foo': 'bar'}, 7, [5, 6]))
+
+    def fn1(*xs):
+        leaves.append(xs)
+        return 0
+
+    leaves = []
+    out = optree.tree_map_(fn1, x, y, none_is_leaf=True)
+    assert out is x
+    assert x == ((1, 2, None), (3, 4, 5))
+    assert leaves == [(1, [3]), (2, None), (None, None), (3, {'foo': 'bar'}), (4, 7), (5, [5, 6])]
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+
+    def fn2(*xs):
+        leaves.append(xs)
+        return 0
+
+    leaves = []
+    out = optree.tree_map_(fn2, x, y, none_is_leaf=True)
+    assert out is x
+    assert x == ((1, 2, None), (3, 4, 5))
+    assert leaves == [(1, [3]), (2, None), (None, 4), (3, {'foo': 'bar'}), (4, 7), (5, [5, 6])]
+
+
 def test_tree_map_with_path_ignore_return_none_is_leaf():
     x = ((1, 2, None), (3, 4, 5))
     y = (([3], None, None), ({'foo': 'bar'}, 7, [5, 6]))
@@ -1163,6 +2271,36 @@ def test_tree_map_with_path_ignore_return_none_is_leaf():
 
     leaves = []
     out = optree.tree_map_with_path_(fn2, x, y, none_is_leaf=True)
+    assert out is x
+    assert x == ((1, 2, None), (3, 4, 5))
+    assert leaves == [(2, None), (None, 4), (4, 7), (5, [5, 6])]
+
+
+def test_tree_map_with_accessor_ignore_return_none_is_leaf():
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([3], None, None), ({'foo': 'bar'}, 7, [5, 6]))
+
+    def fn1(a, *xs):
+        if a[1].entry >= 1:
+            leaves.append(xs)
+        return 0
+
+    leaves = []
+    out = optree.tree_map_with_accessor_(fn1, x, y, none_is_leaf=True)
+    assert out is x
+    assert x == ((1, 2, None), (3, 4, 5))
+    assert leaves == [(2, None), (None, None), (4, 7), (5, [5, 6])]
+
+    x = ((1, 2, None), (3, 4, 5))
+    y = (([3], None, 4), ({'foo': 'bar'}, 7, [5, 6]))
+
+    def fn2(a, *xs):
+        if a[1].entry >= 1:
+            leaves.append(xs)
+        return 0
+
+    leaves = []
+    out = optree.tree_map_with_accessor_(fn2, x, y, none_is_leaf=True)
     assert out is x
     assert x == ((1, 2, None), (3, 4, 5))
     assert leaves == [(2, None), (None, 4), (4, 7), (5, [5, 6])]
@@ -1210,6 +2348,27 @@ def test_tree_map_with_path_inplace():
         optree.tree_map_with_path_(fn2_, x, y)
 
 
+def test_tree_map_with_accessor_inplace():
+    x = ((Counter(1), Counter(2), None), (Counter(3), Counter(4), Counter(5)))
+    y = ((3, 0, None), (5, 7, 6))
+
+    def fn1_(a, xi, yi):
+        xi.increment(yi * (1 + sum(a.path)))
+
+    out = optree.tree_map_with_accessor_(fn1_, x, y)
+    assert out is x
+    assert x == ((Counter(4), Counter(2), None), (Counter(13), Counter(25), Counter(29)))
+
+    x = ((Counter(1), Counter(2), None), (Counter(3), Counter(4), Counter(5)))
+    y = ((3, 0, 4), (5, 7, 6))
+
+    def fn2_(a, xi, yi):
+        xi.increment(yi * (1 + sum(a.path)))
+
+    with pytest.raises(ValueError, match=re.escape('Expected None, got 4.')):
+        optree.tree_map_with_accessor_(fn2_, x, y)
+
+
 def test_tree_map_inplace_key_order():
     tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
     expected = tree.copy()
@@ -1249,6 +2408,32 @@ def test_tree_map_with_path_inplace_key_order():
     assert leaves == [1, 2, 3, 4]
 
 
+def test_tree_map_with_accessor_inplace_key_order():
+    tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
+    expected = tree.copy()
+    accessors = []
+    leaves = []
+
+    def add_leaves(a, x):
+        accessors.append(a)
+        leaves.append(x)
+        return a, x
+
+    mapped = optree.tree_map_with_accessor_(add_leaves, tree)
+    assert mapped is tree
+    assert mapped == expected
+    assert list(mapped.keys()) == list(expected.keys())
+    assert list(mapped.values()) == list(expected.values())
+    assert list(mapped.items()) == list(expected.items())
+    assert accessors == [
+        optree.PyTreeAccessor((optree.MappingEntry('a', dict, optree.PyTreeKind.DICT),)),
+        optree.PyTreeAccessor((optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),)),
+        optree.PyTreeAccessor((optree.MappingEntry('c', dict, optree.PyTreeKind.DICT),)),
+        optree.PyTreeAccessor((optree.MappingEntry('e', dict, optree.PyTreeKind.DICT),)),
+    ]
+    assert leaves == [1, 2, 3, 4]
+
+
 def test_tree_map_inplace_key_order_none_is_leaf():
     tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
     expected = tree.copy()
@@ -1285,6 +2470,33 @@ def test_tree_map_with_path_inplace_key_order_none_is_leaf():
     assert list(mapped.values()) == list(expected.values())
     assert list(mapped.items()) == list(expected.items())
     assert paths == [('a',), ('b',), ('c',), ('d',), ('e',)]
+    assert leaves == [1, 2, 3, None, 4]
+
+
+def test_tree_map_with_accessor_inplace_key_order_none_is_leaf():
+    tree = {'b': 2, 'a': 1, 'c': 3, 'd': None, 'e': 4}
+    expected = tree.copy()
+    accessors = []
+    leaves = []
+
+    def add_leaves(a, x):
+        accessors.append(a)
+        leaves.append(x)
+        return a, x
+
+    mapped = optree.tree_map_with_accessor_(add_leaves, tree, none_is_leaf=True)
+    assert mapped is tree
+    assert mapped == expected
+    assert list(mapped.keys()) == list(expected.keys())
+    assert list(mapped.values()) == list(expected.values())
+    assert list(mapped.items()) == list(expected.items())
+    assert accessors == [
+        optree.PyTreeAccessor((optree.MappingEntry('a', dict, optree.PyTreeKind.DICT),)),
+        optree.PyTreeAccessor((optree.MappingEntry('b', dict, optree.PyTreeKind.DICT),)),
+        optree.PyTreeAccessor((optree.MappingEntry('c', dict, optree.PyTreeKind.DICT),)),
+        optree.PyTreeAccessor((optree.MappingEntry('d', dict, optree.PyTreeKind.DICT),)),
+        optree.PyTreeAccessor((optree.MappingEntry('e', dict, optree.PyTreeKind.DICT),)),
+    ]
     assert leaves == [1, 2, 3, None, 4]
 
 
@@ -1670,7 +2882,7 @@ def test_tree_reduce():
         optree.tree_reduce(
             lambda x, y: x and y,
             {'x': 1, 'y': (2, None), 'z': 3},
-            False,
+            initial=False,
             none_is_leaf=True,
         )
         is False
@@ -1756,28 +2968,34 @@ def test_tree_any():
     namespace=['', 'undefined', 'namespace'],
 )
 def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
-    stack = [tree]
     actual_leaves = []
-    expected_leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    while stack:
-        node = stack.pop()
+    actual_paths = []
+    actual_typed_paths = []
+
+    path_stack = []
+    typed_path_stack = []
+
+    def flatten(node):  # noqa: C901
         counter = itertools.count()
         expected_children, one_level_treespec = optree.tree_flatten(
             node,
-            is_leaf=lambda x: next(counter) > 0,  # noqa: B023
+            is_leaf=lambda x: next(counter) > 0,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
         node_type = type(node)
+        node_kind = one_level_treespec.kind
         if one_level_treespec.is_leaf():
             assert expected_children == [node]
-            assert one_level_treespec.kind == optree.PyTreeKind.LEAF
+            assert node_kind == optree.PyTreeKind.LEAF
             with pytest.raises(
                 ValueError,
                 match=re.escape(f'Cannot flatten leaf-type: {node_type} (node: {node!r}).'),
             ):
                 optree.tree_flatten_one_level(node, none_is_leaf=none_is_leaf, namespace=namespace)
             actual_leaves.append(node)
+            actual_paths.append(tuple(path_stack))
+            actual_typed_paths.append(tuple(typed_path_stack))
         else:
             children, metadata, entries, unflatten_func = optree.tree_flatten_one_level(
                 node,
@@ -1788,35 +3006,35 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
             if node_type in {type(None), tuple, list}:
                 assert metadata is None
                 if node_type is tuple:
-                    assert one_level_treespec.kind == optree.PyTreeKind.TUPLE
+                    assert node_kind == optree.PyTreeKind.TUPLE
                 elif node_type is list:
-                    assert one_level_treespec.kind == optree.PyTreeKind.LIST
+                    assert node_kind == optree.PyTreeKind.LIST
                 else:
-                    assert one_level_treespec.kind == optree.PyTreeKind.NONE
+                    assert node_kind == optree.PyTreeKind.NONE
             elif node_type is dict:
                 assert metadata == sorted(node.keys())
-                assert one_level_treespec.kind == optree.PyTreeKind.DICT
+                assert node_kind == optree.PyTreeKind.DICT
             elif node_type is OrderedDict:
                 assert metadata == list(node.keys())
-                assert one_level_treespec.kind == optree.PyTreeKind.ORDEREDDICT
+                assert node_kind == optree.PyTreeKind.ORDEREDDICT
             elif node_type is defaultdict:
                 assert metadata == (node.default_factory, sorted(node.keys()))
-                assert one_level_treespec.kind == optree.PyTreeKind.DEFAULTDICT
+                assert node_kind == optree.PyTreeKind.DEFAULTDICT
             elif node_type is deque:
                 assert metadata == node.maxlen
-                assert one_level_treespec.kind == optree.PyTreeKind.DEQUE
+                assert node_kind == optree.PyTreeKind.DEQUE
             elif optree.is_structseq(node):
                 assert optree.is_structseq_class(node_type)
                 assert isinstance(node, optree.typing.structseq)
                 assert issubclass(node_type, optree.typing.structseq)
                 assert metadata is node_type
-                assert one_level_treespec.kind == optree.PyTreeKind.STRUCTSEQUENCE
+                assert node_kind == optree.PyTreeKind.STRUCTSEQUENCE
             elif optree.is_namedtuple(node):
                 assert optree.is_namedtuple_class(node_type)
                 assert metadata is node_type
-                assert one_level_treespec.kind == optree.PyTreeKind.NAMEDTUPLE
+                assert node_kind == optree.PyTreeKind.NAMEDTUPLE
             else:
-                assert one_level_treespec.kind == optree.PyTreeKind.CUSTOM
+                assert node_kind == optree.PyTreeKind.CUSTOM
             assert len(entries) == len(children)
             if hasattr(node, '__getitem__'):
                 for child, entry in zip(children, entries):
@@ -1828,6 +3046,31 @@ def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
                 with pytest.raises(ValueError, match=re.escape('Expected no children.')):
                     unflatten_func(metadata, range(1))
 
-            stack.extend(reversed(children))
+            for child, entry in zip(children, entries):
+                path_stack.append(entry)
+                typed_path_stack.append((entry, node_type, node_kind))
+                flatten(child)
+                path_stack.pop()
+                typed_path_stack.pop()
 
-    assert actual_leaves == expected_leaves
+    flatten(tree)
+    assert len(path_stack) == 0
+    assert len(typed_path_stack) == 0
+    assert actual_leaves == optree.tree_leaves(
+        tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    assert actual_paths == optree.tree_paths(
+        tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    assert actual_typed_paths == [
+        tuple((e.entry, e.type, e.kind) for e in accessor)
+        for accessor in optree.tree_accessors(
+            tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+    ]

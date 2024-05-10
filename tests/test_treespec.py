@@ -27,7 +27,7 @@ import pytest
 
 import helpers
 import optree
-from helpers import NAMESPACED_TREE, TREE_STRINGS, TREES, parametrize
+from helpers import NAMESPACED_TREE, TREE_STRINGS, TREES, MyAnotherDict, MyDict, parametrize
 
 
 def test_treespec_equal_hash():
@@ -236,6 +236,15 @@ def test_treespec_with_namespace():
         assert leaves == [tree]
         assert paths == treespec.paths()
         assert str(treespec) == 'PyTreeSpec(*)'
+        accessors, leaves, treespec = optree.tree_flatten_with_accessor(
+            tree,
+            none_is_leaf=False,
+            namespace=namespace,
+        )
+        assert accessors == [optree.PyTreeAccessor()]
+        assert leaves == [tree]
+        assert accessors == treespec.accessors()
+        assert str(treespec) == 'PyTreeSpec(*)'
     for namespace in ('', 'undefined'):
         leaves, treespec = optree.tree_flatten(tree, none_is_leaf=True, namespace=namespace)
         assert leaves == [tree]
@@ -249,8 +258,17 @@ def test_treespec_with_namespace():
         assert leaves == [tree]
         assert paths == treespec.paths()
         assert str(treespec) == 'PyTreeSpec(*, NoneIsLeaf)'
+        accessors, leaves, treespec = optree.tree_flatten_with_accessor(
+            tree,
+            none_is_leaf=True,
+            namespace=namespace,
+        )
+        assert accessors == [optree.PyTreeAccessor()]
+        assert leaves == [tree]
+        assert accessors == treespec.accessors()
+        assert str(treespec) == 'PyTreeSpec(*, NoneIsLeaf)'
 
-    expected_string = "PyTreeSpec(CustomTreeNode(MyAnotherDict[['foo', 'baz']], [CustomTreeNode(MyAnotherDict[['c', 'b', 'a']], [None, *, *]), *]), namespace='namespace')"
+    expected_string = "PyTreeSpec(CustomTreeNode(MyAnotherDict[['foo', 'baz']], [CustomTreeNode(MyDict[['c', 'b', 'a']], [None, *, *]), *]), namespace='namespace')"
     leaves, treespec = optree.tree_flatten(tree, none_is_leaf=False, namespace='namespace')
     assert leaves == [2, 1, 101]
     assert str(treespec) == expected_string
@@ -263,8 +281,33 @@ def test_treespec_with_namespace():
     assert leaves == [2, 1, 101]
     assert paths == treespec.paths()
     assert str(treespec) == expected_string
+    accessors, leaves, treespec = optree.tree_flatten_with_accessor(
+        tree,
+        none_is_leaf=False,
+        namespace='namespace',
+    )
+    assert accessors == [
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('b', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('a', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', MyAnotherDict, optree.PyTreeKind.CUSTOM),),
+        ),
+    ]
+    assert leaves == [2, 1, 101]
+    assert accessors == treespec.accessors()
+    assert str(treespec) == expected_string
 
-    expected_string = "PyTreeSpec(CustomTreeNode(MyAnotherDict[['foo', 'baz']], [CustomTreeNode(MyAnotherDict[['c', 'b', 'a']], [*, *, *]), *]), NoneIsLeaf, namespace='namespace')"
+    expected_string = "PyTreeSpec(CustomTreeNode(MyAnotherDict[['foo', 'baz']], [CustomTreeNode(MyDict[['c', 'b', 'a']], [*, *, *]), *]), NoneIsLeaf, namespace='namespace')"
     leaves, treespec = optree.tree_flatten(tree, none_is_leaf=True, namespace='namespace')
     assert leaves == [None, 2, 1, 101]
     assert str(treespec) == expected_string
@@ -276,6 +319,37 @@ def test_treespec_with_namespace():
     assert paths == [('foo', 'c'), ('foo', 'b'), ('foo', 'a'), ('baz',)]
     assert leaves == [None, 2, 1, 101]
     assert paths == treespec.paths()
+    assert str(treespec) == expected_string
+    accessors, leaves, treespec = optree.tree_flatten_with_accessor(
+        tree,
+        none_is_leaf=True,
+        namespace='namespace',
+    )
+    assert accessors == [
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('c', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('b', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('foo', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('a', MyDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (optree.MappingEntry('baz', MyAnotherDict, optree.PyTreeKind.CUSTOM),),
+        ),
+    ]
+    assert leaves == [None, 2, 1, 101]
+    assert accessors == treespec.accessors()
     assert str(treespec) == expected_string
 
 
@@ -486,7 +560,7 @@ def test_treespec_entries(tree, none_is_leaf, namespace):
     )
     assert optree.treespec_paths(treespec) == expected_paths
 
-    def gen_path(spec, prefix):
+    def gen_path(spec):
         entries = optree.treespec_entries(spec)
         children = optree.treespec_children(spec)
         assert len(entries) == spec.num_children
@@ -495,13 +569,50 @@ def test_treespec_entries(tree, none_is_leaf, namespace):
         assert children is not optree.treespec_children(spec)
         optree.treespec_entries(spec).clear()
         optree.treespec_children(spec).clear()
-        if spec.is_leaf():
-            yield prefix
-        for entry, child in zip(entries, children):
-            yield from gen_path(child, (*prefix, entry))
 
-    paths = list(gen_path(treespec, ()))
+        if spec.is_leaf():
+            assert spec.num_children == 0
+            yield ()
+            return
+
+        for entry, child in zip(entries, children):
+            for suffix in gen_path(child):
+                yield (entry, *suffix)
+
+    paths = list(gen_path(treespec))
     assert paths == expected_paths
+
+    expected_accessors, _, other_treespec = optree.tree_flatten_with_accessor(
+        tree,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
+    assert optree.treespec_accessors(treespec) == expected_accessors
+    assert optree.treespec_accessors(other_treespec) == expected_accessors
+    assert treespec == other_treespec
+
+    def gen_typed_path(spec):
+        entries = optree.treespec_entries(spec)
+        children = optree.treespec_children(spec)
+        assert len(entries) == spec.num_children
+        assert len(children) == spec.num_children
+
+        if spec.is_leaf():
+            assert spec.num_children == 0
+            yield ()
+            return
+
+        node_type = spec.type
+        node_kind = spec.kind
+        for entry, child in zip(entries, children):
+            for suffix in gen_typed_path(child):
+                yield ((entry, node_type, node_kind), *suffix)
+
+    typed_paths = list(gen_typed_path(treespec))
+    expected_typed_paths = [
+        tuple((e.entry, e.type, e.kind) for e in accessor) for accessor in expected_accessors
+    ]
+    assert typed_paths == expected_typed_paths
 
 
 @parametrize(
@@ -642,6 +753,7 @@ def test_treespec_num_leaves(tree, none_is_leaf, namespace):
     assert treespec.num_leaves == len(leaves)
     assert treespec.num_leaves == len(treespec)
     assert treespec.num_leaves == len(treespec.paths())
+    assert treespec.num_leaves == len(treespec.accessors())
 
 
 @parametrize(

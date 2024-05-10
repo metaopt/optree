@@ -35,8 +35,17 @@ from typing import (
     overload,
 )
 from typing_extensions import TypeAlias  # Python 3.10+
+from typing_extensions import deprecated  # Python 3.13+
 
 from optree import _C
+from optree.accessor import (
+    AutoEntry,
+    MappingEntry,
+    NamedTupleEntry,
+    PyTreeEntry,
+    SequenceEntry,
+    StructSequenceEntry,
+)
 from optree.typing import (
     KT,
     VT,
@@ -60,20 +69,24 @@ __all__ = [
     'register_pytree_node',
     'register_pytree_node_class',
     'unregister_pytree_node',
-    'register_keypaths',
-    'AttributeKeyPathEntry',
-    'GetitemKeyPathEntry',
 ]
 
 
-SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}
+SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}  # Python 3.10+
 
 
 @dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, **SLOTS)
 class PyTreeNodeRegistryEntry:
+    """A dataclass that stores the information of a pytree node type."""
+
     type: builtins.type
     flatten_func: FlattenFunc
     unflatten_func: UnflattenFunc
+
+    if sys.version_info >= (3, 10):
+        _: dataclasses.KW_ONLY  # Python 3.10+
+
+    path_entry_type: builtins.type[PyTreeEntry] = AutoEntry
     namespace: str = ''
 
 
@@ -101,6 +114,7 @@ def register_pytree_node(
     flatten_func: FlattenFunc,
     unflatten_func: UnflattenFunc,
     *,
+    path_entry_type: type[PyTreeEntry] = AutoEntry,
     namespace: str,
 ) -> CustomTreeNodeT:
     """Extend the set of types that are considered internal nodes in pytrees.
@@ -128,6 +142,8 @@ def register_pytree_node(
         unflatten_func (callable): A function taking two arguments: the auxiliary data that was
             returned by ``flatten_func`` and stored in the treespec, and the unflattened children.
             The function should return an instance of ``cls``.
+        path_entry_type (type, optional): The type of the path entry to be used in the treespec.
+            (default: :class:`AutoEntry`)
         namespace (str): A non-empty string that uniquely identifies the namespace of the type registry.
             This is used to isolate the registry from other modules that might register a different
             custom behavior for the same type.
@@ -137,6 +153,7 @@ def register_pytree_node(
 
     Raises:
         TypeError: If the input type is not a class.
+        TypeError: If the path entry class is not a subclass of :class:`PyTreeEntry`.
         TypeError: If the namespace is not a string.
         ValueError: If the namespace is an empty string.
         ValueError: If the type is already registered in the registry.
@@ -219,6 +236,8 @@ def register_pytree_node(
     """
     if not inspect.isclass(cls):
         raise TypeError(f'Expected a class, got {cls!r}.')
+    if not (inspect.isclass(path_entry_type) and issubclass(path_entry_type, PyTreeEntry)):
+        raise TypeError(f'Expected a subclass of PyTreeEntry, got {path_entry_type!r}.')
     if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
         raise TypeError(f'The namespace must be a string, got {namespace!r}.')
     if namespace == '':
@@ -236,12 +255,14 @@ def register_pytree_node(
             cls,
             flatten_func,
             unflatten_func,
+            path_entry_type,
             namespace,
         )
         _NODETYPE_REGISTRY[registration_key] = PyTreeNodeRegistryEntry(
             cls,
             flatten_func,
             unflatten_func,
+            path_entry_type=path_entry_type,
             namespace=namespace,
         )
     return cls
@@ -251,6 +272,7 @@ def register_pytree_node(
 def register_pytree_node_class(
     cls: str | None = None,
     *,
+    path_entry_type: type[PyTreeEntry] | None = None,
     namespace: str | None = None,
 ) -> Callable[[CustomTreeNodeT], CustomTreeNodeT]: ...
 
@@ -259,13 +281,15 @@ def register_pytree_node_class(
 def register_pytree_node_class(
     cls: CustomTreeNodeT,
     *,
+    path_entry_type: type[PyTreeEntry] | None,
     namespace: str,
 ) -> CustomTreeNodeT: ...
 
 
-def register_pytree_node_class(
+def register_pytree_node_class(  # noqa: C901
     cls: CustomTreeNodeT | str | None = None,
     *,
+    path_entry_type: type[PyTreeEntry] | None = None,
     namespace: str | None = None,
 ) -> CustomTreeNodeT | Callable[[CustomTreeNodeT], CustomTreeNodeT]:
     """Extend the set of types that are considered internal nodes in pytrees.
@@ -284,6 +308,8 @@ def register_pytree_node_class(
 
     Args:
         cls (type, optional): A Python type to treat as an internal pytree node.
+        path_entry_type (type, optional): The type of the path entry to be used in the treespec.
+            (default: :class:`AutoEntry`)
         namespace (str, optional): A non-empty string that uniquely identifies the namespace of the
             type registry. This is used to isolate the registry from other modules that might
             register a different custom behavior for the same type.
@@ -293,6 +319,7 @@ def register_pytree_node_class(
         function that registers the class as a pytree node.
 
     Raises:
+        TypeError: If the path entry class is not a subclass of :class:`PyTreeEntry`.
         TypeError: If the namespace is not a string.
         ValueError: If the namespace is an empty string.
         ValueError: If the type is already registered in the registry.
@@ -302,12 +329,14 @@ def register_pytree_node_class(
 
         @register_pytree_node_class(namespace='foo')
         class Special:
+            TREE_PATH_ENTRY_TYPE = GetAttrEntry
+
             def __init__(self, x, y):
                 self.x = x
                 self.y = y
 
             def tree_flatten(self):
-                return ((self.x, self.y), None)
+                return ((self.x, self.y), None, ('x', 'y'))
 
             @classmethod
             def tree_unflatten(cls, metadata, children):
@@ -315,6 +344,8 @@ def register_pytree_node_class(
 
         @register_pytree_node_class('mylist')
         class MyList(UserList):
+            TREE_PATH_ENTRY_TYPE = SequenceEntry
+
             def tree_flatten(self):
                 return self.data, None, None
 
@@ -329,6 +360,7 @@ def register_pytree_node_class(
             raise ValueError('The namespace cannot be an empty string.')
         return functools.partial(
             register_pytree_node_class,
+            path_entry_type=path_entry_type,
             namespace=cls,
         )  # type: ignore[return-value]
 
@@ -342,14 +374,20 @@ def register_pytree_node_class(
     if cls is None:
         return functools.partial(
             register_pytree_node_class,
+            path_entry_type=path_entry_type,
             namespace=namespace,
         )  # type: ignore[return-value]
     if not inspect.isclass(cls):
         raise TypeError(f'Expected a class, got {cls!r}.')
+    if path_entry_type is None:
+        path_entry_type = getattr(cls, 'TREE_PATH_ENTRY_TYPE', AutoEntry)
+    if not (inspect.isclass(path_entry_type) and issubclass(path_entry_type, PyTreeEntry)):
+        raise TypeError(f'Expected a subclass of PyTreeEntry, got {path_entry_type!r}.')
     register_pytree_node(
         cls,
         methodcaller('tree_flatten'),
         cls.tree_unflatten,
+        path_entry_type=path_entry_type,
         namespace=namespace,
     )
     return cls
@@ -414,10 +452,6 @@ def unregister_pytree_node(
 
 def _sorted_items(items: Iterable[tuple[KT, VT]]) -> list[tuple[KT, VT]]:
     return total_order_sorted(items, key=itemgetter(0))
-
-
-def _sorted_keys(dct: dict[KT, VT]) -> list[KT]:
-    return total_order_sorted(dct)
 
 
 def _none_flatten(none: None) -> tuple[tuple[()], None]:
@@ -508,15 +542,15 @@ def _structseq_unflatten(cls: type[structseq[T]], children: Iterable[T]) -> stru
 
 # pylint: disable=all
 _NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {  # fmt: off
-    type(None): PyTreeNodeRegistryEntry(type(None), _none_flatten, _none_unflatten),  # type: ignore[arg-type]
-    tuple: PyTreeNodeRegistryEntry(tuple, _tuple_flatten, _tuple_unflatten),  # type: ignore[arg-type]
-    list: PyTreeNodeRegistryEntry(list, _list_flatten, _list_unflatten),  # type: ignore[arg-type]
-    dict: PyTreeNodeRegistryEntry(dict, _dict_flatten, _dict_unflatten),  # type: ignore[arg-type]
-    namedtuple: PyTreeNodeRegistryEntry(namedtuple, _namedtuple_flatten, _namedtuple_unflatten),  # type: ignore[arg-type,dict-item] # noqa: PYI024
-    OrderedDict: PyTreeNodeRegistryEntry(OrderedDict, _ordereddict_flatten, _ordereddict_unflatten),  # type: ignore[arg-type]
-    defaultdict: PyTreeNodeRegistryEntry(defaultdict, _defaultdict_flatten, _defaultdict_unflatten),  # type: ignore[arg-type]
-    deque: PyTreeNodeRegistryEntry(deque, _deque_flatten, _deque_unflatten),  # type: ignore[arg-type]
-    structseq: PyTreeNodeRegistryEntry(structseq, _structseq_flatten, _structseq_unflatten),  # type: ignore[arg-type]
+    type(None): PyTreeNodeRegistryEntry(type(None), _none_flatten, _none_unflatten, path_entry_type=PyTreeEntry),  # type: ignore[arg-type]
+    tuple: PyTreeNodeRegistryEntry(tuple, _tuple_flatten, _tuple_unflatten, path_entry_type=SequenceEntry),  # type: ignore[arg-type]
+    list: PyTreeNodeRegistryEntry(list, _list_flatten, _list_unflatten, path_entry_type=SequenceEntry),  # type: ignore[arg-type]
+    dict: PyTreeNodeRegistryEntry(dict, _dict_flatten, _dict_unflatten, path_entry_type=MappingEntry),  # type: ignore[arg-type]
+    namedtuple: PyTreeNodeRegistryEntry(namedtuple, _namedtuple_flatten, _namedtuple_unflatten, path_entry_type=NamedTupleEntry),  # type: ignore[arg-type,dict-item] # noqa: PYI024
+    OrderedDict: PyTreeNodeRegistryEntry(OrderedDict, _ordereddict_flatten, _ordereddict_unflatten, path_entry_type=MappingEntry),  # type: ignore[arg-type]
+    defaultdict: PyTreeNodeRegistryEntry(defaultdict, _defaultdict_flatten, _defaultdict_unflatten, path_entry_type=MappingEntry),  # type: ignore[arg-type]
+    deque: PyTreeNodeRegistryEntry(deque, _deque_flatten, _deque_unflatten, path_entry_type=SequenceEntry),  # type: ignore[arg-type]
+    structseq: PyTreeNodeRegistryEntry(structseq, _structseq_flatten, _structseq_unflatten, path_entry_type=StructSequenceEntry),  # type: ignore[arg-type]
 }
 # pylint: enable=all
 
@@ -545,6 +579,18 @@ register_pytree_node.get = _pytree_node_registry_get  # type: ignore[attr-define
 del _pytree_node_registry_get
 
 
+####################################################################################################
+
+
+@deprecated('The function `_sorted_keys` is deprecated and will be removed in a future version.')
+def _sorted_keys(dct: dict[KT, VT]) -> list[KT]:
+    return total_order_sorted(dct)
+
+
+@deprecated(
+    'The key path API is deprecated and will be removed in a future version. '
+    'Please use the accessor API instead.',
+)
 class KeyPathEntry(NamedTuple):
     key: Any
 
@@ -563,6 +609,10 @@ class KeyPathEntry(NamedTuple):
         raise NotImplementedError
 
 
+@deprecated(
+    'The key path API is deprecated and will be removed in a future version. '
+    'Please use the accessor API instead.',
+)
 class KeyPath(NamedTuple):
     keys: tuple[KeyPathEntry, ...] = ()
 
@@ -583,6 +633,10 @@ class KeyPath(NamedTuple):
         return ''.join(k.pprint() for k in self.keys)
 
 
+@deprecated(
+    'The key path API is deprecated and will be removed in a future version. '
+    'Please use the accessor API instead.',
+)
 class GetitemKeyPathEntry(KeyPathEntry):
     """The key path entry class for sequences and dictionaries."""
 
@@ -591,6 +645,10 @@ class GetitemKeyPathEntry(KeyPathEntry):
         return f'[{self.key!r}]'
 
 
+@deprecated(
+    'The key path API is deprecated and will be removed in a future version. '
+    'Please use the accessor API instead.',
+)
 class AttributeKeyPathEntry(KeyPathEntry):
     """The key path entry class for namedtuples."""
 
@@ -599,6 +657,10 @@ class AttributeKeyPathEntry(KeyPathEntry):
         return f'.{self.key}'
 
 
+@deprecated(
+    'The key path API is deprecated and will be removed in a future version. '
+    'Please use the accessor API instead.',
+)
 class FlattenedKeyPathEntry(KeyPathEntry):  # fallback
     """The fallback key path entry class."""
 
@@ -611,6 +673,10 @@ KeyPathHandler = Callable[[PyTree], Sequence[KeyPathEntry]]
 _KEYPATH_REGISTRY: dict[type[CustomTreeNode], KeyPathHandler] = {}
 
 
+@deprecated(
+    'The key path API is deprecated and will be removed in a future version. '
+    'Please use the accessor API instead.',
+)
 def register_keypaths(
     cls: type[CustomTreeNode[T]],
     handler: KeyPathHandler,

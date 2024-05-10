@@ -171,6 +171,74 @@ def test_register_pytree_node_with_invalid_namespace():
         )
 
 
+def test_register_pytree_node_with_invalid_path_entry_type():
+    with pytest.raises(TypeError, match=r'Expected a subclass of PyTreeEntry, got .*\.'):
+
+        @optree.register_pytree_node_class(namespace='error')
+        class MyList1(UserList):
+            TREE_PATH_ENTRY_TYPE = None
+
+            def tree_flatten(self):
+                return self.data, None, None
+
+            @classmethod
+            def tree_unflatten(cls, metadata, children):
+                return cls(children)
+
+    with pytest.raises(TypeError, match=r'Expected a subclass of PyTreeEntry, got .*\.'):
+
+        @optree.register_pytree_node_class(namespace='error')
+        class MyList2(UserList):
+            TREE_PATH_ENTRY_TYPE = int
+
+            def tree_flatten(self):
+                return self.data, None, None
+
+            @classmethod
+            def tree_unflatten(cls, metadata, children):
+                return cls(children)
+
+    with pytest.raises(TypeError, match=r'Expected a subclass of PyTreeEntry, got .*\.'):
+
+        @optree.register_pytree_node_class(path_entry_type=1, namespace='error')
+        class MyList3(UserList):
+            def tree_flatten(self):
+                return self.data, None, None
+
+            @classmethod
+            def tree_unflatten(cls, metadata, children):
+                return cls(children)
+
+    with pytest.raises(TypeError, match=r'Expected a subclass of PyTreeEntry, got .*\.'):
+
+        @optree.register_pytree_node_class(path_entry_type=int, namespace='error')
+        class MyList4(UserList):
+            def tree_flatten(self):
+                return self.data, None, None
+
+            @classmethod
+            def tree_unflatten(cls, metadata, children):
+                return cls(children)
+
+    with pytest.raises(TypeError, match=r'Expected a subclass of PyTreeEntry, got .*\.'):
+        optree.register_pytree_node(
+            set,
+            lambda s: (sorted(s), None, None),
+            lambda _, s: set(s),
+            path_entry_type=1,
+            namespace='error',
+        )
+
+    with pytest.raises(TypeError, match=r'Expected a subclass of PyTreeEntry, got .*\.'):
+        optree.register_pytree_node(
+            set,
+            lambda s: (sorted(s), None, None),
+            lambda _, s: set(s),
+            path_entry_type=int,
+            namespace='error',
+        )
+
+
 def test_register_pytree_node_duplicate_builtins():
     with pytest.raises(
         ValueError,
@@ -445,6 +513,12 @@ def test_pytree_node_registry_with_init_subclass():
         pass
 
     tree = MyDict(b=4, a=(2, 3), c=MyAnotherDict({'d': 5, 'f': 6}))
+    leaves, treespec = optree.tree_flatten(tree, namespace='mydict')
+    assert leaves == [6, 5, 4, 2, 3]
+    assert (
+        str(treespec)
+        == "PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyAnotherDict[['f', 'd']], [*, *]), *, (*, *)]), namespace='mydict')"
+    )
     paths, leaves, treespec = optree.tree_flatten_with_path(tree, namespace='mydict')
     assert paths == [('c', 'f'), ('c', 'd'), ('b',), ('a', 0), ('a', 1)]
     assert leaves == [6, 5, 4, 2, 3]
@@ -453,8 +527,36 @@ def test_pytree_node_registry_with_init_subclass():
         str(treespec)
         == "PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyAnotherDict[['f', 'd']], [*, *]), *, (*, *)]), namespace='mydict')"
     )
-    leaves, treespec = optree.tree_flatten(tree, namespace='mydict')
+    accessors, leaves, treespec = optree.tree_flatten_with_accessor(tree, namespace='mydict')
+    assert accessors == [
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('c', MyDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('f', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('c', MyDict, optree.PyTreeKind.CUSTOM),
+                optree.MappingEntry('d', MyAnotherDict, optree.PyTreeKind.CUSTOM),
+            ),
+        ),
+        optree.PyTreeAccessor((optree.MappingEntry('b', MyDict, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('a', MyDict, optree.PyTreeKind.CUSTOM),
+                optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+        optree.PyTreeAccessor(
+            (
+                optree.MappingEntry('a', MyDict, optree.PyTreeKind.CUSTOM),
+                optree.SequenceEntry(1, tuple, optree.PyTreeKind.TUPLE),
+            ),
+        ),
+    ]
     assert leaves == [6, 5, 4, 2, 3]
+    assert accessors == treespec.accessors()
     assert (
         str(treespec)
         == "PyTreeSpec(CustomTreeNode(MyDict[['c', 'b', 'a']], [CustomTreeNode(MyAnotherDict[['f', 'd']], [*, *]), *, (*, *)]), namespace='mydict')"
@@ -462,21 +564,19 @@ def test_pytree_node_registry_with_init_subclass():
 
 
 def test_unregister_pytree_node_with_non_class():
+    def func1():
+        pass
+
     with pytest.raises(TypeError, match='Expected a class'):
-
-        def func1():
-            pass
-
         optree.unregister_pytree_node(func1, namespace=optree.registry.__GLOBAL_NAMESPACE)
 
     with pytest.raises(TypeError, match='Expected a class'):
         optree.unregister_pytree_node(1, namespace=optree.registry.__GLOBAL_NAMESPACE)
 
+    def func2():
+        pass
+
     with pytest.raises(TypeError, match='Expected a class'):
-
-        def func2():
-            pass
-
         optree.unregister_pytree_node(func2, namespace='func')
 
     with pytest.raises(TypeError, match='Expected a class'):
@@ -681,7 +781,7 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList1, namespace=optree.registry.__GLOBAL_NAMESPACE)
     del MyList1
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is None
 
     @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
@@ -702,13 +802,13 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList2, namespace=optree.registry.__GLOBAL_NAMESPACE)
     del MyList2
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is not None
     assert wr() is treespec.type
     assert optree.tree_unflatten(treespec, leaves) == wr()([1, 2, 3])
 
     del treespec
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is None
 
     @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
@@ -732,13 +832,13 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList3, namespace=optree.registry.__GLOBAL_NAMESPACE)
     del MyList3
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is not None
     assert wr() is treespec.type
     assert optree.tree_unflatten(treespec, leaves) == wr()([1, 2, 3])
 
     del treespec
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is None
 
     @optree.register_pytree_node_class(namespace='mylist')
@@ -755,7 +855,7 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList4, namespace='mylist')
     del MyList4
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is None
 
     @optree.register_pytree_node_class(namespace='mylist')
@@ -778,11 +878,11 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList5, namespace='mylist')
     del MyList5
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is not None
     assert wr() is treespec.type
     assert optree.tree_unflatten(treespec, leaves) == wr()([1, 2, 3])
 
     del treespec
-    getrefcount(None)
+    _ = getrefcount()
     assert wr() is None

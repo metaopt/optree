@@ -70,6 +70,7 @@ template <bool NoneIsLeaf>
 /*static*/ void PyTreeTypeRegistry::RegisterImpl(const py::object& cls,
                                                  const py::function& flatten_func,
                                                  const py::function& unflatten_func,
+                                                 const py::object& path_entry_type,
                                                  const std::string& registry_namespace) {
     if (sm_builtins_types.find(cls) != sm_builtins_types.end()) [[unlikely]] {
         throw py::value_error("PyTree type " + PyRepr(cls) +
@@ -82,6 +83,7 @@ template <bool NoneIsLeaf>
     registration->type = py::reinterpret_borrow<py::object>(cls);
     registration->flatten_func = py::reinterpret_borrow<py::function>(flatten_func);
     registration->unflatten_func = py::reinterpret_borrow<py::function>(unflatten_func);
+    registration->path_entry_type = py::reinterpret_borrow<py::object>(path_entry_type);
     if (registry_namespace.empty()) [[unlikely]] {
         if (!registry->m_registrations.emplace(cls, std::move(registration)).second) [[unlikely]] {
             throw py::value_error("PyTree type " + PyRepr(cls) +
@@ -140,12 +142,16 @@ template <bool NoneIsLeaf>
 /*static*/ void PyTreeTypeRegistry::Register(const py::object& cls,
                                              const py::function& flatten_func,
                                              const py::function& unflatten_func,
+                                             const py::object& path_entry_type,
                                              const std::string& registry_namespace) {
-    RegisterImpl<NONE_IS_NODE>(cls, flatten_func, unflatten_func, registry_namespace);
-    RegisterImpl<NONE_IS_LEAF>(cls, flatten_func, unflatten_func, registry_namespace);
+    RegisterImpl<NONE_IS_NODE>(
+        cls, flatten_func, unflatten_func, path_entry_type, registry_namespace);
+    RegisterImpl<NONE_IS_LEAF>(
+        cls, flatten_func, unflatten_func, path_entry_type, registry_namespace);
     cls.inc_ref();
     flatten_func.inc_ref();
     unflatten_func.inc_ref();
+    path_entry_type.inc_ref();
 }
 
 template <bool NoneIsLeaf>
@@ -207,9 +213,11 @@ template <bool NoneIsLeaf>
     EXPECT(registration1->type.is(registration2->type));
     EXPECT(registration1->flatten_func.is(registration2->flatten_func));
     EXPECT(registration1->unflatten_func.is(registration2->unflatten_func));
+    EXPECT(registration1->path_entry_type.is(registration2->path_entry_type));
     registration1->type.dec_ref();
     registration1->flatten_func.dec_ref();
     registration1->unflatten_func.dec_ref();
+    registration1->path_entry_type.dec_ref();
 }
 
 template <bool NoneIsLeaf>

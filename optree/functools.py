@@ -22,6 +22,7 @@ from typing_extensions import Self  # Python 3.11+
 from typing_extensions import deprecated  # Python 3.13+
 
 from optree import registry
+from optree.accessor import GetAttrEntry, PyTreeEntry
 from optree.ops import tree_reduce as reduce
 from optree.typing import CustomTreeNode, T
 
@@ -114,6 +115,8 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
     func: Callable[..., Any]
     args: tuple[T, ...]
     keywords: dict[str, T]
+
+    TREE_PATH_ENTRY_TYPE: ClassVar[type[PyTreeEntry]] = GetAttrEntry
 
     def __new__(cls, func: Callable[..., Any], *args: T, **keywords: T) -> Self:
         """Create a new :class:`partial` instance."""

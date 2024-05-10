@@ -25,53 +25,65 @@ Tree Manipulation Functions
 
     tree_flatten
     tree_flatten_with_path
+    tree_flatten_with_accessor
     tree_unflatten
     tree_iter
     tree_leaves
     tree_structure
     tree_paths
+    tree_accessors
     tree_is_leaf
     all_leaves
     tree_map
     tree_map_
     tree_map_with_path
     tree_map_with_path_
+    tree_map_with_accessor
+    tree_map_with_accessor_
     tree_replace_nones
     tree_transpose
     tree_transpose_map
     tree_transpose_map_with_path
+    tree_transpose_map_with_accessor
     tree_broadcast_prefix
     broadcast_prefix
     tree_broadcast_common
     broadcast_common
     tree_broadcast_map
     tree_broadcast_map_with_path
+    tree_broadcast_map_with_accessor
     tree_flatten_one_level
     prefix_errors
 
 .. autofunction:: tree_flatten
 .. autofunction:: tree_flatten_with_path
+.. autofunction:: tree_flatten_with_accessor
 .. autofunction:: tree_unflatten
 .. autofunction:: tree_iter
 .. autofunction:: tree_leaves
 .. autofunction:: tree_structure
 .. autofunction:: tree_paths
+.. autofunction:: tree_accessors
 .. autofunction:: tree_is_leaf
 .. autofunction:: all_leaves
 .. autofunction:: tree_map
 .. autofunction:: tree_map_
 .. autofunction:: tree_map_with_path
 .. autofunction:: tree_map_with_path_
+.. autofunction:: tree_map_with_accessor
+.. autofunction:: tree_map_with_accessor_
 .. autofunction:: tree_replace_nones
 .. autofunction:: tree_transpose
 .. autofunction:: tree_transpose_map
 .. autofunction:: tree_transpose_map_with_path
+.. autofunction:: tree_transpose_map_with_accessor
 .. autofunction:: tree_broadcast_prefix
 .. autofunction:: broadcast_prefix
 .. autofunction:: tree_broadcast_common
 .. autofunction:: broadcast_common
 .. autofunction:: tree_broadcast_map
 .. autofunction:: tree_broadcast_map_with_path
+.. autofunction:: tree_broadcast_map_with_accessor
 .. autofunction:: tree_flatten_one_level
 .. autofunction:: prefix_errors
 
@@ -104,6 +116,7 @@ PyTreeSpec Functions
 .. autosummary::
 
     treespec_paths
+    treespec_accessors
     treespec_entries
     treespec_entry
     treespec_children
@@ -125,6 +138,7 @@ PyTreeSpec Functions
     treespec_from_collection
 
 .. autofunction:: treespec_paths
+.. autofunction:: treespec_accessors
 .. autofunction:: treespec_entries
 .. autofunction:: treespec_entry
 .. autofunction:: treespec_children

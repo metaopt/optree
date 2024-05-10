@@ -55,10 +55,10 @@ jax = ["jax"]
 numpy = ["numpy"]
 torch = ["torch"]
 lint = [
-    "isort >= 5.11.0",
-    "black >= 22.6.0",
-    "pylint[spelling] >= 2.15.0",
-    "mypy >= 0.990",
+    "isort",
+    "black",
+    "pylint[spelling]",
+    "mypy",
     "flake8",
     "flake8-bugbear",
     "flake8-comprehensions",
@@ -89,7 +89,7 @@ docs = [
 ]
 benchmark = [
     "jax[cpu] >= 0.4.6, < 0.5.0a0",
-    "torch >= 2.0, < 2.3.0a0",
+    "torch >= 2.0, < 2.4.0a0",
     "torchvision",
     "dm-tree >= 0.1, < 0.2.0a0",
     "pandas",
@@ -262,5 +262,6 @@ ban-relative-imports = "all"
 [tool.pytest.ini_options]
 filterwarnings = [
     "error",
-    "ignore:The class `optree.Partial` is deprecated and will be removed in a future version. Please use `optree.functools.partial` instead.:DeprecationWarning"
+    "ignore:The class `optree.Partial` is deprecated and will be removed in a future version. Please use `optree.functools.partial` instead.:DeprecationWarning",
+    "ignore:The key path API is deprecated and will be removed in a future version. Please use the accessor API instead.:DeprecationWarning",
 ]

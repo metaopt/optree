@@ -62,6 +62,8 @@ bool AllLeavesImpl(const py::iterable &iterable,
                    const std::optional<py::function> &leaf_predicate,
                    const std::string &registry_namespace);
 
+py::module_ GetCxxModule(const std::optional<py::module_> &module = std::nullopt);
+
 // A PyTreeSpec describes the tree structure of a PyTree. A PyTree is a tree of Python values, where
 // the interior nodes are tuples, lists, dictionaries, or user-defined containers, and the leaves
 // are other objects.
@@ -114,6 +116,9 @@ class PyTreeSpec {
     // Return paths to all leaves in the PyTreeSpec.
     [[nodiscard]] std::vector<py::tuple> Paths() const;
 
+    // Return a list of accessors to all leaves in the PyTreeSpec.
+    [[nodiscard]] std::vector<py::object> Accessors() const;
+
     // Return one-level entries of the PyTreeSpec to its children.
     [[nodiscard]] py::list Entries() const;
 
@@ -136,7 +141,7 @@ class PyTreeSpec {
 
     [[nodiscard]] std::string GetNamespace() const;
 
-    [[nodiscard]] py::object GetType() const;
+    [[nodiscard]] py::object GetType(const std::optional<Node> &node = std::nullopt) const;
 
     [[nodiscard]] PyTreeKind GetPyTreeKind() const;
 
@@ -205,10 +210,8 @@ class PyTreeSpec {
         py::object node_data{};
 
         // The tuple of path entries.
-        // This is optional, if not specified, `range(arity)` is used.
-        // For a sequence, contains the index of the element.
-        // For a mapping, contains the key of the element.
         // For a Custom type, contains the path entries returned by the `flatten_func` function.
+        // This is optional, if not specified, `range(arity)` is used.
         py::object node_entries{};
 
         // Custom type registration. Must be null for non-custom types.
@@ -241,6 +244,9 @@ class PyTreeSpec {
     static py::object MakeNode(const Node &node,
                                const py::object *children,
                                const size_t &num_children);
+
+    // Helper that identifies the path entry class for a node.
+    static py::object GetPathEntryType(const Node &node);
 
     // Recursive helper used to implement Flatten().
     bool FlattenInto(const py::handle &handle,
@@ -288,6 +294,12 @@ class PyTreeSpec {
                                     Stack &stack,  // NOLINT[runtime/references]
                                     const ssize_t &pos,
                                     const ssize_t &depth) const;
+
+    template <typename Span, typename Stack>
+    [[nodiscard]] ssize_t AccessorsImpl(Span &accessors,  // NOLINT[runtime/references]
+                                        Stack &stack,     // NOLINT[runtime/references]
+                                        const ssize_t &pos,
+                                        const ssize_t &depth) const;
 
     [[nodiscard]] std::string ToStringImpl() const;
 
