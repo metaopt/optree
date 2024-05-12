@@ -36,7 +36,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         python-abiflags: ["d"]
       fail-fast: false
     timeout-minutes: 60
@@ -83,7 +83,7 @@ jobs:
         shell: bash
         run: |
           PYENV_INSTALL_ARGS=()
-          if [[ "${{ runner.os }}" != "Windows" ]]; then
+          if [[ "${{ runner.os }}" != 'Windows' ]]; then
             if [[ "${{ matrix.python-abiflags }}" == *d* ]]; then
               PYENV_INSTALL_ARGS+=("--debug")
             fi
