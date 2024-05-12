@@ -36,7 +36,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         python-abiflags: ["d"]
       fail-fast: false
     timeout-minutes: 60
@@ -62,13 +62,15 @@ jobs:
           Write-Output "PATH=$Env:PYENV_ROOT\pyenv-win\bin;$Env:PYENV_ROOT\pyenv-win\shims;$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Determine Python version
-        id: determine-python-version
         shell: bash
         run: |
           pyenv install --list
-          PYTHON_VERSION="$(
-            pyenv latest --known "${{ matrix.python-version }}" || echo "${{ matrix.python-version }}"
-          )"
+          if ! PYTHON_VERSION="$(pyenv latest --known "${{ matrix.python-version }}")"; then
+            PYTHON_VERSION="$(
+              pyenv install --list | tr -d ' ' | grep -E "^${{ matrix.python-version }}" |
+                grep -vF '-' | grep -E '[0-9]$' | sort -rV | head -n 1
+            )"
+          fi
           echo "Using Python version: ${PYTHON_VERSION}"
           echo "PYTHON_VERSION=${PYTHON_VERSION}" >> "${GITHUB_ENV}"
 
@@ -83,7 +85,7 @@ jobs:
         shell: bash
         run: |
           PYENV_INSTALL_ARGS=()
-          if [[ "${{ runner.os }}" != "Windows" ]]; then
+          if [[ "${{ runner.os }}" != 'Windows' ]]; then
             if [[ "${{ matrix.python-abiflags }}" == *d* ]]; then
               PYENV_INSTALL_ARGS+=("--debug")
             fi
