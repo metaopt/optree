@@ -135,10 +135,10 @@ jobs:
           platforms: all
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.17
+        uses: pypa/cibuildwheel@v2.18
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
-          CIBW_ARCHS_LINUX: auto64 aarch64
+          CIBW_ARCHS_LINUX: auto64 aarch64 ppc64le s390x
           CIBW_ARCHS_WINDOWS: auto64 ARM64
           CIBW_ARCHS_MACOS: x86_64 arm64 universal2
         with:
@@ -199,10 +199,10 @@ jobs:
           platforms: all
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.17
+        uses: pypa/cibuildwheel@v2.18
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
-          CIBW_ARCHS_LINUX: auto64 aarch64
+          CIBW_ARCHS_LINUX: auto64 aarch64 ppc64le s390x
           CIBW_ARCHS_WINDOWS: auto64 ARM64
           CIBW_ARCHS_MACOS: x86_64 arm64 universal2
         with:
