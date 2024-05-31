@@ -152,7 +152,7 @@ mypy: mypy-install
 
 xdoctest: xdoctest-install
 	$(PYTHON) -m xdoctest --version
-	$(PYTHON) -m xdoctest $(PROJECT_PATH)
+	$(PYTHON) -m xdoctest --global-exec "from optree import *" $(PROJECT_PATH)
 
 doctest: xdoctest
 

@@ -15,6 +15,7 @@
 
 # pylint: disable=missing-function-docstring,invalid-name,wrong-import-order
 
+import contextlib
 import itertools
 import pickle
 import re
@@ -29,6 +30,7 @@ import pytest
 import helpers
 import optree
 from helpers import (
+    GLOBAL_NAMESPACE,
     NAMESPACED_TREE,
     PYPY,
     TREE_STRINGS,
@@ -68,53 +70,65 @@ def test_treespec_equal_hash():
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_rich_compare(tree, none_is_leaf, namespace):
-    count = itertools.count()
+def test_treespec_rich_compare(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        count = itertools.count()
 
-    def build_subtree(x):
-        cnt = next(count)
-        if cnt % 4 == 0:
-            return (x,)
-        if cnt % 4 == 1:
-            return [x, x]
-        if cnt % 4 == 2:
-            return (x, [x])
-        return {'a': x, 'b': [x]}
+        def build_subtree(x):
+            cnt = next(count)
+            if cnt % 4 == 0:
+                return (x,)
+            if cnt % 4 == 1:
+                return [x, x]
+            if cnt % 4 == 2:
+                return (x, [x])
+            return {'a': x, 'b': [x]}
 
-    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    suffix_treespec = optree.tree_structure(
-        optree.tree_map(build_subtree, tree, none_is_leaf=none_is_leaf, namespace=namespace),
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    assert treespec == treespec
-    assert not (treespec != treespec)
-    assert not (treespec < treespec)
-    assert not (treespec > treespec)
-    assert treespec <= treespec
-    assert treespec >= treespec
-    assert optree.treespec_is_prefix(treespec, treespec, strict=False)
-    assert not optree.treespec_is_prefix(treespec, treespec, strict=True)
-    assert optree.treespec_is_suffix(treespec, treespec, strict=False)
-    assert not optree.treespec_is_suffix(treespec, treespec, strict=True)
+        treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        suffix_treespec = optree.tree_structure(
+            optree.tree_map(build_subtree, tree, none_is_leaf=none_is_leaf, namespace=namespace),
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        assert treespec == treespec
+        assert not (treespec != treespec)
+        assert not (treespec < treespec)
+        assert not (treespec > treespec)
+        assert treespec <= treespec
+        assert treespec >= treespec
+        assert optree.treespec_is_prefix(treespec, treespec, strict=False)
+        assert not optree.treespec_is_prefix(treespec, treespec, strict=True)
+        assert optree.treespec_is_suffix(treespec, treespec, strict=False)
+        assert not optree.treespec_is_suffix(treespec, treespec, strict=True)
 
-    if 'FlatCache' in str(treespec) or treespec == suffix_treespec:
-        return
+        if 'FlatCache' in str(treespec) or treespec == suffix_treespec:
+            return
 
-    assert treespec != suffix_treespec
-    assert not (treespec == suffix_treespec)
-    assert treespec != suffix_treespec
-    assert treespec < suffix_treespec
-    assert not (treespec > suffix_treespec)
-    assert treespec <= suffix_treespec
-    assert not (treespec >= suffix_treespec)
-    assert suffix_treespec != treespec
-    assert not (suffix_treespec == treespec)
-    assert suffix_treespec > treespec
-    assert not (suffix_treespec < treespec)
-    assert suffix_treespec >= treespec
-    assert not (suffix_treespec <= treespec)
+        assert treespec != suffix_treespec
+        assert not (treespec == suffix_treespec)
+        assert treespec != suffix_treespec
+        assert treespec < suffix_treespec
+        assert not (treespec > suffix_treespec)
+        assert treespec <= suffix_treespec
+        assert not (treespec >= suffix_treespec)
+        assert suffix_treespec != treespec
+        assert not (suffix_treespec == treespec)
+        assert suffix_treespec > treespec
+        assert not (suffix_treespec < treespec)
+        assert suffix_treespec >= treespec
+        assert not (suffix_treespec <= treespec)
 
 
 @parametrize(
@@ -407,21 +421,33 @@ def test_treespec_with_namespace():
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_pickle_round_trip(tree, none_is_leaf, namespace):
-    expected = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    try:
-        pickle.loads(pickle.dumps(tree))
-    except pickle.PicklingError:
-        with pytest.raises(pickle.PicklingError, match=r"Can't pickle .*:"):
-            pickle.loads(pickle.dumps(expected))
-    else:
-        actual = pickle.loads(pickle.dumps(expected))
-        assert actual == expected
-        if expected.type in {dict, OrderedDict, defaultdict}:
-            assert list(optree.tree_unflatten(actual, range(len(actual)))) == list(
-                optree.tree_unflatten(expected, range(len(expected))),
-            )
+def test_treespec_pickle_round_trip(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        expected = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        try:
+            pickle.loads(pickle.dumps(tree))
+        except pickle.PicklingError:
+            with pytest.raises(pickle.PicklingError, match=r"Can't pickle .*:"):
+                pickle.loads(pickle.dumps(expected))
+        else:
+            actual = pickle.loads(pickle.dumps(expected))
+            assert actual == expected
+            if expected.type in {dict, OrderedDict, defaultdict}:
+                assert list(optree.tree_unflatten(actual, range(len(actual)))) == list(
+                    optree.tree_unflatten(expected, range(len(expected))),
+                )
 
 
 class Foo:
@@ -478,13 +504,25 @@ def test_treespec_pickle_missing_registration():
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_type(tree, none_is_leaf, namespace):
-    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    if treespec.is_leaf():
-        assert treespec.type is None
-    else:
-        assert type(tree) is treespec.type
+def test_treespec_type(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        if treespec.is_leaf():
+            assert treespec.type is None
+        else:
+            assert type(tree) is treespec.type
 
 
 @parametrize(
@@ -502,209 +540,267 @@ def test_treespec_type(tree, none_is_leaf, namespace):
     ],
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_compose_children(tree, inner_tree, none_is_leaf, namespace):
-    treespec = optree.tree_structure(
-        tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    inner_treespec = optree.tree_structure(
-        inner_tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    expected_treespec = optree.tree_structure(
-        optree.tree_map(
-            lambda _: inner_tree,
+def test_treespec_compose_children(
+    tree,
+    inner_tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        treespec = optree.tree_structure(
             tree,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
-        ),
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    composed_treespec = treespec.compose(inner_treespec)
-    expected_leaves = treespec.num_leaves * inner_treespec.num_leaves
-    assert composed_treespec.num_leaves == treespec.num_leaves * inner_treespec.num_leaves
-    expected_nodes = (treespec.num_nodes - treespec.num_leaves) + (
-        inner_treespec.num_nodes * treespec.num_leaves
-    )
-    assert composed_treespec.num_nodes == expected_nodes
-    leaves = list(range(expected_leaves))
-    composed = optree.tree_unflatten(composed_treespec, leaves)
-    assert leaves == optree.tree_leaves(
-        composed,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
+        )
+        inner_treespec = optree.tree_structure(
+            inner_tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        expected_treespec = optree.tree_structure(
+            optree.tree_map(
+                lambda _: inner_tree,
+                tree,
+                none_is_leaf=none_is_leaf,
+                namespace=namespace,
+            ),
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        composed_treespec = treespec.compose(inner_treespec)
+        expected_leaves = treespec.num_leaves * inner_treespec.num_leaves
+        assert composed_treespec.num_leaves == treespec.num_leaves * inner_treespec.num_leaves
+        expected_nodes = (treespec.num_nodes - treespec.num_leaves) + (
+            inner_treespec.num_nodes * treespec.num_leaves
+        )
+        assert composed_treespec.num_nodes == expected_nodes
+        leaves = list(range(expected_leaves))
+        composed = optree.tree_unflatten(composed_treespec, leaves)
+        assert leaves == optree.tree_leaves(
+            composed,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
 
-    if 'FlatCache' in str(treespec):
-        return
+        if 'FlatCache' in str(treespec):
+            return
 
-    assert composed_treespec == expected_treespec
+        assert composed_treespec == expected_treespec
 
-    stack = [(composed_treespec.children(), expected_treespec.children())]
-    while stack:
-        composed_children, expected_children = stack.pop()
-        for composed_child, expected_child in zip(composed_children, expected_children):
-            assert composed_child == expected_child
-            stack.append((composed_child.children(), expected_child.children()))
+        stack = [(composed_treespec.children(), expected_treespec.children())]
+        while stack:
+            composed_children, expected_children = stack.pop()
+            for composed_child, expected_child in zip(composed_children, expected_children):
+                assert composed_child == expected_child
+                stack.append((composed_child.children(), expected_child.children()))
 
-    assert composed_treespec == optree.tree_structure(
-        composed,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
+        assert composed_treespec == optree.tree_structure(
+            composed,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
 
-    if treespec == expected_treespec:
-        assert not (treespec != expected_treespec)
-        assert not (treespec < expected_treespec)
-        assert treespec <= expected_treespec
-        assert not (treespec > expected_treespec)
-        assert treespec >= expected_treespec
-        assert expected_treespec >= treespec
-        assert not (expected_treespec > treespec)
-        assert expected_treespec <= treespec
-        assert not (expected_treespec < treespec)
-        assert not optree.treespec_is_prefix(treespec, expected_treespec, strict=True)
-        assert optree.treespec_is_prefix(treespec, expected_treespec, strict=False)
-        assert not optree.treespec_is_suffix(treespec, expected_treespec, strict=True)
-        assert optree.treespec_is_suffix(treespec, expected_treespec, strict=False)
-        assert not optree.treespec_is_prefix(expected_treespec, treespec, strict=True)
-        assert optree.treespec_is_prefix(expected_treespec, treespec, strict=False)
-        assert not optree.treespec_is_suffix(expected_treespec, treespec, strict=True)
-        assert optree.treespec_is_suffix(expected_treespec, treespec, strict=False)
-    else:
-        assert treespec != expected_treespec
-        assert treespec < expected_treespec
-        assert treespec <= expected_treespec
-        assert not (treespec > expected_treespec)
-        assert not (treespec >= expected_treespec)
-        assert expected_treespec >= treespec
-        assert expected_treespec > treespec
-        assert not (expected_treespec <= treespec)
-        assert not (expected_treespec < treespec)
-        assert optree.treespec_is_prefix(treespec, expected_treespec, strict=True)
-        assert optree.treespec_is_prefix(treespec, expected_treespec, strict=False)
-        assert not optree.treespec_is_suffix(treespec, expected_treespec, strict=True)
-        assert not optree.treespec_is_suffix(treespec, expected_treespec, strict=False)
-        assert not optree.treespec_is_prefix(expected_treespec, treespec, strict=True)
-        assert not optree.treespec_is_prefix(expected_treespec, treespec, strict=False)
-        assert optree.treespec_is_suffix(expected_treespec, treespec, strict=True)
-        assert optree.treespec_is_suffix(expected_treespec, treespec, strict=False)
+        if treespec == expected_treespec:
+            assert not (treespec != expected_treespec)
+            assert not (treespec < expected_treespec)
+            assert treespec <= expected_treespec
+            assert not (treespec > expected_treespec)
+            assert treespec >= expected_treespec
+            assert expected_treespec >= treespec
+            assert not (expected_treespec > treespec)
+            assert expected_treespec <= treespec
+            assert not (expected_treespec < treespec)
+            assert not optree.treespec_is_prefix(treespec, expected_treespec, strict=True)
+            assert optree.treespec_is_prefix(treespec, expected_treespec, strict=False)
+            assert not optree.treespec_is_suffix(treespec, expected_treespec, strict=True)
+            assert optree.treespec_is_suffix(treespec, expected_treespec, strict=False)
+            assert not optree.treespec_is_prefix(expected_treespec, treespec, strict=True)
+            assert optree.treespec_is_prefix(expected_treespec, treespec, strict=False)
+            assert not optree.treespec_is_suffix(expected_treespec, treespec, strict=True)
+            assert optree.treespec_is_suffix(expected_treespec, treespec, strict=False)
+        else:
+            assert treespec != expected_treespec
+            assert treespec < expected_treespec
+            assert treespec <= expected_treespec
+            assert not (treespec > expected_treespec)
+            assert not (treespec >= expected_treespec)
+            assert expected_treespec >= treespec
+            assert expected_treespec > treespec
+            assert not (expected_treespec <= treespec)
+            assert not (expected_treespec < treespec)
+            assert optree.treespec_is_prefix(treespec, expected_treespec, strict=True)
+            assert optree.treespec_is_prefix(treespec, expected_treespec, strict=False)
+            assert not optree.treespec_is_suffix(treespec, expected_treespec, strict=True)
+            assert not optree.treespec_is_suffix(treespec, expected_treespec, strict=False)
+            assert not optree.treespec_is_prefix(expected_treespec, treespec, strict=True)
+            assert not optree.treespec_is_prefix(expected_treespec, treespec, strict=False)
+            assert optree.treespec_is_suffix(expected_treespec, treespec, strict=True)
+            assert optree.treespec_is_suffix(expected_treespec, treespec, strict=False)
 
 
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_entries(tree, none_is_leaf, namespace):
-    expected_paths, _, treespec = optree.tree_flatten_with_path(
-        tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    assert optree.treespec_paths(treespec) == expected_paths
+def test_treespec_entries(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        expected_paths, _, treespec = optree.tree_flatten_with_path(
+            tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        assert optree.treespec_paths(treespec) == expected_paths
 
-    def gen_path(spec):
-        entries = optree.treespec_entries(spec)
-        children = optree.treespec_children(spec)
-        assert len(entries) == spec.num_children
-        assert len(children) == spec.num_children
-        assert entries is not optree.treespec_entries(spec)
-        assert children is not optree.treespec_children(spec)
-        optree.treespec_entries(spec).clear()
-        optree.treespec_children(spec).clear()
+        def gen_path(spec):
+            entries = optree.treespec_entries(spec)
+            children = optree.treespec_children(spec)
+            assert len(entries) == spec.num_children
+            assert len(children) == spec.num_children
+            assert entries is not optree.treespec_entries(spec)
+            assert children is not optree.treespec_children(spec)
+            optree.treespec_entries(spec).clear()
+            optree.treespec_children(spec).clear()
 
-        if spec.is_leaf():
-            assert spec.num_children == 0
-            yield ()
-            return
+            if spec.is_leaf():
+                assert spec.num_children == 0
+                yield ()
+                return
 
-        for entry, child in zip(entries, children):
-            for suffix in gen_path(child):
-                yield (entry, *suffix)
+            for entry, child in zip(entries, children):
+                for suffix in gen_path(child):
+                    yield (entry, *suffix)
 
-    paths = list(gen_path(treespec))
-    assert paths == expected_paths
+        paths = list(gen_path(treespec))
+        assert paths == expected_paths
 
-    expected_accessors, _, other_treespec = optree.tree_flatten_with_accessor(
-        tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    assert optree.treespec_accessors(treespec) == expected_accessors
-    assert optree.treespec_accessors(other_treespec) == expected_accessors
-    assert treespec == other_treespec
+        expected_accessors, _, other_treespec = optree.tree_flatten_with_accessor(
+            tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        assert optree.treespec_accessors(treespec) == expected_accessors
+        assert optree.treespec_accessors(other_treespec) == expected_accessors
+        assert treespec == other_treespec
 
-    def gen_typed_path(spec):
-        entries = optree.treespec_entries(spec)
-        children = optree.treespec_children(spec)
-        assert len(entries) == spec.num_children
-        assert len(children) == spec.num_children
+        def gen_typed_path(spec):
+            entries = optree.treespec_entries(spec)
+            children = optree.treespec_children(spec)
+            assert len(entries) == spec.num_children
+            assert len(children) == spec.num_children
 
-        if spec.is_leaf():
-            assert spec.num_children == 0
-            yield ()
-            return
+            if spec.is_leaf():
+                assert spec.num_children == 0
+                yield ()
+                return
 
-        node_type = spec.type
-        node_kind = spec.kind
-        for entry, child in zip(entries, children):
-            for suffix in gen_typed_path(child):
-                yield ((entry, node_type, node_kind), *suffix)
+            node_type = spec.type
+            node_kind = spec.kind
+            for entry, child in zip(entries, children):
+                for suffix in gen_typed_path(child):
+                    yield ((entry, node_type, node_kind), *suffix)
 
-    typed_paths = list(gen_typed_path(treespec))
-    expected_typed_paths = [
-        tuple((e.entry, e.type, e.kind) for e in accessor) for accessor in expected_accessors
-    ]
-    assert typed_paths == expected_typed_paths
+        typed_paths = list(gen_typed_path(treespec))
+        expected_typed_paths = [
+            tuple((e.entry, e.type, e.kind) for e in accessor) for accessor in expected_accessors
+        ]
+        assert typed_paths == expected_typed_paths
 
 
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_entry(tree, none_is_leaf, namespace):
-    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    if treespec.type is None or treespec.type is type(None):
+def test_treespec_entry(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        if treespec.type is None or treespec.type is type(None):
+            with pytest.raises(
+                IndexError,
+                match=re.escape('PyTreeSpec::Entry() index out of range.'),
+            ):
+                optree.treespec_entry(treespec, 0)
+            with pytest.raises(
+                IndexError,
+                match=re.escape('PyTreeSpec::Entry() index out of range.'),
+            ):
+                optree.treespec_entry(treespec, -1)
+            with pytest.raises(
+                IndexError,
+                match=re.escape('PyTreeSpec::Entry() index out of range.'),
+            ):
+                optree.treespec_entry(treespec, 1)
+        if treespec.is_leaf(strict=False):
+            with pytest.raises(
+                IndexError,
+                match=re.escape('PyTreeSpec::Entry() index out of range.'),
+            ):
+                optree.treespec_entry(treespec, 0)
+            with pytest.raises(
+                IndexError,
+                match=re.escape('PyTreeSpec::Entry() index out of range.'),
+            ):
+                optree.treespec_entry(treespec, -1)
+            with pytest.raises(
+                IndexError,
+                match=re.escape('PyTreeSpec::Entry() index out of range.'),
+            ):
+                optree.treespec_entry(treespec, 1)
+        expected_entries = optree.treespec_entries(treespec)
+        for i, entry in enumerate(expected_entries):
+            assert entry == optree.treespec_entry(treespec, i)
+            assert entry == optree.treespec_entry(treespec, i - len(expected_entries))
+            assert optree.treespec_entry(treespec, i) == optree.treespec_entry(treespec, i)
+            assert optree.treespec_entry(
+                treespec,
+                i - len(expected_entries),
+            ) == optree.treespec_entry(
+                treespec,
+                i - len(expected_entries),
+            )
+            assert optree.treespec_entry(treespec, i) == optree.treespec_entry(
+                treespec,
+                i - len(expected_entries),
+            )
         with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
-            optree.treespec_entry(treespec, 0)
+            optree.treespec_entry(treespec, len(expected_entries))
         with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
-            optree.treespec_entry(treespec, -1)
-        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
-            optree.treespec_entry(treespec, 1)
-    if treespec.is_leaf(strict=False):
-        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
-            optree.treespec_entry(treespec, 0)
-        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
-            optree.treespec_entry(treespec, -1)
-        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
-            optree.treespec_entry(treespec, 1)
-    expected_entries = optree.treespec_entries(treespec)
-    for i, entry in enumerate(expected_entries):
-        assert entry == optree.treespec_entry(treespec, i)
-        assert entry == optree.treespec_entry(treespec, i - len(expected_entries))
-        assert optree.treespec_entry(treespec, i) == optree.treespec_entry(treespec, i)
-        assert optree.treespec_entry(treespec, i - len(expected_entries)) == optree.treespec_entry(
-            treespec,
-            i - len(expected_entries),
-        )
-        assert optree.treespec_entry(treespec, i) == optree.treespec_entry(
-            treespec,
-            i - len(expected_entries),
-        )
-    with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
-        optree.treespec_entry(treespec, len(expected_entries))
-    with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Entry() index out of range.')):
-        optree.treespec_entry(treespec, -len(expected_entries) - 1)
+            optree.treespec_entry(treespec, -len(expected_entries) - 1)
 
-    assert expected_entries == [
-        optree.treespec_entry(treespec, i) for i in range(len(expected_entries))
-    ]
+        assert expected_entries == [
+            optree.treespec_entry(treespec, i) for i in range(len(expected_entries))
+        ]
 
 
 def test_treespec_children():
@@ -733,86 +829,155 @@ def test_treespec_children():
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_child(tree, none_is_leaf, namespace):
-    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    if treespec.type is None or treespec.type is type(None):
+def test_treespec_child(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        if treespec.type is None or treespec.type is type(None):
+            with pytest.raises(
+                IndexError,
+                match=re.escape('PyTreeSpec::Child() index out of range.'),
+            ):
+                optree.treespec_child(treespec, 0)
+            with pytest.raises(
+                IndexError,
+                match=re.escape('PyTreeSpec::Child() index out of range.'),
+            ):
+                optree.treespec_child(treespec, -1)
+            with pytest.raises(
+                IndexError,
+                match=re.escape('PyTreeSpec::Child() index out of range.'),
+            ):
+                optree.treespec_child(treespec, 1)
+        if treespec.is_leaf(strict=False):
+            with pytest.raises(
+                IndexError,
+                match=re.escape('PyTreeSpec::Child() index out of range.'),
+            ):
+                optree.treespec_child(treespec, 0)
+            with pytest.raises(
+                IndexError,
+                match=re.escape('PyTreeSpec::Child() index out of range.'),
+            ):
+                optree.treespec_child(treespec, -1)
+            with pytest.raises(
+                IndexError,
+                match=re.escape('PyTreeSpec::Child() index out of range.'),
+            ):
+                optree.treespec_child(treespec, 1)
+        expected_children = optree.treespec_children(treespec)
+        for i, child in enumerate(expected_children):
+            assert child == optree.treespec_child(treespec, i)
+            assert child == optree.treespec_child(treespec, i - len(expected_children))
+            assert optree.treespec_child(treespec, i) == optree.treespec_child(treespec, i)
+            assert optree.treespec_child(
+                treespec,
+                i - len(expected_children),
+            ) == optree.treespec_child(
+                treespec,
+                i - len(expected_children),
+            )
+            assert optree.treespec_child(treespec, i) == optree.treespec_child(
+                treespec,
+                i - len(expected_children),
+            )
         with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
-            optree.treespec_child(treespec, 0)
+            optree.treespec_child(treespec, len(expected_children))
         with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
-            optree.treespec_child(treespec, -1)
-        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
-            optree.treespec_child(treespec, 1)
-    if treespec.is_leaf(strict=False):
-        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
-            optree.treespec_child(treespec, 0)
-        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
-            optree.treespec_child(treespec, -1)
-        with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
-            optree.treespec_child(treespec, 1)
-    expected_children = optree.treespec_children(treespec)
-    for i, child in enumerate(expected_children):
-        assert child == optree.treespec_child(treespec, i)
-        assert child == optree.treespec_child(treespec, i - len(expected_children))
-        assert optree.treespec_child(treespec, i) == optree.treespec_child(treespec, i)
-        assert optree.treespec_child(treespec, i - len(expected_children)) == optree.treespec_child(
-            treespec,
-            i - len(expected_children),
-        )
-        assert optree.treespec_child(treespec, i) == optree.treespec_child(
-            treespec,
-            i - len(expected_children),
-        )
-    with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
-        optree.treespec_child(treespec, len(expected_children))
-    with pytest.raises(IndexError, match=re.escape('PyTreeSpec::Child() index out of range.')):
-        optree.treespec_child(treespec, -len(expected_children) - 1)
+            optree.treespec_child(treespec, -len(expected_children) - 1)
 
-    assert expected_children == [
-        optree.treespec_child(treespec, i) for i in range(len(expected_children))
-    ]
+        assert expected_children == [
+            optree.treespec_child(treespec, i) for i in range(len(expected_children))
+        ]
 
 
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_num_nodes(tree, none_is_leaf, namespace):
-    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    nodes = []
-    stack = [treespec]
-    while stack:
-        spec = stack.pop()
-        nodes.append(spec)
-        children = spec.children()
-        stack.extend(reversed(children))
-        assert spec.num_nodes == sum(child.num_nodes for child in children) + 1
-    assert treespec.num_nodes == len(nodes)
+def test_treespec_num_nodes(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        nodes = []
+        stack = [treespec]
+        while stack:
+            spec = stack.pop()
+            nodes.append(spec)
+            children = spec.children()
+            stack.extend(reversed(children))
+            assert spec.num_nodes == sum(child.num_nodes for child in children) + 1
+        assert treespec.num_nodes == len(nodes)
 
 
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_num_leaves(tree, none_is_leaf, namespace):
-    leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    assert treespec.num_leaves == len(leaves)
-    assert treespec.num_leaves == len(treespec)
-    assert treespec.num_leaves == len(treespec.paths())
-    assert treespec.num_leaves == len(treespec.accessors())
+def test_treespec_num_leaves(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        assert treespec.num_leaves == len(leaves)
+        assert treespec.num_leaves == len(treespec)
+        assert treespec.num_leaves == len(treespec.paths())
+        assert treespec.num_leaves == len(treespec.accessors())
 
 
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_num_children(tree, none_is_leaf, namespace):
-    treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    assert treespec.num_children == len(treespec.entries())
-    assert treespec.num_children == len(treespec.children())
+def test_treespec_num_children(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        assert treespec.num_children == len(treespec.entries())
+        assert treespec.num_children == len(treespec.children())
 
 
 def test_treespec_is_leaf():
@@ -957,247 +1122,317 @@ def test_treespec_leaf_none(namespace):
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_constructor(tree, none_is_leaf, namespace):  # noqa: C901
-    for passed_namespace in sorted({'', namespace}):
-        stack = [tree]
-        while stack:
-            node = stack.pop()
-            counter = itertools.count()
-            expected_treespec = optree.tree_structure(
-                node,
-                none_is_leaf=none_is_leaf,
-                namespace=namespace,
-            )
-            children, one_level_treespec = optree.tree_flatten(
-                node,
-                is_leaf=lambda x: next(counter) > 0,  # noqa: B023
-                none_is_leaf=none_is_leaf,
-                namespace=namespace,
-            )
-            node_type = type(node)
-            if one_level_treespec.is_leaf():
-                assert len(children) == 1
-                with pytest.warns(
-                    UserWarning,
-                    match=re.escape('PyTreeSpec::MakeFromCollection() is called on a leaf.'),
-                ):
-                    assert (
-                        optree.treespec_from_collection(
-                            node,
-                            none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
-                        )
-                        == expected_treespec
-                    )
-                assert (
-                    optree.treespec_leaf(
-                        none_is_leaf=none_is_leaf,
-                        namespace=passed_namespace,
-                    )
-                    == expected_treespec
+def test_treespec_constructor(  # noqa: C901
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        for passed_namespace in sorted({'', namespace}):
+            stack = [tree]
+            while stack:
+                node = stack.pop()
+                counter = itertools.count()
+                expected_treespec = optree.tree_structure(
+                    node,
+                    none_is_leaf=none_is_leaf,
+                    namespace=namespace,
                 )
-            else:
-                children_treespecs = [
-                    optree.tree_structure(
-                        child,
-                        none_is_leaf=none_is_leaf,
-                        namespace=namespace,
-                    )
-                    for child in children
-                ]
-                collection_of_treespecs = optree.tree_unflatten(
-                    one_level_treespec,
-                    children_treespecs,
+                children, one_level_treespec = optree.tree_flatten(
+                    node,
+                    is_leaf=lambda x: next(counter) > 0,  # noqa: B023
+                    none_is_leaf=none_is_leaf,
+                    namespace=namespace,
                 )
-                assert (
-                    optree.treespec_from_collection(
-                        collection_of_treespecs,
-                        none_is_leaf=none_is_leaf,
-                        namespace=namespace,
-                    )
-                    == expected_treespec
-                )
-
-                if node_type in {type(None), tuple, list}:
-                    if node_type is tuple:
-                        assert (
-                            optree.treespec_tuple(
-                                children_treespecs,
-                                none_is_leaf=none_is_leaf,
-                                namespace=passed_namespace,
-                            )
-                            == expected_treespec
-                        )
-                        assert (
-                            optree.treespec_from_collection(
-                                tuple(children_treespecs),
-                                none_is_leaf=none_is_leaf,
-                                namespace=passed_namespace,
-                            )
-                            == expected_treespec
-                        )
-                    elif node_type is list:
-                        assert (
-                            optree.treespec_list(
-                                children_treespecs,
-                                none_is_leaf=none_is_leaf,
-                                namespace=passed_namespace,
-                            )
-                            == expected_treespec
-                        )
-                        assert (
-                            optree.treespec_from_collection(
-                                list(children_treespecs),
-                                none_is_leaf=none_is_leaf,
-                                namespace=passed_namespace,
-                            )
-                            == expected_treespec
-                        )
-                    else:
-                        assert len(children_treespecs) == 0
-                        assert (
-                            optree.treespec_none(
-                                none_is_leaf=none_is_leaf,
-                                namespace=passed_namespace,
-                            )
-                            == expected_treespec
-                        )
-                        assert (
-                            optree.treespec_from_collection(
-                                None,
-                                none_is_leaf=none_is_leaf,
-                                namespace=passed_namespace,
-                            )
-                            == expected_treespec
-                        )
-                elif node_type is dict:
-                    assert (
-                        optree.treespec_dict(
-                            zip(sorted(node), children_treespecs),
-                            none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
-                        )
-                        == expected_treespec
-                    )
-                    assert (
-                        optree.treespec_from_collection(
-                            dict(zip(sorted(node), children_treespecs)),
-                            none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
-                        )
-                        == expected_treespec
-                    )
-                elif node_type is OrderedDict:
-                    assert (
-                        optree.treespec_ordereddict(
-                            zip(node, children_treespecs),
-                            none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
-                        )
-                        == expected_treespec
-                    )
-                    assert (
-                        optree.treespec_from_collection(
-                            OrderedDict(zip(node, children_treespecs)),
-                            none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
-                        )
-                        == expected_treespec
-                    )
-                elif node_type is defaultdict:
-                    assert (
-                        optree.treespec_defaultdict(
-                            node.default_factory,
-                            zip(sorted(node), children_treespecs),
-                            none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
-                        )
-                        == expected_treespec
-                    )
-                    assert (
-                        optree.treespec_from_collection(
-                            defaultdict(
-                                node.default_factory,
-                                zip(sorted(node), children_treespecs),
-                            ),
-                            none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
-                        )
-                        == expected_treespec
-                    )
-                elif node_type is deque:
-                    assert (
-                        optree.treespec_deque(
-                            children_treespecs,
-                            maxlen=node.maxlen,
-                            none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
-                        )
-                        == expected_treespec
-                    )
-                    assert (
-                        optree.treespec_from_collection(
-                            deque(children_treespecs, maxlen=node.maxlen),
-                            none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
-                        )
-                        == expected_treespec
-                    )
-                elif optree.is_structseq(node):
-                    assert (
-                        optree.treespec_structseq(
-                            node_type(children_treespecs),
-                            none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
-                        )
-                        == expected_treespec
-                    )
-                    assert (
-                        optree.treespec_from_collection(
-                            node_type(children_treespecs),
-                            none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
-                        )
-                        == expected_treespec
-                    )
-                    with pytest.raises(
-                        ValueError,
-                        match=r'Expected a namedtuple of PyTreeSpec\(s\), got .*\.',
+                node_type = type(node)
+                if one_level_treespec.is_leaf():
+                    assert len(children) == 1
+                    with pytest.warns(
+                        UserWarning,
+                        match=re.escape('PyTreeSpec::MakeFromCollection() is called on a leaf.'),
                     ):
-                        optree.treespec_namedtuple(
-                            node_type(children_treespecs),
-                            none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
+                        assert (
+                            optree.treespec_from_collection(
+                                node,
+                                none_is_leaf=none_is_leaf,
+                                namespace=passed_namespace,
+                            )
+                            == expected_treespec
                         )
-                elif optree.is_namedtuple(node):
                     assert (
-                        optree.treespec_namedtuple(
-                            node_type(*children_treespecs),
+                        optree.treespec_leaf(
                             none_is_leaf=none_is_leaf,
                             namespace=passed_namespace,
                         )
                         == expected_treespec
+                    )
+                else:
+                    children_treespecs = [
+                        optree.tree_structure(
+                            child,
+                            none_is_leaf=none_is_leaf,
+                            namespace=namespace,
+                        )
+                        for child in children
+                    ]
+                    collection_of_treespecs = optree.tree_unflatten(
+                        one_level_treespec,
+                        children_treespecs,
                     )
                     assert (
                         optree.treespec_from_collection(
-                            node_type(*children_treespecs),
+                            collection_of_treespecs,
                             none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
+                            namespace=namespace,
                         )
                         == expected_treespec
                     )
-                    with pytest.raises(
-                        ValueError,
-                        match=r'Expected a PyStructSequence of PyTreeSpec\(s\), got .*\.',
-                    ):
-                        optree.treespec_structseq(
-                            node_type(*children_treespecs),
-                            none_is_leaf=none_is_leaf,
-                            namespace=passed_namespace,
-                        )
 
-                stack.extend(reversed(children))
+                    if node_type in {type(None), tuple, list}:
+                        if node_type is tuple:
+                            assert (
+                                optree.treespec_tuple(
+                                    children_treespecs,
+                                    none_is_leaf=none_is_leaf,
+                                    namespace=passed_namespace,
+                                )
+                                == expected_treespec
+                            )
+                            assert (
+                                optree.treespec_from_collection(
+                                    tuple(children_treespecs),
+                                    none_is_leaf=none_is_leaf,
+                                    namespace=passed_namespace,
+                                )
+                                == expected_treespec
+                            )
+                        elif node_type is list:
+                            assert (
+                                optree.treespec_list(
+                                    children_treespecs,
+                                    none_is_leaf=none_is_leaf,
+                                    namespace=passed_namespace,
+                                )
+                                == expected_treespec
+                            )
+                            assert (
+                                optree.treespec_from_collection(
+                                    list(children_treespecs),
+                                    none_is_leaf=none_is_leaf,
+                                    namespace=passed_namespace,
+                                )
+                                == expected_treespec
+                            )
+                        else:
+                            assert len(children_treespecs) == 0
+                            assert (
+                                optree.treespec_none(
+                                    none_is_leaf=none_is_leaf,
+                                    namespace=passed_namespace,
+                                )
+                                == expected_treespec
+                            )
+                            assert (
+                                optree.treespec_from_collection(
+                                    None,
+                                    none_is_leaf=none_is_leaf,
+                                    namespace=passed_namespace,
+                                )
+                                == expected_treespec
+                            )
+                    elif node_type is dict:
+                        if dict_should_be_sorted or dict_session_namespace not in {'', namespace}:
+                            assert (
+                                optree.treespec_dict(
+                                    zip(sorted(node), children_treespecs),
+                                    none_is_leaf=none_is_leaf,
+                                    namespace=passed_namespace,
+                                )
+                                == expected_treespec
+                            )
+                            assert (
+                                optree.treespec_from_collection(
+                                    dict(zip(sorted(node), children_treespecs)),
+                                    none_is_leaf=none_is_leaf,
+                                    namespace=passed_namespace,
+                                )
+                                == expected_treespec
+                            )
+                        else:
+                            context = (
+                                optree.dict_insertion_ordered(
+                                    True,
+                                    namespace=passed_namespace or GLOBAL_NAMESPACE,
+                                )
+                                if dict_session_namespace != passed_namespace
+                                else contextlib.nullcontext()
+                            )
+                            with context:
+                                assert (
+                                    optree.treespec_dict(
+                                        zip(node, children_treespecs),
+                                        none_is_leaf=none_is_leaf,
+                                        namespace=passed_namespace,
+                                    )
+                                    == expected_treespec
+                                )
+                                assert (
+                                    optree.treespec_from_collection(
+                                        dict(zip(node, children_treespecs)),
+                                        none_is_leaf=none_is_leaf,
+                                        namespace=passed_namespace,
+                                    )
+                                    == expected_treespec
+                                )
+                    elif node_type is OrderedDict:
+                        assert (
+                            optree.treespec_ordereddict(
+                                zip(node, children_treespecs),
+                                none_is_leaf=none_is_leaf,
+                                namespace=passed_namespace,
+                            )
+                            == expected_treespec
+                        )
+                        assert (
+                            optree.treespec_from_collection(
+                                OrderedDict(zip(node, children_treespecs)),
+                                none_is_leaf=none_is_leaf,
+                                namespace=passed_namespace,
+                            )
+                            == expected_treespec
+                        )
+                    elif node_type is defaultdict:
+                        if dict_should_be_sorted or dict_session_namespace not in {'', namespace}:
+                            assert (
+                                optree.treespec_defaultdict(
+                                    node.default_factory,
+                                    zip(sorted(node), children_treespecs),
+                                    none_is_leaf=none_is_leaf,
+                                    namespace=passed_namespace,
+                                )
+                                == expected_treespec
+                            )
+                            assert (
+                                optree.treespec_from_collection(
+                                    defaultdict(
+                                        node.default_factory,
+                                        zip(sorted(node), children_treespecs),
+                                    ),
+                                    none_is_leaf=none_is_leaf,
+                                    namespace=passed_namespace,
+                                )
+                                == expected_treespec
+                            )
+                        else:
+                            context = (
+                                optree.dict_insertion_ordered(
+                                    True,
+                                    namespace=passed_namespace or GLOBAL_NAMESPACE,
+                                )
+                                if dict_session_namespace != passed_namespace
+                                else contextlib.nullcontext()
+                            )
+                            with context:
+                                assert (
+                                    optree.treespec_defaultdict(
+                                        node.default_factory,
+                                        zip(node, children_treespecs),
+                                        none_is_leaf=none_is_leaf,
+                                        namespace=passed_namespace,
+                                    )
+                                    == expected_treespec
+                                )
+                                assert (
+                                    optree.treespec_from_collection(
+                                        defaultdict(
+                                            node.default_factory,
+                                            zip(node, children_treespecs),
+                                        ),
+                                        none_is_leaf=none_is_leaf,
+                                        namespace=passed_namespace,
+                                    )
+                                    == expected_treespec
+                                )
+                    elif node_type is deque:
+                        assert (
+                            optree.treespec_deque(
+                                children_treespecs,
+                                maxlen=node.maxlen,
+                                none_is_leaf=none_is_leaf,
+                                namespace=passed_namespace,
+                            )
+                            == expected_treespec
+                        )
+                        assert (
+                            optree.treespec_from_collection(
+                                deque(children_treespecs, maxlen=node.maxlen),
+                                none_is_leaf=none_is_leaf,
+                                namespace=passed_namespace,
+                            )
+                            == expected_treespec
+                        )
+                    elif optree.is_structseq(node):
+                        assert (
+                            optree.treespec_structseq(
+                                node_type(children_treespecs),
+                                none_is_leaf=none_is_leaf,
+                                namespace=passed_namespace,
+                            )
+                            == expected_treespec
+                        )
+                        assert (
+                            optree.treespec_from_collection(
+                                node_type(children_treespecs),
+                                none_is_leaf=none_is_leaf,
+                                namespace=passed_namespace,
+                            )
+                            == expected_treespec
+                        )
+                        with pytest.raises(
+                            ValueError,
+                            match=r'Expected a namedtuple of PyTreeSpec\(s\), got .*\.',
+                        ):
+                            optree.treespec_namedtuple(
+                                node_type(children_treespecs),
+                                none_is_leaf=none_is_leaf,
+                                namespace=passed_namespace,
+                            )
+                    elif optree.is_namedtuple(node):
+                        assert (
+                            optree.treespec_namedtuple(
+                                node_type(*children_treespecs),
+                                none_is_leaf=none_is_leaf,
+                                namespace=passed_namespace,
+                            )
+                            == expected_treespec
+                        )
+                        assert (
+                            optree.treespec_from_collection(
+                                node_type(*children_treespecs),
+                                none_is_leaf=none_is_leaf,
+                                namespace=passed_namespace,
+                            )
+                            == expected_treespec
+                        )
+                        with pytest.raises(
+                            ValueError,
+                            match=r'Expected a PyStructSequence of PyTreeSpec\(s\), got .*\.',
+                        ):
+                            optree.treespec_structseq(
+                                node_type(*children_treespecs),
+                                none_is_leaf=none_is_leaf,
+                                namespace=passed_namespace,
+                            )
+
+                    stack.extend(reversed(children))
 
 
 def test_treespec_constructor_namespace():

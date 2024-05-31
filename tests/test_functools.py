@@ -18,7 +18,7 @@
 import functools
 
 import optree
-from helpers import parametrize
+from helpers import GLOBAL_NAMESPACE, parametrize
 
 
 def dummy_func(*args, **kwargs):  # pylint: disable=unused-argument
@@ -38,13 +38,27 @@ dummy_partial_func = functools.partial(dummy_func, a=1)
         optree.functools.partial(dummy_partial_func, 1, 2, 3, x=4, y=5),
     ],
     none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_partial_round_trip(tree, none_is_leaf):
-    leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
-    actual = optree.tree_unflatten(treespec, leaves)
-    assert actual.func == tree.func
-    assert actual.args == tree.args
-    assert actual.keywords == tree.keywords
+def test_partial_round_trip(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        actual = optree.tree_unflatten(treespec, leaves)
+        assert actual.func == tree.func
+        assert actual.args == tree.args
+        assert actual.keywords == tree.keywords
+        assert tuple(actual.keywords.items()) == tuple(tree.keywords.items())
 
 
 def test_partial_does_not_merge_with_other_partials():
@@ -78,13 +92,27 @@ def test_partial_func_attribute_has_stable_hash():
         optree.Partial(dummy_partial_func, 1, 2, 3, x=4, y=5),
     ],
     none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_Partial_round_trip(tree, none_is_leaf):  # noqa: N802
-    leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
-    actual = optree.tree_unflatten(treespec, leaves)
-    assert actual.func == tree.func
-    assert actual.args == tree.args
-    assert actual.keywords == tree.keywords
+def test_Partial_round_trip(  # noqa: N802
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        actual = optree.tree_unflatten(treespec, leaves)
+        assert actual.func == tree.func
+        assert actual.args == tree.args
+        assert actual.keywords == tree.keywords
+        assert tuple(actual.keywords.items()) == tuple(tree.keywords.items())
 
 
 def test_Partial_does_not_merge_with_other_partials():  # noqa: N802

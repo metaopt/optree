@@ -83,7 +83,7 @@ py::object PyTreeIter::NextImpl() {
             case PyTreeKind::DefaultDict: {
                 auto dict = py::reinterpret_borrow<py::dict>(object);
                 py::list keys = DictKeys(dict);
-                if (kind != PyTreeKind::OrderedDict) [[likely]] {
+                if (kind != PyTreeKind::OrderedDict && !m_is_dict_insertion_ordered) [[likely]] {
                     TotalOrderSort(keys);
                 }
                 if (PyList_Reverse(keys.ptr()) < 0) [[unlikely]] {

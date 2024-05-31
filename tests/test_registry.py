@@ -22,7 +22,8 @@ from collections import UserDict, UserList, namedtuple
 import pytest
 
 import optree
-from helpers import gc_collect, skipif_pypy
+import optree._C
+from helpers import GLOBAL_NAMESPACE, gc_collect, skipif_pypy
 
 
 def test_register_pytree_node_class_with_no_namespace():
@@ -60,7 +61,7 @@ def test_register_pytree_node_class_with_duplicate_namespace():
 def test_register_pytree_node_with_non_class():
     with pytest.raises(TypeError, match='Expected a class'):
 
-        @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
+        @optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
         def func1():
             pass
 
@@ -69,7 +70,7 @@ def test_register_pytree_node_with_non_class():
             1,
             lambda s: (sorted(s), None, None),
             lambda _, s: set(s),
-            namespace=optree.registry.__GLOBAL_NAMESPACE,
+            namespace=GLOBAL_NAMESPACE,
         )
 
     with pytest.raises(TypeError, match='Expected a class'):
@@ -250,7 +251,7 @@ def test_register_pytree_node_duplicate_builtins():
             type(None),
             lambda n: ((), None, None),
             lambda _, n: None,
-            namespace=optree.registry.__GLOBAL_NAMESPACE,
+            namespace=GLOBAL_NAMESPACE,
         )
 
     with pytest.raises(
@@ -276,7 +277,7 @@ def test_register_pytree_node_duplicate_builtins():
             list,
             lambda lst: (lst, None, None),
             lambda _, lst: lst,
-            namespace=optree.registry.__GLOBAL_NAMESPACE,
+            namespace=GLOBAL_NAMESPACE,
         )
     with pytest.raises(
         ValueError,
@@ -306,7 +307,7 @@ def test_register_pytree_node_namedtuple():
             mytuple1,
             lambda t: (reversed(t), None, None),
             lambda _, t: mytuple1(*reversed(t)),
-            namespace=optree.registry.__GLOBAL_NAMESPACE,
+            namespace=GLOBAL_NAMESPACE,
         )
     with pytest.warns(
         UserWarning,
@@ -469,7 +470,7 @@ def test_pytree_node_registry_get():
         set,
         lambda s: (sorted(s), None, None),
         lambda _, s: set(s),
-        namespace=optree.registry.__GLOBAL_NAMESPACE,
+        namespace=GLOBAL_NAMESPACE,
     )
     handler = optree.register_pytree_node.get(set)
     assert handler is not None
@@ -568,10 +569,10 @@ def test_unregister_pytree_node_with_non_class():
         pass
 
     with pytest.raises(TypeError, match='Expected a class'):
-        optree.unregister_pytree_node(func1, namespace=optree.registry.__GLOBAL_NAMESPACE)
+        optree.unregister_pytree_node(func1, namespace=GLOBAL_NAMESPACE)
 
     with pytest.raises(TypeError, match='Expected a class'):
-        optree.unregister_pytree_node(1, namespace=optree.registry.__GLOBAL_NAMESPACE)
+        optree.unregister_pytree_node(1, namespace=GLOBAL_NAMESPACE)
 
     def func2():
         pass
@@ -602,7 +603,7 @@ def test_unregister_pytree_node_with_non_registered_class():
         ValueError,
         match=r"PyTree type <class '.*'> is not registered in the global namespace\.",
     ):
-        optree.unregister_pytree_node(MyList, namespace=optree.registry.__GLOBAL_NAMESPACE)
+        optree.unregister_pytree_node(MyList, namespace=GLOBAL_NAMESPACE)
 
     optree.register_pytree_node_class(MyList, namespace='mylist')
 
@@ -610,7 +611,7 @@ def test_unregister_pytree_node_with_non_registered_class():
         ValueError,
         match=r"PyTree type <class '.*'> is not registered in the global namespace\.",
     ):
-        optree.unregister_pytree_node(MyList, namespace=optree.registry.__GLOBAL_NAMESPACE)
+        optree.unregister_pytree_node(MyList, namespace=GLOBAL_NAMESPACE)
 
     optree.unregister_pytree_node(MyList, namespace='mylist')
 
@@ -636,7 +637,7 @@ def test_unregister_pytree_node_with_builtins():
             r"PyTree type <class 'NoneType'> is a built-in type and cannot be unregistered.",
         ),
     ):
-        optree.unregister_pytree_node(type(None), namespace=optree.registry.__GLOBAL_NAMESPACE)
+        optree.unregister_pytree_node(type(None), namespace=GLOBAL_NAMESPACE)
 
     with pytest.raises(
         ValueError,
@@ -652,7 +653,7 @@ def test_unregister_pytree_node_with_builtins():
             r"PyTree type <class 'list'> is a built-in type and cannot be unregistered.",
         ),
     ):
-        optree.unregister_pytree_node(list, namespace=optree.registry.__GLOBAL_NAMESPACE)
+        optree.unregister_pytree_node(list, namespace=GLOBAL_NAMESPACE)
 
     with pytest.raises(
         ValueError,
@@ -677,7 +678,7 @@ def test_unregister_pytree_node_namedtuple():
             mytuple1,
             lambda t: (reversed(t), None, None),
             lambda _, t: mytuple1(*reversed(t)),
-            namespace=optree.registry.__GLOBAL_NAMESPACE,
+            namespace=GLOBAL_NAMESPACE,
         )
 
     tree = mytuple1(1, 2, 3)
@@ -686,7 +687,7 @@ def test_unregister_pytree_node_namedtuple():
     assert str(treespec1) == 'PyTreeSpec(CustomTreeNode(mytuple1[None], [*, *, *]))'
     assert tree == optree.tree_unflatten(treespec1, leaves1)
 
-    optree.unregister_pytree_node(mytuple1, namespace=optree.registry.__GLOBAL_NAMESPACE)
+    optree.unregister_pytree_node(mytuple1, namespace=GLOBAL_NAMESPACE)
     assert str(treespec1) == 'PyTreeSpec(CustomTreeNode(mytuple1[None], [*, *, *]))'
     assert tree == optree.tree_unflatten(treespec1, leaves1)
 
@@ -711,7 +712,7 @@ def test_unregister_pytree_node_namedtuple():
             r'which is not explicitly registered in the global namespace.',
         ),
     ):
-        optree.unregister_pytree_node(mytuple1, namespace=optree.registry.__GLOBAL_NAMESPACE)
+        optree.unregister_pytree_node(mytuple1, namespace=GLOBAL_NAMESPACE)
 
     mytuple2 = namedtuple('mytuple2', ['a', 'b', 'c'])  # noqa: PYI024
     with pytest.warns(
@@ -768,7 +769,7 @@ def test_unregister_pytree_node_namedtuple():
 @skipif_pypy
 def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
-    @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
+    @optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
     class MyList1(UserList):
         def tree_flatten(self):
             return self.data, None, None
@@ -780,12 +781,12 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
     wr = weakref.ref(MyList1)
     assert wr() is not None
 
-    optree.unregister_pytree_node(MyList1, namespace=optree.registry.__GLOBAL_NAMESPACE)
+    optree.unregister_pytree_node(MyList1, namespace=GLOBAL_NAMESPACE)
     del MyList1
     gc_collect()
     assert wr() is None
 
-    @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
+    @optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
     class MyList2(UserList):
         def tree_flatten(self):
             return reversed(self.data), None, None
@@ -801,7 +802,7 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
     assert leaves == [3, 2, 1]
     assert str(treespec) == 'PyTreeSpec(CustomTreeNode(MyList2[None], [*, *, *]))'
 
-    optree.unregister_pytree_node(MyList2, namespace=optree.registry.__GLOBAL_NAMESPACE)
+    optree.unregister_pytree_node(MyList2, namespace=GLOBAL_NAMESPACE)
     del MyList2
     gc_collect()
     assert wr() is not None
@@ -812,7 +813,7 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
     gc_collect()
     assert wr() is None
 
-    @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
+    @optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
     class MyList3(UserList):
         def tree_flatten(self):
             return reversed(self.data), None, None
@@ -831,7 +832,7 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
         == "PyTreeSpec(CustomTreeNode(MyList3[None], [*, *, *]), namespace='undefined')"
     )
 
-    optree.unregister_pytree_node(MyList3, namespace=optree.registry.__GLOBAL_NAMESPACE)
+    optree.unregister_pytree_node(MyList3, namespace=GLOBAL_NAMESPACE)
     del MyList3
     gc_collect()
     assert wr() is not None
@@ -887,3 +888,134 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
     del treespec
     gc_collect()
     assert wr() is None
+
+
+def test_dict_insertion_order_with_invalid_namespace():
+    with pytest.raises(TypeError, match='The namespace must be a string'):
+        with optree.dict_insertion_ordered(True, namespace=1):
+            pass
+    with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
+        with optree.dict_insertion_ordered(True, namespace=''):
+            pass
+
+
+def test_dict_insertion_order_with_nested_context():
+    def is_dict_insertion_ordered(namespace):
+        insertion_ordered = optree._C.is_dict_insertion_ordered(namespace)
+        assert optree.tree_leaves({'b': 2, 'a': 1}, namespace=namespace) == (
+            [2, 1] if insertion_ordered else [1, 2]
+        )
+        return insertion_ordered
+
+    assert not is_dict_insertion_ordered('')
+    assert not is_dict_insertion_ordered('namespace')
+    with optree.dict_insertion_ordered(True, namespace=GLOBAL_NAMESPACE):
+        assert is_dict_insertion_ordered('')
+        assert is_dict_insertion_ordered('namespace')
+
+    assert not is_dict_insertion_ordered('')
+    assert not is_dict_insertion_ordered('namespace')
+    assert not is_dict_insertion_ordered('other-namespace')
+    with optree.dict_insertion_ordered(True, namespace=GLOBAL_NAMESPACE):
+        assert is_dict_insertion_ordered('')
+        assert is_dict_insertion_ordered('namespace')
+        assert is_dict_insertion_ordered('other-namespace')
+        with optree.dict_insertion_ordered(True, namespace='namespace'):
+            assert is_dict_insertion_ordered('')
+            assert is_dict_insertion_ordered('namespace')
+            assert is_dict_insertion_ordered('other-namespace')
+            with optree.dict_insertion_ordered(False, namespace=GLOBAL_NAMESPACE):
+                assert not is_dict_insertion_ordered('')
+                assert is_dict_insertion_ordered('namespace')
+                assert not is_dict_insertion_ordered('other-namespace')
+
+                with optree.dict_insertion_ordered(True, namespace='other-namespace'):
+                    assert not is_dict_insertion_ordered('')
+                    assert is_dict_insertion_ordered('namespace')
+                    assert is_dict_insertion_ordered('other-namespace')
+
+                assert not is_dict_insertion_ordered('')
+                assert is_dict_insertion_ordered('namespace')
+                assert not is_dict_insertion_ordered('other-namespace')
+
+            assert is_dict_insertion_ordered('')
+            assert is_dict_insertion_ordered('namespace')
+            assert is_dict_insertion_ordered('other-namespace')
+
+        assert is_dict_insertion_ordered('')
+        assert is_dict_insertion_ordered('namespace')
+        assert is_dict_insertion_ordered('other-namespace')
+        with optree.dict_insertion_ordered(False, namespace='namespace'):
+            assert is_dict_insertion_ordered('')
+            assert is_dict_insertion_ordered('namespace')
+            assert is_dict_insertion_ordered('other-namespace')
+            with optree.dict_insertion_ordered(False, namespace=GLOBAL_NAMESPACE):
+                assert not is_dict_insertion_ordered('')
+                assert not is_dict_insertion_ordered('namespace')
+                assert not is_dict_insertion_ordered('other-namespace')
+
+            assert is_dict_insertion_ordered('')
+            assert is_dict_insertion_ordered('namespace')
+            assert is_dict_insertion_ordered('other-namespace')
+
+    assert not is_dict_insertion_ordered('')
+    assert not is_dict_insertion_ordered('namespace')
+    assert not is_dict_insertion_ordered('other-namespace')
+
+    with optree.dict_insertion_ordered(True, namespace='namespace'):
+        assert not is_dict_insertion_ordered('')
+        assert is_dict_insertion_ordered('namespace')
+        assert not is_dict_insertion_ordered('other-namespace')
+        with optree.dict_insertion_ordered(True, namespace='namespace'):
+            assert not is_dict_insertion_ordered('')
+            assert is_dict_insertion_ordered('namespace')
+            assert not is_dict_insertion_ordered('other-namespace')
+
+        assert not is_dict_insertion_ordered('')
+        assert is_dict_insertion_ordered('namespace')
+        assert not is_dict_insertion_ordered('other-namespace')
+        with optree.dict_insertion_ordered(False, namespace='namespace'):
+            assert not is_dict_insertion_ordered('')
+            assert not is_dict_insertion_ordered('namespace')
+            assert not is_dict_insertion_ordered('other-namespace')
+            with optree.dict_insertion_ordered(True, namespace='namespace'):
+                assert not is_dict_insertion_ordered('')
+                assert is_dict_insertion_ordered('namespace')
+                assert not is_dict_insertion_ordered('other-namespace')
+
+            assert not is_dict_insertion_ordered('')
+            assert not is_dict_insertion_ordered('namespace')
+            assert not is_dict_insertion_ordered('other-namespace')
+
+        assert not is_dict_insertion_ordered('')
+        assert is_dict_insertion_ordered('namespace')
+        assert not is_dict_insertion_ordered('other-namespace')
+        with optree.dict_insertion_ordered(True, namespace=GLOBAL_NAMESPACE):
+            assert is_dict_insertion_ordered('')
+            assert is_dict_insertion_ordered('namespace')
+            assert is_dict_insertion_ordered('other-namespace')
+
+        assert not is_dict_insertion_ordered('')
+        assert is_dict_insertion_ordered('namespace')
+        assert not is_dict_insertion_ordered('other-namespace')
+        with optree.dict_insertion_ordered(True, namespace='other-namespace'):
+            assert not is_dict_insertion_ordered('')
+            assert is_dict_insertion_ordered('namespace')
+            assert is_dict_insertion_ordered('other-namespace')
+
+            with optree.dict_insertion_ordered(False, namespace='other-namespace'):
+                assert not is_dict_insertion_ordered('')
+                assert is_dict_insertion_ordered('namespace')
+                assert not is_dict_insertion_ordered('other-namespace')
+
+            assert not is_dict_insertion_ordered('')
+            assert is_dict_insertion_ordered('namespace')
+            assert is_dict_insertion_ordered('other-namespace')
+
+        assert not is_dict_insertion_ordered('')
+        assert is_dict_insertion_ordered('namespace')
+        assert not is_dict_insertion_ordered('other-namespace')
+
+    assert not is_dict_insertion_ordered('')
+    assert not is_dict_insertion_ordered('namespace')
+    assert not is_dict_insertion_ordered('other-namespace')

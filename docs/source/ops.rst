@@ -23,6 +23,7 @@ Tree Manipulation Functions
 
 .. autosummary::
 
+    dict_insertion_ordered
     tree_flatten
     tree_flatten_with_path
     tree_flatten_with_accessor
@@ -55,6 +56,7 @@ Tree Manipulation Functions
     tree_flatten_one_level
     prefix_errors
 
+.. autofunction:: dict_insertion_ordered
 .. autofunction:: tree_flatten
 .. autofunction:: tree_flatten_with_path
 .. autofunction:: tree_flatten_with_accessor

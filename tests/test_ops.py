@@ -27,6 +27,7 @@ import pytest
 
 import optree
 from helpers import (
+    GLOBAL_NAMESPACE,
     IS_LEAF_FUNCTIONS,
     LEAVES,
     TREE_ACCESSORS,
@@ -81,24 +82,48 @@ def test_max_depth():
     tree=list(TREES + LEAVES),
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_round_trip(tree, none_is_leaf, namespace):
-    leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    actual = optree.tree_unflatten(treespec, leaves)
-    assert actual == tree
+def test_round_trip(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        actual = optree.tree_unflatten(treespec, leaves)
+        assert actual == tree
 
 
 @parametrize(
     tree=list(TREES + LEAVES),
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_round_trip_with_flatten_up_to(tree, none_is_leaf, namespace):
-    _, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    leaves = treespec.flatten_up_to(tree)
-    actual = optree.tree_unflatten(treespec, leaves)
-    assert actual == tree
-    assert leaves == [accessor(tree) for accessor in optree.treespec_accessors(treespec)]
+def test_round_trip_with_flatten_up_to(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        _, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        leaves = treespec.flatten_up_to(tree)
+        actual = optree.tree_unflatten(treespec, leaves)
+        assert actual == tree
+        assert leaves == [accessor(tree) for accessor in optree.treespec_accessors(treespec)]
 
 
 @parametrize(
@@ -114,7 +139,6 @@ def test_round_trip_with_flatten_up_to(tree, none_is_leaf, namespace):
 )
 def test_flatten_order(tree, none_is_leaf):
     flat, _ = optree.tree_flatten(tree, none_is_leaf=none_is_leaf)
-
     assert flat == list(range(10))
 
 
@@ -163,14 +187,26 @@ def test_tree_unflatten_mismatch_number_of_leaves(tree, none_is_leaf, namespace)
     tree=list(TREES + LEAVES),
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_tree_iter(tree, none_is_leaf, namespace):
-    leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    it = optree.tree_iter(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    assert iter(it) is it
-    assert list(it) == leaves
-    with pytest.raises(StopIteration):
-        next(it)
+def test_tree_iter(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        it = optree.tree_iter(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        assert iter(it) is it
+        assert list(it) == leaves
+        with pytest.raises(StopIteration):
+            next(it)
 
 
 def test_walk():
@@ -385,114 +421,164 @@ def test_paths_and_accessors(data):
     is_leaf=IS_LEAF_FUNCTIONS,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_paths_and_accessors_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
-    expected_leaves, expected_treespec = optree.tree_flatten(
-        tree,
-        is_leaf=is_leaf,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    paths, leaves, treespec = optree.tree_flatten_with_path(
-        tree,
-        is_leaf=is_leaf,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    accessors, other_leaves, other_treespec = optree.tree_flatten_with_accessor(
-        tree,
-        is_leaf=is_leaf,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    assert len(paths) == len(leaves)
-    assert len(accessors) == len(leaves)
-    assert leaves == expected_leaves
-    assert treespec == expected_treespec
-    assert other_leaves == expected_leaves
-    assert other_treespec == expected_treespec
-    for leaf, accessor, path in zip(leaves, accessors, paths):
-        assert isinstance(accessor, optree.PyTreeAccessor)
-        assert isinstance(path, tuple)
-        assert len(accessor) == len(path)
-        assert all(
-            isinstance(e, optree.PyTreeEntry)
-            and isinstance(e.type, type)
-            and isinstance(e.kind, optree.PyTreeKind)
-            for e in accessor
+def test_paths_and_accessors_with_is_leaf(
+    tree,
+    is_leaf,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        expected_leaves, expected_treespec = optree.tree_flatten(
+            tree,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
         )
-        assert accessor.path == path
-        assert tuple(e.entry for e in accessor) == path
-        assert accessor(tree) == leaf
-        if all(e.__class__.codify is not optree.PyTreeEntry.codify for e in accessor):
-            # pylint: disable-next=eval-used
-            assert eval(accessor.codify('__tree'), {'__tree': tree}, {}) == leaf
-            # pylint: disable-next=eval-used
-            assert eval(f'lambda __tree: {accessor.codify("__tree")}', {}, {})(tree) == leaf
+        paths, leaves, treespec = optree.tree_flatten_with_path(
+            tree,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        accessors, other_leaves, other_treespec = optree.tree_flatten_with_accessor(
+            tree,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        assert len(paths) == len(leaves)
+        assert len(accessors) == len(leaves)
+        assert leaves == expected_leaves
+        assert treespec == expected_treespec
+        assert other_leaves == expected_leaves
+        assert other_treespec == expected_treespec
+        for leaf, accessor, path in zip(leaves, accessors, paths):
+            assert isinstance(accessor, optree.PyTreeAccessor)
+            assert isinstance(path, tuple)
+            assert len(accessor) == len(path)
+            assert all(
+                isinstance(e, optree.PyTreeEntry)
+                and isinstance(e.type, type)
+                and isinstance(e.kind, optree.PyTreeKind)
+                for e in accessor
+            )
+            assert accessor.path == path
+            assert tuple(e.entry for e in accessor) == path
+            assert accessor(tree) == leaf
+            if all(e.__class__.codify is not optree.PyTreeEntry.codify for e in accessor):
+                # pylint: disable-next=eval-used
+                assert eval(accessor.codify('__tree'), {'__tree': tree}, {}) == leaf
+                # pylint: disable-next=eval-used
+                assert eval(f'lambda __tree: {accessor.codify("__tree")}', {}, {})(tree) == leaf
+            else:
+                assert 'flat index' in accessor.codify('')
+
+        assert optree.treespec_paths(treespec) == paths
+        assert optree.treespec_accessors(treespec) == accessors
+        assert (
+            optree.tree_paths(
+                tree,
+                is_leaf=is_leaf,
+                none_is_leaf=none_is_leaf,
+                namespace=namespace,
+            )
+            == paths
+        )
+        assert (
+            optree.tree_accessors(
+                tree,
+                is_leaf=is_leaf,
+                none_is_leaf=none_is_leaf,
+                namespace=namespace,
+            )
+            == accessors
+        )
+
+
+@parametrize(
+    tree=TREES,
+    is_leaf=IS_LEAF_FUNCTIONS,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
+)
+def test_round_trip_is_leaf(
+    tree,
+    is_leaf,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        subtrees, treespec = optree.tree_flatten(
+            tree,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        actual = optree.tree_unflatten(treespec, subtrees)
+        assert actual == tree
+
+
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
+)
+def test_tree_is_leaf_with_trees(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        for leaf in leaves:
+            assert optree.tree_is_leaf(leaf, none_is_leaf=none_is_leaf, namespace=namespace)
+        if [tree] != leaves:
+            assert not optree.tree_is_leaf(tree, none_is_leaf=none_is_leaf, namespace=namespace)
         else:
-            assert 'flat index' in accessor.codify('')
-
-    assert optree.treespec_paths(treespec) == paths
-    assert optree.treespec_accessors(treespec) == accessors
-    assert (
-        optree.tree_paths(
-            tree,
-            is_leaf=is_leaf,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-        == paths
-    )
-    assert (
-        optree.tree_accessors(
-            tree,
-            is_leaf=is_leaf,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-        == accessors
-    )
+            assert optree.tree_is_leaf(tree, none_is_leaf=none_is_leaf, namespace=namespace)
 
 
 @parametrize(
-    tree=TREES,
-    is_leaf=IS_LEAF_FUNCTIONS,
+    leaf=LEAVES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_round_trip_is_leaf(tree, is_leaf, none_is_leaf, namespace):
-    subtrees, treespec = optree.tree_flatten(
-        tree,
-        is_leaf=is_leaf,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    actual = optree.tree_unflatten(treespec, subtrees)
-    assert actual == tree
-
-
-@parametrize(
-    tree=TREES,
-    none_is_leaf=[False, True],
-    namespace=['', 'undefined', 'namespace'],
-)
-def test_tree_is_leaf_with_trees(tree, none_is_leaf, namespace):
-    leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    for leaf in leaves:
+def test_tree_is_leaf_with_leaves(
+    leaf,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
         assert optree.tree_is_leaf(leaf, none_is_leaf=none_is_leaf, namespace=namespace)
-    if [tree] != leaves:
-        assert not optree.tree_is_leaf(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    else:
-        assert optree.tree_is_leaf(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-
-
-@parametrize(
-    leaf=LEAVES,
-    none_is_leaf=[False, True],
-    namespace=['', 'undefined', 'namespace'],
-)
-def test_tree_is_leaf_with_leaves(leaf, none_is_leaf, namespace):
-    assert optree.tree_is_leaf(leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
 
 @parametrize(
@@ -500,56 +586,93 @@ def test_tree_is_leaf_with_leaves(leaf, none_is_leaf, namespace):
     is_leaf=IS_LEAF_FUNCTIONS,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_tree_is_leaf_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
-    leaves = optree.tree_leaves(
-        tree,
-        is_leaf=is_leaf,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    for leaf in leaves:
-        assert optree.tree_is_leaf(
-            leaf,
-            is_leaf=is_leaf,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-    if [tree] != leaves:
-        assert not optree.tree_is_leaf(
+def test_tree_is_leaf_with_is_leaf(
+    tree,
+    is_leaf,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        leaves = optree.tree_leaves(
             tree,
             is_leaf=is_leaf,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
-    else:
-        assert optree.tree_is_leaf(
-            tree,
-            is_leaf=is_leaf,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
+        for leaf in leaves:
+            assert optree.tree_is_leaf(
+                leaf,
+                is_leaf=is_leaf,
+                none_is_leaf=none_is_leaf,
+                namespace=namespace,
+            )
+        if [tree] != leaves:
+            assert not optree.tree_is_leaf(
+                tree,
+                is_leaf=is_leaf,
+                none_is_leaf=none_is_leaf,
+                namespace=namespace,
+            )
+        else:
+            assert optree.tree_is_leaf(
+                tree,
+                is_leaf=is_leaf,
+                none_is_leaf=none_is_leaf,
+                namespace=namespace,
+            )
 
 
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_all_leaves_with_trees(tree, none_is_leaf, namespace):
-    leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
-    assert optree.all_leaves(leaves, none_is_leaf=none_is_leaf, namespace=namespace)
-    if [tree] != leaves:
-        assert not optree.all_leaves([tree], none_is_leaf=none_is_leaf, namespace=namespace)
+def test_all_leaves_with_trees(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        leaves = optree.tree_leaves(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        assert optree.all_leaves(leaves, none_is_leaf=none_is_leaf, namespace=namespace)
+        if [tree] != leaves:
+            assert not optree.all_leaves([tree], none_is_leaf=none_is_leaf, namespace=namespace)
 
 
 @parametrize(
     leaf=LEAVES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_all_leaves_with_leaves(leaf, none_is_leaf, namespace):
-    assert optree.all_leaves([leaf], none_is_leaf=none_is_leaf, namespace=namespace)
+def test_all_leaves_with_leaves(
+    leaf,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        assert optree.all_leaves([leaf], none_is_leaf=none_is_leaf, namespace=namespace)
 
 
 @parametrize(
@@ -557,20 +680,33 @@ def test_all_leaves_with_leaves(leaf, none_is_leaf, namespace):
     is_leaf=IS_LEAF_FUNCTIONS,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_all_leaves_with_is_leaf(tree, is_leaf, none_is_leaf, namespace):
-    leaves = optree.tree_leaves(
-        tree,
-        is_leaf=is_leaf,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    assert optree.all_leaves(
-        leaves,
-        is_leaf=is_leaf,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
+def test_all_leaves_with_is_leaf(
+    tree,
+    is_leaf,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        leaves = optree.tree_leaves(
+            tree,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        assert optree.all_leaves(
+            leaves,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
 
 
 def test_tree_map():
@@ -2509,40 +2645,58 @@ def test_tree_replace_nones():
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_tree_transpose(tree, none_is_leaf, namespace):
-    outer_treespec = optree.tree_structure(
-        tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    inner_treespec = optree.tree_structure(
-        [1, 1, 1],
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    nested = optree.tree_map(
-        lambda x: [x, x, x],
-        tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    if outer_treespec.num_leaves == 0:
-        with pytest.raises(ValueError, match='Tree structures must have at least one leaf.'):
-            optree.tree_transpose(outer_treespec, inner_treespec, nested)
-        return
-    with pytest.raises(ValueError, match='Tree structures must have the same none_is_leaf value.'):
-        optree.tree_transpose(
-            outer_treespec,
-            optree.tree_structure(
-                [1, 1, 1],
-                none_is_leaf=not none_is_leaf,
-                namespace=namespace,
-            ),
-            nested,
+def test_tree_transpose(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        outer_treespec = optree.tree_structure(
+            tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
         )
-    actual = optree.tree_transpose(outer_treespec, inner_treespec, nested)
-    assert actual == [tree, tree, tree]
+        inner_treespec = optree.tree_structure(
+            [1, 1, 1],
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        nested = optree.tree_map(
+            lambda x: [x, x, x],
+            tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        if outer_treespec.num_leaves == 0:
+            with pytest.raises(
+                ValueError,
+                match=re.escape('Tree structures must have at least one leaf.'),
+            ):
+                optree.tree_transpose(outer_treespec, inner_treespec, nested)
+            return
+        with pytest.raises(
+            ValueError,
+            match=re.escape('Tree structures must have the same none_is_leaf value.'),
+        ):
+            optree.tree_transpose(
+                outer_treespec,
+                optree.tree_structure(
+                    [1, 1, 1],
+                    none_is_leaf=not none_is_leaf,
+                    namespace=namespace,
+                ),
+                nested,
+            )
+        actual = optree.tree_transpose(outer_treespec, inner_treespec, nested)
+        assert actual == [tree, tree, tree]
 
 
 def test_tree_transpose_mismatch_outer():
@@ -2961,111 +3115,133 @@ def test_tree_any():
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_tree_flatten_one_level(tree, none_is_leaf, namespace):  # noqa: C901
-    actual_leaves = []
-    actual_paths = []
-    actual_typed_paths = []
+def test_tree_flatten_one_level(  # noqa: C901
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        actual_leaves = []
+        actual_paths = []
+        actual_typed_paths = []
 
-    path_stack = []
-    typed_path_stack = []
+        path_stack = []
+        typed_path_stack = []
 
-    def flatten(node):  # noqa: C901
-        counter = itertools.count()
-        expected_children, one_level_treespec = optree.tree_flatten(
-            node,
-            is_leaf=lambda x: next(counter) > 0,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-        node_type = type(node)
-        node_kind = one_level_treespec.kind
-        if one_level_treespec.is_leaf():
-            assert expected_children == [node]
-            assert node_kind == optree.PyTreeKind.LEAF
-            with pytest.raises(
-                ValueError,
-                match=re.escape(f'Cannot flatten leaf-type: {node_type} (node: {node!r}).'),
-            ):
-                optree.tree_flatten_one_level(node, none_is_leaf=none_is_leaf, namespace=namespace)
-            actual_leaves.append(node)
-            actual_paths.append(tuple(path_stack))
-            actual_typed_paths.append(tuple(typed_path_stack))
-        else:
-            children, metadata, entries, unflatten_func = optree.tree_flatten_one_level(
+        def flatten(node):  # noqa: C901
+            counter = itertools.count()
+            expected_children, one_level_treespec = optree.tree_flatten(
                 node,
+                is_leaf=lambda x: next(counter) > 0,
                 none_is_leaf=none_is_leaf,
                 namespace=namespace,
             )
-            assert children == expected_children
-            if node_type in {type(None), tuple, list}:
-                assert metadata is None
-                if node_type is tuple:
-                    assert node_kind == optree.PyTreeKind.TUPLE
-                elif node_type is list:
-                    assert node_kind == optree.PyTreeKind.LIST
-                else:
-                    assert node_kind == optree.PyTreeKind.NONE
-            elif node_type is dict:
-                assert metadata == sorted(node.keys())
-                assert node_kind == optree.PyTreeKind.DICT
-            elif node_type is OrderedDict:
-                assert metadata == list(node.keys())
-                assert node_kind == optree.PyTreeKind.ORDEREDDICT
-            elif node_type is defaultdict:
-                assert metadata == (node.default_factory, sorted(node.keys()))
-                assert node_kind == optree.PyTreeKind.DEFAULTDICT
-            elif node_type is deque:
-                assert metadata == node.maxlen
-                assert node_kind == optree.PyTreeKind.DEQUE
-            elif optree.is_structseq(node):
-                assert optree.is_structseq_class(node_type)
-                assert isinstance(node, optree.typing.structseq)
-                assert issubclass(node_type, optree.typing.structseq)
-                assert metadata is node_type
-                assert node_kind == optree.PyTreeKind.STRUCTSEQUENCE
-            elif optree.is_namedtuple(node):
-                assert optree.is_namedtuple_class(node_type)
-                assert metadata is node_type
-                assert node_kind == optree.PyTreeKind.NAMEDTUPLE
+            node_type = type(node)
+            node_kind = one_level_treespec.kind
+            if one_level_treespec.is_leaf():
+                assert expected_children == [node]
+                assert node_kind == optree.PyTreeKind.LEAF
+                with pytest.raises(
+                    ValueError,
+                    match=re.escape(f'Cannot flatten leaf-type: {node_type} (node: {node!r}).'),
+                ):
+                    optree.tree_flatten_one_level(
+                        node,
+                        none_is_leaf=none_is_leaf,
+                        namespace=namespace,
+                    )
+                actual_leaves.append(node)
+                actual_paths.append(tuple(path_stack))
+                actual_typed_paths.append(tuple(typed_path_stack))
             else:
-                assert node_kind == optree.PyTreeKind.CUSTOM
-            assert len(entries) == len(children)
-            if hasattr(node, '__getitem__'):
+                children, metadata, entries, unflatten_func = optree.tree_flatten_one_level(
+                    node,
+                    none_is_leaf=none_is_leaf,
+                    namespace=namespace,
+                )
+                assert children == expected_children
+                if node_type in {type(None), tuple, list}:
+                    assert metadata is None
+                    if node_type is tuple:
+                        assert node_kind == optree.PyTreeKind.TUPLE
+                    elif node_type is list:
+                        assert node_kind == optree.PyTreeKind.LIST
+                    else:
+                        assert node_kind == optree.PyTreeKind.NONE
+                elif node_type is dict:
+                    if dict_should_be_sorted or dict_session_namespace not in {'', namespace}:
+                        assert metadata == sorted(node.keys())
+                    else:
+                        assert metadata == list(node.keys())
+                    assert node_kind == optree.PyTreeKind.DICT
+                elif node_type is OrderedDict:
+                    assert metadata == list(node.keys())
+                    assert node_kind == optree.PyTreeKind.ORDEREDDICT
+                elif node_type is defaultdict:
+                    if dict_should_be_sorted or dict_session_namespace not in {'', namespace}:
+                        assert metadata == (node.default_factory, sorted(node.keys()))
+                    else:
+                        assert metadata == (node.default_factory, list(node.keys()))
+                    assert node_kind == optree.PyTreeKind.DEFAULTDICT
+                elif node_type is deque:
+                    assert metadata == node.maxlen
+                    assert node_kind == optree.PyTreeKind.DEQUE
+                elif optree.is_structseq(node):
+                    assert optree.is_structseq_class(node_type)
+                    assert isinstance(node, optree.typing.structseq)
+                    assert issubclass(node_type, optree.typing.structseq)
+                    assert metadata is node_type
+                    assert node_kind == optree.PyTreeKind.STRUCTSEQUENCE
+                elif optree.is_namedtuple(node):
+                    assert optree.is_namedtuple_class(node_type)
+                    assert metadata is node_type
+                    assert node_kind == optree.PyTreeKind.NAMEDTUPLE
+                else:
+                    assert node_kind == optree.PyTreeKind.CUSTOM
+                assert len(entries) == len(children)
+                if hasattr(node, '__getitem__'):
+                    for child, entry in zip(children, entries):
+                        assert node[entry] is child
+
+                assert unflatten_func(metadata, children) == node
+                if node_type is type(None):
+                    assert unflatten_func(metadata, []) is None
+                    with pytest.raises(ValueError, match=re.escape('Expected no children.')):
+                        unflatten_func(metadata, range(1))
+
                 for child, entry in zip(children, entries):
-                    assert node[entry] is child
+                    path_stack.append(entry)
+                    typed_path_stack.append((entry, node_type, node_kind))
+                    flatten(child)
+                    path_stack.pop()
+                    typed_path_stack.pop()
 
-            assert unflatten_func(metadata, children) == node
-            if node_type is type(None):
-                assert unflatten_func(metadata, []) is None
-                with pytest.raises(ValueError, match=re.escape('Expected no children.')):
-                    unflatten_func(metadata, range(1))
-
-            for child, entry in zip(children, entries):
-                path_stack.append(entry)
-                typed_path_stack.append((entry, node_type, node_kind))
-                flatten(child)
-                path_stack.pop()
-                typed_path_stack.pop()
-
-    flatten(tree)
-    assert len(path_stack) == 0
-    assert len(typed_path_stack) == 0
-    assert actual_leaves == optree.tree_leaves(
-        tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    assert actual_paths == optree.tree_paths(
-        tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    assert actual_typed_paths == [
-        tuple((e.entry, e.type, e.kind) for e in accessor)
-        for accessor in optree.tree_accessors(
+        flatten(tree)
+        assert len(path_stack) == 0
+        assert len(typed_path_stack) == 0
+        assert actual_leaves == optree.tree_leaves(
             tree,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
-    ]
+        assert actual_paths == optree.tree_paths(
+            tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        assert actual_typed_paths == [
+            tuple((e.entry, e.type, e.kind) for e in accessor)
+            for accessor in optree.tree_accessors(
+                tree,
+                none_is_leaf=none_is_leaf,
+                namespace=namespace,
+            )
+        ]

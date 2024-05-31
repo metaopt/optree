@@ -67,6 +67,16 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              "Unregister a Python type.",
              py::arg("cls"),
              py::arg("namespace") = "")
+        .def("is_dict_insertion_ordered",
+             &PyTreeSpec::IsDictInsertionOrdered,
+             "Return whether need to preserve the dict insertion order during flattening.",
+             py::arg("namespace") = "",
+             py::arg("inherit_global_namespace") = true)
+        .def("set_dict_insertion_ordered",
+             &PyTreeSpec::SetDictInsertionOrdered,
+             "Set whether need to preserve the dict insertion order during flattening.",
+             py::arg("mode"),
+             py::arg("namespace") = "")
         .def("flatten",
              &PyTreeSpec::Flatten,
              "Flattens a pytree.",

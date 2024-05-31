@@ -163,7 +163,6 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
     """Generic PyTree type.
 
     >>> import torch
-    >>> from optree.typing import PyTree
     >>> TensorTree = PyTree[torch.Tensor]
     >>> TensorTree  # doctest: +IGNORE_WHITESPACE
     typing.Union[torch.Tensor,
@@ -249,7 +248,6 @@ class PyTreeTypeVar:
     """Type variable for PyTree.
 
     >>> import torch
-    >>> from optree.typing import PyTreeTypeVar
     >>> TensorTree = PyTreeTypeVar('TensorTree', torch.Tensor)
     >>> TensorTree  # doctest: +IGNORE_WHITESPACE
     typing.Union[torch.Tensor,

@@ -36,6 +36,9 @@ skipif_pypy = pytest.mark.skipif(
 )
 
 
+GLOBAL_NAMESPACE = optree.registry.__GLOBAL_NAMESPACE  # pylint: disable=protected-access
+
+
 def gc_collect():
     for _ in range(3):
         gc.collect()
@@ -154,12 +157,11 @@ optree.register_pytree_node(
     lambda o: ((o.x, o.y), o.z),
     lambda z, xy: Vector3D(xy[0], xy[1], z),
     path_entry_type=Vector3DEntry,
-    namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
+    namespace=GLOBAL_NAMESPACE,
 )
 
 
-# pylint: disable-next=protected-access
-@optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
+@optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
 class Vector2D:
     def __init__(self, x, y):
         self.x = x
@@ -186,8 +188,7 @@ class Vector2D:
         return cls(*children)
 
 
-# pylint: disable-next=protected-access
-@optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
+@optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
 @dataclasses.dataclass
 class MyDataclass:
     alpha: Any
@@ -207,10 +208,7 @@ class MyDataclass:
         return cls(*children)
 
 
-@optree.register_pytree_node_class(
-    path_entry_type=optree.GetAttrEntry,
-    namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
-)
+@optree.register_pytree_node_class(path_entry_type=optree.GetAttrEntry, namespace=GLOBAL_NAMESPACE)
 @dataclasses.dataclass
 class MyOtherDataclass:
     a: Any
@@ -232,8 +230,7 @@ class MyOtherDataclass:
         return cls(a, b, c, d)
 
 
-# pylint: disable-next=protected-access
-@optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
+@optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
 @dataclasses.dataclass
 class MyAnotherDataclass:
     x: Any
@@ -248,8 +245,7 @@ class MyAnotherDataclass:
         return cls(*children)
 
 
-# pylint: disable-next=protected-access
-@optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
+@optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
 class FlatCache:
     TREE_PATH_ENTRY_TYPE = optree.GetItemEntry
 
@@ -288,9 +284,7 @@ class FlatCache:
         return cls(structured=None, leaves=children, treespec=metadata)
 
 
-@optree.register_pytree_node_class(
-    namespace=optree.registry.__GLOBAL_NAMESPACE,  # pylint: disable=protected-access
-)
+@optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
 class MyDict(UserDict):
     TREE_PATH_ENTRY_TYPE = optree.MappingEntry
 
