@@ -142,6 +142,7 @@ jobs:
           CIBW_ARCHS_LINUX: auto aarch64 ppc64le s390x
           CIBW_ARCHS_WINDOWS: auto ARM64
           CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+          CIBW_PRERELEASE_PYTHONS: True
         with:
           package-dir: .
           output-dir: wheelhouse
