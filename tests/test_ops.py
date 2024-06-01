@@ -36,6 +36,11 @@ from helpers import (
     CustomTuple,
     FlatCache,
     MyAnotherDict,
+    always,
+    is_list,
+    is_none,
+    is_tuple,
+    never,
     parametrize,
 )
 
@@ -282,21 +287,21 @@ def test_flatten_up_to_none_is_leaf():
 )
 def test_flatten_is_leaf(leaves_fn):
     x = [(1, 2), (3, 4), (5, 6)]
-    leaves = leaves_fn(x, is_leaf=lambda t: False)
+    leaves = leaves_fn(x, is_leaf=never)
     assert leaves == [1, 2, 3, 4, 5, 6]
-    leaves = leaves_fn(x, is_leaf=lambda t: isinstance(t, tuple))
+    leaves = leaves_fn(x, is_leaf=is_tuple)
     assert leaves == x
-    leaves = leaves_fn(x, is_leaf=lambda t: isinstance(t, list))
+    leaves = leaves_fn(x, is_leaf=is_list)
     assert leaves == [x]
-    leaves = leaves_fn(x, is_leaf=lambda t: True)
+    leaves = leaves_fn(x, is_leaf=always)
     assert leaves == [x]
 
     y = [[[(1,)], [[(2,)], {'a': (3,)}]]]
-    leaves = leaves_fn(y, is_leaf=lambda t: isinstance(t, tuple))
+    leaves = leaves_fn(y, is_leaf=is_tuple)
     assert leaves == [(1,), (2,), (3,)]
 
     z = [(1, 2), (3, 4), None, (5, None)]
-    leaves = leaves_fn(z, is_leaf=lambda t: t is None)
+    leaves = leaves_fn(z, is_leaf=is_none)
     assert leaves == [1, 2, 3, 4, None, 5, None]
 
 
@@ -310,17 +315,17 @@ def test_flatten_is_leaf(leaves_fn):
 )
 def test_structure_is_leaf(structure_fn):
     x = [(1, 2), (3, 4), (5, 6)]
-    treespec = structure_fn(x, is_leaf=lambda t: False)
+    treespec = structure_fn(x, is_leaf=never)
     assert treespec.num_leaves == 6
-    treespec = structure_fn(x, is_leaf=lambda t: isinstance(t, tuple))
+    treespec = structure_fn(x, is_leaf=is_tuple)
     assert treespec.num_leaves == 3
-    treespec = structure_fn(x, is_leaf=lambda t: isinstance(t, list))
+    treespec = structure_fn(x, is_leaf=is_list)
     assert treespec.num_leaves == 1
-    treespec = structure_fn(x, is_leaf=lambda t: True)
+    treespec = structure_fn(x, is_leaf=always)
     assert treespec.num_leaves == 1
 
     y = [[[(1,)], [[(2,)], {'a': (3,)}]]]
-    treespec = structure_fn(y, is_leaf=lambda t: isinstance(t, tuple))
+    treespec = structure_fn(y, is_leaf=is_tuple)
     assert treespec.num_leaves == 3
 
 
@@ -361,13 +366,13 @@ def test_paths_and_accessors(data):
         assert accessor.path == path
         assert tuple(e.entry for e in accessor) == path
         assert accessor(tree) == leaf
-        if all(e.__class__.codegen is not optree.PyTreeEntry.codegen for e in accessor):
+        if all(e.__class__.codify is not optree.PyTreeEntry.codify for e in accessor):
             # pylint: disable-next=eval-used
-            assert eval(accessor.codegen('__tree'), {'__tree': tree}, {}) == leaf
+            assert eval(accessor.codify('__tree'), {'__tree': tree}, {}) == leaf
             # pylint: disable-next=eval-used
-            assert eval(f'lambda __tree: {accessor.codegen("__tree")}', {}, {})(tree) == leaf
+            assert eval(f'lambda __tree: {accessor.codify("__tree")}', {}, {})(tree) == leaf
         else:
-            assert 'flat index' in accessor.codegen('')
+            assert 'flat index' in accessor.codify('')
 
     assert optree.treespec_paths(treespec) == expected_paths
     assert optree.treespec_accessors(treespec) == expected_accessors
@@ -419,13 +424,13 @@ def test_paths_and_accessors_with_is_leaf(tree, is_leaf, none_is_leaf, namespace
         assert accessor.path == path
         assert tuple(e.entry for e in accessor) == path
         assert accessor(tree) == leaf
-        if all(e.__class__.codegen is not optree.PyTreeEntry.codegen for e in accessor):
+        if all(e.__class__.codify is not optree.PyTreeEntry.codify for e in accessor):
             # pylint: disable-next=eval-used
-            assert eval(accessor.codegen('__tree'), {'__tree': tree}, {}) == leaf
+            assert eval(accessor.codify('__tree'), {'__tree': tree}, {}) == leaf
             # pylint: disable-next=eval-used
-            assert eval(f'lambda __tree: {accessor.codegen("__tree")}', {}, {})(tree) == leaf
+            assert eval(f'lambda __tree: {accessor.codify("__tree")}', {}, {})(tree) == leaf
         else:
-            assert 'flat index' in accessor.codegen('')
+            assert 'flat index' in accessor.codify('')
 
     assert optree.treespec_paths(treespec) == paths
     assert optree.treespec_accessors(treespec) == accessors
@@ -2038,20 +2043,20 @@ def test_tree_map_with_is_leaf_none():
         assert out == (((1,), (2,), None), ((3,), (4,), (5,)))
         out = tree_map(lambda *xs: tuple(xs), x, none_is_leaf=True)
         assert out == (((1,), (2,), (None,)), ((3,), (4,), (5,)))
-        out = tree_map(lambda *xs: tuple(xs), x, is_leaf=lambda x: x is None)
+        out = tree_map(lambda *xs: tuple(xs), x, is_leaf=is_none)
         assert out == (((1,), (2,), (None,)), ((3,), (4,), (5,)))
 
 
 def test_tree_map_with_is_leaf():
     x = ((1, 2, None), [3, 4, 5])
     y = (([6], None, None), ({'foo': 'bar'}, 7, [8, 9]))
-    out = optree.tree_map(lambda *xs: tuple(xs), x, y, is_leaf=lambda n: isinstance(n, list))
+    out = optree.tree_map(lambda *xs: tuple(xs), x, y, is_leaf=is_list)
     assert out == (((1, [6]), (2, None), None), (([3, 4, 5], ({'foo': 'bar'}, 7, [8, 9]))))
 
     x = ((1, 2, None), [3, 4, 5])
     y = (([6], None, 7), ({'foo': 'bar'}, 8, [9, 0]))
     with pytest.raises(ValueError, match=re.escape('Expected None, got 7.')):
-        optree.tree_map(lambda *xs: tuple(xs), x, y, is_leaf=lambda n: isinstance(n, list))
+        optree.tree_map(lambda *xs: tuple(xs), x, y, is_leaf=is_list)
 
 
 def test_tree_map_with_is_leaf_none_is_leaf():
@@ -2061,7 +2066,7 @@ def test_tree_map_with_is_leaf_none_is_leaf():
         lambda *xs: tuple(xs),
         x,
         y,
-        is_leaf=lambda n: isinstance(n, list),
+        is_leaf=is_list,
         none_is_leaf=True,
     )
     assert out == (((1, [6]), (2, None), (None, None)), (([3, 4, 5], ({'foo': 'bar'}, 7, [8, 9]))))
@@ -2072,7 +2077,7 @@ def test_tree_map_with_is_leaf_none_is_leaf():
         lambda *xs: tuple(xs),
         x,
         y,
-        is_leaf=lambda n: isinstance(n, list),
+        is_leaf=is_list,
         none_is_leaf=True,
     )
     assert out == (((1, [6]), (2, None), (None, 7)), (([3, 4, 5], ({'foo': 'bar'}, 8, [9, 0]))))
@@ -2081,12 +2086,7 @@ def test_tree_map_with_is_leaf_none_is_leaf():
 def test_tree_broadcast_map_with_is_leaf():
     x = ((1, 2, None), (3, (4, [5]), 6))
     y = (([7], None, None), ({'foo': 'bar'}, 8, [9, 10]))
-    out = optree.tree_broadcast_map(
-        lambda *xs: tuple(xs),
-        x,
-        y,
-        is_leaf=lambda n: isinstance(n, list),
-    )
+    out = optree.tree_broadcast_map(lambda *xs: tuple(xs), x, y, is_leaf=is_list)
     assert out == (
         ((1, [7]), None, None),
         ({'foo': (3, 'bar')}, ((4, 8), ([5], 8)), (6, [9, 10])),
@@ -2094,12 +2094,7 @@ def test_tree_broadcast_map_with_is_leaf():
 
     x = ((1, 2, None), (3, (4, [5]), 6))
     y = (([7], None, 8), ({'foo': 'bar'}, 9, [10, 11]))
-    out = optree.tree_broadcast_map(
-        lambda *xs: tuple(xs),
-        x,
-        y,
-        is_leaf=lambda n: isinstance(n, list),
-    )
+    out = optree.tree_broadcast_map(lambda *xs: tuple(xs), x, y, is_leaf=is_list)
     assert out == (
         ((1, [7]), None, None),
         ({'foo': (3, 'bar')}, ((4, 9), ([5], 9)), (6, [10, 11])),
@@ -2113,7 +2108,7 @@ def test_tree_broadcast_map_with_is_leaf_none_is_leaf():
         lambda *xs: tuple(xs),
         x,
         y,
-        is_leaf=lambda n: isinstance(n, list),
+        is_leaf=is_list,
         none_is_leaf=True,
     )
     assert out == (
@@ -2127,7 +2122,7 @@ def test_tree_broadcast_map_with_is_leaf_none_is_leaf():
         lambda *xs: tuple(xs),
         x,
         y,
-        is_leaf=lambda n: isinstance(n, list),
+        is_leaf=is_list,
         none_is_leaf=True,
     )
     assert out == (
@@ -2902,7 +2897,7 @@ def test_tree_sum():
     assert optree.tree_sum(
         {'x': [1], 'y': ([2], [None]), 'z': [3]},
         start=[],
-        is_leaf=lambda x: isinstance(x, list),
+        is_leaf=is_list,
     ) == [1, 2, None, 3]
 
 

@@ -157,7 +157,7 @@ class Torch2NumpyEntry(optree.PyTreeEntry):
         assert self.entry == 0
         return obj.cpu().detach().numpy()
 
-    def codegen(self, node=''):
+    def codify(self, node=''):
         assert self.entry == 0
         return f'{node}.cpu().detach().numpy()'
 

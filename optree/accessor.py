@@ -101,14 +101,14 @@ class PyTreeEntry:
                 self.type,
                 self.kind,
                 self.__class__.__call__.__code__.co_code,
-                self.__class__.codegen.__code__.co_code,
+                self.__class__.codify.__code__.co_code,
             )
             == (
                 other.entry,
                 other.type,
                 other.kind,
                 other.__class__.__call__.__code__.co_code,
-                other.__class__.codegen.__code__.co_code,
+                other.__class__.codify.__code__.co_code,
             )
         )
 
@@ -120,7 +120,7 @@ class PyTreeEntry:
                 self.type,
                 self.kind,
                 self.__class__.__call__.__code__.co_code,
-                self.__class__.codegen.__code__.co_code,
+                self.__class__.codify.__code__.co_code,
             ),
         )
 
@@ -128,7 +128,7 @@ class PyTreeEntry:
         """Get the representation of the path entry."""
         return f'{self.__class__.__name__}(entry={self.entry!r}, type={self.type!r})'
 
-    def codegen(self, node: str = '') -> str:
+    def codify(self, node: str = '') -> str:
         """Generate code for accessing the path entry."""
         return f'{node}[<flat index {self.entry!r}>]'  # should be overridden
 
@@ -200,7 +200,7 @@ class GetItemEntry(PyTreeEntry):
         """Get the child object."""
         return obj[self.entry]
 
-    def codegen(self, node: str = '') -> str:
+    def codify(self, node: str = '') -> str:
         """Generate code for accessing the path entry."""
         return f'{node}[{self.entry!r}]'
 
@@ -221,7 +221,7 @@ class GetAttrEntry(PyTreeEntry):
         """Get the child object."""
         return getattr(obj, self.name)
 
-    def codegen(self, node: str = '') -> str:
+    def codify(self, node: str = '') -> str:
         """Generate code for accessing the path entry."""
         return f'{node}.{self.name}'
 
@@ -301,7 +301,7 @@ class NamedTupleEntry(SequenceEntry[T]):
         """Get the representation of the path entry."""
         return f'{self.__class__.__name__}(field={self.field!r}, type={self.type!r})'
 
-    def codegen(self, node: str = '') -> str:
+    def codify(self, node: str = '') -> str:
         """Generate code for accessing the path entry."""
         return f'{node}.{self.field}'
 
@@ -331,7 +331,7 @@ class StructSequenceEntry(SequenceEntry[T]):
         """Get the representation of the path entry."""
         return f'{self.__class__.__name__}(field={self.field!r}, type={self.type!r})'
 
-    def codegen(self, node: str = '') -> str:
+    def codify(self, node: str = '') -> str:
         """Generate code for accessing the path entry."""
         return f'{node}.{self.field}'
 
@@ -429,13 +429,13 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
 
     def __repr__(self) -> str:
         """Get the representation of the accessor."""
-        return f'{self.__class__.__name__}({self.codegen()}, {super().__repr__()})'
+        return f'{self.__class__.__name__}({self.codify()}, {super().__repr__()})'
 
-    def codegen(self, root: str = '*') -> str:
+    def codify(self, root: str = '*') -> str:
         """Generate code for accessing the path."""
         string = root
         for entry in self:
-            string = entry.codegen(string)
+            string = entry.codify(string)
         return string
 
 
