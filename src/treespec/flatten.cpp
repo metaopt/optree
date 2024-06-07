@@ -144,14 +144,14 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                     throw std::runtime_error(oss.str());
                 }
                 node.arity = 0;
-                node.node_data = GET_ITEM_BORROW<py::tuple>(out, 1);
+                node.node_data = GET_ITEM_BORROW<py::tuple>(out, ssize_t(1));
                 for (const py::handle& child :
-                     py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, 0))) {
+                     py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)))) {
                     ++node.arity;
                     recurse(child);
                 }
                 if (num_out == 3) [[likely]] {
-                    py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, 2);
+                    py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, ssize_t(2));
                     if (!node_entries.is_none()) [[likely]] {
                         node.node_entries = py::cast<py::tuple>(std::move(node_entries));
                         const ssize_t num_entries = GET_SIZE<py::tuple>(node.node_entries);
@@ -338,16 +338,16 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                     throw std::runtime_error(oss.str());
                 }
                 node.arity = 0;
-                node.node_data = GET_ITEM_BORROW<py::tuple>(out, 1);
+                node.node_data = GET_ITEM_BORROW<py::tuple>(out, ssize_t(1));
                 py::object node_entries;
                 if (num_out == 3) [[likely]] {
-                    node_entries = GET_ITEM_BORROW<py::tuple>(out, 2);
+                    node_entries = GET_ITEM_BORROW<py::tuple>(out, ssize_t(2));
                 } else [[unlikely]] {
                     node_entries = py::none();
                 }
                 if (node_entries.is_none()) [[unlikely]] {
                     for (const py::handle& child :
-                         py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, 0))) {
+                         py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)))) {
                         recurse(child, py::int_(node.arity++));
                     }
                 } else [[likely]] {
@@ -355,7 +355,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                     node.arity = GET_SIZE<py::tuple>(node.node_entries);
                     ssize_t num_children = 0;
                     for (const py::handle& child :
-                         py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, 0))) {
+                         py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)))) {
                         if (num_children >= node.arity) [[unlikely]] {
                             throw std::runtime_error(
                                 "PyTree custom flatten function for type " +
@@ -500,9 +500,10 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
             case PyTreeKind::DefaultDict: {
                 AssertExactStandardDict(object);
                 auto dict = py::reinterpret_borrow<py::dict>(object);
-                py::list expected_keys = (node.kind != PyTreeKind::DefaultDict
-                                              ? node.node_data
-                                              : GET_ITEM_BORROW<py::tuple>(node.node_data, 1));
+                py::list expected_keys =
+                    (node.kind != PyTreeKind::DefaultDict
+                         ? node.node_data
+                         : GET_ITEM_BORROW<py::tuple>(node.node_data, ssize_t(1)));
                 if (!DictKeysEqual(expected_keys, dict)) [[unlikely]] {
                     py::list keys = SortedDictKeys(dict);
                     auto [missing_keys, extra_keys] = DictKeysDifference(expected_keys, dict);
@@ -619,7 +620,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                         << " should return a 2- or 3-tuple, got " << num_out << ".";
                     throw std::runtime_error(oss.str());
                 }
-                py::object node_data = GET_ITEM_BORROW<py::tuple>(out, 1);
+                py::object node_data = GET_ITEM_BORROW<py::tuple>(out, ssize_t(1));
                 if (node.node_data.not_equal(node_data)) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "Mismatch custom node data; expected: " << PyRepr(node.node_data)
@@ -628,7 +629,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 }
                 ssize_t arity = 0;
                 for (const py::handle& child :
-                     py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, 0))) {
+                     py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)))) {
                     ++arity;
                     agenda.emplace_back(py::reinterpret_borrow<py::object>(child));
                 }

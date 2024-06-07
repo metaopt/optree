@@ -50,6 +50,8 @@ class cmake_build_ext(build_ext):  # noqa: N801
             archs = re.findall(r'-arch (\S+)', os.environ.get('ARCHFLAGS', ''))
             if archs:
                 cmake_args.append(f'-DCMAKE_OSX_ARCHITECTURES={";".join(archs)}')
+        elif platform.system() == 'Windows' and platform.architecture()[0] == '32bit':
+            cmake_args.append('-A=Win32')
 
         try:
             import pybind11

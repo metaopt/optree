@@ -208,6 +208,9 @@ template <>
 inline ssize_t GET_SIZE<py::list>(const py::handle& sized) {
     return PyList_GET_SIZE(sized.ptr());
 }
+#ifndef PyDict_GET_SIZE
+#define PyDict_GET_SIZE PyDict_GetSize
+#endif
 template <>
 inline ssize_t GET_SIZE<py::dict>(const py::handle& sized) {
     return PyDict_GET_SIZE(sized.ptr());
@@ -222,90 +225,34 @@ inline py::handle GET_ITEM_HANDLE<py::tuple>(const py::handle& container, const 
     return PyTuple_GET_ITEM(container.ptr(), item);
 }
 template <>
-inline py::handle GET_ITEM_HANDLE<py::tuple>(const py::handle& container, const py::size_t& item) {
-    return PyTuple_GET_ITEM(container.ptr(), py::ssize_t_cast(item));
-}
-template <>
-inline py::handle GET_ITEM_HANDLE<py::tuple>(const py::handle& container, const int& item) {
-    return PyTuple_GET_ITEM(container.ptr(), py::ssize_t_cast(item));
-}
-template <>
 inline py::handle GET_ITEM_HANDLE<py::list>(const py::handle& container, const py::ssize_t& item) {
     return PyList_GET_ITEM(container.ptr(), item);
-}
-template <>
-inline py::handle GET_ITEM_HANDLE<py::list>(const py::handle& container, const py::size_t& item) {
-    return PyList_GET_ITEM(container.ptr(), py::ssize_t_cast(item));
-}
-template <>
-inline py::handle GET_ITEM_HANDLE<py::list>(const py::handle& container, const int& item) {
-    return PyList_GET_ITEM(container.ptr(), py::ssize_t_cast(item));
 }
 
 template <typename Container, typename Item>
 inline py::object GET_ITEM_BORROW(const py::handle& container, const Item& item) {
-    return container[item];
+    return py::reinterpret_borrow<py::object>(container[item]);
 }
 template <>
 inline py::object GET_ITEM_BORROW<py::tuple>(const py::handle& container, const py::ssize_t& item) {
     return py::reinterpret_borrow<py::object>(PyTuple_GET_ITEM(container.ptr(), item));
 }
 template <>
-inline py::object GET_ITEM_BORROW<py::tuple>(const py::handle& container, const py::size_t& item) {
-    return py::reinterpret_borrow<py::object>(
-        PyTuple_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
-}
-template <>
-inline py::object GET_ITEM_BORROW<py::tuple>(const py::handle& container, const int& item) {
-    return py::reinterpret_borrow<py::object>(
-        PyTuple_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
-}
-template <>
 inline py::object GET_ITEM_BORROW<py::list>(const py::handle& container, const py::ssize_t& item) {
     return py::reinterpret_borrow<py::object>(PyList_GET_ITEM(container.ptr(), item));
-}
-template <>
-inline py::object GET_ITEM_BORROW<py::list>(const py::handle& container, const py::size_t& item) {
-    return py::reinterpret_borrow<py::object>(
-        PyList_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
-}
-template <>
-inline py::object GET_ITEM_BORROW<py::list>(const py::handle& container, const int& item) {
-    return py::reinterpret_borrow<py::object>(
-        PyList_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
 }
 
 template <typename Container, typename Item>
 inline py::object GET_ITEM_STEAL(const py::handle& container, const Item& item) {
-    return container[item];
+    return py::reinterpret_steal<py::object>(container[item]);
 }
 template <>
 inline py::object GET_ITEM_STEAL<py::tuple>(const py::handle& container, const py::ssize_t& item) {
     return py::reinterpret_steal<py::object>(PyTuple_GET_ITEM(container.ptr(), item));
 }
 template <>
-inline py::object GET_ITEM_STEAL<py::tuple>(const py::handle& container, const py::size_t& item) {
-    return py::reinterpret_steal<py::object>(
-        PyTuple_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
-}
-template <>
-inline py::object GET_ITEM_STEAL<py::tuple>(const py::handle& container, const int& item) {
-    return py::reinterpret_steal<py::object>(
-        PyTuple_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
-}
-template <>
 inline py::object GET_ITEM_STEAL<py::list>(const py::handle& container, const py::ssize_t& item) {
     return py::reinterpret_steal<py::object>(PyList_GET_ITEM(container.ptr(), item));
-}
-template <>
-inline py::object GET_ITEM_STEAL<py::list>(const py::handle& container, const py::size_t& item) {
-    return py::reinterpret_steal<py::object>(
-        PyList_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
-}
-template <>
-inline py::object GET_ITEM_STEAL<py::list>(const py::handle& container, const int& item) {
-    return py::reinterpret_steal<py::object>(
-        PyList_GET_ITEM(container.ptr(), py::ssize_t_cast(item)));
 }
 
 template <typename Container, typename Item>
@@ -314,39 +261,15 @@ inline void SET_ITEM(const py::handle& container, const Item& item, const py::ha
 }
 template <>
 inline void SET_ITEM<py::tuple>(const py::handle& container,
-                                const ssize_t& item,
+                                const py::ssize_t& item,
                                 const py::handle& value) {
     PyTuple_SET_ITEM(container.ptr(), item, value.inc_ref().ptr());
 }
 template <>
-inline void SET_ITEM<py::tuple>(const py::handle& container,
-                                const py::size_t& item,
-                                const py::handle& value) {
-    PyTuple_SET_ITEM(container.ptr(), py::ssize_t_cast(item), value.inc_ref().ptr());
-}
-template <>
-inline void SET_ITEM<py::tuple>(const py::handle& container,
-                                const int& item,
-                                const py::handle& value) {
-    PyTuple_SET_ITEM(container.ptr(), py::ssize_t_cast(item), value.inc_ref().ptr());
-}
-template <>
 inline void SET_ITEM<py::list>(const py::handle& container,
-                               const ssize_t& item,
+                               const py::ssize_t& item,
                                const py::handle& value) {
     PyList_SET_ITEM(container.ptr(), item, value.inc_ref().ptr());
-}
-template <>
-inline void SET_ITEM<py::list>(const py::handle& container,
-                               const py::size_t& item,
-                               const py::handle& value) {
-    PyList_SET_ITEM(container.ptr(), py::ssize_t_cast(item), value.inc_ref().ptr());
-}
-template <>
-inline void SET_ITEM<py::list>(const py::handle& container,
-                               const int& item,
-                               const py::handle& value) {
-    PyList_SET_ITEM(container.ptr(), py::ssize_t_cast(item), value.inc_ref().ptr());
 }
 
 inline std::string PyRepr(const py::handle& object) {

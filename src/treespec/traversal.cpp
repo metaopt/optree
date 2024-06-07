@@ -123,10 +123,10 @@ py::object PyTreeIter::NextImpl() {
                         << " should return a 2- or 3-tuple, got " << num_out << ".";
                     throw std::runtime_error(oss.str());
                 }
-                auto children = py::cast<py::tuple>(GET_ITEM_BORROW<py::tuple>(out, 0));
+                auto children = py::cast<py::tuple>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
                 ssize_t arity = GET_SIZE<py::tuple>(children);
                 if (num_out == 3) [[likely]] {
-                    py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, 2);
+                    py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, ssize_t(2));
                     if (!node_entries.is_none()) [[likely]] {
                         const ssize_t num_entries =
                             GET_SIZE<py::tuple>(py::cast<py::tuple>(std::move(node_entries)));

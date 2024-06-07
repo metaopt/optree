@@ -139,8 +139,8 @@ namespace optree {
 
         case PyTreeKind::DefaultDict: {
             py::dict dict{};
-            py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
-            py::list keys = GET_ITEM_BORROW<py::tuple>(node.node_data, 1);
+            py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, ssize_t(0));
+            py::list keys = GET_ITEM_BORROW<py::tuple>(node.node_data, ssize_t(1));
             if (node.original_keys) [[unlikely]] {
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     dict[GET_ITEM_HANDLE<py::list>(node.original_keys, i)] = py::none();
@@ -307,11 +307,11 @@ namespace optree {
             auto expected_keys = py::reinterpret_borrow<py::list>(
                 root.kind != PyTreeKind::DefaultDict
                     ? root.node_data
-                    : GET_ITEM_BORROW<py::tuple>(root.node_data, 1));
+                    : GET_ITEM_BORROW<py::tuple>(root.node_data, ssize_t(1)));
             auto other_keys = py::reinterpret_borrow<py::list>(
                 other_root.kind != PyTreeKind::DefaultDict
                     ? other_root.node_data
-                    : GET_ITEM_BORROW<py::tuple>(other_root.node_data, 1));
+                    : GET_ITEM_BORROW<py::tuple>(other_root.node_data, ssize_t(1)));
             py::dict dict{};
             for (ssize_t i = 0; i < other_root.arity; ++i) {
                 dict[GET_ITEM_HANDLE<py::list>(other_keys, i)] = py::int_(i);
@@ -583,7 +583,7 @@ ssize_t PyTreeSpec::PathsImpl(Span& paths,
                 auto keys = py::reinterpret_borrow<py::list>(
                     root.kind != PyTreeKind::DefaultDict
                         ? root.node_data
-                        : GET_ITEM_BORROW<py::tuple>(root.node_data, 1));
+                        : GET_ITEM_BORROW<py::tuple>(root.node_data, ssize_t(1)));
                 for (ssize_t i = root.arity - 1; i >= 0; --i) {
                     cur -= recurse(cur, GET_ITEM_HANDLE<py::list>(keys, i));
                 }
@@ -686,7 +686,7 @@ ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,
                 auto keys = py::reinterpret_borrow<py::list>(
                     root.kind != PyTreeKind::DefaultDict
                         ? root.node_data
-                        : GET_ITEM_BORROW<py::tuple>(root.node_data, 1));
+                        : GET_ITEM_BORROW<py::tuple>(root.node_data, ssize_t(1)));
                 for (ssize_t i = root.arity - 1; i >= 0; --i) {
                     cur -= recurse(cur, GET_ITEM_HANDLE<py::list>(keys, i), path_entry_type);
                 }
@@ -749,7 +749,8 @@ py::list PyTreeSpec::Entries() const {
             return py::getattr(root.node_data, Py_Get_ID(copy))();
         }
         case PyTreeKind::DefaultDict: {
-            return py::getattr(GET_ITEM_BORROW<py::tuple>(root.node_data, 1), Py_Get_ID(copy))();
+            return py::getattr(GET_ITEM_BORROW<py::tuple>(root.node_data, ssize_t(1)),
+                               Py_Get_ID(copy))();
         }
 
         default:
@@ -785,7 +786,8 @@ py::object PyTreeSpec::Entry(ssize_t index) const {
             return GET_ITEM_BORROW<py::list>(root.node_data, index);
         }
         case PyTreeKind::DefaultDict: {
-            return GET_ITEM_BORROW<py::list>(GET_ITEM_BORROW<py::tuple>(root.node_data, 1), index);
+            return GET_ITEM_BORROW<py::list>(GET_ITEM_BORROW<py::tuple>(root.node_data, ssize_t(1)),
+                                             index);
         }
 
         case PyTreeKind::None:
@@ -960,11 +962,11 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec& other, const bool& strict) const {
                 auto expected_keys = py::reinterpret_borrow<py::list>(
                     a->kind != PyTreeKind::DefaultDict
                         ? a->node_data
-                        : GET_ITEM_BORROW<py::tuple>(a->node_data, 1));
+                        : GET_ITEM_BORROW<py::tuple>(a->node_data, ssize_t(1)));
                 auto other_keys = py::reinterpret_borrow<py::list>(
                     b->kind != PyTreeKind::DefaultDict
                         ? b->node_data
-                        : GET_ITEM_BORROW<py::tuple>(b->node_data, 1));
+                        : GET_ITEM_BORROW<py::tuple>(b->node_data, ssize_t(1)));
                 py::dict dict{};
                 for (ssize_t i = 0; i < b->arity; ++i) {
                     dict[GET_ITEM_HANDLE<py::list>(other_keys, i)] = py::int_(i);
@@ -1171,9 +1173,9 @@ std::string PyTreeSpec::ToStringImpl() const {
             case PyTreeKind::DefaultDict: {
                 EXPECT_EQ(
                     GET_SIZE<py::tuple>(node.node_data), 2, "Number of auxiliary data mismatch.");
-                py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
-                auto keys =
-                    py::reinterpret_borrow<py::list>(GET_ITEM_BORROW<py::tuple>(node.node_data, 1));
+                py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, ssize_t(0));
+                auto keys = py::reinterpret_borrow<py::list>(
+                    GET_ITEM_BORROW<py::tuple>(node.node_data, ssize_t(1)));
                 EXPECT_EQ(GET_SIZE<py::list>(keys),
                           node.arity,
                           "Number of keys and entries does not match.");
@@ -1294,13 +1296,13 @@ std::string PyTreeSpec::ToString() const {
             if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
                 EXPECT_EQ(
                     GET_SIZE<py::tuple>(node.node_data), 2, "Number of auxiliary data mismatch.");
-                py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, 0);
+                py::object default_factory = GET_ITEM_BORROW<py::tuple>(node.node_data, ssize_t(0));
                 data_hash = py::hash(default_factory);
             }
             auto keys = py::reinterpret_borrow<py::list>(
                 node.kind != PyTreeKind::DefaultDict
                     ? node.node_data
-                    : GET_ITEM_BORROW<py::tuple>(node.node_data, 1));
+                    : GET_ITEM_BORROW<py::tuple>(node.node_data, ssize_t(1)));
             EXPECT_EQ(
                 GET_SIZE<py::list>(keys), node.arity, "Number of keys and entries does not match.");
             for (const py::handle& key : keys) {
