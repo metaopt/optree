@@ -167,6 +167,7 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
 @deprecated(
     'The class `optree.Partial` is deprecated and will be removed in a future version. '
     'Please use `optree.functools.partial` instead.',
+    category=FutureWarning,
 )
 class Partial(partial):
     """Deprecated alias for :class:`partial`."""
