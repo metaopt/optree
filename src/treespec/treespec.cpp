@@ -168,18 +168,33 @@ namespace optree {
 }
 
 /*static*/ py::object PyTreeSpec::GetPathEntryType(const Node& node) {
-    static const auto [SequenceEntry_ptr,
-                       MappingEntry_ptr,
-                       NamedTupleEntry_ptr,
-                       StructSequenceEntry_ptr] = []()
-        -> std::tuple<const py::object*, const py::object*, const py::object*, const py::object*> {
+    static const py::object* SequenceEntry_ptr = []() {
         const py::module_& mod = GetCxxModule();
         // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation
         // and garbage collection.
-        return {new py::object{py::getattr(mod, "SequenceEntry")},
-                new py::object{py::getattr(mod, "MappingEntry")},
-                new py::object{py::getattr(mod, "NamedTupleEntry")},
-                new py::object{py::getattr(mod, "StructSequenceEntry")}};
+        // NOLINTNEXTLINE[cppcoreguidelines-owning-memory]
+        return new py::object{py::getattr(mod, "SequenceEntry")};
+    }();
+    static const py::object* MappingEntry_ptr = []() {
+        const py::module_& mod = GetCxxModule();
+        // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation
+        // and garbage collection.
+        // NOLINTNEXTLINE[cppcoreguidelines-owning-memory]
+        return new py::object{py::getattr(mod, "MappingEntry")};
+    }();
+    static const py::object* NamedTupleEntry_ptr = []() {
+        const py::module_& mod = GetCxxModule();
+        // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation
+        // and garbage collection.
+        // NOLINTNEXTLINE[cppcoreguidelines-owning-memory]
+        return new py::object{py::getattr(mod, "NamedTupleEntry")};
+    }();
+    static const py::object* StructSequenceEntry_ptr = []() {
+        const py::module_& mod = GetCxxModule();
+        // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation
+        // and garbage collection.
+        // NOLINTNEXTLINE[cppcoreguidelines-owning-memory]
+        return new py::object{py::getattr(mod, "StructSequenceEntry")};
     }();
 
     switch (node.kind) {
