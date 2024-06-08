@@ -19,6 +19,7 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
+#include <algorithm>      // std::min
 #include <memory>         // std::unique_ptr
 #include <optional>       // std::optional, std::nullopt
 #include <string>         // std::string
@@ -38,7 +39,10 @@ using size_t = py::size_t;
 using ssize_t = py::ssize_t;
 
 // The maximum depth of a pytree.
-constexpr ssize_t MAX_RECURSION_DEPTH = 1000;
+#ifndef Py_C_RECURSION_LIMIT
+#define Py_C_RECURSION_LIMIT 1000
+#endif
+constexpr ssize_t MAX_RECURSION_DEPTH = std::min(1000, Py_C_RECURSION_LIMIT);
 
 // Test whether the given object is a leaf node.
 bool IsLeaf(const py::object &object,

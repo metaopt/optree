@@ -78,7 +78,7 @@ template <bool NoneIsLeaf>
                                             std::vector<PyTreeSpec>& treespecs,
                                             std::string& register_namespace) {
         for (const py::object& child : children) {
-            if (!py::isinstance<PyTreeSpec>(child)) {
+            if (!py::isinstance<PyTreeSpec>(child)) [[unlikely]] {
                 std::ostringstream oss{};
                 oss << "Expected a(n) " << NodeKindToString(node) << " of PyTreeSpec(s), got "
                     << PyRepr(handle) << ".";
@@ -213,15 +213,15 @@ template <bool NoneIsLeaf>
                 throw std::runtime_error(oss.str());
             }
             node.arity = 0;
-            node.node_data = GET_ITEM_BORROW<py::tuple>(out, 1);
+            node.node_data = GET_ITEM_BORROW<py::tuple>(out, ssize_t(1));
             for (const py::handle& child :
-                 py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, 0))) {
+                 py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)))) {
                 ++node.arity;
                 children.emplace_back(py::reinterpret_borrow<py::object>(child));
             }
             verify_children(children, treespecs, registry_namespace);
             if (num_out == 3) [[likely]] {
-                py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, 2);
+                py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, ssize_t(2));
                 if (!node_entries.is_none()) [[likely]] {
                     node.node_entries = py::cast<py::tuple>(std::move(node_entries));
                     const ssize_t num_entries = GET_SIZE<py::tuple>(node.node_entries);
