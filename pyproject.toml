@@ -109,7 +109,7 @@ optree = ['*.so', '*.pyd']
 # Wheel builder ################################################################
 # Reference: https://cibuildwheel.readthedocs.io
 [tool.cibuildwheel]
-archs = ["auto64"]
+archs = ["native"]
 skip = "*musllinux*"
 build-frontend = "build"
 build-verbosity = 3
