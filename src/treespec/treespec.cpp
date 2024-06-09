@@ -1386,7 +1386,7 @@ py::object PyTreeSpec::ToPicklable() const {
 // NOLINTBEGIN[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklable(const py::object& picklable) {
-    auto state = py::reinterpret_steal<py::tuple>(picklable);
+    auto state = py::reinterpret_borrow<py::tuple>(picklable);
     if (state.size() != 3) [[unlikely]] {
         throw std::runtime_error("Malformed pickled PyTreeSpec.");
     }
