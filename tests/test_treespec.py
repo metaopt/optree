@@ -412,7 +412,8 @@ def test_treespec_pickle_missing_registration():
                 """,
             ),
         ],
-    ).decode('utf-8')
+        text=True,
+    )
     assert re.match(
         r"Unknown custom type in pickled PyTreeSpec: <class '.*'> in namespace 'foo'\.",
         string=error,

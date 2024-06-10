@@ -70,7 +70,7 @@ pre-commit-install:
 
 docs-install:
 	$(call check_pip_install_extra,pydocstyle,pydocstyle[toml])
-	$(call check_pip_install_extra,doc8,"doc8<1.0.0a0")
+	$(call check_pip_install_extra,doc8,"doc8<1.0.0a0")  # unpin this when we drop support for Python 3.7
 	if ! $(PYTHON) -c "import sys; exit(sys.version_info < (3, 8))"; then \
 		$(PYTHON) -m pip uninstall --yes importlib-metadata; \
 		$(call check_pip_install_extra,importlib-metadata,"importlib-metadata<5.0.0a0"); \
@@ -114,9 +114,9 @@ addlicense-install: go-install
 
 pytest: pytest-install
 	$(PYTHON) -m pytest --version
-	cd tests && $(PYTHON) -c 'import $(PROJECT_PATH)' && \
-	$(PYTHON) -c 'import $(PROJECT_PATH)._C; print(f"GLIBCXX_USE_CXX11_ABI={$(PROJECT_PATH)._C.GLIBCXX_USE_CXX11_ABI}")' && \
-	$(PYTHON) -m pytest --verbose --color=yes \
+	cd tests && $(PYTHON) -X dev -c 'import $(PROJECT_PATH)' && \
+	$(PYTHON) -X dev -c 'import $(PROJECT_PATH)._C; print(f"GLIBCXX_USE_CXX11_ABI={$(PROJECT_PATH)._C.GLIBCXX_USE_CXX11_ABI}")' && \
+	$(PYTHON) -X dev -m pytest --verbose --color=yes \
 		--cov="$(PROJECT_PATH)" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
 		$(PYTESTOPTS) .
 
