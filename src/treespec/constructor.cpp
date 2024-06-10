@@ -131,7 +131,7 @@ template <bool NoneIsLeaf>
 
         case PyTreeKind::None: {
             node.arity = 0;
-            if (!NoneIsLeaf) {
+            if constexpr (!NoneIsLeaf) {
                 break;
             }
             INTERNAL_ERROR(

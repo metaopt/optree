@@ -70,7 +70,7 @@ pre-commit-install:
 
 docs-install:
 	$(call check_pip_install_extra,pydocstyle,pydocstyle[toml])
-	$(call check_pip_install_extra,doc8,"doc8<1.0.0a0")
+	$(call check_pip_install_extra,doc8,"doc8<1.0.0a0")  # unpin this when we drop support for Python 3.7
 	if ! $(PYTHON) -c "import sys; exit(sys.version_info < (3, 8))"; then \
 		$(PYTHON) -m pip uninstall --yes importlib-metadata; \
 		$(call check_pip_install_extra,importlib-metadata,"importlib-metadata<5.0.0a0"); \

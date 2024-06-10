@@ -66,7 +66,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             }
 
             case PyTreeKind::None: {
-                if (!NoneIsLeaf) {
+                if constexpr (!NoneIsLeaf) {
                     break;
                 }
                 INTERNAL_ERROR(
@@ -260,7 +260,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             }
 
             case PyTreeKind::None: {
-                if (!NoneIsLeaf) {
+                if constexpr (!NoneIsLeaf) {
                     break;
                 }
                 INTERNAL_ERROR(

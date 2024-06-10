@@ -412,7 +412,6 @@ def test_treespec_pickle_missing_registration():
                 """,
             ),
         ],
-        env={},
         text=True,
     )
     assert re.match(

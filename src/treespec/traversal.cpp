@@ -54,7 +54,7 @@ py::object PyTreeIter::NextImpl() {
             }
 
             case PyTreeKind::None: {
-                if (!NoneIsLeaf) {
+                if constexpr (!NoneIsLeaf) {
                     break;
                 }
                 INTERNAL_ERROR(

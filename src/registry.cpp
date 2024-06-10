@@ -46,7 +46,7 @@ template <bool NoneIsLeaf>
             sm_builtins_types.emplace(cls);
             cls.inc_ref();
         };
-        if (!NoneIsLeaf) {
+        if constexpr (!NoneIsLeaf) {
             add_builtin_type(py::type::of(py::none()), PyTreeKind::None);
         }
         add_builtin_type(
