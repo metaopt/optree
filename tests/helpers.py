@@ -28,9 +28,13 @@ import pytest
 import optree
 
 
-def getrefcount(obj=None):
+def gc_collect():
     for _ in range(3):
         gc.collect()
+
+
+def getrefcount(obj=None):
+    gc_collect()
     return sys.getrefcount(obj)
 
 

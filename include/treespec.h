@@ -177,6 +177,9 @@ class PyTreeSpec {
     // Used to implement `PyTreeSpec.__getstate__`.
     [[nodiscard]] py::object ToPicklable() const;
 
+    // Used in tp_traverse to traverse the PyTreeSpec.
+    [[nodiscard]] const std::vector<Node> &GetTraversal() const { return m_traversal; }
+
     // Transform the object returned by `ToPicklable()` back to PyTreeSpec.
     // Used to implement `PyTreeSpec.__setstate__`.
     static std::unique_ptr<PyTreeSpec> FromPicklable(const py::object &picklable);
@@ -359,6 +362,11 @@ class PyTreeIter {
     [[nodiscard]] PyTreeIter &Iter() { return *this; }
 
     [[nodiscard]] py::object Next();
+
+    // Used in tp_traverse to traverse the PyTreeIter.
+    [[nodiscard]] const std::vector<std::pair<py::object, ssize_t>> &GetAgenda() const {
+        return m_agenda;
+    }
 
  private:
     std::vector<std::pair<py::object, ssize_t>> m_agenda;

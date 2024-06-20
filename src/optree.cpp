@@ -29,17 +29,13 @@ limitations under the License.
 namespace optree {
 
 py::module_ GetCxxModule(const std::optional<py::module_>& module) {
-    static py::object* this_module_ptr = nullptr;
-    if (module.has_value()) [[unlikely]] {
-        EXPECT_EQ(this_module_ptr, nullptr, "The module has already been initialized.");
-        // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation
-        // and garbage collection.
-        this_module_ptr = new py::object{*module};  // NOLINT[cppcoreguidelines-owning-memory]
-    } else [[likely]] {
-        EXPECT_NE(this_module_ptr, nullptr, "The module is not initialized.");
-    }
-
-    return py::reinterpret_borrow<py::module_>(*this_module_ptr);
+    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::module_> storage;
+    return storage
+        .call_once_and_store_result([&module]() -> py::module_ {
+            EXPECT_TRUE(module.has_value(), "The module must be provided.");
+            return *module;
+        })
+        .get_stored();
 }
 
 void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
@@ -149,7 +145,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::arg("obj"));
 
     auto PyTreeKindTypeObject =
-        py::enum_<PyTreeKind>(mod, "PyTreeKind", "The kind of a pytree node.")
+        py::enum_<PyTreeKind>(mod, "PyTreeKind", "The kind of a pytree node.", py::module_local())
             .value("CUSTOM", PyTreeKind::Custom, "A custom type.")
             .value("LEAF", PyTreeKind::Leaf, "An opaque leaf node.")
             .value("NONE", PyTreeKind::None, "None.")
@@ -164,8 +160,34 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
     reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())->tp_name = "optree.PyTreeKind";
     py::setattr(PyTreeKindTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
 
-    auto PyTreeSpecTypeObject =
-        py::class_<PyTreeSpec>(mod, "PyTreeSpec", "Representing the structure of the pytree.");
+    auto PyTreeSpecTypeObject = py::class_<PyTreeSpec>(
+        mod,
+        "PyTreeSpec",
+        "Representing the structure of the pytree.",
+        // NOLINTBEGIN[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
+        py::custom_type_setup([](PyHeapTypeObject* heap_type) {
+            auto* type = &heap_type->ht_type;
+            type->tp_flags |= Py_TPFLAGS_HAVE_GC;
+            type->tp_traverse = [](PyObject* self_base, visitproc visit, void* arg) -> int {
+#if PY_VERSION_HEX >= 0x03090000  // Python 3.9
+                Py_VISIT(Py_TYPE(self_base));
+#endif
+                auto* instance = reinterpret_cast<py::detail::instance*>(self_base);
+                if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
+                    // The holder is not constructed yet. Skip the traversal to avoid segfault.
+                    return 0;
+                }
+                auto& self = py::cast<PyTreeSpec&>(py::handle(self_base));
+                for (const auto& node : self.GetTraversal()) {
+                    Py_VISIT(node.node_data.ptr());
+                    Py_VISIT(node.node_entries.ptr());
+                    Py_VISIT(node.original_keys.ptr());
+                }
+                return 0;
+            };
+        }),
+        // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
+        py::module_local());
     reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_name = "optree.PyTreeSpec";
     py::setattr(PyTreeSpecTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
 
@@ -288,8 +310,32 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              "Serialization support for PyTreeSpec.",
              py::arg("state"));
 
-    auto PyTreeIterTypeObject =
-        py::class_<PyTreeIter>(mod, "PyTreeIter", "Iterator over the leaves of a pytree.");
+    auto PyTreeIterTypeObject = py::class_<PyTreeIter>(
+        mod,
+        "PyTreeIter",
+        "Iterator over the leaves of a pytree.",
+        // NOLINTBEGIN[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
+        py::custom_type_setup([](PyHeapTypeObject* heap_type) {
+            auto* type = &heap_type->ht_type;
+            type->tp_flags |= Py_TPFLAGS_HAVE_GC;
+            type->tp_traverse = [](PyObject* self_base, visitproc visit, void* arg) -> int {
+#if PY_VERSION_HEX >= 0x03090000  // Python 3.9
+                Py_VISIT(Py_TYPE(self_base));
+#endif
+                auto* instance = reinterpret_cast<py::detail::instance*>(self_base);
+                if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
+                    // The holder is not constructed yet. Skip the traversal to avoid segfault.
+                    return 0;
+                }
+                auto& self = py::cast<PyTreeIter&>(py::handle(self_base));
+                for (const auto& pair : self.GetAgenda()) {
+                    Py_VISIT(pair.first.ptr());
+                }
+                return 0;
+            };
+        }),
+        // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
+        py::module_local());
     reinterpret_cast<PyTypeObject*>(PyTreeIterTypeObject.ptr())->tp_name = "optree.PyTreeIter";
     py::setattr(PyTreeIterTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
 
