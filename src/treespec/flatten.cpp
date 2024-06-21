@@ -202,6 +202,7 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
         [[unlikely]] {
         treespec->m_namespace = registry_namespace;
     }
+    treespec->m_traversal.shrink_to_fit();
     return std::make_pair(std::move(leaves), std::move(treespec));
 }
 
@@ -416,6 +417,7 @@ PyTreeSpec::FlattenWithPath(const py::object& tree,
             tree, leaves, paths, leaf_predicate, none_is_leaf, registry_namespace)) [[unlikely]] {
         treespec->m_namespace = registry_namespace;
     }
+    treespec->m_traversal.shrink_to_fit();
     return std::make_tuple(std::move(paths), std::move(leaves), std::move(treespec));
 }
 

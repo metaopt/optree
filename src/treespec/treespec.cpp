@@ -480,6 +480,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec
     EXPECT_EQ(new_num_leaves,
               treespec->GetNumLeaves(),
               "PyTreeSpec::BroadcastToCommonSuffix() mismatched number of leaves.");
+    treespec->m_traversal.shrink_to_fit();
     return treespec;
 }
 
@@ -528,6 +529,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     EXPECT_EQ(root.num_nodes,
               (num_outer_nodes - num_outer_leaves) + (num_outer_leaves * num_inner_nodes),
               "Number of composed tree nodes mismatch.");
+    treespec->m_traversal.shrink_to_fit();
     return treespec;
 }
 
@@ -817,6 +819,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
         std::copy(m_traversal.begin() + pos - node.num_nodes,
                   m_traversal.begin() + pos,
                   std::back_inserter(children[i]->m_traversal));
+        children[i]->m_traversal.shrink_to_fit();
         pos -= node.num_nodes;
     }
     EXPECT_EQ(pos, 0, "`pos != 0` at end of PyTreeSpec::Children().");
@@ -848,6 +851,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
     std::copy(m_traversal.begin() + pos - node.num_nodes,
               m_traversal.begin() + pos,
               std::back_inserter(child->m_traversal));
+    child->m_traversal.shrink_to_fit();
     return child;
 }
 
@@ -1475,6 +1479,7 @@ py::object PyTreeSpec::ToPicklable() const {
         node.num_leaves = py::cast<ssize_t>(t[5]);
         node.num_nodes = py::cast<ssize_t>(t[6]);
     }
+    out->m_traversal.shrink_to_fit();
     return out;
 }
 // NOLINTEND[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
