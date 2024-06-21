@@ -1359,7 +1359,7 @@ ssize_t PyTreeSpec::HashValue() const {
     }
 }
 
-py::object PyTreeSpec::ToPicklable() const {
+py::object PyTreeSpec::ToPickleable() const {
     py::tuple node_states{GetNumNodes()};
     ssize_t i = 0;
     for (const auto& node : m_traversal) {
@@ -1379,8 +1379,8 @@ py::object PyTreeSpec::ToPicklable() const {
 
 // NOLINTBEGIN[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklable(const py::object& picklable) {
-    auto state = py::reinterpret_borrow<py::tuple>(picklable);
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPickleable(const py::object& pickleable) {
+    auto state = py::reinterpret_borrow<py::tuple>(pickleable);
     if (state.size() != 3) [[unlikely]] {
         throw std::runtime_error("Malformed pickled PyTreeSpec.");
     }

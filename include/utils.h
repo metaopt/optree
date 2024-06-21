@@ -19,8 +19,8 @@ limitations under the License.
 
 #include <Python.h>
 
-#if PY_VERSION_HEX < 0x30C00F0  // Python 3.12.0
-#include <structmember.h>       // PyMemberDef
+#if PY_VERSION_HEX < 0x030C00F0  // Python 3.12.0
+#include <structmember.h>        // PyMemberDef
 #endif
 
 #include <pybind11/pybind11.h>
@@ -538,7 +538,7 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
             // Found incomparable keys (e.g. `int` vs. `str`, or user-defined types).
             try {
                 // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
-                auto sort_key_fn = py::cpp_function([](const py::object& o) {
+                auto sort_key_fn = py::cpp_function([](const py::object& o) -> py::tuple {
                     py::handle t = py::type::handle_of(o);
                     py::str qualname{
                         static_cast<std::string>(py::str(py::getattr(t, Py_Get_ID(__module__)))) +

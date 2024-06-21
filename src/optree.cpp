@@ -18,6 +18,7 @@ limitations under the License.
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <memory>    // std::unique_ptr
 #include <optional>  // std::optional, std::nullopt
 #include <string>    // std::string
 
@@ -165,7 +166,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         "PyTreeSpec",
         "Representing the structure of the pytree.",
         // NOLINTBEGIN[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
-        py::custom_type_setup([](PyHeapTypeObject* heap_type) {
+        py::custom_type_setup([](PyHeapTypeObject* heap_type) -> void {
             auto* type = &heap_type->ht_type;
             type->tp_flags |= Py_TPFLAGS_HAVE_GC;
             type->tp_traverse = [](PyObject* self_base, visitproc visit, void* arg) -> int {
@@ -249,7 +250,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             "The registry namespace used to resolve the custom pytree node types.")
         .def_property_readonly(
             "type",
-            [](const PyTreeSpec& t) { return t.GetType(); },
+            [](const PyTreeSpec& t) -> py::object { return t.GetType(); },
             "The type of the current node. Return None if the current node is a leaf.")
         .def_property_readonly("kind", &PyTreeSpec::GetPyTreeKind, "The kind of the current node.")
         .def("is_leaf",
@@ -268,45 +269,47 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::arg("strict") = false)
         .def(
             "__eq__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a == b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a == b; },
             "Test for equality to another object.",
             py::is_operator(),
             py::arg("other"))
         .def(
             "__ne__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a != b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a != b; },
             "Test for inequality to another object.",
             py::is_operator(),
             py::arg("other"))
         .def(
             "__lt__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a < b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a < b; },
             "Test for this treespec is a strict prefix of another object.",
             py::is_operator(),
             py::arg("other"))
         .def(
             "__le__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a <= b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a <= b; },
             "Test for this treespec is a prefix of another object.",
             py::is_operator(),
             py::arg("other"))
         .def(
             "__gt__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a > b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a > b; },
             "Test for this treespec is a strict suffix of another object.",
             py::is_operator(),
             py::arg("other"))
         .def(
             "__ge__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a >= b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a >= b; },
             "Test for this treespec is a suffix of another object.",
             py::is_operator(),
             py::arg("other"))
         .def("__repr__", &PyTreeSpec::ToString, "Return a string representation of the treespec.")
         .def("__hash__", &PyTreeSpec::HashValue, "Return the hash of the treespec.")
         .def("__len__", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
-        .def(py::pickle([](const PyTreeSpec& t) { return t.ToPicklable(); },
-                        [](const py::object& o) { return PyTreeSpec::FromPicklable(o); }),
+        .def(py::pickle([](const PyTreeSpec& t) -> py::object { return t.ToPickleable(); },
+                        [](const py::object& o) -> std::unique_ptr<PyTreeSpec> {
+                            return PyTreeSpec::FromPickleable(o);
+                        }),
              "Serialization support for PyTreeSpec.",
              py::arg("state"));
 
@@ -315,7 +318,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         "PyTreeIter",
         "Iterator over the leaves of a pytree.",
         // NOLINTBEGIN[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
-        py::custom_type_setup([](PyHeapTypeObject* heap_type) {
+        py::custom_type_setup([](PyHeapTypeObject* heap_type) -> void {
             auto* type = &heap_type->ht_type;
             type->tp_flags |= Py_TPFLAGS_HAVE_GC;
             type->tp_traverse = [](PyObject* self_base, visitproc visit, void* arg) -> int {

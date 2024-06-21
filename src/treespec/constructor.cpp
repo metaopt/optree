@@ -78,7 +78,7 @@ template <bool NoneIsLeaf>
 
     auto verify_children = [&handle, &node](const std::vector<py::object>& children,
                                             std::vector<PyTreeSpec>& treespecs,
-                                            std::string& register_namespace) {
+                                            std::string& register_namespace) -> void {
         for (const py::object& child : children) {
             if (!py::isinstance<PyTreeSpec>(child)) [[unlikely]] {
                 std::ostringstream oss{};
