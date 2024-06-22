@@ -201,7 +201,7 @@ def _ravel_leaves(
     leaves: list[ArrayLike],
 ) -> tuple[Array, Callable[[Array], list[ArrayLike]]]:
     if not leaves:
-        return (jnp.array([]), _unravel_empty)
+        return (jnp.zeros(0), _unravel_empty)
 
     from_dtypes = tuple(dtypes.dtype(leaf) for leaf in leaves)
     to_dtype = dtypes.result_type(*from_dtypes)

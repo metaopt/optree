@@ -15,17 +15,23 @@
 
 # pylint: disable=missing-function-docstring,wrong-import-position,wrong-import-order
 
+import random
+import warnings
+
 import pytest
 
 
 torch = pytest.importorskip('torch')
 
-import random
-
 import torch
 
 import optree
 from helpers import LEAVES, TREES, parametrize
+
+
+with warnings.catch_warnings():
+    warnings.simplefilter('ignore')
+    torch.tensor(0.0)
 
 
 @parametrize(tree=list(TREES + LEAVES))

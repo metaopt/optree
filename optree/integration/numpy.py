@@ -130,7 +130,7 @@ def _ravel_leaves(
     leaves: list[np.ndarray],
 ) -> tuple[np.ndarray, Callable[[np.ndarray], list[np.ndarray]]]:
     if not leaves:
-        return (np.array([]), _unravel_empty)
+        return (np.zeros(0), _unravel_empty)
 
     from_dtypes = tuple(np.result_type(leaf) for leaf in leaves)
     to_dtype = np.result_type(*leaves)

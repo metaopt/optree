@@ -127,7 +127,7 @@ def _ravel_leaves(
     leaves: list[torch.Tensor],
 ) -> tuple[torch.Tensor, Callable[[torch.Tensor], list[torch.Tensor]]]:
     if not leaves:
-        return (torch.tensor([]), _unravel_empty)
+        return (torch.zeros(0), _unravel_empty)
     if not all(torch.is_tensor(leaf) for leaf in leaves):
         raise ValueError('All leaves must be tensors.')
 
