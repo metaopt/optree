@@ -35,24 +35,22 @@ limitations under the License.
 #include <vector>         // std::vector
 
 namespace py = pybind11;
-using size_t = py::size_t;
-using ssize_t = py::ssize_t;
 
 // The maximum size of the type cache.
-constexpr ssize_t MAX_TYPE_CACHE_SIZE = 4096;
+constexpr py::ssize_t MAX_TYPE_CACHE_SIZE = 4096;
 
 // boost::hash_combine
 template <class T>
 inline void HashCombine(py::size_t& seed, const T& v) {  // NOLINT[runtime/references]
     std::hash<T> hasher{};
     // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
-    seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+    seed ^= (hasher(v) + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 }
 template <class T>
 inline void HashCombine(py::ssize_t& seed, const T& v) {  // NOLINT[runtime/references]
     std::hash<T> hasher{};
     // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
-    seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+    seed ^= (hasher(v) + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 }
 
 class TypeHash {
@@ -182,39 +180,39 @@ inline std::vector<T> reserved_vector(const py::size_t& size) {
 }
 
 template <typename Sized = py::object>
-inline ssize_t GetSize(const py::handle& sized) {
+inline py::ssize_t GetSize(const py::handle& sized) {
     return py::ssize_t_cast(py::len(sized));
 }
 template <>
-inline ssize_t GetSize<py::tuple>(const py::handle& sized) {
+inline py::ssize_t GetSize<py::tuple>(const py::handle& sized) {
     return PyTuple_Size(sized.ptr());
 }
 template <>
-inline ssize_t GetSize<py::list>(const py::handle& sized) {
+inline py::ssize_t GetSize<py::list>(const py::handle& sized) {
     return PyList_Size(sized.ptr());
 }
 template <>
-inline ssize_t GetSize<py::dict>(const py::handle& sized) {
+inline py::ssize_t GetSize<py::dict>(const py::handle& sized) {
     return PyDict_Size(sized.ptr());
 }
 
 template <typename Sized = py::object>
-inline ssize_t GET_SIZE(const py::handle& sized) {
+inline py::ssize_t GET_SIZE(const py::handle& sized) {
     return py::ssize_t_cast(py::len(sized));
 }
 template <>
-inline ssize_t GET_SIZE<py::tuple>(const py::handle& sized) {
+inline py::ssize_t GET_SIZE<py::tuple>(const py::handle& sized) {
     return PyTuple_GET_SIZE(sized.ptr());
 }
 template <>
-inline ssize_t GET_SIZE<py::list>(const py::handle& sized) {
+inline py::ssize_t GET_SIZE<py::list>(const py::handle& sized) {
     return PyList_GET_SIZE(sized.ptr());
 }
 #ifndef PyDict_GET_SIZE
 #define PyDict_GET_SIZE PyDict_Size
 #endif
 template <>
-inline ssize_t GET_SIZE<py::dict>(const py::handle& sized) {
+inline py::ssize_t GET_SIZE<py::dict>(const py::handle& sized) {
     return PyDict_GET_SIZE(sized.ptr());
 }
 
@@ -506,10 +504,11 @@ inline py::tuple StructSequenceGetFieldsImpl(const py::handle& type) {
         py::dict(py::arg("cls") = type, py::arg("fields") = fields));
     return py::tuple{fields};
 #else
-    const auto n_sequence_fields = py::cast<ssize_t>(getattr(type, Py_Get_ID(n_sequence_fields)));
+    const auto n_sequence_fields =
+        py::cast<py::ssize_t>(getattr(type, Py_Get_ID(n_sequence_fields)));
     auto* members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
     py::tuple fields{n_sequence_fields};
-    for (ssize_t i = 0; i < n_sequence_fields; ++i) {
+    for (py::ssize_t i = 0; i < n_sequence_fields; ++i) {
         // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
         SET_ITEM<py::tuple>(fields, i, py::str(members[i].name));
     }
@@ -600,12 +599,12 @@ inline py::list SortedDictKeys(const py::dict& dict) {
 }
 
 inline bool DictKeysEqual(const py::list& /*unique*/ keys, const py::dict& dict) {
-    ssize_t list_len = GET_SIZE<py::list>(keys);
-    ssize_t dict_len = GET_SIZE<py::dict>(dict);
+    py::ssize_t list_len = GET_SIZE<py::list>(keys);
+    py::ssize_t dict_len = GET_SIZE<py::dict>(dict);
     if (list_len != dict_len) [[likely]] {  // assumes keys are unique
         return false;
     }
-    for (ssize_t i = 0; i < list_len; ++i) {
+    for (py::ssize_t i = 0; i < list_len; ++i) {
         py::object key = GET_ITEM_BORROW<py::list>(keys, i);
         int result = PyDict_Contains(dict.ptr(), key.ptr());
         if (result == -1) [[unlikely]] {
