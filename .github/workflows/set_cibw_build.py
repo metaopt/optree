@@ -3,11 +3,11 @@
 # pylint: disable=missing-module-docstring
 
 import os
-import sys
+import platform
 
 
-# pylint: disable-next=consider-using-f-string
-CIBW_BUILD = 'CIBW_BUILD=*cp%d%d-*' % sys.version_info[:2]
+MAJOR, MINOR, *_ = platform.python_version_tuple()
+CIBW_BUILD = f'CIBW_BUILD=*{platform.python_implementation().lower()[0]}p{MAJOR}{MINOR}-*'
 
 print(CIBW_BUILD)
 with open(os.getenv('GITHUB_ENV'), mode='a', encoding='utf-8') as file:

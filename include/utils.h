@@ -23,6 +23,7 @@ limitations under the License.
 #include <structmember.h>        // PyMemberDef
 #endif
 
+#include <pybind11/eval.h>  // pybind11::exec
 #include <pybind11/pybind11.h>
 
 #include <exception>      // std::rethrow_exception, std::current_exception
@@ -34,24 +35,22 @@ limitations under the License.
 #include <vector>         // std::vector
 
 namespace py = pybind11;
-using size_t = py::size_t;
-using ssize_t = py::ssize_t;
 
 // The maximum size of the type cache.
-constexpr ssize_t MAX_TYPE_CACHE_SIZE = 4096;
+constexpr py::ssize_t MAX_TYPE_CACHE_SIZE = 4096;
 
 // boost::hash_combine
 template <class T>
 inline void HashCombine(py::size_t& seed, const T& v) {  // NOLINT[runtime/references]
     std::hash<T> hasher{};
     // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
-    seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+    seed ^= (hasher(v) + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 }
 template <class T>
 inline void HashCombine(py::ssize_t& seed, const T& v) {  // NOLINT[runtime/references]
     std::hash<T> hasher{};
     // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
-    seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+    seed ^= (hasher(v) + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 }
 
 class TypeHash {
@@ -127,6 +126,7 @@ constexpr bool NONE_IS_NODE = false;
 #define Py_Get_ID(name) (Py_ID_##name())
 
 Py_Declare_ID(optree);
+Py_Declare_ID(__main__);           // __main__
 Py_Declare_ID(__module__);         // type.__module__
 Py_Declare_ID(__qualname__);       // type.__qualname__
 Py_Declare_ID(__name__);           // type.__name__
@@ -180,39 +180,39 @@ inline std::vector<T> reserved_vector(const py::size_t& size) {
 }
 
 template <typename Sized = py::object>
-inline ssize_t GetSize(const py::handle& sized) {
+inline py::ssize_t GetSize(const py::handle& sized) {
     return py::ssize_t_cast(py::len(sized));
 }
 template <>
-inline ssize_t GetSize<py::tuple>(const py::handle& sized) {
+inline py::ssize_t GetSize<py::tuple>(const py::handle& sized) {
     return PyTuple_Size(sized.ptr());
 }
 template <>
-inline ssize_t GetSize<py::list>(const py::handle& sized) {
+inline py::ssize_t GetSize<py::list>(const py::handle& sized) {
     return PyList_Size(sized.ptr());
 }
 template <>
-inline ssize_t GetSize<py::dict>(const py::handle& sized) {
+inline py::ssize_t GetSize<py::dict>(const py::handle& sized) {
     return PyDict_Size(sized.ptr());
 }
 
 template <typename Sized = py::object>
-inline ssize_t GET_SIZE(const py::handle& sized) {
+inline py::ssize_t GET_SIZE(const py::handle& sized) {
     return py::ssize_t_cast(py::len(sized));
 }
 template <>
-inline ssize_t GET_SIZE<py::tuple>(const py::handle& sized) {
+inline py::ssize_t GET_SIZE<py::tuple>(const py::handle& sized) {
     return PyTuple_GET_SIZE(sized.ptr());
 }
 template <>
-inline ssize_t GET_SIZE<py::list>(const py::handle& sized) {
+inline py::ssize_t GET_SIZE<py::list>(const py::handle& sized) {
     return PyList_GET_SIZE(sized.ptr());
 }
 #ifndef PyDict_GET_SIZE
-#define PyDict_GET_SIZE PyDict_GetSize
+#define PyDict_GET_SIZE PyDict_Size
 #endif
 template <>
-inline ssize_t GET_SIZE<py::dict>(const py::handle& sized) {
+inline py::ssize_t GET_SIZE<py::dict>(const py::handle& sized) {
     return PyDict_GET_SIZE(sized.ptr());
 }
 
@@ -421,7 +421,6 @@ inline bool IsStructSequenceClassImpl(const py::handle& type) {
     // n_fields, n_sequence_fields, n_unnamed_fields attributes.
     auto* type_object = reinterpret_cast<PyTypeObject*>(type.ptr());
     if (PyType_FastSubclass(type_object, Py_TPFLAGS_TUPLE_SUBCLASS) &&
-        !static_cast<bool>(PyType_HasFeature(type_object, Py_TPFLAGS_BASETYPE)) &&
         type_object->tp_bases != nullptr &&
         static_cast<bool>(PyTuple_CheckExact(type_object->tp_bases)) &&
         PyTuple_GET_SIZE(type_object->tp_bases) == 1 &&
@@ -441,7 +440,16 @@ inline bool IsStructSequenceClassImpl(const py::handle& type) {
                 return false;
             }
         }
-        return true;
+#ifdef PYPY_VERSION
+        try {
+            py::exec("class _(cls): pass", py::dict(py::arg("cls") = type));
+        } catch (py::error_already_set& ex) {
+            return (ex.matches(PyExc_AssertionError) || ex.matches(PyExc_TypeError));
+        }
+        return false;
+#else
+        return (!static_cast<bool>(PyType_HasFeature(type_object, Py_TPFLAGS_BASETYPE)));
+#endif
     }
     return false;
 }
@@ -480,14 +488,32 @@ inline void AssertExactStructSequence(const py::handle& object) {
     }
 }
 inline py::tuple StructSequenceGetFieldsImpl(const py::handle& type) {
-    const auto n_sequence_fields = py::cast<ssize_t>(getattr(type, Py_Get_ID(n_sequence_fields)));
+#ifdef PYPY_VERSION
+    py::list fields{};
+    py::exec(
+        R"py(
+        from _structseq import structseqfield
+
+        indices_by_name = {
+            name: member.index
+            for name, member in vars(cls).items()
+            if isinstance(member, structseqfield)
+        }
+        fields.extend(sorted(indices_by_name, key=indices_by_name.get)[:cls.n_sequence_fields])
+        )py",
+        py::dict(py::arg("cls") = type, py::arg("fields") = fields));
+    return py::tuple{fields};
+#else
+    const auto n_sequence_fields =
+        py::cast<py::ssize_t>(getattr(type, Py_Get_ID(n_sequence_fields)));
     auto* members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
     py::tuple fields{n_sequence_fields};
-    for (ssize_t i = 0; i < n_sequence_fields; ++i) {
+    for (py::ssize_t i = 0; i < n_sequence_fields; ++i) {
         // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
         SET_ITEM<py::tuple>(fields, i, py::str(members[i].name));
     }
     return fields;
+#endif
 }
 inline py::tuple StructSequenceGetFields(const py::handle& object) {
     py::handle type;
@@ -573,12 +599,12 @@ inline py::list SortedDictKeys(const py::dict& dict) {
 }
 
 inline bool DictKeysEqual(const py::list& /*unique*/ keys, const py::dict& dict) {
-    ssize_t list_len = GET_SIZE<py::list>(keys);
-    ssize_t dict_len = GET_SIZE<py::dict>(dict);
+    py::ssize_t list_len = GET_SIZE<py::list>(keys);
+    py::ssize_t dict_len = GET_SIZE<py::dict>(dict);
     if (list_len != dict_len) [[likely]] {  // assumes keys are unique
         return false;
     }
-    for (ssize_t i = 0; i < list_len; ++i) {
+    for (py::ssize_t i = 0; i < list_len; ++i) {
         py::object key = GET_ITEM_BORROW<py::list>(keys, i);
         int result = PyDict_Contains(dict.ptr(), key.ptr());
         if (result == -1) [[unlikely]] {

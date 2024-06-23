@@ -42,7 +42,11 @@ using ssize_t = py::ssize_t;
 #ifndef Py_C_RECURSION_LIMIT
 #define Py_C_RECURSION_LIMIT 1000
 #endif
+#ifndef PYPY_VERSION
 constexpr ssize_t MAX_RECURSION_DEPTH = std::min(1000, Py_C_RECURSION_LIMIT);
+#else
+constexpr ssize_t MAX_RECURSION_DEPTH = std::min(500, Py_C_RECURSION_LIMIT);
+#endif
 
 // Test whether the given object is a leaf node.
 bool IsLeaf(const py::object &object,

@@ -2916,7 +2916,7 @@ def test_tree_max():
     assert optree.tree_max(None, default=0) == 0
     assert optree.tree_max(None, none_is_leaf=True) is None
     assert optree.tree_max(None, default=0, key=operator.neg) == 0
-    with pytest.raises(TypeError, match=re.escape("bad operand type for unary -: 'NoneType'")):
+    with pytest.raises(TypeError, match=".*operand type for unary .+: 'NoneType'"):
         assert optree.tree_max(None, default=0, key=operator.neg, none_is_leaf=True) is None
 
 
@@ -2935,7 +2935,7 @@ def test_tree_min():
     assert optree.tree_min(None, default=0) == 0
     assert optree.tree_min(None, none_is_leaf=True) is None
     assert optree.tree_min(None, default=0, key=operator.neg) == 0
-    with pytest.raises(TypeError, match=re.escape("bad operand type for unary -: 'NoneType'")):
+    with pytest.raises(TypeError, match=".*operand type for unary .+: 'NoneType'"):
         assert optree.tree_min(None, default=0, key=operator.neg, none_is_leaf=True) is None
 
 

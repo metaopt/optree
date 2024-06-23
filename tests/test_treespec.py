@@ -30,6 +30,7 @@ import helpers
 import optree
 from helpers import (
     NAMESPACED_TREE,
+    PYPY,
     TREE_STRINGS,
     TREES,
     MyAnotherDict,
@@ -225,13 +226,17 @@ def test_treespec_self_referential():
     hashes.add(hash(treespec))
     assert hash(other) == hash(other)
     assert hash(treespec) == hash(other)
-    with pytest.raises(RecursionError):
-        assert treespec != other
+
+    if not PYPY:
+        with pytest.raises(RecursionError):
+            assert treespec != other
 
     wr = weakref.ref(treespec)
     del treespec, key, other
     gc_collect()
-    assert wr() is None
+
+    if not PYPY:
+        assert wr() is None
 
 
 def test_treeiter_self_referential():
@@ -260,7 +265,9 @@ def test_treeiter_self_referential():
 
     del it, d
     gc_collect()
-    assert wr() is None
+
+    if not PYPY:
+        assert wr() is None
 
 
 def test_treespec_with_namespace():
@@ -406,10 +413,7 @@ def test_treespec_pickle_round_trip(tree, none_is_leaf, namespace):
     try:
         pickle.loads(pickle.dumps(tree))
     except pickle.PicklingError:
-        with pytest.raises(
-            pickle.PicklingError,
-            match="Can't pickle .*: it's not the same object as .*",
-        ):
+        with pytest.raises(pickle.PicklingError, match=r"Can't pickle .*:"):
             pickle.loads(pickle.dumps(expected))
     else:
         actual = pickle.loads(pickle.dumps(expected))
