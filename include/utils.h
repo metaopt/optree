@@ -211,7 +211,7 @@ inline ssize_t GET_SIZE<py::list>(const py::handle& sized) {
     return PyList_GET_SIZE(sized.ptr());
 }
 #ifndef PyDict_GET_SIZE
-#define PyDict_GET_SIZE PyDict_GetSize
+#define PyDict_GET_SIZE PyDict_Size
 #endif
 template <>
 inline ssize_t GET_SIZE<py::dict>(const py::handle& sized) {
