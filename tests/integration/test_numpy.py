@@ -15,12 +15,13 @@
 
 # pylint: disable=missing-function-docstring,wrong-import-position,wrong-import-order
 
+import random
+
 import pytest
 
 
 numpy = pytest.importorskip('numpy')
 
-import random
 
 import numpy as np
 

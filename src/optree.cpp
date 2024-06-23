@@ -18,6 +18,7 @@ limitations under the License.
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <memory>    // std::unique_ptr
 #include <optional>  // std::optional, std::nullopt
 #include <string>    // std::string
 
@@ -29,17 +30,13 @@ limitations under the License.
 namespace optree {
 
 py::module_ GetCxxModule(const std::optional<py::module_>& module) {
-    static py::object* this_module_ptr = nullptr;
-    if (module.has_value()) [[unlikely]] {
-        EXPECT_EQ(this_module_ptr, nullptr, "The module has already been initialized.");
-        // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation
-        // and garbage collection.
-        this_module_ptr = new py::object{*module};  // NOLINT[cppcoreguidelines-owning-memory]
-    } else [[likely]] {
-        EXPECT_NE(this_module_ptr, nullptr, "The module is not initialized.");
-    }
-
-    return py::reinterpret_borrow<py::module_>(*this_module_ptr);
+    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::module_> storage;
+    return storage
+        .call_once_and_store_result([&module]() -> py::module_ {
+            EXPECT_TRUE(module.has_value(), "The module must be provided.");
+            return *module;
+        })
+        .get_stored();
 }
 
 void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
@@ -149,7 +146,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::arg("obj"));
 
     auto PyTreeKindTypeObject =
-        py::enum_<PyTreeKind>(mod, "PyTreeKind", "The kind of a pytree node.")
+        py::enum_<PyTreeKind>(mod, "PyTreeKind", "The kind of a pytree node.", py::module_local())
             .value("CUSTOM", PyTreeKind::Custom, "A custom type.")
             .value("LEAF", PyTreeKind::Leaf, "An opaque leaf node.")
             .value("NONE", PyTreeKind::None, "None.")
@@ -161,12 +158,40 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             .value("DEFAULTDICT", PyTreeKind::DefaultDict, "A collections.defaultdict.")
             .value("DEQUE", PyTreeKind::Deque, "A collections.deque.")
             .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.");
-    reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())->tp_name = "optree.PyTreeKind";
+    auto* PyTreeKind_Type = reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr());
+    PyTreeKind_Type->tp_name = "optree.PyTreeKind";
     py::setattr(PyTreeKindTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
 
-    auto PyTreeSpecTypeObject =
-        py::class_<PyTreeSpec>(mod, "PyTreeSpec", "Representing the structure of the pytree.");
-    reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_name = "optree.PyTreeSpec";
+    auto PyTreeSpecTypeObject = py::class_<PyTreeSpec>(
+        mod,
+        "PyTreeSpec",
+        "Representing the structure of the pytree.",
+        // NOLINTBEGIN[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
+        py::custom_type_setup([](PyHeapTypeObject* heap_type) -> void {
+            auto* type = &heap_type->ht_type;
+            type->tp_flags |= Py_TPFLAGS_HAVE_GC;
+            type->tp_traverse = [](PyObject* self_base, visitproc visit, void* arg) -> int {
+#if PY_VERSION_HEX >= 0x03090000  // Python 3.9
+                Py_VISIT(Py_TYPE(self_base));
+#endif
+                auto* instance = reinterpret_cast<py::detail::instance*>(self_base);
+                if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
+                    // The holder is not constructed yet. Skip the traversal to avoid segfault.
+                    return 0;
+                }
+                auto& self = py::cast<PyTreeSpec&>(py::handle(self_base));
+                for (const auto& node : self.GetTraversal()) {
+                    Py_VISIT(node.node_data.ptr());
+                    Py_VISIT(node.node_entries.ptr());
+                    Py_VISIT(node.original_keys.ptr());
+                }
+                return 0;
+            };
+        }),
+        // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
+        py::module_local());
+    auto* PyTreeSpec_Type = reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr());
+    PyTreeSpec_Type->tp_name = "optree.PyTreeSpec";
     py::setattr(PyTreeSpecTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
 
     PyTreeSpecTypeObject
@@ -227,7 +252,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             "The registry namespace used to resolve the custom pytree node types.")
         .def_property_readonly(
             "type",
-            [](const PyTreeSpec& t) { return t.GetType(); },
+            [](const PyTreeSpec& t) -> py::object { return t.GetType(); },
             "The type of the current node. Return None if the current node is a leaf.")
         .def_property_readonly("kind", &PyTreeSpec::GetPyTreeKind, "The kind of the current node.")
         .def("is_leaf",
@@ -246,51 +271,78 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::arg("strict") = false)
         .def(
             "__eq__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a == b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a == b; },
             "Test for equality to another object.",
             py::is_operator(),
             py::arg("other"))
         .def(
             "__ne__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a != b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a != b; },
             "Test for inequality to another object.",
             py::is_operator(),
             py::arg("other"))
         .def(
             "__lt__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a < b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a < b; },
             "Test for this treespec is a strict prefix of another object.",
             py::is_operator(),
             py::arg("other"))
         .def(
             "__le__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a <= b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a <= b; },
             "Test for this treespec is a prefix of another object.",
             py::is_operator(),
             py::arg("other"))
         .def(
             "__gt__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a > b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a > b; },
             "Test for this treespec is a strict suffix of another object.",
             py::is_operator(),
             py::arg("other"))
         .def(
             "__ge__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) { return a >= b; },
+            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a >= b; },
             "Test for this treespec is a suffix of another object.",
             py::is_operator(),
             py::arg("other"))
         .def("__repr__", &PyTreeSpec::ToString, "Return a string representation of the treespec.")
         .def("__hash__", &PyTreeSpec::HashValue, "Return the hash of the treespec.")
         .def("__len__", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
-        .def(py::pickle([](const PyTreeSpec& t) { return t.ToPicklable(); },
-                        [](const py::object& o) { return PyTreeSpec::FromPicklable(o); }),
+        .def(py::pickle([](const PyTreeSpec& t) -> py::object { return t.ToPickleable(); },
+                        [](const py::object& o) -> std::unique_ptr<PyTreeSpec> {
+                            return PyTreeSpec::FromPickleable(o);
+                        }),
              "Serialization support for PyTreeSpec.",
              py::arg("state"));
 
-    auto PyTreeIterTypeObject =
-        py::class_<PyTreeIter>(mod, "PyTreeIter", "Iterator over the leaves of a pytree.");
-    reinterpret_cast<PyTypeObject*>(PyTreeIterTypeObject.ptr())->tp_name = "optree.PyTreeIter";
+    auto PyTreeIterTypeObject = py::class_<PyTreeIter>(
+        mod,
+        "PyTreeIter",
+        "Iterator over the leaves of a pytree.",
+        // NOLINTBEGIN[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
+        py::custom_type_setup([](PyHeapTypeObject* heap_type) -> void {
+            auto* type = &heap_type->ht_type;
+            type->tp_flags |= Py_TPFLAGS_HAVE_GC;
+            type->tp_traverse = [](PyObject* self_base, visitproc visit, void* arg) -> int {
+#if PY_VERSION_HEX >= 0x03090000  // Python 3.9
+                Py_VISIT(Py_TYPE(self_base));
+#endif
+                auto* instance = reinterpret_cast<py::detail::instance*>(self_base);
+                if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
+                    // The holder is not constructed yet. Skip the traversal to avoid segfault.
+                    return 0;
+                }
+                auto& self = py::cast<PyTreeIter&>(py::handle(self_base));
+                for (const auto& pair : self.GetAgenda()) {
+                    Py_VISIT(pair.first.ptr());
+                }
+                return 0;
+            };
+        }),
+        // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
+        py::module_local());
+    auto* PyTreeIter_Type = reinterpret_cast<PyTypeObject*>(PyTreeIterTypeObject.ptr());
+    PyTreeIter_Type->tp_name = "optree.PyTreeIter";
     py::setattr(PyTreeIterTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
 
     PyTreeIterTypeObject
@@ -304,27 +356,21 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         .def("__next__", &PyTreeIter::Next, "Return the next leaf in the pytree.");
 
 #ifdef Py_TPFLAGS_IMMUTABLETYPE
-    reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())->tp_flags |=
-        Py_TPFLAGS_IMMUTABLETYPE;
-    reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_flags |=
-        Py_TPFLAGS_IMMUTABLETYPE;
-    reinterpret_cast<PyTypeObject*>(PyTreeIterTypeObject.ptr())->tp_flags |=
-        Py_TPFLAGS_IMMUTABLETYPE;
-    reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())->tp_flags &= ~Py_TPFLAGS_READY;
-    reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())->tp_flags &= ~Py_TPFLAGS_READY;
-    reinterpret_cast<PyTypeObject*>(PyTreeIterTypeObject.ptr())->tp_flags &= ~Py_TPFLAGS_READY;
+    PyTreeKind_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
+    PyTreeSpec_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
+    PyTreeIter_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
+    PyTreeKind_Type->tp_flags &= ~Py_TPFLAGS_READY;
+    PyTreeSpec_Type->tp_flags &= ~Py_TPFLAGS_READY;
+    PyTreeIter_Type->tp_flags &= ~Py_TPFLAGS_READY;
 #endif
 
-    if (PyType_Ready(reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr())) < 0)
-        [[unlikely]] {
+    if (PyType_Ready(PyTreeKind_Type) < 0) [[unlikely]] {
         INTERNAL_ERROR("`PyType_Ready(&PyTreeKind_Type)` failed.");
     }
-    if (PyType_Ready(reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr())) < 0)
-        [[unlikely]] {
+    if (PyType_Ready(PyTreeSpec_Type) < 0) [[unlikely]] {
         INTERNAL_ERROR("`PyType_Ready(&PyTreeSpec_Type)` failed.");
     }
-    if (PyType_Ready(reinterpret_cast<PyTypeObject*>(PyTreeIterTypeObject.ptr())) < 0)
-        [[unlikely]] {
+    if (PyType_Ready(PyTreeIter_Type) < 0) [[unlikely]] {
         INTERNAL_ERROR("`PyType_Ready(&PyTreeIter_Type)` failed.");
     }
 }

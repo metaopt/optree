@@ -19,8 +19,8 @@ limitations under the License.
 
 #include <Python.h>
 
-#if PY_VERSION_HEX < 0x30C00F0  // Python 3.12.0
-#include <structmember.h>       // PyMemberDef
+#if PY_VERSION_HEX < 0x030C00F0  // Python 3.12.0
+#include <structmember.h>        // PyMemberDef
 #endif
 
 #include <pybind11/pybind11.h>
@@ -109,17 +109,19 @@ class NamedTypeEq {
 constexpr bool NONE_IS_LEAF = true;
 constexpr bool NONE_IS_NODE = false;
 
-#define Py_Declare_ID(name)                                    \
-    inline PyObject* Py_ID_##name() {                          \
-        static PyObject* obj = []() {                          \
-            PyObject* ptr = PyUnicode_InternFromString(#name); \
-            if (ptr == nullptr) [[unlikely]] {                 \
-                throw py::error_already_set();                 \
-            }                                                  \
-            Py_INCREF(ptr); /* leak a reference on purpose */  \
-            return ptr;                                        \
-        }();                                                   \
-        return obj;                                            \
+#define Py_Declare_ID(name)                                                            \
+    inline PyObject* Py_ID_##name() {                                                  \
+        PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyObject*> storage; \
+        return storage                                                                 \
+            .call_once_and_store_result([]() -> PyObject* {                            \
+                PyObject* ptr = PyUnicode_InternFromString(#name);                     \
+                if (ptr == nullptr) [[unlikely]] {                                     \
+                    throw py::error_already_set();                                     \
+                }                                                                      \
+                Py_INCREF(ptr); /* leak a reference on purpose */                      \
+                return ptr;                                                            \
+            })                                                                         \
+            .get_stored();                                                             \
     }
 
 #define Py_Get_ID(name) (Py_ID_##name())
@@ -139,7 +141,6 @@ Py_Declare_ID(n_fields);           // structseq.n_fields
 Py_Declare_ID(n_sequence_fields);  // structseq.n_sequence_fields
 Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
 
-#define PyCollectionsModule (ImportCollections())
 #define PyOrderedDictTypeObject (ImportOrderedDict())
 #define PyDefaultDictTypeObject (ImportDefaultDict())
 #define PyDequeTypeObject (ImportDeque())
@@ -147,29 +148,28 @@ Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
 #define PyDefaultDict_Type (reinterpret_cast<PyTypeObject*>(PyDefaultDictTypeObject.ptr()))
 #define PyDeque_Type (reinterpret_cast<PyTypeObject*>(PyDequeTypeObject.ptr()))
 
-inline const py::module_& ImportCollections() {
-    // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
-    //       garbage collection.
-    static const py::module_* ptr = new py::module_{py::module_::import("collections")};
-    return *ptr;
-}
 inline const py::object& ImportOrderedDict() {
-    // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
-    //       garbage collection.
-    static const py::object* ptr = new py::object{py::getattr(PyCollectionsModule, "OrderedDict")};
-    return *ptr;
+    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+    return storage
+        .call_once_and_store_result([]() -> py::object {
+            return py::getattr(py::module_::import("collections"), "OrderedDict");
+        })
+        .get_stored();
 }
 inline const py::object& ImportDefaultDict() {
-    // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
-    //       garbage collection.
-    static const py::object* ptr = new py::object{py::getattr(PyCollectionsModule, "defaultdict")};
-    return *ptr;
+    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+    return storage
+        .call_once_and_store_result([]() -> py::object {
+            return py::getattr(py::module_::import("collections"), "defaultdict");
+        })
+        .get_stored();
 }
 inline const py::object& ImportDeque() {
-    // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
-    //       garbage collection.
-    static const py::object* ptr = new py::object{py::getattr(PyCollectionsModule, "deque")};
-    return *ptr;
+    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+    return storage
+        .call_once_and_store_result(
+            []() -> py::object { return py::getattr(py::module_::import("collections"), "deque"); })
+        .get_stored();
 }
 
 template <typename T>
@@ -240,19 +240,6 @@ inline py::object GET_ITEM_BORROW<py::tuple>(const py::handle& container, const 
 template <>
 inline py::object GET_ITEM_BORROW<py::list>(const py::handle& container, const py::ssize_t& item) {
     return py::reinterpret_borrow<py::object>(PyList_GET_ITEM(container.ptr(), item));
-}
-
-template <typename Container, typename Item>
-inline py::object GET_ITEM_STEAL(const py::handle& container, const Item& item) {
-    return py::reinterpret_steal<py::object>(container[item]);
-}
-template <>
-inline py::object GET_ITEM_STEAL<py::tuple>(const py::handle& container, const py::ssize_t& item) {
-    return py::reinterpret_steal<py::object>(PyTuple_GET_ITEM(container.ptr(), item));
-}
-template <>
-inline py::object GET_ITEM_STEAL<py::list>(const py::handle& container, const py::ssize_t& item) {
-    return py::reinterpret_steal<py::object>(PyList_GET_ITEM(container.ptr(), item));
 }
 
 template <typename Container, typename Item>
@@ -551,7 +538,7 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
             // Found incomparable keys (e.g. `int` vs. `str`, or user-defined types).
             try {
                 // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
-                auto sort_key_fn = py::cpp_function([](const py::object& o) {
+                auto sort_key_fn = py::cpp_function([](const py::object& o) -> py::tuple {
                     py::handle t = py::type::handle_of(o);
                     py::str qualname{
                         static_cast<std::string>(py::str(py::getattr(t, Py_Get_ID(__module__)))) +

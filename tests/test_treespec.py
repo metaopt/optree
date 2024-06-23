@@ -21,13 +21,22 @@ import re
 import subprocess
 import sys
 import textwrap
+import weakref
 from collections import OrderedDict, UserList, defaultdict, deque
 
 import pytest
 
 import helpers
 import optree
-from helpers import NAMESPACED_TREE, TREE_STRINGS, TREES, MyAnotherDict, MyDict, parametrize
+from helpers import (
+    NAMESPACED_TREE,
+    TREE_STRINGS,
+    TREES,
+    MyAnotherDict,
+    MyDict,
+    gc_collect,
+    parametrize,
+)
 
 
 def test_treespec_equal_hash():
@@ -218,6 +227,40 @@ def test_treespec_self_referential():
     assert hash(treespec) == hash(other)
     with pytest.raises(RecursionError):
         assert treespec != other
+
+    wr = weakref.ref(treespec)
+    del treespec, key, other
+    gc_collect()
+    assert wr() is None
+
+
+def test_treeiter_self_referential():
+    sentinel = object()
+
+    d = {'a': 1}
+    it = optree.tree_iter(d)
+    assert next(it) == 1
+    d['b'] = 2
+    assert next(it, sentinel) is sentinel
+
+    d = {'a': 1, 'b': {'c': 2}}
+    it = optree.tree_iter(d)
+    assert next(it) == 1
+    d['b']['d'] = it
+    assert next(it) == 2
+    assert next(it) is it
+    assert next(it, sentinel) is sentinel
+
+    d = {'a': 1, 'b': {'c': 2}}
+    it = optree.tree_iter(d)
+    wr = weakref.ref(it)
+    assert next(it) == 1
+    d['b']['d'] = it
+    assert next(it) == 2
+
+    del it, d
+    gc_collect()
+    assert wr() is None
 
 
 def test_treespec_with_namespace():

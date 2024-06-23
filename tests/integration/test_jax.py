@@ -15,12 +15,12 @@
 
 # pylint: disable=missing-function-docstring,wrong-import-position,wrong-import-order
 
+import random
+
 import pytest
 
 
 jax = pytest.importorskip('jax')
-
-import random
 
 import jax
 import jax.numpy as jnp

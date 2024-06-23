@@ -173,13 +173,16 @@ class PyTreeSpec {
     // Return the hash value of the PyTreeSpec.
     [[nodiscard]] ssize_t HashValue() const;
 
-    // Transform the PyTreeSpec into a picklable object.
+    // Transform the PyTreeSpec into a pickleable object.
     // Used to implement `PyTreeSpec.__getstate__`.
-    [[nodiscard]] py::object ToPicklable() const;
+    [[nodiscard]] py::object ToPickleable() const;
 
-    // Transform the object returned by `ToPicklable()` back to PyTreeSpec.
+    // Used in tp_traverse to traverse the PyTreeSpec.
+    [[nodiscard]] const std::vector<Node> &GetTraversal() const { return m_traversal; }
+
+    // Transform the object returned by `ToPickleable()` back to PyTreeSpec.
     // Used to implement `PyTreeSpec.__setstate__`.
-    static std::unique_ptr<PyTreeSpec> FromPicklable(const py::object &picklable);
+    static std::unique_ptr<PyTreeSpec> FromPickleable(const py::object &pickleable);
 
     // Make a PyTreeSpec representing a leaf node.
     static std::unique_ptr<PyTreeSpec> MakeLeaf(const bool &none_is_leaf = false,
@@ -359,6 +362,11 @@ class PyTreeIter {
     [[nodiscard]] PyTreeIter &Iter() { return *this; }
 
     [[nodiscard]] py::object Next();
+
+    // Used in tp_traverse to traverse the PyTreeIter.
+    [[nodiscard]] const std::vector<std::pair<py::object, ssize_t>> &GetAgenda() const {
+        return m_agenda;
+    }
 
  private:
     std::vector<std::pair<py::object, ssize_t>> m_agenda;

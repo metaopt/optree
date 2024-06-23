@@ -168,35 +168,6 @@ namespace optree {
 }
 
 /*static*/ py::object PyTreeSpec::GetPathEntryType(const Node& node) {
-    static const py::object* SequenceEntry_ptr = []() {
-        const py::module_& mod = GetCxxModule();
-        // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation
-        // and garbage collection.
-        // NOLINTNEXTLINE[cppcoreguidelines-owning-memory]
-        return new py::object{py::getattr(mod, "SequenceEntry")};
-    }();
-    static const py::object* MappingEntry_ptr = []() {
-        const py::module_& mod = GetCxxModule();
-        // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation
-        // and garbage collection.
-        // NOLINTNEXTLINE[cppcoreguidelines-owning-memory]
-        return new py::object{py::getattr(mod, "MappingEntry")};
-    }();
-    static const py::object* NamedTupleEntry_ptr = []() {
-        const py::module_& mod = GetCxxModule();
-        // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation
-        // and garbage collection.
-        // NOLINTNEXTLINE[cppcoreguidelines-owning-memory]
-        return new py::object{py::getattr(mod, "NamedTupleEntry")};
-    }();
-    static const py::object* StructSequenceEntry_ptr = []() {
-        const py::module_& mod = GetCxxModule();
-        // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation
-        // and garbage collection.
-        // NOLINTNEXTLINE[cppcoreguidelines-owning-memory]
-        return new py::object{py::getattr(mod, "StructSequenceEntry")};
-    }();
-
     switch (node.kind) {
         case PyTreeKind::Leaf:
         case PyTreeKind::None: {
@@ -206,21 +177,38 @@ namespace optree {
         case PyTreeKind::Tuple:
         case PyTreeKind::List:
         case PyTreeKind::Deque: {
-            return *SequenceEntry_ptr;
+            PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+            return storage
+                .call_once_and_store_result(
+                    []() -> py::object { return py::getattr(GetCxxModule(), "SequenceEntry"); })
+                .get_stored();
         }
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
         case PyTreeKind::DefaultDict: {
-            return *MappingEntry_ptr;
+            PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+            return storage
+                .call_once_and_store_result(
+                    []() -> py::object { return py::getattr(GetCxxModule(), "MappingEntry"); })
+                .get_stored();
         }
 
         case PyTreeKind::NamedTuple: {
-            return *NamedTupleEntry_ptr;
+            PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+            return storage
+                .call_once_and_store_result(
+                    []() -> py::object { return py::getattr(GetCxxModule(), "NamedTupleEntry"); })
+                .get_stored();
         }
 
         case PyTreeKind::StructSequence: {
-            return *StructSequenceEntry_ptr;
+            PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+            return storage
+                .call_once_and_store_result([]() -> py::object {
+                    return py::getattr(GetCxxModule(), "StructSequenceEntry");
+                })
+                .get_stored();
         }
 
         case PyTreeKind::Custom: {
@@ -492,6 +480,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec
     EXPECT_EQ(new_num_leaves,
               treespec->GetNumLeaves(),
               "PyTreeSpec::BroadcastToCommonSuffix() mismatched number of leaves.");
+    treespec->m_traversal.shrink_to_fit();
     return treespec;
 }
 
@@ -540,6 +529,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     EXPECT_EQ(root.num_nodes,
               (num_outer_nodes - num_outer_leaves) + (num_outer_leaves * num_inner_nodes),
               "Number of composed tree nodes mismatch.");
+    treespec->m_traversal.shrink_to_fit();
     return treespec;
 }
 
@@ -639,10 +629,12 @@ ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,
                                   Stack& stack,
                                   const ssize_t& pos,
                                   const ssize_t& depth) const {
-    // NOTE: Use raw pointers to leak the memory intentionally to avoid py::object deallocation and
-    // garbage collection.
-    static const py::object* PyTreeAccessor_ptr =
-        new py::object{py::getattr(GetCxxModule(), "PyTreeAccessor")};
+    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+    const py::object& PyTreeAccessor = storage
+                                           .call_once_and_store_result([]() -> py::object {
+                                               return py::getattr(GetCxxModule(), "PyTreeAccessor");
+                                           })
+                                           .get_stored();
 
     const Node& root = m_traversal.at(pos);
     EXPECT_GE(pos + 1, root.num_nodes, "PyTreeSpec::TypedPaths() walked off start of array.");
@@ -676,7 +668,7 @@ ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,
                 for (ssize_t d = 0; d < depth; ++d) {
                     SET_ITEM<py::tuple>(typed_path, d, stack[d]);
                 }
-                accessors.emplace_back((*PyTreeAccessor_ptr)(typed_path));
+                accessors.emplace_back(PyTreeAccessor(typed_path));
                 break;
             }
 
@@ -827,6 +819,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
         std::copy(m_traversal.begin() + pos - node.num_nodes,
                   m_traversal.begin() + pos,
                   std::back_inserter(children[i]->m_traversal));
+        children[i]->m_traversal.shrink_to_fit();
         pos -= node.num_nodes;
     }
     EXPECT_EQ(pos, 0, "`pos != 0` at end of PyTreeSpec::Children().");
@@ -858,6 +851,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
     std::copy(m_traversal.begin() + pos - node.num_nodes,
               m_traversal.begin() + pos,
               std::back_inserter(child->m_traversal));
+    child->m_traversal.shrink_to_fit();
     return child;
 }
 
@@ -1365,7 +1359,7 @@ ssize_t PyTreeSpec::HashValue() const {
     }
 }
 
-py::object PyTreeSpec::ToPicklable() const {
+py::object PyTreeSpec::ToPickleable() const {
     py::tuple node_states{GetNumNodes()};
     ssize_t i = 0;
     for (const auto& node : m_traversal) {
@@ -1385,8 +1379,8 @@ py::object PyTreeSpec::ToPicklable() const {
 
 // NOLINTBEGIN[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklable(const py::object& picklable) {
-    auto state = py::reinterpret_borrow<py::tuple>(picklable);
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPickleable(const py::object& pickleable) {
+    auto state = py::reinterpret_borrow<py::tuple>(pickleable);
     if (state.size() != 3) [[unlikely]] {
         throw std::runtime_error("Malformed pickled PyTreeSpec.");
     }
@@ -1485,6 +1479,7 @@ py::object PyTreeSpec::ToPicklable() const {
         node.num_leaves = py::cast<ssize_t>(t[5]);
         node.num_nodes = py::cast<ssize_t>(t[6]);
     }
+    out->m_traversal.shrink_to_fit();
     return out;
 }
 // NOLINTEND[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]

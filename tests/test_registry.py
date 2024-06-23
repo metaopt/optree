@@ -22,7 +22,7 @@ from collections import UserDict, UserList, namedtuple
 import pytest
 
 import optree
-from helpers import getrefcount
+from helpers import gc_collect
 
 
 def test_register_pytree_node_class_with_no_namespace():
@@ -781,7 +781,7 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList1, namespace=optree.registry.__GLOBAL_NAMESPACE)
     del MyList1
-    _ = getrefcount()
+    gc_collect()
     assert wr() is None
 
     @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
@@ -802,13 +802,13 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList2, namespace=optree.registry.__GLOBAL_NAMESPACE)
     del MyList2
-    _ = getrefcount()
+    gc_collect()
     assert wr() is not None
     assert wr() is treespec.type
     assert optree.tree_unflatten(treespec, leaves) == wr()([1, 2, 3])
 
     del treespec
-    _ = getrefcount()
+    gc_collect()
     assert wr() is None
 
     @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
@@ -832,13 +832,13 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList3, namespace=optree.registry.__GLOBAL_NAMESPACE)
     del MyList3
-    _ = getrefcount()
+    gc_collect()
     assert wr() is not None
     assert wr() is treespec.type
     assert optree.tree_unflatten(treespec, leaves) == wr()([1, 2, 3])
 
     del treespec
-    _ = getrefcount()
+    gc_collect()
     assert wr() is None
 
     @optree.register_pytree_node_class(namespace='mylist')
@@ -855,7 +855,7 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList4, namespace='mylist')
     del MyList4
-    _ = getrefcount()
+    gc_collect()
     assert wr() is None
 
     @optree.register_pytree_node_class(namespace='mylist')
@@ -878,11 +878,11 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     optree.unregister_pytree_node(MyList5, namespace='mylist')
     del MyList5
-    _ = getrefcount()
+    gc_collect()
     assert wr() is not None
     assert wr() is treespec.type
     assert optree.tree_unflatten(treespec, leaves) == wr()([1, 2, 3])
 
     del treespec
-    _ = getrefcount()
+    gc_collect()
     assert wr() is None

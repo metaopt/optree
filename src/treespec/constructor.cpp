@@ -43,6 +43,7 @@ namespace optree {
     node.num_nodes = 1;
     out->m_traversal.emplace_back(std::move(node));
     out->m_none_is_leaf = none_is_leaf;
+    out->m_traversal.shrink_to_fit();
     return out;
 }
 
@@ -61,6 +62,7 @@ namespace optree {
     node.num_nodes = 1;
     out->m_traversal.emplace_back(std::move(node));
     out->m_none_is_leaf = none_is_leaf;
+    out->m_traversal.shrink_to_fit();
     return out;
 }
 
@@ -76,7 +78,7 @@ template <bool NoneIsLeaf>
 
     auto verify_children = [&handle, &node](const std::vector<py::object>& children,
                                             std::vector<PyTreeSpec>& treespecs,
-                                            std::string& register_namespace) {
+                                            std::string& register_namespace) -> void {
         for (const py::object& child : children) {
             if (!py::isinstance<PyTreeSpec>(child)) [[unlikely]] {
                 std::ostringstream oss{};
@@ -255,6 +257,7 @@ template <bool NoneIsLeaf>
     out->m_traversal.emplace_back(std::move(node));
     out->m_none_is_leaf = NoneIsLeaf;
     out->m_namespace = registry_namespace;
+    out->m_traversal.shrink_to_fit();
     return out;
 }
 

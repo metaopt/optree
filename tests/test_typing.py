@@ -24,7 +24,7 @@ from collections import namedtuple
 import pytest
 
 import optree
-from helpers import CustomNamedTupleSubclass, CustomTuple, Vector2D, getrefcount
+from helpers import CustomNamedTupleSubclass, CustomTuple, Vector2D, gc_collect, getrefcount
 
 
 class FakeNamedTuple(tuple):
@@ -99,7 +99,7 @@ def test_is_namedtuple_cache():
     wr = weakref.getweakrefs(Point)[0]
     assert wr() is Point
     del Point
-    _ = getrefcount()
+    gc_collect()
     assert wr() is None
 
     refcount = getrefcount(time.struct_time)
@@ -136,7 +136,7 @@ def test_is_namedtuple_cache():
     wr = weakref.getweakrefs(Foo)[0]
     assert wr() is Foo
     del Foo
-    _ = getrefcount()
+    gc_collect()
     assert called_with == 'Foo'
     assert wr() is None
 
@@ -165,7 +165,7 @@ def test_namedtuple_fields_cache():
     assert optree.namedtuple_fields(Point(0, 1)) is new_fields
 
     del Point
-    _ = getrefcount()
+    gc_collect()
     assert wr() is None
 
     with pytest.raises(
@@ -200,7 +200,7 @@ def test_namedtuple_fields_cache():
     wr = weakref.getweakrefs(Foo)[0]
     assert wr() is Foo
     del Foo
-    _ = getrefcount()
+    gc_collect()
     assert called_with == 'Foo'
     assert wr() is None
 
@@ -256,7 +256,7 @@ def test_is_structseq_cache():
     wr = weakref.getweakrefs(Point)[0]
     assert wr() is Point
     del Point
-    _ = getrefcount()
+    gc_collect()
     assert wr() is None
 
     refcount = getrefcount(time.struct_time)
@@ -293,7 +293,7 @@ def test_is_structseq_cache():
     wr = weakref.getweakrefs(Foo)[0]
     assert wr() is Foo
     del Foo
-    _ = getrefcount()
+    gc_collect()
     assert called_with == 'Foo'
     assert wr() is None
 
@@ -472,7 +472,7 @@ def test_structseq_fields_cache():
     wr = weakref.getweakrefs(Point)[0]
     assert wr() is Point
     del Point
-    _ = getrefcount()
+    gc_collect()
     assert wr() is None
 
     refcount = getrefcount(time.struct_time)
@@ -508,6 +508,6 @@ def test_structseq_fields_cache():
     wr = weakref.getweakrefs(Foo)[0]
     assert wr() is Foo
     del Foo
-    _ = getrefcount()
+    gc_collect()
     assert called_with == 'Foo'
     assert wr() is None

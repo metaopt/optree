@@ -32,38 +32,43 @@ namespace optree {
 
 template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton() {
-    static PyTreeTypeRegistry singleton{[]() {
-        PyTreeTypeRegistry registry;
+    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyTreeTypeRegistry> storage;
+    return &(
+        storage
+            .call_once_and_store_result([]() -> PyTreeTypeRegistry {
+                PyTreeTypeRegistry registry{};
 
-        auto add_builtin_type = [&registry](const py::object& cls, const PyTreeKind& kind) -> void {
-            auto registration =
-                std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
-            registration->kind = kind;
-            registration->type = py::reinterpret_borrow<py::object>(cls);
-            EXPECT(
-                registry.m_registrations.emplace(cls, std::move(registration)).second,
-                "PyTree type " + PyRepr(cls) + " is already registered in the global namespace.");
-            sm_builtins_types.emplace(cls);
-            cls.inc_ref();
-        };
-        if constexpr (!NoneIsLeaf) {
-            add_builtin_type(py::type::of(py::none()), PyTreeKind::None);
-        }
-        add_builtin_type(
-            py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyTuple_Type)),
-            PyTreeKind::Tuple);
-        add_builtin_type(
-            py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyList_Type)),
-            PyTreeKind::List);
-        add_builtin_type(
-            py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyDict_Type)),
-            PyTreeKind::Dict);
-        add_builtin_type(PyOrderedDictTypeObject, PyTreeKind::OrderedDict);
-        add_builtin_type(PyDefaultDictTypeObject, PyTreeKind::DefaultDict);
-        add_builtin_type(PyDequeTypeObject, PyTreeKind::Deque);
-        return registry;
-    }()};
-    return &singleton;
+                auto add_builtin_type = [&registry](const py::object& cls,
+                                                    const PyTreeKind& kind) -> void {
+                    auto registration =
+                        std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
+                    registration->kind = kind;
+                    registration->type = py::reinterpret_borrow<py::object>(cls);
+                    EXPECT(registry.m_registrations.emplace(cls, std::move(registration)).second,
+                           "PyTree type " + PyRepr(cls) +
+                               " is already registered in the global namespace.");
+                    if (sm_builtins_types.emplace(cls).second) [[likely]] {
+                        cls.inc_ref();
+                    }
+                };
+                if constexpr (!NoneIsLeaf) {
+                    add_builtin_type(py::type::of(py::none()), PyTreeKind::None);
+                }
+                add_builtin_type(
+                    py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyTuple_Type)),
+                    PyTreeKind::Tuple);
+                add_builtin_type(
+                    py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyList_Type)),
+                    PyTreeKind::List);
+                add_builtin_type(
+                    py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyDict_Type)),
+                    PyTreeKind::Dict);
+                add_builtin_type(PyOrderedDictTypeObject, PyTreeKind::OrderedDict);
+                add_builtin_type(PyDefaultDictTypeObject, PyTreeKind::DefaultDict);
+                add_builtin_type(PyDequeTypeObject, PyTreeKind::Deque);
+                return registry;
+            })
+            .get_stored());
 }
 
 template <bool NoneIsLeaf>

@@ -63,6 +63,13 @@ constexpr PyTreeKind kStructSequence = PyTreeKind::StructSequence;
 // Registry of custom node types.
 class PyTreeTypeRegistry {
  public:
+    PyTreeTypeRegistry() = default;
+    ~PyTreeTypeRegistry() = default;
+    PyTreeTypeRegistry(const PyTreeTypeRegistry &) = delete;
+    PyTreeTypeRegistry(PyTreeTypeRegistry &&) = default;
+    PyTreeTypeRegistry operator=(const PyTreeTypeRegistry &) = delete;
+    PyTreeTypeRegistry &operator=(PyTreeTypeRegistry &&) = default;
+
     struct Registration {
         PyTreeKind kind = PyTreeKind::Custom;
 
@@ -114,9 +121,9 @@ class PyTreeTypeRegistry {
     static RegistrationPtr UnregisterImpl(const py::object &cls,
                                           const std::string &registry_namespace);
 
-    inline static std::unordered_set<py::object, TypeHash, TypeEq> sm_builtins_types{};
-    std::unordered_map<py::object, RegistrationPtr, TypeHash, TypeEq> m_registrations{};
-    std::unordered_map<std::pair<std::string, py::object>,
+    inline static std::unordered_set<py::handle, TypeHash, TypeEq> sm_builtins_types{};
+    std::unordered_map<py::handle, RegistrationPtr, TypeHash, TypeEq> m_registrations{};
+    std::unordered_map<std::pair<std::string, py::handle>,
                        RegistrationPtr,
                        NamedTypeHash,
                        NamedTypeEq>
