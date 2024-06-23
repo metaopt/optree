@@ -18,6 +18,7 @@
 import dataclasses
 import gc
 import itertools
+import platform
 import sys
 import time
 from collections import OrderedDict, UserDict, defaultdict, deque, namedtuple
@@ -26,6 +27,13 @@ from typing import Any, NamedTuple
 import pytest
 
 import optree
+
+
+PYPY = platform.python_implementation() == 'PyPy'
+skipif_pypy = pytest.mark.skipif(
+    PYPY,
+    reason='PyPy does not support weakref and refcount correctly',
+)
 
 
 def gc_collect():
@@ -113,6 +121,10 @@ class EmptyTuple(NamedTuple):
 SysFloatInfoType = type(sys.float_info)
 # time.struct_time(tm_year=*, tm_mon=*, tm_mday=*, tm_hour=*, tm_min=*, tm_sec=*, tm_wday=*, tm_yday=*, tm_isdst=*)
 TimeStructTimeType = time.struct_time
+
+if PYPY:
+    SysFloatInfoType.__module__ = 'sys'
+    TimeStructTimeType.__module__ = 'time'
 
 
 class Vector3D:

@@ -1214,17 +1214,28 @@ std::string PyTreeSpec::ToStringImpl() const {
 
             case PyTreeKind::StructSequence: {
                 py::object type = node.node_data;
-                auto* members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
-                std::string kind = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_name;
-                sstream << kind << "(";
+                auto fields = StructSequenceGetFields(type);
+                EXPECT_EQ(GET_SIZE<py::tuple>(fields),
+                          node.arity,
+                          "Number of fields and entries does not match.");
+                py::object module_name =
+                    py::getattr(type, Py_Get_ID(__module__), Py_Get_ID(__main__));
+                if (!module_name.is_none()) [[likely]] {
+                    std::string name = static_cast<std::string>(py::str(module_name));
+                    if (!(name.empty() || name == "__main__" || name == "builtins" ||
+                          name == "__builtins__")) [[likely]] {
+                        sstream << name << ".";
+                    }
+                }
+                py::object qualname = py::getattr(type, Py_Get_ID(__qualname__));
+                sstream << static_cast<std::string>(py::str(qualname)) << "(";
                 bool first = true;
                 auto child_iter = agenda.end() - node.arity;
-                for (ssize_t i = 0; i < node.arity; ++i) {
+                for (const py::handle& field : fields) {
                     if (!first) [[likely]] {
                         sstream << ", ";
                     }
-                    // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
-                    sstream << members[i].name << "=" << *child_iter;
+                    sstream << static_cast<std::string>(py::str(field)) << "=" << *child_iter;
                     ++child_iter;
                     first = false;
                 }

@@ -24,7 +24,14 @@ from collections import namedtuple
 import pytest
 
 import optree
-from helpers import CustomNamedTupleSubclass, CustomTuple, Vector2D, gc_collect, getrefcount
+from helpers import (
+    CustomNamedTupleSubclass,
+    CustomTuple,
+    Vector2D,
+    gc_collect,
+    getrefcount,
+    skipif_pypy,
+)
 
 
 class FakeNamedTuple(tuple):
@@ -84,6 +91,7 @@ def test_is_namedtuple():
     assert not optree.is_namedtuple_class(FakeStructSequence)
 
 
+@skipif_pypy
 def test_is_namedtuple_cache():
     Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
 
@@ -141,6 +149,7 @@ def test_is_namedtuple_cache():
     assert wr() is None
 
 
+@skipif_pypy
 def test_namedtuple_fields_cache():
     Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
 
@@ -241,6 +250,7 @@ def test_is_structseq():
     assert not optree.is_structseq_class(FakeStructSequence)
 
 
+@skipif_pypy
 def test_is_structseq_cache():
     Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
 
@@ -452,6 +462,7 @@ def test_structseq_fields():
         optree.structseq_fields(FakeStructSequence)
 
 
+@skipif_pypy
 def test_structseq_fields_cache():
     Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
 

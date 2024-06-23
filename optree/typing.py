@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import platform
 import types
 from collections.abc import Hashable
 from typing import (
@@ -399,7 +400,7 @@ Py_TPFLAGS_BASETYPE: int = _C.Py_TPFLAGS_BASETYPE  # (1UL << 10)
 
 def is_structseq_class(cls: type) -> bool:
     """Return whether the class is a class of PyStructSequence."""
-    return (
+    if (
         isinstance(cls, type)
         # Check direct inheritance from `tuple` rather than `issubclass(cls, tuple)`
         and cls.__bases__ == (tuple,)
@@ -407,9 +408,19 @@ def is_structseq_class(cls: type) -> bool:
         and isinstance(getattr(cls, 'n_fields', None), int)
         and isinstance(getattr(cls, 'n_sequence_fields', None), int)
         and isinstance(getattr(cls, 'n_unnamed_fields', None), int)
+    ):
         # Check the type does not allow subclassing
-        and not (cls.__flags__ & Py_TPFLAGS_BASETYPE)
-    )
+        if platform.python_implementation() == 'PyPy':
+            try:
+                # pylint: disable-next=too-few-public-methods
+                class _(cls):  # noqa: N801
+                    pass
+
+            except (AssertionError, TypeError):
+                return True
+            return False
+        return not bool(cls.__flags__ & Py_TPFLAGS_BASETYPE)
+    return False
 
 
 def structseq_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
@@ -423,14 +434,23 @@ def structseq_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
         if not is_structseq_class(cls):
             raise TypeError(f'Expected an instance of PyStructSequence type, got {obj!r}.')
 
-    n_sequence_fields: int = cls.n_sequence_fields  # type: ignore[attr-defined]
-    fields: list[str] = []
-    for name, member in vars(cls).items():
-        if len(fields) >= n_sequence_fields:
-            break
-        if isinstance(member, types.MemberDescriptorType):
-            fields.append(name)
-    return tuple(fields)
+    if platform.python_implementation() == 'PyPy':
+        # pylint: disable-next=import-error,import-outside-toplevel
+        from _structseq import structseqfield
+
+        indices_by_name = {
+            name: member.index
+            for name, member in vars(cls).items()
+            if isinstance(member, structseqfield)
+        }
+        fields = sorted(indices_by_name, key=indices_by_name.get)  # type: ignore[arg-type]
+    else:
+        fields = [
+            name
+            for name, member in vars(cls).items()
+            if isinstance(member, types.MemberDescriptorType)
+        ]
+    return tuple(fields[: cls.n_sequence_fields])  # type: ignore[attr-defined]
 
 
 # Ensure that the behavior is consistent with C++ implementation

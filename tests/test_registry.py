@@ -22,7 +22,7 @@ from collections import UserDict, UserList, namedtuple
 import pytest
 
 import optree
-from helpers import gc_collect
+from helpers import gc_collect, skipif_pypy
 
 
 def test_register_pytree_node_class_with_no_namespace():
@@ -765,6 +765,7 @@ def test_unregister_pytree_node_namedtuple():
     assert treespec3 != treespec4
 
 
+@skipif_pypy
 def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     @optree.register_pytree_node_class(namespace=optree.registry.__GLOBAL_NAMESPACE)
