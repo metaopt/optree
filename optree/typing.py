@@ -308,7 +308,7 @@ def is_namedtuple_class(cls: type) -> bool:
         and issubclass(cls, tuple)
         and isinstance(getattr(cls, '_fields', None), tuple)
         and all(
-            type(field) is str  # noqa: E721 # pylint: disable=unidiomatic-typecheck
+            type(field) is str  # pylint: disable=unidiomatic-typecheck
             for field in cls._fields  # type: ignore[attr-defined]
         )
         and callable(getattr(cls, '_make', None))

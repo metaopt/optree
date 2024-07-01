@@ -21,7 +21,7 @@ import warnings
 import pytest
 
 
-torch = pytest.importorskip('torch')
+pytest.importorskip('torch')
 
 import torch
 

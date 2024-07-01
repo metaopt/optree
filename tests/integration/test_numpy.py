@@ -20,8 +20,7 @@ import random
 import pytest
 
 
-numpy = pytest.importorskip('numpy')
-
+pytest.importorskip('numpy')
 
 import numpy as np
 

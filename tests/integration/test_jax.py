@@ -20,7 +20,7 @@ import random
 import pytest
 
 
-jax = pytest.importorskip('jax')
+pytest.importorskip('jax')
 
 import jax
 import jax.numpy as jnp
