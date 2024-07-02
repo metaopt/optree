@@ -711,7 +711,7 @@ def test_tree_broadcast_map():
         if trees.index(tree1) < trees.index(tree2):
             assert type(new_out[-1]) is OrderedDict
         else:
-            assert type(new_out[-1]) is dict  # noqa: E721
+            assert type(new_out[-1]) is dict
 
 
 def test_tree_broadcast_map_with_path():

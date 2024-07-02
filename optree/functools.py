@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""PyTree integration with :mod:`functools.partial`."""
+"""PyTree integration with :mod:`functools`."""
 
 from __future__ import annotations
 
