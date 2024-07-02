@@ -52,7 +52,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.7 - 3.12"
+          python-version: "3.7 - 3.13"
           update-environment: true
 
       - name: Upgrade pip
@@ -91,7 +91,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version:
-          ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.9", "pypy3.10"]
+          ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
         include:
           - os: macos-13
             python-version: "3.7"
@@ -142,6 +142,7 @@ jobs:
           CIBW_ARCHS_LINUX: auto aarch64 ppc64le s390x
           CIBW_ARCHS_WINDOWS: auto ARM64
           CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+          CIBW_PRERELEASE_PYTHONS: True
         with:
           package-dir: .
           output-dir: wheelhouse
@@ -204,7 +205,7 @@ jobs:
         uses: actions/setup-python@v5
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          python-version: "3.7 - 3.12"
+          python-version: "3.7 - 3.13"
           update-environment: true
 
       - name: Upgrade pip

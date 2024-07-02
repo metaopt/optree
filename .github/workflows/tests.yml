@@ -37,7 +37,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version:
-          ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.9", "pypy3.10"]
+          ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
         include:
           - os: macos-13
             python-version: "3.7"
@@ -58,6 +58,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           update-environment: true
+          allow-prereleases: true
 
       - name: Upgrade pip
         run: |
