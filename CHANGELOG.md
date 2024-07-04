@@ -13,6 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+-
+
+### Changed
+
+-
+
+### Fixed
+
+-
+
+### Removed
+
+-
+
+------
+
+## [0.12.0] - 2024-07-05
+
+### Added
+
 - Add context manager to temporarily set the dictionary sorting mode by [@XuehaiPan](https://github.com/XuehaiPan) in [#147](https://github.com/metaopt/optree/pull/147).
 - Add PyPy support by [@XuehaiPan](https://github.com/XuehaiPan) in [#145](https://github.com/metaopt/optree/pull/145).
 - Add 32-bit wheels for Linux and Windows by [@XuehaiPan](https://github.com/XuehaiPan) in [#141](https://github.com/metaopt/optree/pull/141).
@@ -293,7 +313,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/metaopt/optree/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/metaopt/optree/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/metaopt/optree/compare/v0.9.2...v0.10.0
 [0.9.2]: https://github.com/metaopt/optree/compare/v0.9.1...v0.9.2
