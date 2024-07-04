@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import functools
 import inspect
@@ -29,6 +30,7 @@ from typing import (
     Any,
     Callable,
     ClassVar,
+    Generator,
     Iterable,
     NamedTuple,
     Sequence,
@@ -70,6 +72,7 @@ __all__ = [
     'register_pytree_node',
     'register_pytree_node_class',
     'unregister_pytree_node',
+    'dict_insertion_ordered',
 ]
 
 
@@ -491,6 +494,17 @@ def _dict_unflatten(keys: list[KT], values: Iterable[VT]) -> dict[KT, VT]:
     return dict(safe_zip(keys, values))
 
 
+def _dict_insertion_ordered_flatten(
+    dct: dict[KT, VT],
+) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
+    keys, values = unzip2(dct.items())
+    return values, list(keys), keys
+
+
+def _dict_insertion_ordered_unflatten(keys: list[KT], values: Iterable[VT]) -> dict[KT, VT]:
+    return dict(safe_zip(keys, values))
+
+
 def _ordereddict_flatten(
     dct: OrderedDict[KT, VT],
 ) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
@@ -515,6 +529,21 @@ def _defaultdict_unflatten(
 ) -> defaultdict[KT, VT]:
     default_factory, keys = metadata
     return defaultdict(default_factory, _dict_unflatten(keys, values))
+
+
+def _defaultdict_insertion_ordered_flatten(
+    dct: defaultdict[KT, VT],
+) -> tuple[tuple[VT, ...], tuple[Callable[[], VT] | None, list[KT]], tuple[KT, ...]]:
+    values, keys, entries = _dict_insertion_ordered_flatten(dct)
+    return values, (dct.default_factory, keys), entries
+
+
+def _defaultdict_insertion_ordered_unflatten(
+    metadata: tuple[Callable[[], VT], list[KT]],
+    values: Iterable[VT],
+) -> defaultdict[KT, VT]:
+    default_factory, keys = metadata
+    return defaultdict(default_factory, _dict_insertion_ordered_unflatten(keys, values))
 
 
 def _deque_flatten(deq: deque[T]) -> tuple[deque[T], int | None]:
@@ -566,6 +595,23 @@ def _pytree_node_registry_get(
         handler = _NODETYPE_REGISTRY.get((namespace, cls))
         if handler is not None:
             return handler
+
+    if _C.is_dict_insertion_ordered(namespace):
+        if cls is dict:
+            return PyTreeNodeRegistryEntry(
+                dict,
+                _dict_insertion_ordered_flatten,  # type: ignore[arg-type]
+                _dict_insertion_ordered_unflatten,  # type: ignore[arg-type]
+                path_entry_type=MappingEntry,
+            )
+        if cls is defaultdict:
+            return PyTreeNodeRegistryEntry(
+                defaultdict,
+                _defaultdict_insertion_ordered_flatten,  # type: ignore[arg-type]
+                _defaultdict_insertion_ordered_unflatten,  # type: ignore[arg-type]
+                path_entry_type=MappingEntry,
+            )
+
     handler = _NODETYPE_REGISTRY.get(cls)
     if handler is not None:
         return handler
@@ -578,6 +624,49 @@ def _pytree_node_registry_get(
 
 register_pytree_node.get = _pytree_node_registry_get  # type: ignore[attr-defined]
 del _pytree_node_registry_get
+
+
+@contextlib.contextmanager
+def dict_insertion_ordered(mode: bool, *, namespace: str) -> Generator[None, None, None]:
+    """Context manager to temporarily set the dictionary sorting mode.
+
+    This context manager is used to temporarily set the dictionary sorting mode for a specific
+    namespace. The dictionary sorting mode is used to determine whether the keys of a dictionary
+    should be sorted or keeping the insertion order when flattening a pytree.
+
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> tree_flatten(tree)  # doctest: +IGNORE_WHITESPACE
+    (
+        [1, 2, 3, 4, 5],
+        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
+    )
+    >>> with dict_insertion_ordered(True, namespace='some-namespace'):  # doctest: +IGNORE_WHITESPACE
+    ...     tree_flatten(tree, namespace='some-namespace')
+    (
+        [2, 3, 4, 1, 5],
+        PyTreeSpec({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}, namespace='some-namespace')
+    )
+
+    Args:
+        mode (bool): The dictionary sorting mode to set.
+        namespace (str): The namespace to set the dictionary sorting mode for.
+    """
+    if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
+        raise TypeError(f'The namespace must be a string, got {namespace!r}.')
+    if namespace == '':
+        raise ValueError('The namespace cannot be an empty string.')
+    if namespace is __GLOBAL_NAMESPACE:
+        namespace = ''
+
+    with __REGISTRY_LOCK:
+        prev = _C.is_dict_insertion_ordered(namespace, inherit_global_namespace=False)
+        _C.set_dict_insertion_ordered(bool(mode), namespace)
+
+    try:
+        yield
+    finally:
+        with __REGISTRY_LOCK:
+            _C.set_dict_insertion_ordered(prev, namespace)
 
 
 ####################################################################################################

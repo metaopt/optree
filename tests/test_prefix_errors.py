@@ -23,7 +23,15 @@ from collections import OrderedDict, defaultdict, deque
 import pytest
 
 import optree
-from helpers import TREES, CustomTuple, FlatCache, TimeStructTimeType, Vector2D, parametrize
+from helpers import (
+    GLOBAL_NAMESPACE,
+    TREES,
+    CustomTuple,
+    FlatCache,
+    TimeStructTimeType,
+    Vector2D,
+    parametrize,
+)
 from optree.registry import (
     AttributeKeyPathEntry,
     FlattenedKeyPathEntry,
@@ -406,78 +414,90 @@ def test_different_metadata_multiple():
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_standard_dictionary(tree, none_is_leaf, namespace):
-    random.seed(0)
+def test_standard_dictionary(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        random.seed(0)
 
-    def build_subtree(x):
-        return random.choice([x, (x,), [x, x], (x, [x]), {'a': x, 'b': [x]}])
+        def build_subtree(x):
+            return random.choice([x, (x,), [x, x], (x, [x]), {'a': x, 'b': [x]}])
 
-    suffix_tree = optree.tree_map(
-        build_subtree,
-        tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    treespec = optree.tree_structure(
-        tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
+        suffix_tree = optree.tree_map(
+            build_subtree,
+            tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        treespec = optree.tree_structure(
+            tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
 
-    if 'FlatCache' in str(treespec):
-        return
+        if 'FlatCache' in str(treespec):
+            return
 
-    def shuffle_dictionary(x):
-        if type(x) in {dict, OrderedDict, defaultdict}:
-            items = list(x.items())
-            random.shuffle(items)
-            dict_type = random.choice([dict, OrderedDict, defaultdict])
-            if dict_type is defaultdict:
-                return defaultdict(getattr(x, 'default_factory', int), items)
-            return dict_type(items)
-        return x
+        def shuffle_dictionary(x):
+            if type(x) in {dict, OrderedDict, defaultdict}:
+                items = list(x.items())
+                random.shuffle(items)
+                dict_type = random.choice([dict, OrderedDict, defaultdict])
+                if dict_type is defaultdict:
+                    return defaultdict(getattr(x, 'default_factory', int), items)
+                return dict_type(items)
+            return x
 
-    shuffled_tree = optree.tree_map(
-        shuffle_dictionary,
-        tree,
-        is_leaf=lambda x: type(x) in {dict, OrderedDict, defaultdict},
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    shuffled_treespec = optree.tree_structure(
-        shuffled_tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    shuffled_suffix_tree = optree.tree_map(
-        shuffle_dictionary,
-        suffix_tree,
-        is_leaf=lambda x: type(x) in {dict, OrderedDict, defaultdict},
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    shuffled_suffix_treespec = optree.tree_structure(
-        shuffled_suffix_tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
+        shuffled_tree = optree.tree_map(
+            shuffle_dictionary,
+            tree,
+            is_leaf=lambda x: type(x) in {dict, OrderedDict, defaultdict},
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        shuffled_treespec = optree.tree_structure(
+            shuffled_tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        shuffled_suffix_tree = optree.tree_map(
+            shuffle_dictionary,
+            suffix_tree,
+            is_leaf=lambda x: type(x) in {dict, OrderedDict, defaultdict},
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        shuffled_suffix_treespec = optree.tree_structure(
+            shuffled_suffix_tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
 
-    # Ignore dictionary types and key ordering
-    optree.tree_map_(
-        lambda x, y: None,
-        shuffled_tree,
-        shuffled_suffix_tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    assert shuffled_treespec.is_prefix(shuffled_suffix_treespec)
-    () == optree.prefix_errors(  # noqa: B015
-        shuffled_tree,
-        shuffled_suffix_tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
+        # Ignore dictionary types and key ordering
+        optree.tree_map_(
+            lambda x, y: None,
+            shuffled_tree,
+            shuffled_suffix_tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        assert shuffled_treespec.is_prefix(shuffled_suffix_treespec)
+        () == optree.prefix_errors(  # noqa: B015
+            shuffled_tree,
+            shuffled_suffix_tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
 
 
 def test_namedtuple():

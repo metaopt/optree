@@ -167,7 +167,9 @@ template <bool NoneIsLeaf>
             py::list keys = DictKeys(dict);
             if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
                 node.original_keys = py::getattr(keys, Py_Get_ID(copy))();
-                TotalOrderSort(keys);
+                if (!IsDictInsertionOrdered(registry_namespace)) [[likely]] {
+                    TotalOrderSort(keys);
+                }
             }
             for (const py::handle& key : keys) {
                 children.emplace_back(dict[key]);

@@ -202,6 +202,25 @@ class PyTreeSpec {
         const bool &none_is_leaf = false,
         const std::string &registry_namespace = "");
 
+    // Check if should preserve the insertion order of the dictionary keys during flattening.
+    inline static bool IsDictInsertionOrdered(const std::string &registry_namespace,
+                                              const bool &inherit_global_namespace = true) {
+        return (sm_is_dict_insertion_ordered.find(registry_namespace) !=
+                sm_is_dict_insertion_ordered.end()) ||
+               (inherit_global_namespace &&
+                sm_is_dict_insertion_ordered.find("") != sm_is_dict_insertion_ordered.end());
+    }
+
+    // Set the namespace to preserve the insertion order of the dictionary keys during flattening.
+    inline static void SetDictInsertionOrdered(const bool &mode,
+                                               const std::string &registry_namespace) {
+        if (mode) [[likely]] {
+            sm_is_dict_insertion_ordered.insert(registry_namespace);
+        } else [[unlikely]] {
+            sm_is_dict_insertion_ordered.erase(registry_namespace);
+        }
+    }
+
  private:
     using RegistrationPtr = PyTreeTypeRegistry::RegistrationPtr;
 
@@ -266,7 +285,7 @@ class PyTreeSpec {
                      const bool &none_is_leaf,
                      const std::string &registry_namespace);
 
-    template <bool NoneIsLeaf, typename Span>
+    template <bool NoneIsLeaf, bool DictShouldBeSorted, typename Span>
     bool FlattenIntoImpl(const py::handle &handle,
                          Span &leaves,  // NOLINT[runtime/references]
                          const ssize_t &depth,
@@ -281,7 +300,11 @@ class PyTreeSpec {
                              const bool &none_is_leaf,
                              const std::string &registry_namespace);
 
-    template <bool NoneIsLeaf, typename LeafSpan, typename PathSpan, typename Stack>
+    template <bool NoneIsLeaf,
+              bool DictShouldBeSorted,
+              typename LeafSpan,
+              typename PathSpan,
+              typename Stack>
     bool FlattenIntoWithPathImpl(const py::handle &handle,
                                  LeafSpan &leaves,  // NOLINT[runtime/references]
                                  PathSpan &paths,   // NOLINT[runtime/references]
@@ -329,6 +352,10 @@ class PyTreeSpec {
         size_t operator()(const std::pair<const PyTreeSpec *, std::thread::id> &p) const;
     };
 
+    // A set of namespaces that preserve the insertion order of the dictionary keys during
+    // flattening.
+    inline static std::unordered_set<std::string> sm_is_dict_insertion_ordered{};
+
     // A set of (treespec, thread_id) pairs that are currently being represented as strings.
     inline static std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
                                      ThreadIndentTypeHash>
@@ -344,12 +371,13 @@ class PyTreeIter {
  public:
     PyTreeIter(const py::object &tree,
                const std::optional<py::function> &leaf_predicate,
-               bool none_is_leaf,
-               std::string registry_namespace)
+               const bool &none_is_leaf,
+               const std::string &registry_namespace)
         : m_agenda({std::make_pair(tree, 0)}),
           m_leaf_predicate(leaf_predicate),
           m_none_is_leaf(none_is_leaf),
-          m_namespace(std::move(registry_namespace)) {};
+          m_namespace(registry_namespace),
+          m_is_dict_insertion_ordered(PyTreeSpec::IsDictInsertionOrdered(registry_namespace)) {};
 
     PyTreeIter() = delete;
 
@@ -377,6 +405,7 @@ class PyTreeIter {
     std::optional<py::function> m_leaf_predicate;
     bool m_none_is_leaf;
     std::string m_namespace;
+    bool m_is_dict_insertion_ordered;
 
     template <bool NoneIsLeaf>
     [[nodiscard]] py::object NextImpl();

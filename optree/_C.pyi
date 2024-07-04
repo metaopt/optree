@@ -158,3 +158,11 @@ def unregister_node(
     cls: type[CustomTreeNode[T]],
     namespace: str = '',
 ) -> None: ...
+def is_dict_insertion_ordered(
+    namespace: str = '',
+    inherit_global_namespace: bool = True,
+) -> bool: ...
+def set_dict_insertion_ordered(
+    mode: bool,
+    namespace: str = '',
+) -> None: ...

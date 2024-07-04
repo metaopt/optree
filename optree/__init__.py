@@ -95,6 +95,7 @@ from optree.ops import (
 from optree.registry import (
     AttributeKeyPathEntry,
     GetitemKeyPathEntry,
+    dict_insertion_ordered,
     register_keypaths,
     register_pytree_node,
     register_pytree_node_class,
@@ -200,6 +201,7 @@ __all__ = [
     'register_pytree_node',
     'register_pytree_node_class',
     'unregister_pytree_node',
+    'dict_insertion_ordered',
     # Typing
     'PyTreeSpec',
     'PyTreeDef',
