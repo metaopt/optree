@@ -83,7 +83,7 @@ jobs:
           if-no-files-found: error
 
   build-wheels:
-    name: Build wheels for Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    name: Build wheels for Python ${{ matrix.python-version }} on ${{ matrix.os }} (${{ matrix.archs }})
     runs-on: ${{ matrix.os }}
     needs: [build-sdist]
     if: github.repository == 'metaopt/optree' && (github.event_name != 'push' || startsWith(github.ref, 'refs/tags/'))
@@ -92,14 +92,65 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version:
           ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.9", "pypy3.10"]
+        archs: [
+            # Generic
+            "auto",
+            # Linux
+            "aarch64",
+            "ppc64le",
+            "s390x",
+            # Windows
+            "ARM64",
+          ]
         include:
           - os: macos-13
             python-version: "3.7"
+            archs: "auto"
         exclude:
+          - os: ubuntu-latest
+            archs: "ARM64"
+          - os: windows-latest
+            archs: "aarch64"
+          - os: windows-latest
+            archs: "ppc64le"
+          - os: windows-latest
+            archs: "s390x"
           - os: macos-latest
-            python-version: "3.7"  # Python 3.7 does not support macOS ARM64
+            archs: "aarch64"
+          - os: macos-latest
+            archs: "ppc64le"
+          - os: macos-latest
+            archs: "s390x"
+          - os: macos-latest
+            archs: "ARM64"
+          - os: ubuntu-latest
+            python-version: "pypy3.9"
+            archs: "ppc64le"
+          - os: ubuntu-latest
+            python-version: "pypy3.10"
+            archs: "ppc64le"
+          - os: ubuntu-latest
+            python-version: "pypy3.9"
+            archs: "s390x"
+          - os: ubuntu-latest
+            python-version: "pypy3.10"
+            archs: "s390x"
+          - os: windows-latest
+            python-version: "3.7"
+            archs: "ARM64"
+          - os: windows-latest
+            python-version: "3.8"
+            archs: "ARM64"
+          - os: windows-latest
+            python-version: "pypy3.9"
+            archs: "ARM64"
+          - os: windows-latest
+            python-version: "pypy3.10"
+            archs: "ARM64"
+          - os: macos-latest
+            python-version: "3.7"
       fail-fast: false
-    timeout-minutes: 240
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -139,9 +190,8 @@ jobs:
         uses: pypa/cibuildwheel@v2.19
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
-          CIBW_ARCHS_LINUX: auto aarch64 ppc64le s390x
-          CIBW_ARCHS_WINDOWS: auto ARM64
-          CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+          CIBW_ARCHS: ${{ matrix.archs }}
+          CIBW_ARCHS_MACOS: ${{ matrix.archs }} universal2
         with:
           package-dir: .
           output-dir: wheelhouse
@@ -149,7 +199,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.python-version }}-${{ matrix.os }}
+          name: wheels-${{ matrix.python-version }}-${{ matrix.os }}-${{ matrix.archs }}
           path: wheelhouse/*.whl
           if-no-files-found: error
 
