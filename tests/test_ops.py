@@ -21,6 +21,8 @@ import itertools
 import operator
 import pickle
 import re
+import subprocess
+import sys
 from collections import OrderedDict, defaultdict, deque
 
 import pytest
@@ -44,6 +46,25 @@ from helpers import (
     never,
     parametrize,
 )
+
+
+def test_import_no_warnings():
+    assert (
+        subprocess.check_output(
+            [
+                sys.executable,
+                '-W',
+                'always',
+                '-W',
+                'error',
+                '-c',
+                'import optree',
+            ],
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        == ''
+    )
 
 
 def test_max_depth():
