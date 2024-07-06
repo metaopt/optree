@@ -21,11 +21,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix warning regression during import when launch with strict warning filters by [@XuehaiPan](https://github.com/XuehaiPan) in [#149](https://github.com/metaopt/optree/pull/149).
+-
 
 ### Removed
 
 -
+
+------
+
+## [0.12.1] - 2024-07-06
+
+### Fixed
+
+- Fix warning regression during import when launch with strict warning filters by [@XuehaiPan](https://github.com/XuehaiPan) in [#149](https://github.com/metaopt/optree/pull/149).
 
 ------
 
@@ -313,7 +321,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/metaopt/optree/compare/v0.11.0...v0.12.1
 [0.12.0]: https://github.com/metaopt/optree/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/metaopt/optree/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/metaopt/optree/compare/v0.9.2...v0.10.0
