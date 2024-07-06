@@ -116,7 +116,7 @@ build-frontend = "build"
 build-verbosity = 3
 container-engine = "docker"
 test-extras = ["test"]
-test-command = '''make -C "{project}" test PYTHON=python PYTESTOPTS="--quiet --no-showlocals"'''
+test-command = '''make -C "{project}" test PYTHON=python PYTESTOPTS="--quiet --exitfirst --no-showlocals"'''
 
 # Linter tools #################################################################
 
@@ -263,6 +263,7 @@ ban-relative-imports = "all"
 [tool.pytest.ini_options]
 filterwarnings = [
     "error",
+    "always",
     "ignore:The class `optree.Partial` is deprecated and will be removed in a future version. Please use `optree.functools.partial` instead.:FutureWarning",
     "ignore:The key path API is deprecated and will be removed in a future version. Please use the accessor API instead.:FutureWarning",
 ]

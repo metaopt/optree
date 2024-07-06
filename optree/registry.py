@@ -671,132 +671,124 @@ def dict_insertion_ordered(mode: bool, *, namespace: str) -> Generator[None, Non
 
 ####################################################################################################
 
-warnings.filterwarnings('ignore', category=FutureWarning, module=__name__, append=True)
+with warnings.catch_warnings():
+    warnings.filterwarnings('ignore', category=FutureWarning, module=__name__, append=False)
 
+    @deprecated(
+        'The function `_sorted_keys` is deprecated and will be removed in a future version.',
+        category=FutureWarning,
+    )
+    def _sorted_keys(dct: dict[KT, VT]) -> list[KT]:
+        return total_order_sorted(dct)
 
-@deprecated(
-    'The function `_sorted_keys` is deprecated and will be removed in a future version.',
-    category=FutureWarning,
-)
-def _sorted_keys(dct: dict[KT, VT]) -> list[KT]:
-    return total_order_sorted(dct)
+    @deprecated(
+        'The key path API is deprecated and will be removed in a future version. '
+        'Please use the accessor API instead.',
+        category=FutureWarning,
+    )
+    class KeyPathEntry(NamedTuple):
+        key: Any
 
+        def __add__(self, other: object) -> KeyPath:
+            if isinstance(other, KeyPathEntry):
+                return KeyPath((self, other))
+            if isinstance(other, KeyPath):
+                return KeyPath((self, *other.keys))
+            return NotImplemented
 
-@deprecated(
-    'The key path API is deprecated and will be removed in a future version. '
-    'Please use the accessor API instead.',
-    category=FutureWarning,
-)
-class KeyPathEntry(NamedTuple):
-    key: Any
+        def __eq__(self, other: object) -> bool:
+            return isinstance(other, self.__class__) and self.key == other.key
 
-    def __add__(self, other: object) -> KeyPath:
-        if isinstance(other, KeyPathEntry):
-            return KeyPath((self, other))
-        if isinstance(other, KeyPath):
-            return KeyPath((self, *other.keys))
-        return NotImplemented
+        def pprint(self) -> str:
+            """Pretty name of the key path entry."""
+            raise NotImplementedError
 
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, self.__class__) and self.key == other.key
+    @deprecated(
+        'The key path API is deprecated and will be removed in a future version. '
+        'Please use the accessor API instead.',
+        category=FutureWarning,
+    )
+    class KeyPath(NamedTuple):
+        keys: tuple[KeyPathEntry, ...] = ()
 
-    def pprint(self) -> str:
-        """Pretty name of the key path entry."""
-        raise NotImplementedError
+        def __add__(self, other: object) -> KeyPath:
+            if isinstance(other, KeyPathEntry):
+                return KeyPath((*self.keys, other))
+            if isinstance(other, KeyPath):
+                return KeyPath(self.keys + other.keys)
+            return NotImplemented
 
+        def __eq__(self, other: object) -> bool:
+            return isinstance(other, KeyPath) and self.keys == other.keys
 
-@deprecated(
-    'The key path API is deprecated and will be removed in a future version. '
-    'Please use the accessor API instead.',
-    category=FutureWarning,
-)
-class KeyPath(NamedTuple):
-    keys: tuple[KeyPathEntry, ...] = ()
+        def pprint(self) -> str:
+            """Pretty name of the key path."""
+            if not self.keys:
+                return ' tree root'
+            return ''.join(k.pprint() for k in self.keys)
 
-    def __add__(self, other: object) -> KeyPath:
-        if isinstance(other, KeyPathEntry):
-            return KeyPath((*self.keys, other))
-        if isinstance(other, KeyPath):
-            return KeyPath(self.keys + other.keys)
-        return NotImplemented
+    @deprecated(
+        'The key path API is deprecated and will be removed in a future version. '
+        'Please use the accessor API instead.',
+        category=FutureWarning,
+    )
+    class GetitemKeyPathEntry(KeyPathEntry):
+        """The key path entry class for sequences and dictionaries."""
 
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, KeyPath) and self.keys == other.keys
+        def pprint(self) -> str:
+            """Pretty name of the key path entry."""
+            return f'[{self.key!r}]'
 
-    def pprint(self) -> str:
-        """Pretty name of the key path."""
-        if not self.keys:
-            return ' tree root'
-        return ''.join(k.pprint() for k in self.keys)
+    @deprecated(
+        'The key path API is deprecated and will be removed in a future version. '
+        'Please use the accessor API instead.',
+        category=FutureWarning,
+    )
+    class AttributeKeyPathEntry(KeyPathEntry):
+        """The key path entry class for namedtuples."""
 
+        def pprint(self) -> str:
+            """Pretty name of the key path entry."""
+            return f'.{self.key}'
 
-@deprecated(
-    'The key path API is deprecated and will be removed in a future version. '
-    'Please use the accessor API instead.',
-    category=FutureWarning,
-)
-class GetitemKeyPathEntry(KeyPathEntry):
-    """The key path entry class for sequences and dictionaries."""
+    @deprecated(
+        'The key path API is deprecated and will be removed in a future version. '
+        'Please use the accessor API instead.',
+        category=FutureWarning,
+    )
+    class FlattenedKeyPathEntry(KeyPathEntry):  # fallback
+        """The fallback key path entry class."""
 
-    def pprint(self) -> str:
-        """Pretty name of the key path entry."""
-        return f'[{self.key!r}]'
+        def pprint(self) -> str:
+            """Pretty name of the key path entry."""
+            return f'[<flat index {self.key}>]'
 
+    KeyPathHandler = Callable[[PyTree], Sequence[KeyPathEntry]]
+    _KEYPATH_REGISTRY: dict[type[CustomTreeNode], KeyPathHandler] = {}
 
-@deprecated(
-    'The key path API is deprecated and will be removed in a future version. '
-    'Please use the accessor API instead.',
-    category=FutureWarning,
-)
-class AttributeKeyPathEntry(KeyPathEntry):
-    """The key path entry class for namedtuples."""
+    @deprecated(
+        'The key path API is deprecated and will be removed in a future version. '
+        'Please use the accessor API instead.',
+        category=FutureWarning,
+    )
+    def register_keypaths(
+        cls: type[CustomTreeNode[T]],
+        handler: KeyPathHandler,
+    ) -> KeyPathHandler:
+        """Register a key path handler for a custom pytree node type."""
+        if not inspect.isclass(cls):
+            raise TypeError(f'Expected a class, got {cls!r}.')
+        if cls in _KEYPATH_REGISTRY:
+            raise ValueError(f'Key path handler for {cls!r} has already been registered.')
 
-    def pprint(self) -> str:
-        """Pretty name of the key path entry."""
-        return f'.{self.key}'
+        _KEYPATH_REGISTRY[cls] = handler
+        return handler
 
+    register_keypaths(tuple, lambda tup: list(map(GetitemKeyPathEntry, range(len(tup)))))  # type: ignore[arg-type]
+    register_keypaths(list, lambda lst: list(map(GetitemKeyPathEntry, range(len(lst)))))  # type: ignore[arg-type]
+    register_keypaths(dict, lambda dct: list(map(GetitemKeyPathEntry, _sorted_keys(dct))))  # type: ignore[arg-type]
+    register_keypaths(OrderedDict, lambda odct: list(map(GetitemKeyPathEntry, odct)))  # type: ignore[arg-type,call-overload]
+    register_keypaths(defaultdict, lambda ddct: list(map(GetitemKeyPathEntry, _sorted_keys(ddct))))  # type: ignore[arg-type]
+    register_keypaths(deque, lambda dq: list(map(GetitemKeyPathEntry, range(len(dq)))))  # type: ignore[arg-type]
 
-@deprecated(
-    'The key path API is deprecated and will be removed in a future version. '
-    'Please use the accessor API instead.',
-    category=FutureWarning,
-)
-class FlattenedKeyPathEntry(KeyPathEntry):  # fallback
-    """The fallback key path entry class."""
-
-    def pprint(self) -> str:
-        """Pretty name of the key path entry."""
-        return f'[<flat index {self.key}>]'
-
-
-KeyPathHandler = Callable[[PyTree], Sequence[KeyPathEntry]]
-_KEYPATH_REGISTRY: dict[type[CustomTreeNode], KeyPathHandler] = {}
-
-
-@deprecated(
-    'The key path API is deprecated and will be removed in a future version. '
-    'Please use the accessor API instead.',
-    category=FutureWarning,
-)
-def register_keypaths(
-    cls: type[CustomTreeNode[T]],
-    handler: KeyPathHandler,
-) -> KeyPathHandler:
-    """Register a key path handler for a custom pytree node type."""
-    if not inspect.isclass(cls):
-        raise TypeError(f'Expected a class, got {cls!r}.')
-    if cls in _KEYPATH_REGISTRY:
-        raise ValueError(f'Key path handler for {cls!r} has already been registered.')
-
-    _KEYPATH_REGISTRY[cls] = handler
-    return handler
-
-
-register_keypaths(tuple, lambda tup: list(map(GetitemKeyPathEntry, range(len(tup)))))  # type: ignore[arg-type]
-register_keypaths(list, lambda lst: list(map(GetitemKeyPathEntry, range(len(lst)))))  # type: ignore[arg-type]
-register_keypaths(dict, lambda dct: list(map(GetitemKeyPathEntry, _sorted_keys(dct))))  # type: ignore[arg-type]
-register_keypaths(OrderedDict, lambda odct: list(map(GetitemKeyPathEntry, odct)))  # type: ignore[arg-type,call-overload]
-register_keypaths(defaultdict, lambda ddct: list(map(GetitemKeyPathEntry, _sorted_keys(ddct))))  # type: ignore[arg-type]
-register_keypaths(deque, lambda dq: list(map(GetitemKeyPathEntry, range(len(dq)))))  # type: ignore[arg-type]
-
-register_keypaths.get = _KEYPATH_REGISTRY.get  # type: ignore[attr-defined]
+    register_keypaths.get = _KEYPATH_REGISTRY.get  # type: ignore[attr-defined]
