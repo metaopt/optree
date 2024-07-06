@@ -91,7 +91,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version:
-          ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.9", "pypy3.10"]
+          ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "pypy-3.9", "pypy-3.10"]
         archs: [
             # Generic
             "auto",
@@ -124,16 +124,16 @@ jobs:
           - os: macos-latest
             archs: "ARM64"
           - os: ubuntu-latest
-            python-version: "pypy3.9"
+            python-version: "pypy-3.9"
             archs: "ppc64le"
           - os: ubuntu-latest
-            python-version: "pypy3.10"
+            python-version: "pypy-3.10"
             archs: "ppc64le"
           - os: ubuntu-latest
-            python-version: "pypy3.9"
+            python-version: "pypy-3.9"
             archs: "s390x"
           - os: ubuntu-latest
-            python-version: "pypy3.10"
+            python-version: "pypy-3.10"
             archs: "s390x"
           - os: windows-latest
             python-version: "3.7"
@@ -142,10 +142,10 @@ jobs:
             python-version: "3.8"
             archs: "ARM64"
           - os: windows-latest
-            python-version: "pypy3.9"
+            python-version: "pypy-3.9"
             archs: "ARM64"
           - os: windows-latest
-            python-version: "pypy3.10"
+            python-version: "pypy-3.10"
             archs: "ARM64"
           - os: macos-latest
             python-version: "3.7"
