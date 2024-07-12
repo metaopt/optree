@@ -7,7 +7,7 @@ SOURCE_FOLDERS = $(PROJECT_PATH) include src tests docs
 PYTHON_FILES   = $(shell find $(SOURCE_FOLDERS) -type f -name "*.py" -o -name "*.pyi")
 CXX_FILES      = $(shell find $(SOURCE_FOLDERS) -type f -name "*.h" -o -name "*.cpp")
 COMMIT_HASH    = $(shell git log -1 --format=%h)
-PATH           := $(HOME)/go/bin:$(PATH)
+PATH           := $(PATH):$(HOME)/go/bin
 PYTHON         ?= $(shell command -v python3 || command -v python)
 PYTESTOPTS     ?=
 OPTREE_CXX_WERROR ?= ON
@@ -32,7 +32,10 @@ uninstall:
 build:
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install --upgrade setuptools wheel build
-	$(PYTHON) -m build
+	find $(PROJECT_PATH) -type f -name '*.so' -delete
+	find $(PROJECT_PATH) -type f -name '*.pxd' -delete
+	rm -rf *.egg-info .eggs
+	$(PYTHON) -m build --verbose
 
 # Tools Installation
 
@@ -223,11 +226,13 @@ clean-py:
 	find . -depth -type d -name ".ruff_cache" -exec rm -r "{}" +
 	find . -depth -type d -name ".mypy_cache" -exec rm -r "{}" +
 	find . -depth -type d -name ".pytest_cache" -exec rm -r "{}" +
-	rm tests/.coverage
-	rm tests/coverage.xml
+	rm -f tests/.coverage tests/.coverage.*
+	rm -f tests/coverage.xml
 
 clean-build:
-	rm -rf build/ dist/
+	rm -rf build/ dist/ cmake-build/ cmake-build-*/
+	find $(PROJECT_PATH) -type f -name '*.so' -delete
+	find $(PROJECT_PATH) -type f -name '*.pxd' -delete
 	rm -rf *.egg-info .eggs
 
 clean: clean-py clean-build clean-docs
