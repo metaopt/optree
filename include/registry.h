@@ -73,6 +73,11 @@ class PyTreeTypeRegistry {
     struct Registration {
         PyTreeKind kind = PyTreeKind::Custom;
 
+        // NOTE: the registration should use `py::object` instead of `py::handle`
+        // to hold extra references to the Python objects. Otherwise, the Python
+        // objects may be destroyed if the registration is unregistered from the
+        // Python side while the shared pointer still holds the references.
+
         // The following values are populated for custom types.
         // The Python type object, used to identify the type.
         py::object type{};
