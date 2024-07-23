@@ -241,7 +241,7 @@ def _unravel_empty(flat: Array) -> list[ArrayLike]:
 
 def _unravel_leaves_single_dtype(
     indices: tuple[int, ...],
-    shapes: tuple[tuple[int, ...]],
+    shapes: tuple[tuple[int, ...], ...],
     flat: Array,
 ) -> list[Array]:
     if jnp.shape(flat) != (indices[-1],):  # type: ignore[comparison-overlap]
@@ -256,7 +256,7 @@ def _unravel_leaves_single_dtype(
 
 def _unravel_leaves(
     indices: tuple[int, ...],
-    shapes: tuple[tuple[int, ...]],
+    shapes: tuple[tuple[int, ...], ...],
     from_dtypes: tuple[jnp.dtype, ...],
     to_dtype: jnp.dtype,
     flat: Array,

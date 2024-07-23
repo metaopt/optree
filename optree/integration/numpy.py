@@ -166,7 +166,7 @@ def _unravel_empty(flat: np.ndarray) -> list[np.ndarray]:
 
 def _unravel_leaves_single_dtype(
     indices: tuple[int, ...],
-    shapes: tuple[tuple[int, ...]],
+    shapes: tuple[tuple[int, ...], ...],
     flat: np.ndarray,
 ) -> list[np.ndarray]:
     if np.shape(flat) != (indices[-1],):  # type: ignore[comparison-overlap]
@@ -181,7 +181,7 @@ def _unravel_leaves_single_dtype(
 
 def _unravel_leaves(
     indices: tuple[int, ...],
-    shapes: tuple[tuple[int, ...]],
+    shapes: tuple[tuple[int, ...], ...],
     from_dtypes: tuple[np.dtype, ...],
     to_dtype: np.dtype,
     flat: np.ndarray,

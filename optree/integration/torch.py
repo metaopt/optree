@@ -167,7 +167,7 @@ def _unravel_empty(flat: torch.Tensor) -> list[torch.Tensor]:
 
 def _unravel_leaves_single_dtype(
     sizes: tuple[int, ...],
-    shapes: tuple[tuple[int, ...]],
+    shapes: tuple[tuple[int, ...], ...],
     flat: torch.Tensor,
 ) -> list[torch.Tensor]:
     if not torch.is_tensor(flat):
@@ -184,7 +184,7 @@ def _unravel_leaves_single_dtype(
 
 def _unravel_leaves(
     sizes: tuple[int, ...],
-    shapes: tuple[tuple[int, ...]],
+    shapes: tuple[tuple[int, ...], ...],
     from_dtypes: tuple[torch.dtype, ...],
     to_dtype: torch.dtype,
     flat: torch.Tensor,
