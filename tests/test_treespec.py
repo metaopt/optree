@@ -483,7 +483,7 @@ def test_treespec_pickle_missing_registration():
                 else:
                     sys.exit(1)
                 """,
-            ),
+            ).strip(),
         ],
         stderr=subprocess.STDOUT,
         text=True,
