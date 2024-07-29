@@ -111,6 +111,9 @@ class PyTreeTypeRegistry {
                               RegistrationPtr &custom,  // NOLINT[runtime/references]
                               const std::string &registry_namespace);
 
+    // Clear the registry on cleanup.
+    static void Clear();
+
  private:
     template <bool NoneIsLeaf>
     static PyTreeTypeRegistry *Singleton();

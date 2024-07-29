@@ -383,6 +383,9 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
     if (PyType_Ready(PyTreeIter_Type) < 0) [[unlikely]] {
         INTERNAL_ERROR("`PyType_Ready(&PyTreeIter_Type)` failed.");
     }
+
+    py::getattr(py::module_::import("atexit"),
+                "register")(py::cpp_function(&PyTreeTypeRegistry::Clear));
 }
 
 }  // namespace optree

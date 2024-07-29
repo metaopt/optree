@@ -30,8 +30,8 @@ limitations under the License.
 #define FILE_RELPATH (&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
 #endif
 
-#define VFUNC2(__0, __1, NAME, ...) NAME
-#define VFUNC3(__0, __1, __2, NAME, ...) NAME
+#define VA_FUNC2_(__0, __1, NAME, ...) NAME
+#define VA_FUNC3_(__0, __1, __2, NAME, ...) NAME
 
 namespace optree {
 
@@ -49,32 +49,32 @@ class InternalError : public std::logic_error {
 
 }  // namespace optree
 
-#define INTERNAL_ERROR1(message) throw optree::InternalError(message, FILE_RELPATH, __LINE__)
-#define INTERNAL_ERROR0() INTERNAL_ERROR1("Unreachable code.")
+#define INTERNAL_ERROR1_(message) throw optree::InternalError(message, FILE_RELPATH, __LINE__)
+#define INTERNAL_ERROR0_() INTERNAL_ERROR1_("Unreachable code.")
 #define INTERNAL_ERROR(...) /* NOLINTNEXTLINE[whitespace/parens] */ \
-    VFUNC2(__0 __VA_OPT__(, ) __VA_ARGS__, INTERNAL_ERROR1, INTERNAL_ERROR0)(__VA_ARGS__)
+    VA_FUNC2_(__0 __VA_OPT__(, ) __VA_ARGS__, INTERNAL_ERROR1_, INTERNAL_ERROR0_)(__VA_ARGS__)
 
-#define EXPECT2(condition, message) \
-    if (!(condition)) [[unlikely]]  \
-    INTERNAL_ERROR1(message)
-#define EXPECT0() INTERNAL_ERROR0()
-#define EXPECT1(condition) EXPECT2(condition, "`" #condition "` failed.")
-#define EXPECT(...) /* NOLINTNEXTLINE[whitespace/parens] */ \
-    VFUNC3(__0 __VA_OPT__(, ) __VA_ARGS__, EXPECT2, EXPECT1, EXPECT0)(__VA_ARGS__)
+#define EXPECT2_(condition, message) \
+    if (!(condition)) [[unlikely]]   \
+    INTERNAL_ERROR1_(message)
+#define EXPECT0_() INTERNAL_ERROR0_()
+#define EXPECT1_(condition) EXPECT2_(condition, "`" #condition "` failed.")
+#define EXPECT_(...) /* NOLINTNEXTLINE[whitespace/parens] */ \
+    VA_FUNC3_(__0 __VA_OPT__(, ) __VA_ARGS__, EXPECT2_, EXPECT1_, EXPECT0_)(__VA_ARGS__)
 
 #define EXPECT_TRUE(condition, ...) \
-    EXPECT(condition __VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+    EXPECT_(condition __VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
 #define EXPECT_FALSE(condition, ...) \
-    EXPECT(!(condition)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+    EXPECT_(!(condition)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
 #define EXPECT_EQ(a, b, ...) \
-    EXPECT((a) == (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+    EXPECT_((a) == (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
 #define EXPECT_NE(a, b, ...) \
-    EXPECT((a) != (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+    EXPECT_((a) != (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
 #define EXPECT_LT(a, b, ...) \
-    EXPECT((a) < (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+    EXPECT_((a) < (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
 #define EXPECT_LE(a, b, ...) \
-    EXPECT((a) <= (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+    EXPECT_((a) <= (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
 #define EXPECT_GT(a, b, ...) \
-    EXPECT((a) > (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+    EXPECT_((a) > (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
 #define EXPECT_GE(a, b, ...) \
-    EXPECT((a) >= (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
+    EXPECT_((a) >= (b)__VA_OPT__(, ) __VA_ARGS__)  // NOLINT[whitespace/parens]
