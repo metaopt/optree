@@ -627,7 +627,7 @@ del _pytree_node_registry_get
 
 
 @contextlib.contextmanager
-def dict_insertion_ordered(mode: bool, *, namespace: str) -> Generator[None, None, None]:
+def dict_insertion_ordered(mode: bool, *, namespace: str) -> Generator[None]:
     """Context manager to temporarily set the dictionary sorting mode.
 
     This context manager is used to temporarily set the dictionary sorting mode for a specific

@@ -105,7 +105,7 @@ class HashablePartial:  # pragma: no cover
 
 with contextlib.suppress(ImportError):  # pragma: no cover
     # pylint: disable-next=ungrouped-imports
-    from jax._src.util import HashablePartial  # type: ignore[assignment] # noqa: F811,RUF100
+    from jax._src.util import HashablePartial  # type: ignore[no-redef] # noqa: F811,RUF100
 
 
 def tree_ravel(
@@ -230,7 +230,7 @@ def _ravel_leaves(
 
 
 def _unravel_empty(flat: Array) -> list[ArrayLike]:
-    if jnp.shape(flat) != (0,):  # type: ignore[comparison-overlap]
+    if jnp.shape(flat) != (0,):
         raise ValueError(
             f'The unravel function expected an array of shape {(0,)}, '
             f'got shape {jnp.shape(flat)}.',
@@ -244,7 +244,7 @@ def _unravel_leaves_single_dtype(
     shapes: tuple[tuple[int, ...], ...],
     flat: Array,
 ) -> list[Array]:
-    if jnp.shape(flat) != (indices[-1],):  # type: ignore[comparison-overlap]
+    if jnp.shape(flat) != (indices[-1],):
         raise ValueError(
             f'The unravel function expected an array of shape {(indices[-1],)}, '
             f'got shape {jnp.shape(flat)}.',
@@ -261,7 +261,7 @@ def _unravel_leaves(
     to_dtype: jnp.dtype,
     flat: Array,
 ) -> list[Array]:
-    if jnp.shape(flat) != (indices[-1],):  # type: ignore[comparison-overlap]
+    if jnp.shape(flat) != (indices[-1],):
         raise ValueError(
             f'The unravel function expected an array of shape {(indices[-1],)}, '
             f'got shape {jnp.shape(flat)}.',

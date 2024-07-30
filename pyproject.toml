@@ -113,8 +113,6 @@ optree = ['*.so', '*.pyd']
 archs = ["native"]
 skip = "*musllinux*"
 build-frontend = "build"
-build-verbosity = 3
-container-engine = "docker"
 test-extras = ["test"]
 test-command = '''make -C "{project}" test PYTHON=python PYTESTOPTS="--quiet --exitfirst --no-showlocals"'''
 
@@ -154,6 +152,7 @@ warn_redundant_casts = true
 warn_unreachable = true
 warn_unused_configs = true
 warn_unused_ignores = true
+no_site_packages = true
 
 [tool.pydocstyle]
 convention = "google"

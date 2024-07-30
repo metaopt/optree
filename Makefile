@@ -147,11 +147,11 @@ ruff: ruff-install
 
 ruff-fix: ruff-install
 	$(PYTHON) -m ruff --version
-	$(PYTHON) -m ruff check . --fix --exit-non-zero-on-fix
+	$(PYTHON) -m ruff check --fix --exit-non-zero-on-fix .
 
 mypy: mypy-install
 	$(PYTHON) -m mypy --version
-	$(PYTHON) -m mypy $(PROJECT_PATH) --install-types --non-interactive
+	$(PYTHON) -m mypy $(PROJECT_PATH)
 
 xdoctest: xdoctest-install
 	$(PYTHON) -m xdoctest --version
