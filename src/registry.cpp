@@ -44,9 +44,10 @@ template <bool NoneIsLeaf>
                         std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
                     registration->kind = kind;
                     registration->type = py::reinterpret_borrow<py::object>(cls);
-                    EXPECT(registry.m_registrations.emplace(cls, std::move(registration)).second,
-                           "PyTree type " + PyRepr(cls) +
-                               " is already registered in the global namespace.");
+                    EXPECT_TRUE(
+                        registry.m_registrations.emplace(cls, std::move(registration)).second,
+                        "PyTree type " + PyRepr(cls) +
+                            " is already registered in the global namespace.");
                     if (sm_builtins_types.emplace(cls).second) [[likely]] {
                         cls.inc_ref();
                     }
@@ -70,6 +71,9 @@ template <bool NoneIsLeaf>
             })
             .get_stored());
 }
+
+template PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
+template PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
 
 template <bool NoneIsLeaf>
 /*static*/ void PyTreeTypeRegistry::RegisterImpl(const py::object& cls,
@@ -215,10 +219,10 @@ template <bool NoneIsLeaf>
                                                const std::string& registry_namespace) {
     auto registration1 = UnregisterImpl<NONE_IS_NODE>(cls, registry_namespace);
     auto registration2 = UnregisterImpl<NONE_IS_LEAF>(cls, registry_namespace);
-    EXPECT(registration1->type.is(registration2->type));
-    EXPECT(registration1->flatten_func.is(registration2->flatten_func));
-    EXPECT(registration1->unflatten_func.is(registration2->unflatten_func));
-    EXPECT(registration1->path_entry_type.is(registration2->path_entry_type));
+    EXPECT_TRUE(registration1->type.is(registration2->type));
+    EXPECT_TRUE(registration1->flatten_func.is(registration2->flatten_func));
+    EXPECT_TRUE(registration1->unflatten_func.is(registration2->unflatten_func));
+    EXPECT_TRUE(registration1->path_entry_type.is(registration2->path_entry_type));
     registration1->type.dec_ref();
     registration1->flatten_func.dec_ref();
     registration1->unflatten_func.dec_ref();
@@ -271,11 +275,68 @@ template <bool NoneIsLeaf>
 
 template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_NODE>(
     const py::handle&,
-    PyTreeTypeRegistry::RegistrationPtr& custom,  // NOLINT[runtime/references]
+    PyTreeTypeRegistry::RegistrationPtr&,  // NOLINT[runtime/references]
     const std::string&);
 template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     const py::handle&,
-    PyTreeTypeRegistry::RegistrationPtr& custom,  // NOLINT[runtime/references]
+    PyTreeTypeRegistry::RegistrationPtr&,  // NOLINT[runtime/references]
     const std::string&);
+
+// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+/*static*/ void PyTreeTypeRegistry::Clear() {
+    PyTreeTypeRegistry* registry1 = PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
+    PyTreeTypeRegistry* registry2 = PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
+
+    EXPECT_LE(sm_builtins_types.size(), registry1->m_registrations.size());
+    EXPECT_EQ(registry1->m_registrations.size(), registry2->m_registrations.size() + 1);
+    EXPECT_EQ(registry1->m_named_registrations.size(), registry2->m_named_registrations.size());
+
+#ifdef Py_DEBUG
+    for (const auto& cls : sm_builtins_types) {
+        EXPECT_NE(registry1->m_registrations.find(cls), registry1->m_registrations.end());
+    }
+    for (const auto& entry : registry2->m_registrations) {
+        auto it = registry1->m_registrations.find(entry.first);
+        EXPECT_NE(it, registry1->m_registrations.end());
+
+        const auto& registration1 = it->second;
+        const auto& registration2 = entry.second;
+        EXPECT_TRUE(registration1->type.is(registration2->type));
+        EXPECT_TRUE(registration1->flatten_func.is(registration2->flatten_func));
+        EXPECT_TRUE(registration1->unflatten_func.is(registration2->unflatten_func));
+        EXPECT_TRUE(registration1->path_entry_type.is(registration2->path_entry_type));
+    }
+    for (const auto& entry : registry2->m_named_registrations) {
+        auto it = registry1->m_named_registrations.find(entry.first);
+        EXPECT_NE(it, registry1->m_named_registrations.end());
+
+        const auto& registration1 = it->second;
+        const auto& registration2 = entry.second;
+        EXPECT_TRUE(registration1->type.is(registration2->type));
+        EXPECT_TRUE(registration1->flatten_func.is(registration2->flatten_func));
+        EXPECT_TRUE(registration1->unflatten_func.is(registration2->unflatten_func));
+        EXPECT_TRUE(registration1->path_entry_type.is(registration2->path_entry_type));
+    }
+#endif
+
+    for (const auto& entry : registry1->m_registrations) {
+        entry.second->type.dec_ref();
+        entry.second->flatten_func.dec_ref();
+        entry.second->unflatten_func.dec_ref();
+        entry.second->path_entry_type.dec_ref();
+    }
+    for (const auto& entry : registry1->m_named_registrations) {
+        entry.second->type.dec_ref();
+        entry.second->flatten_func.dec_ref();
+        entry.second->unflatten_func.dec_ref();
+        entry.second->path_entry_type.dec_ref();
+    }
+
+    sm_builtins_types.clear();
+    registry1->m_registrations.clear();
+    registry1->m_named_registrations.clear();
+    registry2->m_registrations.clear();
+    registry2->m_named_registrations.clear();
+}
 
 }  // namespace optree

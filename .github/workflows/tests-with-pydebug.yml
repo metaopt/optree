@@ -1,0 +1,110 @@
+name: Tests with PyDebug
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - setup.py
+      - setup.cfg
+      - pyproject.toml
+      - MANIFEST.in
+      - CMakeLists.txt
+      - include/**
+      - src/**
+      - tests/**
+      - optree/**
+      - .github/workflows/tests-with-pydebug.yml
+  # Allow to trigger the workflow manually
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  OPTREE_CXX_WERROR: "ON"
+
+jobs:
+  test:
+    name: Test for Python ${{ matrix.python-version }}${{ matrix.python-abiflags }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-abiflags: ["d"]
+      fail-fast: false
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pyenv
+        if: runner.os != 'Windows'
+        run: |
+          export PYENV_ROOT="${HOME}/.pyenv"
+          git clone https://github.com/pyenv/pyenv.git "${PYENV_ROOT}"
+          echo "PYENV_ROOT=${PYENV_ROOT}" >> "${GITHUB_ENV}"
+          echo "PATH=${PYENV_ROOT}/bin:${PYENV_ROOT}/shims:${PATH}" >> "${GITHUB_ENV}"
+
+      - name: Set up pyenv
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $Env:PYENV_ROOT = "$Env:USERPROFILE\.pyenv"
+          git clone https://github.com/pyenv-win/pyenv-win.git "$Env:PYENV_ROOT"
+          Write-Output "PYENV_ROOT=$Env:PYENV_ROOT" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Output "PATH=$Env:PYENV_ROOT\pyenv-win\bin;$Env:PYENV_ROOT\pyenv-win\shims;$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Determine Python version
+        id: determine-python-version
+        shell: bash
+        run: |
+          pyenv install --list
+          PYTHON_VERSION="$(
+            pyenv latest --known "${{ matrix.python-version }}" || echo "${{ matrix.python-version }}"
+          )"
+          echo "Using Python version: ${PYTHON_VERSION}"
+          echo "PYTHON_VERSION=${PYTHON_VERSION}" >> "${GITHUB_ENV}"
+
+      - uses: actions/cache@v4
+        id: python-cache
+        with:
+          path: ${{ env.PYENV_ROOT }}
+          key: ${{ runner.os }}-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ env.PYTHON_VERSION }}
+
+      - name: Set up Python
+        if: steps.python-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          PYENV_INSTALL_ARGS=()
+          if [[ "${{ runner.os }}" != "Windows" ]]; then
+            if [[ "${{ matrix.python-abiflags }}" == *d* ]]; then
+              PYENV_INSTALL_ARGS+=("--debug")
+            fi
+          else
+            if [[ "${{ matrix.python-abiflags }}" == *d* ]]; then
+              PYENV_INSTALL_ARGS+=("--dev")
+            fi
+          fi
+          pyenv install ${{ env.PYTHON_VERSION }} "${PYENV_INSTALL_ARGS[@]}"
+          pyenv global ${{ env.PYTHON_VERSION }}
+
+      - name: Upgrade pip
+        run: |
+          python --version
+          python -c 'from pprint import pprint; import sysconfig; pprint(sysconfig.get_config_vars())'
+          python -m pip install --upgrade pip setuptools wheel
+
+      - name: Install OpTree
+        run: |
+          python -m pip install -vvv --editable '.[test]'
+
+      - name: Test with pytest
+        run: |
+          make pytest PYTESTOPTS="--verbosity=0 --durations=10"

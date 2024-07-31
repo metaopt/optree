@@ -530,10 +530,10 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
         }
     }
 
-    static auto cache = std::unordered_map<py::handle, py::tuple, TypeHash, TypeEq>{};
+    static auto cache = std::unordered_map<py::handle, py::handle, TypeHash, TypeEq>{};
     auto it = cache.find(type);
     if (it != cache.end()) [[likely]] {
-        return it->second;
+        return py::reinterpret_borrow<py::tuple>(it->second);
     }
     py::tuple fields = StructSequenceGetFieldsImpl(type);
     if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {

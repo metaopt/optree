@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
+- Add tests with PyDebug enabled in CI by [@XuehaiPan](https://github.com/XuehaiPan) in [#150](https://github.com/metaopt/optree/pull/150).
 
 ### Changed
 
@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- Fix potential segmentation fault for `structseq_fields` cache support by [@XuehaiPan](https://github.com/XuehaiPan) in [#150](https://github.com/metaopt/optree/pull/150).
 
 ### Removed
 

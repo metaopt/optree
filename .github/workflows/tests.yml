@@ -45,13 +45,10 @@ jobs:
           - os: macos-latest
             python-version: "3.7"  # Python 3.7 does not support macOS ARM64
       fail-fast: false
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: "recursive"
-          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -83,7 +80,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+        if: runner.os == 'Linux'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./tests/coverage.xml

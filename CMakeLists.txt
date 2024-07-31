@@ -173,12 +173,14 @@ if(NOT DEFINED PYBIND11_CMAKE_DIR)
 endif()
 
 if("${PYBIND11_CMAKE_DIR}" STREQUAL "")
+    set(PYBIND11_CMAKE_DIR "${THIRD_PARTY_DIR}/pybind11")
+    list(PREPEND CMAKE_PREFIX_PATH "${PYBIND11_CMAKE_DIR}")
     FetchContent_Declare(
         pybind11
         GIT_REPOSITORY https://github.com/pybind/pybind11.git
         GIT_TAG "${PYBIND11_VERSION}"
         GIT_SHALLOW TRUE
-        SOURCE_DIR "${THIRD_PARTY_DIR}/pybind11"
+        SOURCE_DIR "${PYBIND11_CMAKE_DIR}"
         BINARY_DIR "${THIRD_PARTY_DIR}/.cmake/pybind11/build"
         STAMP_DIR "${THIRD_PARTY_DIR}/.cmake/pybind11/stamp"
     )
@@ -190,6 +192,7 @@ if("${PYBIND11_CMAKE_DIR}" STREQUAL "")
     endif()
 else()
     message(STATUS "Detected Pybind11 CMake directory: \"${PYBIND11_CMAKE_DIR}\"")
+    list(PREPEND CMAKE_PREFIX_PATH "${PYBIND11_CMAKE_DIR}")
     find_package(pybind11 CONFIG PATHS "${PYBIND11_CMAKE_DIR}")
 endif()
 

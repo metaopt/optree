@@ -383,9 +383,17 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
     if (PyType_Ready(PyTreeIter_Type) < 0) [[unlikely]] {
         INTERNAL_ERROR("`PyType_Ready(&PyTreeIter_Type)` failed.");
     }
+
+    py::getattr(py::module_::import("atexit"),
+                "register")(py::cpp_function(&PyTreeTypeRegistry::Clear));
 }
 
 }  // namespace optree
 
+#if PYBIND11_VERSION_HEX >= 0x020D00F0  // pybind11 2.13.0
+// NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
+PYBIND11_MODULE(_C, mod, py::mod_gil_not_used()) { optree::BuildModule(mod); }
+#else
 // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
 PYBIND11_MODULE(_C, mod) { optree::BuildModule(mod); }
+#endif
