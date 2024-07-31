@@ -41,8 +41,8 @@ class cmake_build_ext(build_ext):  # noqa: N801
             f'-DCMAKE_BUILD_TYPE={config}',
             f'-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{config.upper()}={ext_path.parent}',
             f'-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_{config.upper()}={build_temp}',
-            f'-DPYTHON_EXECUTABLE={sys.executable}',
-            f'-DPYTHON_INCLUDE_DIR={sysconfig.get_path("platinclude")}',
+            f'-DPython_EXECUTABLE={sys.executable}',
+            f'-DPython_INCLUDE_DIR={sysconfig.get_path("platinclude")}',
         ]
 
         if platform.system() == 'Darwin':

@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-cmake_minimum_required(VERSION 3.11)  # for FetchContent
+cmake_minimum_required(VERSION 3.18)
 project(optree LANGUAGES CXX)
 
 include(FetchContent)
@@ -123,52 +123,54 @@ function(system)
     endif()
 endfunction()
 
-if(NOT DEFINED PYTHON_EXECUTABLE)
+if(NOT DEFINED Python_EXECUTABLE)
     if(WIN32)
-        set(PYTHON_EXECUTABLE "python.exe")
+        set(Python_EXECUTABLE "python.exe")
     else()
-        set(PYTHON_EXECUTABLE "python")
+        set(Python_EXECUTABLE "python")
     endif()
 endif()
 
 if(UNIX)
     system(
-        STRIP OUTPUT_VARIABLE PYTHON_EXECUTABLE
-        COMMAND bash -c "type -P '${PYTHON_EXECUTABLE}'"
+        STRIP OUTPUT_VARIABLE Python_EXECUTABLE
+        COMMAND bash -c "type -P '${Python_EXECUTABLE}'"
     )
 endif()
 
 system(
-    STRIP OUTPUT_VARIABLE PYTHON_VERSION
-    COMMAND "${PYTHON_EXECUTABLE}" -c "print('.'.join(map(str, __import__('sys').version_info[:3])))"
+    STRIP OUTPUT_VARIABLE Python_VERSION
+    COMMAND "${Python_EXECUTABLE}" -c "print('.'.join(map(str, __import__('sys').version_info[:3])))"
 )
 
-message(STATUS "Use Python version: ${PYTHON_VERSION}")
-message(STATUS "Use Python executable: \"${PYTHON_EXECUTABLE}\"")
+message(STATUS "Use Python version: ${Python_VERSION}")
+message(STATUS "Use Python executable: \"${Python_EXECUTABLE}\"")
 
-if(NOT DEFINED PYTHON_INCLUDE_DIR)
+unset(Python_INCLUDE_DIR)
+if(NOT DEFINED Python_INCLUDE_DIR)
     message(STATUS "Auto detecting Python include directory...")
     system(
-        STRIP OUTPUT_VARIABLE PYTHON_INCLUDE_DIR
-        COMMAND "${PYTHON_EXECUTABLE}" -c "print(__import__('sysconfig').get_path('platinclude'))"
+        STRIP OUTPUT_VARIABLE Python_INCLUDE_DIR
+        COMMAND "${Python_EXECUTABLE}" -c "print(__import__('sysconfig').get_path('platinclude'))"
     )
 endif()
 
-if("${PYTHON_INCLUDE_DIR}" STREQUAL "")
+if("${Python_INCLUDE_DIR}" STREQUAL "")
     message(FATAL_ERROR "Python include directory not found")
 else()
-    message(STATUS "Detected Python include directory: \"${PYTHON_INCLUDE_DIR}\"")
-    include_directories("${PYTHON_INCLUDE_DIR}")
+    message(STATUS "Detected Python include directory: \"${Python_INCLUDE_DIR}\"")
+    include_directories("${Python_INCLUDE_DIR}")
 endif()
 
 # Include pybind11
-set(PYBIND11_PYTHON_VERSION "${PYTHON_VERSION}")
+set(PYBIND11_PYTHON_VERSION "${Python_VERSION}")
+set(PYBIND11_FINDPYTHON ON)
 
 if(NOT DEFINED PYBIND11_CMAKE_DIR)
     message(STATUS "Auto detecting pybind11 CMake directory...")
     system(
         STRIP OUTPUT_VARIABLE PYBIND11_CMAKE_DIR
-        COMMAND "${PYTHON_EXECUTABLE}" -m pybind11 --cmakedir
+        COMMAND "${Python_EXECUTABLE}" -m pybind11 --cmakedir
     )
 endif()
 
