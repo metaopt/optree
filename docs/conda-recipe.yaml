@@ -25,26 +25,26 @@ channels:
   - conda-forge
 
 dependencies:
-  - python = 3.11
+  - python = 3.12
   - pip
 
   # Dependency
   - typing-extensions >= 4.5.0
 
   # Build toolchain
-  - cmake >= 3.11
+  - cmake >= 3.18
   - make
   - cxx-compiler
-  - pybind11 >= 2.11.1
+  - pybind11 >= 2.13.1
 
   # Documentation
-  - sphinx >= 5.2.1
+  - sphinx
   - sphinx-rtd-theme
   - sphinx-autobuild
   - sphinx-copybutton
   - sphinxcontrib-spelling
   - sphinxcontrib-bibtex
-  - sphinx-autodoc-typehints >= 1.19.2
+  - sphinx-autodoc-typehints
   - pyenchant
   - hunspell-en
   - docutils

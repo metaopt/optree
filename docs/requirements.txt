@@ -1,12 +1,12 @@
 --requirement ../requirements.txt
 
-sphinx >= 5.2.1
+sphinx
 sphinx-autoapi
 sphinx-autobuild
 sphinx-copybutton
 sphinx-rtd-theme
 sphinxcontrib-bibtex
-sphinx-autodoc-typehints >= 1.19.2
+sphinx-autodoc-typehints
 docutils
 
 jax[cpu] >= 0.4.6

@@ -170,7 +170,7 @@ cmake-configure: cmake-install
 	cmake -S . -B cmake-build-debug \
 		-DCMAKE_BUILD_TYPE=Debug \
 		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-		-DPYTHON_EXECUTABLE="$(PYTHON)" \
+		-DPython_EXECUTABLE="$(PYTHON)" \
 		-DOPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)"
 
 cmake-build: cmake-configure

@@ -26,17 +26,17 @@ channels:
   - conda-forge
 
 dependencies:
-  - python = 3.11
+  - python = 3.12
   - pip
 
   # Dependency
   - typing-extensions >= 4.5.0
 
   # Build toolchain
-  - cmake >= 3.11
+  - cmake >= 3.18
   - make
   - cxx-compiler
-  - pybind11 >= 2.11.1
+  - pybind11 >= 2.13.1
 
   # Benchmark
   - pytorch::pytorch >= 2.0, < 2.4.0a0
@@ -50,35 +50,35 @@ dependencies:
   - termcolor
 
   # Documentation
-  - sphinx >= 5.2.1
+  - sphinx
   - sphinx-rtd-theme
   - sphinx-autobuild
   - sphinx-copybutton
   - sphinxcontrib-spelling
   - sphinxcontrib-bibtex
-  - sphinx-autodoc-typehints >= 1.19.2
+  - sphinx-autodoc-typehints
   - pyenchant
   - hunspell-en
   - docutils
 
   # Testing
-  - pytest
-  - pytest-cov
-  - pytest-xdist
-  - isort
+  - conda-forge::pytest
+  - conda-forge::pytest-cov
+  - conda-forge::pytest-xdist
+  - conda-forge::isort
   - conda-forge::black
-  - pylint
-  - mypy
-  - flake8
-  - flake8-bugbear
-  - flake8-comprehensions
-  - flake8-docstrings
-  - flake8-pyi
-  - flake8-simplify
-  - ruff
-  - doc8
-  - pydocstyle
-  - xdoctest
+  - conda-forge::pylint
+  - conda-forge::mypy
+  - conda-forge::flake8
+  - conda-forge::flake8-bugbear
+  - conda-forge::flake8-comprehensions
+  - conda-forge::flake8-docstrings
+  - conda-forge::flake8-pyi
+  - conda-forge::flake8-simplify
+  - conda-forge::ruff
+  - conda-forge::doc8
+  - conda-forge::pydocstyle
+  - conda-forge::xdoctest
   - conda-forge::clang-format >= 14
   - conda-forge::clang-tools >= 14  # clang-tidy
   - conda-forge::cpplint
