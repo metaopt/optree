@@ -571,7 +571,7 @@ def _structseq_unflatten(cls: type[structseq[T]], children: Iterable[T]) -> stru
 
 
 # pylint: disable=all
-_NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {  # fmt: off
+_NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {
     type(None): PyTreeNodeRegistryEntry(type(None), _none_flatten, _none_unflatten, path_entry_type=PyTreeEntry),  # type: ignore[arg-type]
     tuple: PyTreeNodeRegistryEntry(tuple, _tuple_flatten, _tuple_unflatten, path_entry_type=SequenceEntry),  # type: ignore[arg-type]
     list: PyTreeNodeRegistryEntry(list, _list_flatten, _list_unflatten, path_entry_type=SequenceEntry),  # type: ignore[arg-type]
@@ -581,7 +581,7 @@ _NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {  
     defaultdict: PyTreeNodeRegistryEntry(defaultdict, _defaultdict_flatten, _defaultdict_unflatten, path_entry_type=MappingEntry),  # type: ignore[arg-type]
     deque: PyTreeNodeRegistryEntry(deque, _deque_flatten, _deque_unflatten, path_entry_type=SequenceEntry),  # type: ignore[arg-type]
     structseq: PyTreeNodeRegistryEntry(structseq, _structseq_flatten, _structseq_unflatten, path_entry_type=StructSequenceEntry),  # type: ignore[arg-type]
-}
+}  # fmt: skip
 # pylint: enable=all
 
 

@@ -124,7 +124,7 @@ def tree_ravel(
     ...     },
     ...     'layer2': {
     ...         'weight': jnp.arange(8, 10, dtype=jnp.float32).reshape((1, 2)),
-    ...         'bias': jnp.arange(10, 11, dtype=jnp.float32).reshape((1,))
+    ...         'bias': jnp.arange(10, 11, dtype=jnp.float32).reshape((1,)),
     ...     },
     ... }
     >>> tree  # doctest: +IGNORE_WHITESPACE

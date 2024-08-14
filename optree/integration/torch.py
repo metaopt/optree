@@ -50,7 +50,7 @@ def tree_ravel(
     ...     },
     ...     'layer2': {
     ...         'weight': torch.arange(8, 10, dtype=torch.float64).reshape((1, 2)),
-    ...         'bias': torch.arange(10, 11, dtype=torch.float64).reshape((1,))
+    ...         'bias': torch.arange(10, 11, dtype=torch.float64).reshape((1,)),
     ...     },
     ... }
     >>> tree  # doctest: +IGNORE_WHITESPACE

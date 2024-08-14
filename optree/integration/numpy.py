@@ -53,7 +53,7 @@ def tree_ravel(
     ...     },
     ...     'layer2': {
     ...         'weight': np.arange(8, 10, dtype=np.float32).reshape((1, 2)),
-    ...         'bias': np.arange(10, 11, dtype=np.float32).reshape((1,))
+    ...         'bias': np.arange(10, 11, dtype=np.float32).reshape((1,)),
     ...     },
     ... }
     >>> tree  # doctest: +IGNORE_WHITESPACE
