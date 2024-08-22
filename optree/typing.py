@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import functools
 import platform
 import types
 from collections.abc import Hashable
@@ -151,8 +152,6 @@ _UnionType = type(Union[int, str])
 
 
 def _tp_cache(func: Callable[P, T]) -> Callable[P, T]:
-    import functools  # pylint: disable=import-outside-toplevel
-
     cached = functools.lru_cache()(func)
 
     @functools.wraps(func)
@@ -295,17 +294,47 @@ FlattenFunc: TypeAlias = Callable[
 UnflattenFunc: TypeAlias = Callable[[MetaData, Children[T]], CustomTreeNode[T]]
 
 
+def _override_with_(cxx_implementation: F) -> Callable[[F], F]:
+    """Decorator to override the Python implementation with the C++ implementation.
+
+    >>> @_override_with_(any)
+    ... def my_any(iterable):
+    ...     for elem in iterable:
+    ...         if elem:
+    ...             return True
+    ...     return False
+    ...
+    >>> my_any([False, False, True, False, False, True])  # run at C speed
+    True
+    """
+
+    def wrapper(python_implementation: F) -> F:
+        @functools.wraps(python_implementation)
+        def wrapped(*args: Any, **kwargs: Any) -> Any:
+            return cxx_implementation(*args, **kwargs)
+
+        wrapped.__cxx_implementation__ = cxx_implementation  # type: ignore[attr-defined]
+        wrapped.__python_implementation__ = python_implementation  # type: ignore[attr-defined]
+
+        return wrapped  # type: ignore[return-value]
+
+    return wrapper
+
+
+@_override_with_(_C.is_namedtuple)
 def is_namedtuple(obj: object | type) -> bool:
     """Return whether the object is an instance of namedtuple or a subclass of namedtuple."""
     cls = obj if isinstance(obj, type) else type(obj)
     return is_namedtuple_class(cls)
 
 
+@_override_with_(_C.is_namedtuple_instance)
 def is_namedtuple_instance(obj: object) -> bool:
     """Return whether the object is an instance of namedtuple."""
     return is_namedtuple_class(type(obj))
 
 
+@_override_with_(_C.is_namedtuple_class)
 def is_namedtuple_class(cls: type) -> bool:
     """Return whether the class is a subclass of namedtuple."""
     return (
@@ -321,6 +350,7 @@ def is_namedtuple_class(cls: type) -> bool:
     )
 
 
+@_override_with_(_C.namedtuple_fields)
 def namedtuple_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
     """Return the field names of a namedtuple."""
     if isinstance(obj, type):
@@ -369,7 +399,7 @@ class _StructSequenceMeta(type):
 # This is an internal CPython type that is like, but subtly different from a NamedTuple.
 # `structseq` classes are unsubclassable, so are all decorated with `@final`.
 # pylint: disable-next=invalid-name,missing-class-docstring
-class structseq(tuple, Generic[_T_co], metaclass=_StructSequenceMeta):  # type: ignore[misc] # noqa: N801
+class structseq(Tuple[_T_co], metaclass=_StructSequenceMeta):  # type: ignore[misc] # noqa: N801
     """A generic type stub for CPython's ``PyStructSequence`` type."""
 
     n_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
@@ -388,12 +418,14 @@ class structseq(tuple, Generic[_T_co], metaclass=_StructSequenceMeta):  # type: 
 del _StructSequenceMeta
 
 
+@_override_with_(_C.is_structseq)
 def is_structseq(obj: object | type) -> bool:
     """Return whether the object is an instance of PyStructSequence or a class of PyStructSequence."""
     cls = obj if isinstance(obj, type) else type(obj)
     return is_structseq_class(cls)
 
 
+@_override_with_(_C.is_structseq_instance)
 def is_structseq_instance(obj: object) -> bool:
     """Return whether the object is an instance of PyStructSequence."""
     return is_structseq_class(type(obj))
@@ -403,6 +435,7 @@ def is_structseq_instance(obj: object) -> bool:
 Py_TPFLAGS_BASETYPE: int = _C.Py_TPFLAGS_BASETYPE  # (1UL << 10)
 
 
+@_override_with_(_C.is_structseq_class)
 def is_structseq_class(cls: type) -> bool:
     """Return whether the class is a class of PyStructSequence."""
     if (
@@ -428,6 +461,7 @@ def is_structseq_class(cls: type) -> bool:
     return False
 
 
+@_override_with_(_C.structseq_fields)
 def structseq_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
     """Return the field names of a PyStructSequence."""
     if isinstance(obj, type):
@@ -458,15 +492,4 @@ def structseq_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
     return tuple(fields[: cls.n_sequence_fields])  # type: ignore[attr-defined]
 
 
-# Ensure that the behavior is consistent with C++ implementation
-# pylint: disable-next=wrong-import-position,ungrouped-imports
-from optree._C import (
-    is_namedtuple,
-    is_namedtuple_class,
-    is_namedtuple_instance,
-    is_structseq,
-    is_structseq_class,
-    is_structseq_instance,
-    namedtuple_fields,
-    structseq_fields,
-)
+del _tp_cache
