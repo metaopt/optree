@@ -21,7 +21,7 @@ import warnings
 from typing import Any, Callable
 from typing_extensions import TypeAlias  # Python 3.10+
 
-import torch
+import torch  # pylint: disable=import-error
 
 from optree.ops import tree_flatten, tree_unflatten
 from optree.typing import PyTreeSpec, PyTreeTypeVar

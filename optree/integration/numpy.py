@@ -22,8 +22,8 @@ import warnings
 from typing import Any, Callable
 from typing_extensions import TypeAlias  # Python 3.10+
 
-import numpy as np
-from numpy.typing import ArrayLike
+import numpy as np  # pylint: disable=import-error
+from numpy.typing import ArrayLike  # pylint: disable=import-error
 
 from optree.ops import tree_flatten, tree_unflatten
 from optree.typing import PyTreeSpec, PyTreeTypeVar
