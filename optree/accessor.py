@@ -136,10 +136,10 @@ class PyTreeEntry:
 del SLOTS
 
 
-T = TypeVar('T')
-T_co = TypeVar('T_co', covariant=True)
-KT_co = TypeVar('KT_co', covariant=True)
-VT_co = TypeVar('VT_co', covariant=True)
+_T = TypeVar('_T')
+_T_co = TypeVar('_T_co', covariant=True)
+_KT_co = TypeVar('_KT_co', covariant=True)
+_VT_co = TypeVar('_VT_co', covariant=True)
 
 
 class AutoEntry(PyTreeEntry):
@@ -232,20 +232,20 @@ class FlattenedEntry(PyTreeEntry):  # pylint: disable=too-few-public-methods
     __slots__: ClassVar[tuple[()]] = ()
 
 
-class SequenceEntry(GetItemEntry, Generic[T_co]):
+class SequenceEntry(GetItemEntry, Generic[_T_co]):
     """A path entry class for sequences."""
 
     __slots__: ClassVar[tuple[()]] = ()
 
     entry: int
-    type: builtins.type[Sequence[T_co]]
+    type: builtins.type[Sequence[_T_co]]
 
     @property
     def index(self) -> int:
         """Get the index."""
         return self.entry
 
-    def __call__(self, obj: Sequence[T_co]) -> T_co:
+    def __call__(self, obj: Sequence[_T_co]) -> _T_co:
         """Get the child object."""
         return obj[self.index]
 
@@ -254,20 +254,20 @@ class SequenceEntry(GetItemEntry, Generic[T_co]):
         return f'{self.__class__.__name__}(index={self.index!r}, type={self.type!r})'
 
 
-class MappingEntry(GetItemEntry, Generic[KT_co, VT_co]):
+class MappingEntry(GetItemEntry, Generic[_KT_co, _VT_co]):
     """A path entry class for mappings."""
 
     __slots__: ClassVar[tuple[()]] = ()
 
-    entry: KT_co
-    type: builtins.type[Mapping[KT_co, VT_co]]
+    entry: _KT_co
+    type: builtins.type[Mapping[_KT_co, _VT_co]]
 
     @property
-    def key(self) -> KT_co:
+    def key(self) -> _KT_co:
         """Get the key."""
         return self.entry
 
-    def __call__(self, obj: Mapping[KT_co, VT_co]) -> VT_co:
+    def __call__(self, obj: Mapping[_KT_co, _VT_co]) -> _VT_co:
         """Get the child object."""
         return obj[self.key]
 
@@ -276,13 +276,13 @@ class MappingEntry(GetItemEntry, Generic[KT_co, VT_co]):
         return f'{self.__class__.__name__}(key={self.key!r}, type={self.type!r})'
 
 
-class NamedTupleEntry(SequenceEntry[T]):
+class NamedTupleEntry(SequenceEntry[_T]):
     """A path entry class for namedtuple objects."""
 
     __slots__: ClassVar[tuple[()]] = ()
 
     entry: int
-    type: builtins.type[NamedTuple[T]]  # type: ignore[type-arg]
+    type: builtins.type[NamedTuple[_T]]  # type: ignore[type-arg]
     kind: Literal[PyTreeKind.NAMEDTUPLE]
 
     @property
@@ -306,13 +306,13 @@ class NamedTupleEntry(SequenceEntry[T]):
         return f'{node}.{self.field}'
 
 
-class StructSequenceEntry(SequenceEntry[T]):
+class StructSequenceEntry(SequenceEntry[_T]):
     """A path entry class for PyStructSequence objects."""
 
     __slots__: ClassVar[tuple[()]] = ()
 
     entry: int
-    type: builtins.type[structseq[T]]
+    type: builtins.type[structseq[_T]]
     kind: Literal[PyTreeKind.STRUCTSEQUENCE]
 
     @property
