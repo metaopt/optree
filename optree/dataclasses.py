@@ -28,6 +28,8 @@ from optree.accessor import DataclassEntry
 from optree.registry import register_pytree_node
 
 
+# Redefine `field`, `dataclasses`, and `make_dataclasses`.
+# The remaining APIs are re-exported from the original package.
 __all__ = [*dataclasses.__all__]
 
 
@@ -76,7 +78,6 @@ _TypeT = TypeVar('_TypeT', bound=type)
 def dataclass(  # pylint: disable=too-many-arguments
     cls: None,
     *,
-    namespace: str,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
     eq: bool = True,
@@ -87,6 +88,7 @@ def dataclass(  # pylint: disable=too-many-arguments
     kw_only: bool = False,  # Python 3.10+
     slots: bool = False,  # Python 3.10+
     weakref_slot: bool = False,  # Python 3.11+
+    namespace: str,
 ) -> Callable[[_TypeT], _TypeT]:
     """Dataclass decorator with PyTree integration."""
 
@@ -96,7 +98,6 @@ def dataclass(  # pylint: disable=too-many-arguments
 def dataclass(  # pylint: disable=too-many-arguments
     cls: _TypeT,
     *,
-    namespace: str,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
     eq: bool = True,
@@ -107,6 +108,7 @@ def dataclass(  # pylint: disable=too-many-arguments
     kw_only: bool = False,  # Python 3.10+
     slots: bool = False,  # Python 3.10+
     weakref_slot: bool = False,  # Python 3.11+
+    namespace: str,
 ) -> _TypeT: ...
 
 
@@ -114,7 +116,6 @@ def dataclass(  # pylint: disable=too-many-arguments
 def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-arguments,too-many-locals
     cls: _TypeT | None = None,
     *,
-    namespace: str,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
     eq: bool = True,
@@ -125,6 +126,7 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
     kw_only: bool = False,  # Python 3.10+
     slots: bool = False,  # Python 3.10+
     weakref_slot: bool = False,  # Python 3.11+
+    namespace: str,
 ) -> _TypeT | Callable[[_TypeT], _TypeT]:
     """Dataclass decorator with PyTree integration."""
     kwargs = {
@@ -199,7 +201,6 @@ def make_dataclass(  # type: ignore[no-redef] # pylint: disable=function-redefin
     cls_name: str,
     fields: dict[str, Any],  # pylint: disable=redefined-outer-name
     *,
-    namespace: str,
     bases: tuple[type, ...] = (),
     ns: dict[str, Any] | None = None,  # redirect to `namespace` to `dataclasses.make_dataclass()`
     init: bool = True,
@@ -213,6 +214,7 @@ def make_dataclass(  # type: ignore[no-redef] # pylint: disable=function-redefin
     slots: bool = False,  # Python 3.10+
     weakref_slot: bool = False,  # Python 3.11+
     module: str | None = None,
+    namespace: str,
 ) -> type:
     """Make a dataclass with PyTree integration."""
     # pylint: disable-next=import-outside-toplevel
