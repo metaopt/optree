@@ -36,11 +36,14 @@ from typing import (
     TypeVar,
     Union,
 )
+from typing_extensions import Final  # Python 3.8+
 from typing_extensions import NamedTuple  # Generic NamedTuple: Python 3.11+
 from typing_extensions import OrderedDict  # Generic OrderedDict: Python 3.7.2+
+from typing_extensions import ParamSpec  # Python 3.10+
+from typing_extensions import Protocol  # Python 3.8+
 from typing_extensions import Self  # Python 3.11+
 from typing_extensions import TypeAlias  # Python 3.10+
-from typing_extensions import Final, Protocol, runtime_checkable  # Python 3.8+
+from typing_extensions import runtime_checkable  # Python 3.8+
 
 from optree import _C
 from optree._C import PyTreeKind, PyTreeSpec
@@ -94,6 +97,8 @@ __all__ = [
     'U',
     'KT',
     'VT',
+    'P',
+    'F',
     'Iterable',
     'Sequence',
     'List',
@@ -113,6 +118,8 @@ S = TypeVar('S')
 U = TypeVar('U')
 KT = TypeVar('KT')
 VT = TypeVar('VT')
+P = ParamSpec('P')
+F = TypeVar('F', bound=Callable[..., Any])
 
 
 Children: TypeAlias = Iterable[T]
@@ -140,21 +147,21 @@ class CustomTreeNode(Protocol[T]):
         """Unflatten the children and auxiliary data into the custom pytree node."""
 
 
-_GenericAlias = type(Union[int, str])
+_UnionType = type(Union[int, str])
 
 
-def _tp_cache(func: Callable) -> Callable:
+def _tp_cache(func: Callable[P, T]) -> Callable[P, T]:
     import functools  # pylint: disable=import-outside-toplevel
 
     cached = functools.lru_cache()(func)
 
     @functools.wraps(func)
-    def inner(*args: Any, **kwds: Any) -> Any:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> T:
         try:
-            return cached(*args, **kwds)
+            return cached(*args, **kwargs)  # type: ignore[arg-type]
         except TypeError:
             # All real errors (not unhashable args) are raised below.
-            return func(*args, **kwds)
+            return func(*args, **kwargs)
 
     return inner
 
@@ -194,7 +201,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
             )
 
         if (
-            isinstance(param, _GenericAlias)
+            isinstance(param, _UnionType)
             and param.__origin__ is Union  # type: ignore[attr-defined]
             and hasattr(param, '__pytree_args__')
         ):
