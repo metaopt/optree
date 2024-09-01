@@ -1,7 +1,7 @@
 # Package ######################################################################
 
 [build-system]
-requires = ["setuptools", "pybind11"]
+requires = ["setuptools", "cmake >= 3.18", "pybind11 >= 2.12"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -136,6 +136,7 @@ multi_line_output = 3
 [tool.mypy]
 python_version = "3.8"
 pretty = true
+show_column_numbers = true
 show_error_codes = true
 show_error_context = true
 show_traceback = true
@@ -153,6 +154,21 @@ warn_unreachable = true
 warn_unused_configs = true
 warn_unused_ignores = true
 no_site_packages = true
+
+[tool.pylint]
+main.py-version = "3.7"
+main.extension-pkg-allow-list = ["optree._C"]
+main.ignore-paths = ["^_C/$", "^tests/$"]
+basic.good-names = []
+design.max-args = 7
+format.max-line-length = 120
+messages_control.disable = [
+    "duplicate-code",
+]
+messages_control.enable = ["c-extension-no-member"]
+spelling.spelling-dict = "en_US"
+spelling.spelling-private-dict-file = "docs/source/spelling_wordlist.txt"
+typecheck.generated-members = ["numpy.*", "torch.*"]
 
 [tool.pydocstyle]
 convention = "google"

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Respect cmake variable `pybind11_DIR` by [@XuehaiPan](https://github.com/XuehaiPan) in [#155](https://github.com/metaopt/optree/pull/155).
 - Add tests with PyDebug enabled in CI by [@XuehaiPan](https://github.com/XuehaiPan) in [#150](https://github.com/metaopt/optree/pull/150).
 
 ### Changed

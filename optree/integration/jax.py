@@ -41,10 +41,10 @@ from types import FunctionType
 from typing import Any, Callable
 from typing_extensions import TypeAlias  # Python 3.10+
 
-import jax.numpy as jnp
-from jax import Array, lax
-from jax._src import dtypes
-from jax.typing import ArrayLike
+import jax.numpy as jnp  # pylint: disable=import-error
+from jax import Array, lax  # pylint: disable=import-error
+from jax._src import dtypes  # pylint: disable=import-error
+from jax.typing import ArrayLike  # pylint: disable=import-error
 
 from optree.ops import tree_flatten, tree_unflatten
 from optree.typing import PyTreeSpec, PyTreeTypeVar
