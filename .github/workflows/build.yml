@@ -49,7 +49,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.7 - 3.12"
+          python-version: "3.7 - 3.13"
           update-environment: true
 
       - name: Upgrade pip
@@ -88,7 +88,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version:
-          ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "pypy-3.9", "pypy-3.10"]
+          ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "pypy-3.9", "pypy-3.10"]
         archs: [
             # Generic
             "auto",
@@ -157,6 +157,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           update-environment: true
+          allow-prereleases: true
 
       - name: Upgrade pip
         run: |
@@ -245,7 +246,7 @@ jobs:
         uses: actions/setup-python@v5
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          python-version: "3.7 - 3.12"
+          python-version: "3.7 - 3.13"
           update-environment: true
 
       - name: Upgrade pip
