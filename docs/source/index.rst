@@ -12,6 +12,7 @@ OpTree: Optimized PyTree Utilities
     :maxdepth: 1
 
     registry.rst
+    dataclasses.rst
     functools.rst
     typing.rst
     api.rst
