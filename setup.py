@@ -47,18 +47,20 @@ class cmake_build_ext(build_ext):  # noqa: N801
 
         if platform.system() == 'Darwin':
             # Cross-compile support for macOS - respect ARCHFLAGS if set
-            archs = re.findall(r'-arch (\S+)', os.environ.get('ARCHFLAGS', ''))
+            archs = re.findall(r'-arch (\S+)', os.getenv('ARCHFLAGS', ''))
             if archs:
                 cmake_args.append(f'-DCMAKE_OSX_ARCHITECTURES={";".join(archs)}')
         elif platform.system() == 'Windows' and platform.architecture()[0] == '32bit':
             cmake_args.append('-A=Win32')
 
-        try:
-            import pybind11
+        pybind11_dir = os.getenv('pybind11_DIR', '')  # noqa: SIM112
+        if pybind11_dir:
+            cmake_args.append(f'-Dpybind11_DIR={pybind11_dir}')
+        else:
+            with contextlib.suppress(ImportError):
+                import pybind11
 
-            cmake_args.append(f'-DPYBIND11_CMAKE_DIR={pybind11.get_cmake_dir()}')
-        except ImportError:
-            pass
+                cmake_args.append(f'-Dpybind11_DIR={pybind11.get_cmake_dir()}')
 
         build_args = ['--config', config]
         if (

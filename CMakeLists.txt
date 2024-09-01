@@ -19,11 +19,13 @@ project(optree LANGUAGES CXX)
 include(FetchContent)
 
 set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/third-party")
-if(NOT DEFINED PYBIND11_VERSION AND NOT "$ENV{PYBIND11_VERSION}" STREQUAL "")
-    set(PYBIND11_VERSION "$ENV{PYBIND11_VERSION}")
+
+set(pybind11_MINIMUM_VERSION 2.12)  # for pybind11::gil_safe_call_once_and_store
+if(NOT DEFINED pybind11_VERSION AND NOT "$ENV{pybind11_VERSION}" STREQUAL "")
+    set(pybind11_VERSION "$ENV{pybind11_VERSION}")
 endif()
-if(NOT PYBIND11_VERSION)
-    set(PYBIND11_VERSION stable)
+if(NOT pybind11_VERSION)
+    set(pybind11_VERSION stable)
 endif()
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -166,36 +168,39 @@ endif()
 set(PYBIND11_PYTHON_VERSION "${Python_VERSION}")
 set(PYBIND11_FINDPYTHON ON)
 
-if(NOT DEFINED PYBIND11_CMAKE_DIR)
+if(NOT DEFINED pybind11_DIR)
     message(STATUS "Auto detecting pybind11 CMake directory...")
     system(
-        STRIP OUTPUT_VARIABLE PYBIND11_CMAKE_DIR
+        STRIP OUTPUT_VARIABLE pybind11_DIR
         COMMAND "${Python_EXECUTABLE}" -m pybind11 --cmakedir
     )
 endif()
 
-if("${PYBIND11_CMAKE_DIR}" STREQUAL "")
-    set(PYBIND11_CMAKE_DIR "${THIRD_PARTY_DIR}/pybind11")
-    list(PREPEND CMAKE_PREFIX_PATH "${PYBIND11_CMAKE_DIR}")
-    FetchContent_Declare(
-        pybind11
-        GIT_REPOSITORY https://github.com/pybind/pybind11.git
-        GIT_TAG "${PYBIND11_VERSION}"
-        GIT_SHALLOW TRUE
-        SOURCE_DIR "${PYBIND11_CMAKE_DIR}"
-        BINARY_DIR "${THIRD_PARTY_DIR}/.cmake/pybind11/build"
-        STAMP_DIR "${THIRD_PARTY_DIR}/.cmake/pybind11/stamp"
-    )
-    FetchContent_GetProperties(pybind11)
+if("${pybind11_DIR}" STREQUAL "")
+    find_package(pybind11 "${pybind11_MINIMUM_VERSION}" CONFIG)
+    if(pybind11_FOUND)
+        message(STATUS "Detected pybind11 CMake directory: \"${pybind11_DIR}\"")
+    else()
+        FetchContent_Declare(
+            pybind11
+            GIT_REPOSITORY https://github.com/pybind/pybind11.git
+            GIT_TAG "${pybind11_VERSION}"
+            GIT_SHALLOW TRUE
+            SOURCE_DIR "${THIRD_PARTY_DIR}/pybind11"
+            BINARY_DIR "${THIRD_PARTY_DIR}/.cmake/pybind11/build"
+            STAMP_DIR "${THIRD_PARTY_DIR}/.cmake/pybind11/stamp"
+        )
+        FetchContent_GetProperties(pybind11)
 
-    if(NOT pybind11_POPULATED)
-        message(STATUS "Populating Git repository pybind11@${PYBIND11_VERSION} to third-party/pybind11...")
-        FetchContent_MakeAvailable(pybind11)
+        if(NOT pybind11_POPULATED)
+            message(STATUS "Populating Git repository pybind11@${pybind11_VERSION} to third-party/pybind11...")
+            FetchContent_MakeAvailable(pybind11)
+        endif()
     endif()
 else()
-    message(STATUS "Detected Pybind11 CMake directory: \"${PYBIND11_CMAKE_DIR}\"")
-    list(PREPEND CMAKE_PREFIX_PATH "${PYBIND11_CMAKE_DIR}")
-    find_package(pybind11 CONFIG PATHS "${PYBIND11_CMAKE_DIR}")
+    message(STATUS "Detected Pybind11 CMake directory: \"${pybind11_DIR}\"")
+    list(PREPEND CMAKE_PREFIX_PATH "${pybind11_DIR}")
+    find_package(pybind11 "${pybind11_MINIMUM_VERSION}" CONFIG REQUIRED)
 endif()
 
 include_directories("${CMAKE_SOURCE_DIR}")
