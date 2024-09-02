@@ -28,7 +28,7 @@ concurrency:
 
 env:
   OPTREE_CXX_WERROR: "ON"
-  FULL_TEST_PYTHON_VERSIONS: "3.11"
+  FULL_TEST_PYTHON_VERSIONS: "3.10;3.11"
 
 jobs:
   test:

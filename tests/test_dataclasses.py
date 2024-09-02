@@ -40,15 +40,37 @@ def test_same_signature():
     assert field_parameters['pytree_node'].kind == inspect.Parameter.KEYWORD_ONLY
     assert field_parameters['pytree_node'].default is True
     field_parameters.pop('pytree_node')
-    assert OrderedDict(
-        [
-            (name, (param.name, param.kind, param.default))
-            for name, param in field_parameters.items()
-        ][: len(field_original_parameters)],
-    ) == OrderedDict(
-        (name, (param.name, param.kind, param.default))
-        for name, param in field_original_parameters.items()
-    )
+    if sys.version_info >= (3, 8):
+        assert OrderedDict(
+            [
+                (name, (param.name, param.kind, param.default))
+                for name, param in field_parameters.items()
+            ][: len(field_original_parameters)],
+        ) == OrderedDict(
+            (
+                name,
+                (
+                    param.name,
+                    (
+                        param.kind
+                        if param.kind != inspect.Parameter.POSITIONAL_ONLY
+                        else inspect.Parameter.POSITIONAL_OR_KEYWORD
+                    ),
+                    param.default,
+                ),
+            )
+            for name, param in field_original_parameters.items()
+        )
+    else:
+        assert OrderedDict(
+            [
+                (name, (param.name, param.kind, param.default))
+                for name, param in field_parameters.items()
+            ][: len(field_original_parameters)],
+        ) == OrderedDict(
+            (name.lstrip('_'), (param.name.lstrip('_'), param.kind, param.default))
+            for name, param in field_original_parameters.items()
+        )
 
     dataclass_parameters = inspect.signature(optree.dataclasses.dataclass).parameters.copy()
     dataclass_original_parameters = inspect.signature(dataclasses.dataclass).parameters.copy()
@@ -85,7 +107,7 @@ def test_same_signature():
                 for name, param in dataclass_parameters.items()
             ][: len(dataclass_original_parameters)],
         ) == OrderedDict(
-            (name, (param.name, param.kind, param.default))
+            (name.lstrip('_'), (param.name.lstrip('_'), param.kind, param.default))
             for name, param in dataclass_original_parameters.items()
         )
 
@@ -102,38 +124,40 @@ def test_same_signature():
     make_dataclass_parameters.pop('namespace')
     assert 'ns' in make_dataclass_parameters
     assert 'ns' not in make_dataclass_original_parameters
-    ns_index = list(make_dataclass_parameters).index('ns')
-    make_dataclass_parameters_items = list(make_dataclass_parameters.items())
-    make_dataclass_parameters_items[ns_index] = (
-        'namespace',
-        make_dataclass_parameters['ns'].replace(name='namespace'),
-    )
-    make_dataclass_parameters = dict(make_dataclass_parameters_items)
     if sys.version_info >= (3, 8):
-        assert dict(
+        assert OrderedDict(
             [
-                (name, (param.name, param.kind, param.default))
+                (
+                    {'ns': 'namespace'}.get(name, name),
+                    ({'ns': 'namespace'}.get(param.name, param.name), param.kind, param.default),
+                )
                 for name, param in make_dataclass_parameters.items()
             ][: len(make_dataclass_original_parameters)],
-        ) == {
-            name: (
-                param.name,
+        ) == OrderedDict(
+            (
+                name,
                 (
-                    param.kind
-                    if param.kind != inspect.Parameter.POSITIONAL_ONLY
-                    else inspect.Parameter.POSITIONAL_OR_KEYWORD
+                    param.name,
+                    (
+                        param.kind
+                        if param.kind != inspect.Parameter.POSITIONAL_ONLY
+                        else inspect.Parameter.POSITIONAL_OR_KEYWORD
+                    ),
+                    param.default,
                 ),
-                param.default,
             )
             for name, param in make_dataclass_original_parameters.items()
-        }
+        )
     else:
-        assert dict(
+        assert OrderedDict(
             [
-                (name, (param.name, param.kind, param.default))
+                (
+                    {'ns': 'namespace'}.get(name, name),
+                    ({'ns': 'namespace'}.get(param.name, param.name), param.kind, param.default),
+                )
                 for name, param in make_dataclass_parameters.items()
             ][: len(make_dataclass_original_parameters)],
-        ) == {
-            name: (param.name, param.kind, param.default)
+        ) == OrderedDict(
+            (name.lstrip('_'), (param.name.lstrip('_'), param.kind, param.default))
             for name, param in make_dataclass_original_parameters.items()
-        }
+        )
