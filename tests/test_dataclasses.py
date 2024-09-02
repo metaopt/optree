@@ -17,8 +17,11 @@
 
 import dataclasses
 import inspect
+import re
 import sys
 from collections import OrderedDict
+
+import pytest
 
 import optree
 
@@ -161,3 +164,79 @@ def test_same_signature():
             (name.lstrip('_'), (param.name.lstrip('_'), param.kind, param.default))
             for name, param in make_dataclass_original_parameters.items()
         )
+
+
+def test_invalid_parameters():
+    # pylint: disable=invalid-field-call
+    optree.dataclasses.field()
+    dataclasses.field()
+    if sys.version_info >= (3, 10):
+        optree.dataclasses.field(kw_only=True)
+        dataclasses.field(kw_only=True)
+        optree.dataclasses.field(kw_only=False)
+        dataclasses.field(kw_only=False)
+    else:
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            optree.dataclasses.field(kw_only=True)
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.field(kw_only=True)
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            optree.dataclasses.field(kw_only=False)
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.field(kw_only=False)
+
+    with pytest.raises(
+        TypeError,
+        match=re.escape("dataclass() missing 1 required keyword-only argument: 'namespace'"),
+    ):
+        optree.dataclasses.dataclass()
+    optree.dataclasses.dataclass(namespace='some-namespace')
+    dataclasses.dataclass()
+    if sys.version_info >= (3, 11):
+        optree.dataclasses.dataclass(weakref_slot=True, namespace='some-namespace')
+        dataclasses.dataclass(weakref_slot=True)
+        optree.dataclasses.dataclass(weakref_slot=False, namespace='some-namespace')
+        dataclasses.dataclass(weakref_slot=False)
+    else:
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            optree.dataclasses.dataclass(weakref_slot=True, namespace='some-namespace')
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.dataclass(weakref_slot=True)
+        optree.dataclasses.dataclass(weakref_slot=False, namespace='some-namespace')
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.dataclass(weakref_slot=False)
+    if sys.version_info >= (3, 10):
+        optree.dataclasses.dataclass(match_args=True, namespace='some-namespace')
+        dataclasses.dataclass(match_args=True)
+        optree.dataclasses.dataclass(match_args=False, namespace='some-namespace')
+        dataclasses.dataclass(match_args=False)
+        optree.dataclasses.dataclass(kw_only=True, namespace='some-namespace')
+        dataclasses.dataclass(kw_only=True)
+        optree.dataclasses.dataclass(kw_only=False, namespace='some-namespace')
+        dataclasses.dataclass(kw_only=False)
+        optree.dataclasses.dataclass(slots=True, namespace='some-namespace')
+        dataclasses.dataclass(slots=True)
+        optree.dataclasses.dataclass(slots=False, namespace='some-namespace')
+        dataclasses.dataclass(slots=False)
+    else:
+        optree.dataclasses.dataclass(match_args=True, namespace='some-namespace')
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.dataclass(match_args=True)
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            optree.dataclasses.dataclass(match_args=False, namespace='some-namespace')
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.dataclass(match_args=False)
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            optree.dataclasses.dataclass(kw_only=True, namespace='some-namespace')
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.dataclass(kw_only=True)
+        optree.dataclasses.dataclass(kw_only=False, namespace='some-namespace')
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.dataclass(kw_only=False)
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            optree.dataclasses.dataclass(slots=True, namespace='some-namespace')
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.dataclass(slots=True)
+        optree.dataclasses.dataclass(slots=False, namespace='some-namespace')
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.dataclass(slots=False)
