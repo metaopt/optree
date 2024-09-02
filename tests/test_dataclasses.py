@@ -35,13 +35,16 @@ def test_public_api():
 def test_same_signature():
     field_parameters = inspect.signature(optree.dataclasses.field).parameters.copy()
     field_original_parameters = inspect.signature(dataclasses.field).parameters.copy()
-    assert len(field_parameters) == len(field_original_parameters) + 1
+    assert len(field_parameters) >= len(field_original_parameters) + 1
     assert next(reversed(field_parameters)) == 'pytree_node'
     assert field_parameters['pytree_node'].kind == inspect.Parameter.KEYWORD_ONLY
     assert field_parameters['pytree_node'].default is True
     field_parameters.pop('pytree_node')
     assert OrderedDict(
-        (name, (param.name, param.kind, param.default)) for name, param in field_parameters.items()
+        [
+            (name, (param.name, param.kind, param.default))
+            for name, param in field_parameters.items()
+        ][: len(field_original_parameters)],
     ) == OrderedDict(
         (name, (param.name, param.kind, param.default))
         for name, param in field_original_parameters.items()
@@ -49,7 +52,7 @@ def test_same_signature():
 
     dataclass_parameters = inspect.signature(optree.dataclasses.dataclass).parameters.copy()
     dataclass_original_parameters = inspect.signature(dataclasses.dataclass).parameters.copy()
-    assert len(dataclass_parameters) == len(dataclass_original_parameters) + 1
+    assert len(dataclass_parameters) >= len(dataclass_original_parameters) + 1
     assert next(reversed(dataclass_parameters)) == 'namespace'
     assert dataclass_parameters['namespace'].kind == inspect.Parameter.KEYWORD_ONLY
     assert dataclass_parameters['namespace'].default is inspect.Parameter.empty
@@ -92,7 +95,7 @@ def test_same_signature():
     make_dataclass_original_parameters = inspect.signature(
         dataclasses.make_dataclass,
     ).parameters.copy()
-    assert len(make_dataclass_parameters) == len(make_dataclass_original_parameters) + 1
+    assert len(make_dataclass_parameters) >= len(make_dataclass_original_parameters) + 1
     assert next(reversed(make_dataclass_parameters)) == 'namespace'
     assert make_dataclass_parameters['namespace'].kind == inspect.Parameter.KEYWORD_ONLY
     assert make_dataclass_parameters['namespace'].default is inspect.Parameter.empty

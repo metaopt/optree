@@ -22,6 +22,7 @@ import sys
 import types
 from dataclasses import *  # noqa: F401,F403,RUF100 # pylint: disable=wildcard-import,unused-wildcard-import
 from typing import Any, Callable, TypeVar, overload
+from typing_extensions import Literal  # Python 3.8+
 from typing_extensions import dataclass_transform  # Python 3.11+
 
 from optree.accessor import DataclassEntry
@@ -46,11 +47,11 @@ def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-ma
     hash: bool | None = None,  # pylint: disable=redefined-builtin
     compare: bool = True,
     metadata: dict[str, Any] | None = None,
-    kw_only: bool = dataclasses.MISSING,  # type: ignore[assignment] # Python 3.10+
+    kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
     pytree_node: bool = _PYTREE_NODE_DEFAULT,
 ) -> dataclasses.Field:
     """Field factory for :func:`dataclass`."""
-    metadata = metadata or {}
+    metadata = (metadata or {}).copy()
     metadata['pytree_node'] = pytree_node
 
     kwargs = {
@@ -62,8 +63,11 @@ def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-ma
         'compare': compare,
         'metadata': metadata,
     }
+
     if sys.version_info >= (3, 10):
         kwargs['kw_only'] = kw_only
+    elif kw_only is not dataclasses.MISSING:
+        raise TypeError("field() got an unexpected keyword argument 'kw_only'")
 
     return dataclasses.field(**kwargs)  # pylint: disable=invalid-field-call
 
@@ -113,7 +117,7 @@ def dataclass(  # pylint: disable=too-many-arguments
 
 
 @dataclass_transform(field_specifiers=(field,))
-def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-arguments,too-many-locals
+def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-arguments,too-many-locals,too-many-branches
     cls: _TypeT | None = None,
     *,
     init: bool = True,
@@ -137,12 +141,22 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
         'unsafe_hash': unsafe_hash,
         'frozen': frozen,
     }
+
     if sys.version_info >= (3, 10):
         kwargs['match_args'] = match_args
         kwargs['kw_only'] = kw_only
         kwargs['slots'] = slots
+    elif match_args is not True:
+        raise TypeError("dataclass() got an unexpected keyword argument 'match_args'")
+    elif kw_only is not False:
+        raise TypeError("dataclass() got an unexpected keyword argument 'kw_only'")
+    elif slots is not False:
+        raise TypeError("dataclass() got an unexpected keyword argument 'slots'")
+
     if sys.version_info >= (3, 11):
         kwargs['weakref_slot'] = weakref_slot
+    elif weakref_slot is not False:
+        raise TypeError("dataclass() got an unexpected keyword argument 'weakref_slot'")
 
     if cls is None:
 
@@ -197,7 +211,8 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
     )
 
 
-def make_dataclass(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-many-arguments,too-many-locals
+# pylint: disable-next=function-redefined,too-many-arguments,too-many-locals
+def make_dataclass(  # type: ignore[no-redef] # noqa: C901
     cls_name: str,
     fields: dict[str, Any],  # pylint: disable=redefined-outer-name
     *,
@@ -213,7 +228,7 @@ def make_dataclass(  # type: ignore[no-redef] # pylint: disable=function-redefin
     kw_only: bool = False,  # Python 3.10+
     slots: bool = False,  # Python 3.10+
     weakref_slot: bool = False,  # Python 3.11+
-    module: str | None = None,
+    module: str | None = None,  # Python 3.12+
     namespace: str,
 ) -> type:
     """Make a dataclass with PyTree integration."""
@@ -224,6 +239,7 @@ def make_dataclass(  # type: ignore[no-redef] # pylint: disable=function-redefin
         isinstance(ns, str) or ns is GLOBAL_NAMESPACE  # type: ignore[unreachable]
     ):
         ns, namespace = namespace, ns  # type: ignore[unreachable]
+
     kwargs = {
         'bases': bases,
         'namespace': ns,
@@ -234,12 +250,23 @@ def make_dataclass(  # type: ignore[no-redef] # pylint: disable=function-redefin
         'unsafe_hash': unsafe_hash,
         'frozen': frozen,
     }
+
     if sys.version_info >= (3, 10):
         kwargs['match_args'] = match_args
         kwargs['kw_only'] = kw_only
         kwargs['slots'] = slots
+    elif match_args is not True:
+        raise TypeError("make_dataclass() got an unexpected keyword argument 'match_args'")
+    elif kw_only is not False:
+        raise TypeError("make_dataclass() got an unexpected keyword argument 'kw_only'")
+    elif slots is not False:
+        raise TypeError("make_dataclass() got an unexpected keyword argument 'slots'")
+
     if sys.version_info >= (3, 11):
         kwargs['weakref_slot'] = weakref_slot
+    elif weakref_slot is not False:
+        raise TypeError("make_dataclass() got an unexpected keyword argument 'weakref_slot'")
+
     if sys.version_info >= (3, 12):
         if module is None:
             try:
@@ -250,6 +277,8 @@ def make_dataclass(  # type: ignore[no-redef] # pylint: disable=function-redefin
                     # pylint: disable-next=protected-access
                     module = sys._getframe(1).f_globals.get('__name__', '__main__')
         kwargs['module'] = module
+    elif module is not None:
+        raise TypeError("make_dataclass() got an unexpected keyword argument'module'")
 
     cls = dataclasses.make_dataclass(cls_name, fields=fields, **kwargs)  # type: ignore[arg-type]
     return dataclass(cls, namespace=namespace)  # type: ignore[call-overload]
