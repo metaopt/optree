@@ -109,4 +109,4 @@ jobs:
 
       - name: Test with pytest
         run: |
-          make pytest PYTESTOPTS="--verbosity=0 --durations=10"
+          make test PYTESTOPTS="--exitfirst --verbosity=0 --durations=10"
