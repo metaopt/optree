@@ -41,7 +41,7 @@ def test_same_signature():
     assert len(field_parameters) >= len(field_original_parameters) + 1
     assert next(reversed(field_parameters)) == 'pytree_node'
     assert field_parameters['pytree_node'].kind == inspect.Parameter.KEYWORD_ONLY
-    assert field_parameters['pytree_node'].default is True
+    assert field_parameters['pytree_node'].default is None
     field_parameters.pop('pytree_node')
     if sys.version_info >= (3, 8):
         assert OrderedDict(
@@ -240,3 +240,26 @@ def test_invalid_parameters():
         optree.dataclasses.dataclass(slots=False, namespace='some-namespace')
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
             dataclasses.dataclass(slots=False)
+
+
+def test_init_args():
+    @optree.dataclasses.dataclass(namespace='some-namespace')
+    class Foo:
+        a: int
+        b: int = 2
+        c: int = optree.dataclasses.field(init=False, pytree_node=False)
+        d: float = dataclasses.field(init=True, default=42.0)
+        e: int = dataclasses.field(init=False, metadata={'pytree_node': False})
+        f: float = optree.dataclasses.field(init=True, default=6.0, metadata={'pytree_node': True})
+
+        def __post_init__(self):
+            self.c = self.a + self.b
+            self.e = self.d * self.f
+
+    foo = Foo(1, d=4.5, f=3.0)
+    leaves, treespec = optree.tree_flatten(foo)
+    assert leaves == [foo]
+    assert treespec.is_leaf()
+    leaves, treespec = optree.tree_flatten(foo, namespace='some-namespace')
+    assert leaves == [1, 2, 4.5, 3.0]
+    assert foo == optree.tree_unflatten(treespec, leaves)

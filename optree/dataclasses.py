@@ -48,10 +48,12 @@ def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-ma
     compare: bool = True,
     metadata: dict[str, Any] | None = None,
     kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
-    pytree_node: bool = _PYTREE_NODE_DEFAULT,
+    pytree_node: bool | None = None,
 ) -> dataclasses.Field:
     """Field factory for :func:`dataclass`."""
     metadata = (metadata or {}).copy()
+    if pytree_node is None:
+        pytree_node = metadata.get('pytree_node', _PYTREE_NODE_DEFAULT)
     metadata['pytree_node'] = pytree_node
 
     kwargs = {
@@ -68,6 +70,12 @@ def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-ma
         kwargs['kw_only'] = kw_only
     elif kw_only is not dataclasses.MISSING:
         raise TypeError("field() got an unexpected keyword argument 'kw_only'")
+
+    if not init and pytree_node:
+        raise TypeError(
+            'PyTree node field must be included in `__init__()`. '
+            'Or you can explicitly set `optree.dataclasses.field(init=False, pytree_node=False)`.',
+        )
 
     return dataclasses.field(**kwargs)  # pylint: disable=invalid-field-call
 
@@ -179,7 +187,10 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
     for f in dataclasses.fields(cls):
         if f.metadata.get('pytree_node', _PYTREE_NODE_DEFAULT):
             if not f.init:
-                raise TypeError(f'PyTree node field {f.name!r} must be included in __init__.')
+                raise TypeError(
+                    f'PyTree node field {f.name!r} must be included in `__init__()`. '
+                    'Or you can explicitly set `optree.dataclasses.field(init=False, pytree_node=False)`.',
+                )
             children_fields[f.name] = f
         elif f.init:
             metadata_fields[f.name] = f
@@ -200,7 +211,9 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
         return children, metadata, tuple(children_fields)
 
     def unflatten_func(metadata: tuple[tuple[str, Any], ...], children: tuple[_U, ...]) -> _T:  # type: ignore[type-var]
-        return cls(*children, **dict(metadata))
+        kwargs = dict(zip(children_fields, children))
+        kwargs.update(metadata)
+        return cls(**kwargs)
 
     return register_pytree_node(  # type: ignore[return-value]
         cls,
