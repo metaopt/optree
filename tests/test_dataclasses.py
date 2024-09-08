@@ -242,7 +242,41 @@ def test_invalid_parameters():
             dataclasses.dataclass(slots=False)
 
 
-def test_init_args():
+def test_field_with_init():
+    with pytest.raises(
+        TypeError,
+        match=re.escape("field() got an unexpected keyword argument 'pytree_node'"),
+    ):
+        dataclasses.field(pytree_node=True)
+
+    f1 = optree.dataclasses.field()
+    assert f1.metadata['pytree_node'] is True
+    f2 = optree.dataclasses.field(pytree_node=False)
+    assert f2.metadata['pytree_node'] is False
+    f3 = optree.dataclasses.field(pytree_node=True)
+    assert f3.metadata['pytree_node'] is True
+    with pytest.raises(
+        TypeError,
+        match=re.escape('`pytree_node=True` is not allowed for non-init fields.'),
+    ):
+        optree.dataclasses.field(init=False)
+    f4 = optree.dataclasses.field(init=False, metadata={'pytree_node': False})
+    assert f4.metadata['pytree_node'] is False
+    with pytest.raises(
+        TypeError,
+        match=re.escape('`pytree_node=True` is not allowed for non-init fields.'),
+    ):
+        optree.dataclasses.field(init=False, metadata={'pytree_node': True})
+    f5 = optree.dataclasses.field(init=False, pytree_node=False)
+    assert f5.metadata['pytree_node'] is False
+    with pytest.raises(
+        TypeError,
+        match=re.escape('`pytree_node=True` is not allowed for non-init fields.'),
+    ):
+        optree.dataclasses.field(init=False, pytree_node=True)
+
+
+def test_dataclass_with_init():
     @optree.dataclasses.dataclass(namespace='some-namespace')
     class Foo:
         a: int
