@@ -285,15 +285,46 @@ def test_dataclass_with_init():
         d: float = dataclasses.field(init=True, default=42.0)
         e: int = dataclasses.field(init=False, metadata={'pytree_node': False})
         f: float = optree.dataclasses.field(init=True, default=6.0, metadata={'pytree_node': True})
+        g: int = dataclasses.field(init=True, default=7, metadata={'pytree_node': False})
 
         def __post_init__(self):
             self.c = self.a + self.b
             self.e = self.d * self.f
 
-    foo = Foo(1, d=4.5, f=3.0)
+    foo = Foo(1, d=4.5, f=3.0, g=8)
     leaves, treespec = optree.tree_flatten(foo)
     assert leaves == [foo]
     assert treespec.is_leaf()
     leaves, treespec = optree.tree_flatten(foo, namespace='some-namespace')
     assert leaves == [1, 2, 4.5, 3.0]
     assert foo == optree.tree_unflatten(treespec, leaves)
+
+    with pytest.raises(
+        TypeError,
+        match=r'PyTree node field .* must be included in `__init__\(\)`\.',
+    ):
+
+        @optree.dataclasses.dataclass(namespace='some-namespace')
+        class Foo1:
+            x: int = dataclasses.field(init=False)
+            y: int = 123
+
+    with pytest.raises(
+        TypeError,
+        match=r'PyTree node field .* must be included in `__init__\(\)`\.',
+    ):
+
+        @optree.dataclasses.dataclass(namespace='some-namespace')
+        class Foo2:
+            x: int = dataclasses.field(init=False, metadata={'pytree_node': True})
+            y: int = 123
+
+    with pytest.raises(
+        TypeError,
+        match=re.escape('`pytree_node=True` is not allowed for non-init fields.'),
+    ):
+
+        @optree.dataclasses.dataclass(namespace='some-namespace')
+        class Foo3:
+            x: int = optree.dataclasses.field(init=False, pytree_node=True)
+            y: int = 123
