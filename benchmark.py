@@ -550,9 +550,9 @@ def compare(  # pylint: disable=too-many-locals
         time = colored(f'{times_us[name]:8.2f}μs', attrs=attr)
         speedup = speedups[name]
         if speedup != 1.0:
-            speedup = ' -- ' + colored(f'x{speedup:.2f}'.ljust(6), color=color, attrs=attr)
+            speedup_str = ' -- ' + colored(f'x{speedup:.2f}'.ljust(6), color=color, attrs=attr)
         else:
-            speedup = '          '
+            speedup_str = '          '
         if '(NoneIsLeaf)' in label:
             label = label.replace('(NoneIsLeaf)', ' ')
             if 'none_is_leaf=True' in stmt:
@@ -564,7 +564,7 @@ def compare(  # pylint: disable=too-many-locals
         elif '(default)' in label:
             label = label.replace('(default)', ' ')
             stmt += '                      (None is Node)'
-        cprint(f'{label}: {time}{speedup}  <=  {stmt}')
+        cprint(f'{label}: {time}{speedup_str}  <=  {stmt}')
 
     print(flush=True)
 
