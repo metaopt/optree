@@ -190,54 +190,54 @@ def test_invalid_parameters():
         match=re.escape("dataclass() missing 1 required keyword-only argument: 'namespace'"),
     ):
         optree.dataclasses.dataclass()
-    optree.dataclasses.dataclass(namespace='some-namespace')
+    optree.dataclasses.dataclass(namespace='namespace')
     dataclasses.dataclass()
     if sys.version_info >= (3, 11):
-        optree.dataclasses.dataclass(weakref_slot=True, namespace='some-namespace')
+        optree.dataclasses.dataclass(weakref_slot=True, namespace='namespace')
         dataclasses.dataclass(weakref_slot=True)
-        optree.dataclasses.dataclass(weakref_slot=False, namespace='some-namespace')
+        optree.dataclasses.dataclass(weakref_slot=False, namespace='namespace')
         dataclasses.dataclass(weakref_slot=False)
     else:
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
-            optree.dataclasses.dataclass(weakref_slot=True, namespace='some-namespace')
+            optree.dataclasses.dataclass(weakref_slot=True, namespace='namespace')
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
             dataclasses.dataclass(weakref_slot=True)
-        optree.dataclasses.dataclass(weakref_slot=False, namespace='some-namespace')
+        optree.dataclasses.dataclass(weakref_slot=False, namespace='namespace')
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
             dataclasses.dataclass(weakref_slot=False)
     if sys.version_info >= (3, 10):
-        optree.dataclasses.dataclass(match_args=True, namespace='some-namespace')
+        optree.dataclasses.dataclass(match_args=True, namespace='namespace')
         dataclasses.dataclass(match_args=True)
-        optree.dataclasses.dataclass(match_args=False, namespace='some-namespace')
+        optree.dataclasses.dataclass(match_args=False, namespace='namespace')
         dataclasses.dataclass(match_args=False)
-        optree.dataclasses.dataclass(kw_only=True, namespace='some-namespace')
+        optree.dataclasses.dataclass(kw_only=True, namespace='namespace')
         dataclasses.dataclass(kw_only=True)
-        optree.dataclasses.dataclass(kw_only=False, namespace='some-namespace')
+        optree.dataclasses.dataclass(kw_only=False, namespace='namespace')
         dataclasses.dataclass(kw_only=False)
-        optree.dataclasses.dataclass(slots=True, namespace='some-namespace')
+        optree.dataclasses.dataclass(slots=True, namespace='namespace')
         dataclasses.dataclass(slots=True)
-        optree.dataclasses.dataclass(slots=False, namespace='some-namespace')
+        optree.dataclasses.dataclass(slots=False, namespace='namespace')
         dataclasses.dataclass(slots=False)
     else:
-        optree.dataclasses.dataclass(match_args=True, namespace='some-namespace')
+        optree.dataclasses.dataclass(match_args=True, namespace='namespace')
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
             dataclasses.dataclass(match_args=True)
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
-            optree.dataclasses.dataclass(match_args=False, namespace='some-namespace')
+            optree.dataclasses.dataclass(match_args=False, namespace='namespace')
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
             dataclasses.dataclass(match_args=False)
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
-            optree.dataclasses.dataclass(kw_only=True, namespace='some-namespace')
+            optree.dataclasses.dataclass(kw_only=True, namespace='namespace')
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
             dataclasses.dataclass(kw_only=True)
-        optree.dataclasses.dataclass(kw_only=False, namespace='some-namespace')
+        optree.dataclasses.dataclass(kw_only=False, namespace='namespace')
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
             dataclasses.dataclass(kw_only=False)
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
-            optree.dataclasses.dataclass(slots=True, namespace='some-namespace')
+            optree.dataclasses.dataclass(slots=True, namespace='namespace')
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
             dataclasses.dataclass(slots=True)
-        optree.dataclasses.dataclass(slots=False, namespace='some-namespace')
+        optree.dataclasses.dataclass(slots=False, namespace='namespace')
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
             dataclasses.dataclass(slots=False)
 
@@ -277,7 +277,7 @@ def test_field_with_init():
 
 
 def test_dataclass_with_init():
-    @optree.dataclasses.dataclass(namespace='some-namespace')
+    @optree.dataclasses.dataclass(namespace='namespace')
     class Foo:
         a: int
         b: int = 2
@@ -295,7 +295,7 @@ def test_dataclass_with_init():
     leaves, treespec = optree.tree_flatten(foo)
     assert leaves == [foo]
     assert treespec.is_leaf()
-    leaves, treespec = optree.tree_flatten(foo, namespace='some-namespace')
+    leaves, treespec = optree.tree_flatten(foo, namespace='namespace')
     assert leaves == [1, 2, 4.5, 3.0]
     assert foo == optree.tree_unflatten(treespec, leaves)
 
@@ -304,7 +304,7 @@ def test_dataclass_with_init():
         match=r'PyTree node field .* must be included in `__init__\(\)`\.',
     ):
 
-        @optree.dataclasses.dataclass(namespace='some-namespace')
+        @optree.dataclasses.dataclass(namespace='namespace')
         class Foo1:
             x: int = dataclasses.field(init=False)
             y: int = 123
@@ -314,7 +314,7 @@ def test_dataclass_with_init():
         match=r'PyTree node field .* must be included in `__init__\(\)`\.',
     ):
 
-        @optree.dataclasses.dataclass(namespace='some-namespace')
+        @optree.dataclasses.dataclass(namespace='namespace')
         class Foo2:
             x: int = dataclasses.field(init=False, metadata={'pytree_node': True})
             y: int = 123
@@ -324,7 +324,101 @@ def test_dataclass_with_init():
         match=re.escape('`pytree_node=True` is not allowed for non-init fields.'),
     ):
 
-        @optree.dataclasses.dataclass(namespace='some-namespace')
+        @optree.dataclasses.dataclass(namespace='namespace')
         class Foo3:
             x: int = optree.dataclasses.field(init=False, pytree_node=True)
             y: int = 123
+
+
+def test_dataclass_with_non_class():
+    with pytest.raises(
+        TypeError,
+        match=r'@optree\.dataclasses\.dataclass\(\) can only be used with classes, not .*',
+    ):
+
+        @optree.dataclasses.dataclass(namespace='namespace')
+        def foo():
+            pass
+
+    with pytest.raises(
+        TypeError,
+        match=r'@optree\.dataclasses\.dataclass\(\) can only be used with classes, not .*',
+    ):
+        optree.dataclasses.dataclass(lambda x: x, namespace='namespace')
+
+    class Foo:
+        x: int
+        y: float
+
+    optree.dataclasses.dataclass(Foo, namespace='namespace')
+
+
+def test_dataclass_with_duplicate_registrations():
+    with pytest.raises(
+        TypeError,
+        match=r'@optree\.dataclasses\.dataclass\(\) cannot be applied to .* more than once\.',
+    ):
+
+        @optree.dataclasses.dataclass(namespace='namespace')
+        @optree.dataclasses.dataclass(namespace='namespace')
+        class Foo1:
+            x: int
+            y: float
+
+    with pytest.raises(
+        TypeError,
+        match=r'@optree\.dataclasses\.dataclass\(\) cannot be applied to .* more than once\.',
+    ):
+
+        @optree.dataclasses.dataclass(namespace='other-namespace')
+        @optree.dataclasses.dataclass(namespace='namespace')
+        class Foo2:
+            x: int
+            y: float
+
+    @optree.register_pytree_node_class(namespace='other-namespace')
+    @optree.dataclasses.dataclass(namespace='namespace')
+    class Foo:
+        x: int
+        y: float
+
+        def tree_flatten(self):
+            return [self.y], self.x, ['y']
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            return cls(metadata, children[0])
+
+    foo = Foo(1, 2.0)
+    accessors1, leaves1, treespec1 = optree.tree_flatten_with_accessor(foo)
+    assert optree.tree_unflatten(treespec1, leaves1) == foo
+    assert accessors1 == [optree.PyTreeAccessor()]
+    assert leaves1 == [foo]
+    assert treespec1.is_leaf()
+    assert treespec1.kind == optree.PyTreeKind.LEAF
+    assert treespec1.type is None
+    accessors2, leaves2, treespec2 = optree.tree_flatten_with_accessor(foo, namespace='namespace')
+    assert optree.tree_unflatten(treespec2, leaves2) == foo
+    assert accessors2 == [
+        optree.PyTreeAccessor((optree.DataclassEntry('x', Foo, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('y', Foo, optree.PyTreeKind.CUSTOM),)),
+    ]
+    assert [a(foo) for a in accessors2] == [1, 2.0]
+    assert leaves2 == [1, 2.0]
+    assert treespec2.namespace == 'namespace'
+    assert treespec2.kind == optree.PyTreeKind.CUSTOM
+    assert treespec2.type is Foo
+    (
+        accessors3,
+        leaves3,
+        treespec3,
+    ) = optree.tree_flatten_with_accessor(foo, namespace='other-namespace')
+    assert optree.tree_unflatten(treespec3, leaves3) == foo
+    assert accessors3 == [
+        optree.PyTreeAccessor((optree.DataclassEntry('y', Foo, optree.PyTreeKind.CUSTOM),)),
+    ]
+    assert [a(foo) for a in accessors3] == [2.0]
+    assert leaves3 == [2.0]
+    assert treespec3.namespace == 'other-namespace'
+    assert treespec3.kind == optree.PyTreeKind.CUSTOM
+    assert treespec3.type is Foo

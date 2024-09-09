@@ -74,7 +74,7 @@ def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-ma
     if not init and pytree_node:
         raise TypeError(
             '`pytree_node=True` is not allowed for non-init fields. '
-            'Please explicitly set `optree.dataclasses.field(init=False, pytree_node=False)`.',
+            f'Please explicitly set `{__name__}.field(init=False, pytree_node=False)`.',
         )
 
     return dataclasses.field(**kwargs)  # pylint: disable=invalid-field-call
@@ -189,7 +189,7 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
             if not f.init:
                 raise TypeError(
                     f'PyTree node field {f.name!r} must be included in `__init__()`. '
-                    'Or you can explicitly set `optree.dataclasses.field(init=False, pytree_node=False)`.',
+                    f'Or you can explicitly set `{__name__}.field(init=False, pytree_node=False)`.',
                 )
             children_fields[f.name] = f
         elif f.init:
