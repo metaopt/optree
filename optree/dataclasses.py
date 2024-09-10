@@ -321,4 +321,6 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901
         **dataclass_kwargs,  # type: ignore[arg-type]
         **make_dataclass_kwargs,  # type: ignore[arg-type]
     )
+    dataclass_kwargs.pop('slots', None)  # already defined in `make_dataclass()`
+    dataclass_kwargs.pop('weakref_slot', None)  # already used in `make_dataclass()`
     return dataclass(cls, **dataclass_kwargs, namespace=namespace)  # type: ignore[call-overload]

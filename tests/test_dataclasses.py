@@ -682,3 +682,77 @@ def test_make_dataclass_future_parameters():
         )
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
             dataclasses.make_dataclass('Foo21', ['x', ('y', int), ('z', float, 0.0)], slots=False)
+
+
+def test_make_dataclass_with_duplicate_registrations():
+    Foo1 = optree.dataclasses.make_dataclass(  # noqa: N806
+        'Foo1',
+        [('x', int), ('y', float)],
+        namespace='error',
+    )
+    with pytest.raises(
+        TypeError,
+        match=r'@optree\.dataclasses\.dataclass\(\) cannot be applied to .* more than once\.',
+    ):
+        optree.dataclasses.dataclass(Foo1, namespace='error')
+
+    Foo2 = optree.dataclasses.make_dataclass(  # noqa: N806
+        'Foo2',
+        [('x', int), ('y', float)],
+        namespace='error',
+    )
+    with pytest.raises(
+        TypeError,
+        match=r'@optree\.dataclasses\.dataclass\(\) cannot be applied to .* more than once\.',
+    ):
+
+        optree.dataclasses.dataclass(Foo2, namespace='other-error')
+
+    Foo = optree.register_pytree_node_class(namespace='other-namespace')(  # noqa: N806
+        optree.dataclasses.make_dataclass(
+            'Foo',
+            [('x', int), ('y', float)],
+            ns={
+                'tree_flatten': lambda self: ([self.y], self.x, ['y']),
+                'tree_unflatten': classmethod(
+                    lambda cls, metadata, children: cls(metadata, children[0]),
+                ),
+            },
+            namespace='namespace',
+        ),
+    )
+
+    foo = Foo(1, 2.0)
+    accessors1, leaves1, treespec1 = optree.tree_flatten_with_accessor(foo)
+    assert optree.tree_unflatten(treespec1, leaves1) == foo
+    assert accessors1 == [optree.PyTreeAccessor()]
+    assert leaves1 == [foo]
+    assert treespec1.namespace == ''
+    assert treespec1.is_leaf()
+    assert treespec1.kind == optree.PyTreeKind.LEAF
+    assert treespec1.type is None
+    accessors2, leaves2, treespec2 = optree.tree_flatten_with_accessor(foo, namespace='namespace')
+    assert optree.tree_unflatten(treespec2, leaves2) == foo
+    assert accessors2 == [
+        optree.PyTreeAccessor((optree.DataclassEntry('x', Foo, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('y', Foo, optree.PyTreeKind.CUSTOM),)),
+    ]
+    assert [a(foo) for a in accessors2] == [1, 2.0]
+    assert leaves2 == [1, 2.0]
+    assert treespec2.namespace == 'namespace'
+    assert treespec2.kind == optree.PyTreeKind.CUSTOM
+    assert treespec2.type is Foo
+    (
+        accessors3,
+        leaves3,
+        treespec3,
+    ) = optree.tree_flatten_with_accessor(foo, namespace='other-namespace')
+    assert optree.tree_unflatten(treespec3, leaves3) == foo
+    assert accessors3 == [
+        optree.PyTreeAccessor((optree.DataclassEntry('y', Foo, optree.PyTreeKind.CUSTOM),)),
+    ]
+    assert [a(foo) for a in accessors3] == [2.0]
+    assert leaves3 == [2.0]
+    assert treespec3.namespace == 'other-namespace'
+    assert treespec3.kind == optree.PyTreeKind.CUSTOM
+    assert treespec3.type is Foo
