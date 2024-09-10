@@ -16,6 +16,7 @@
 # pylint: disable=missing-function-docstring,invalid-name,wrong-import-order
 
 import abc
+import collections.abc
 import dataclasses
 import inspect
 import re
@@ -481,6 +482,22 @@ def test_dataclass_with_abstract_class():
             def norm(self, p: float = 2):
                 raise NotImplementedError
 
+    with pytest.raises(
+        TypeError,
+        match=(
+            r'@optree\.dataclasses\.dataclass\(\) cannot register abstract class .*, '
+            r'because it cannot be instantiated\.'
+        ),
+    ):
+
+        @optree.dataclasses.dataclass(namespace='error')
+        class Vec(collections.abc.Sequence):
+            x: float
+            y: float
+
+            def __len__(self):
+                return 2
+
 
 def test_make_dataclass_future_parameters():
     with pytest.raises(
@@ -756,3 +773,104 @@ def test_make_dataclass_with_duplicate_registrations():
     assert treespec3.namespace == 'other-namespace'
     assert treespec3.kind == optree.PyTreeKind.CUSTOM
     assert treespec3.type is Foo
+
+
+def test_make_dataclass_with_invalid_namespace():
+    with pytest.raises(TypeError, match='The namespace must be a string'):
+        optree.dataclasses.make_dataclass('Foo1', ['x', ('y', int), ('z', float, 0.0)], namespace=1)
+
+    with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
+        optree.dataclasses.make_dataclass(
+            'Foo2',
+            ['x', ('y', int), ('z', float, 0.0)],
+            namespace='',
+        )
+
+    Foo = optree.dataclasses.make_dataclass(  # noqa: N806
+        'Foo',
+        [('x', int), ('y', float)],
+        namespace=GLOBAL_NAMESPACE,
+    )
+    foo = Foo(1, 2.0)
+    accessors, leaves, treespec = optree.tree_flatten_with_accessor(foo)
+    assert optree.tree_unflatten(treespec, leaves) == foo
+    assert accessors == [
+        optree.PyTreeAccessor((optree.DataclassEntry('x', Foo, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('y', Foo, optree.PyTreeKind.CUSTOM),)),
+    ]
+    assert [a(foo) for a in accessors] == [1, 2.0]
+    assert leaves == [1, 2.0]
+    assert treespec.namespace == ''
+    assert treespec.kind == optree.PyTreeKind.CUSTOM
+    assert treespec.type is Foo
+
+    with pytest.raises(TypeError, match='The namespace must be a string'):
+        optree.dataclasses.make_dataclass(
+            'Bar1',
+            ['x', ('y', int), ('z', float, 0.0)],
+            ns=1,
+            namespace=None,
+        )
+
+    with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
+        optree.dataclasses.make_dataclass(
+            'Foo2',
+            ['x', ('y', int), ('z', float, 0.0)],
+            ns='',
+            namespace={},
+        )
+
+    Bar = optree.dataclasses.make_dataclass(  # noqa: N806
+        'Bar',
+        [('x', int), ('y', float)],
+        ns=GLOBAL_NAMESPACE,
+        namespace={},
+    )
+    bar = Bar(1, 2.0)
+    accessors, leaves, treespec = optree.tree_flatten_with_accessor(bar)
+    assert optree.tree_unflatten(treespec, leaves) == bar
+    assert accessors == [
+        optree.PyTreeAccessor((optree.DataclassEntry('x', Bar, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('y', Bar, optree.PyTreeKind.CUSTOM),)),
+    ]
+    assert [a(bar) for a in accessors] == [1, 2.0]
+    assert leaves == [1, 2.0]
+    assert treespec.namespace == ''
+    assert treespec.kind == optree.PyTreeKind.CUSTOM
+    assert treespec.type is Bar
+
+
+def test_make_dataclass_with_abstract_class():
+    with pytest.raises(
+        TypeError,
+        match=(
+            r'@optree\.dataclasses\.dataclass\(\) cannot register abstract class .*, '
+            r'because it cannot be instantiated\.'
+        ),
+    ):
+        optree.dataclasses.make_dataclass(
+            'Vec',
+            [('x', float), ('y', float)],
+            bases=(abc.ABC,),
+            ns={
+                'norm': abc.abstractmethod(lambda self, p=2: (self.x**p + self.y**p) ** (1 / p)),
+            },
+            namespace='error',
+        )
+
+    with pytest.raises(
+        TypeError,
+        match=(
+            r'@optree\.dataclasses\.dataclass\(\) cannot register abstract class .*, '
+            r'because it cannot be instantiated\.'
+        ),
+    ):
+        optree.dataclasses.make_dataclass(
+            'Vec',
+            [('x', float), ('y', float)],
+            bases=(collections.abc.Sequence,),
+            ns={
+                '__len__': lambda self: 2,
+            },
+            namespace='error',
+        )
