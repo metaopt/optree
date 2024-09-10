@@ -238,7 +238,7 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
     )
 
 
-# pylint: disable-next=function-redefined,too-many-arguments,too-many-locals
+# pylint: disable-next=function-redefined,too-many-arguments,too-many-locals,too-many-branches
 def make_dataclass(  # type: ignore[no-redef] # noqa: C901
     cls_name: str,
     # pylint: disable-next=redefined-outer-name
@@ -263,10 +263,15 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901
     # pylint: disable-next=import-outside-toplevel
     from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
 
-    if (isinstance(namespace, dict) or namespace is None) and (  # type: ignore[unreachable]
-        isinstance(ns, str) or ns is GLOBAL_NAMESPACE  # type: ignore[unreachable]
-    ):
-        ns, namespace = namespace, ns  # type: ignore[unreachable]
+    if isinstance(namespace, dict) or namespace is None:  # type: ignore[unreachable]
+        if ns is GLOBAL_NAMESPACE or isinstance(ns, str):  # type: ignore[unreachable]
+            ns, namespace = namespace, ns
+        elif ns is None:
+            raise TypeError("make_dataclass() missing 1 required keyword-only argument: 'ns'")
+    if namespace is not GLOBAL_NAMESPACE and not isinstance(namespace, str):
+        raise TypeError(f'The namespace must be a string, got {namespace!r}.')
+    if namespace == '':
+        raise ValueError('The namespace cannot be an empty string.')
 
     kwargs = {
         'bases': bases,

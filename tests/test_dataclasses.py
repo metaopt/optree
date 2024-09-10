@@ -168,7 +168,7 @@ def test_same_signature():
         )
 
 
-def test_invalid_parameters():
+def test_field_future_parameters():
     # pylint: disable=invalid-field-call
     optree.dataclasses.field()
     dataclasses.field()
@@ -187,6 +187,42 @@ def test_invalid_parameters():
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
             dataclasses.field(kw_only=False)
 
+
+def test_field_with_init():
+    with pytest.raises(
+        TypeError,
+        match=re.escape("field() got an unexpected keyword argument 'pytree_node'"),
+    ):
+        dataclasses.field(pytree_node=True)
+
+    f1 = optree.dataclasses.field()
+    assert f1.metadata['pytree_node'] is True
+    f2 = optree.dataclasses.field(pytree_node=False)
+    assert f2.metadata['pytree_node'] is False
+    f3 = optree.dataclasses.field(pytree_node=True)
+    assert f3.metadata['pytree_node'] is True
+    with pytest.raises(
+        TypeError,
+        match=re.escape('`pytree_node=True` is not allowed for non-init fields.'),
+    ):
+        optree.dataclasses.field(init=False)
+    f4 = optree.dataclasses.field(init=False, metadata={'pytree_node': False})
+    assert f4.metadata['pytree_node'] is False
+    with pytest.raises(
+        TypeError,
+        match=re.escape('`pytree_node=True` is not allowed for non-init fields.'),
+    ):
+        optree.dataclasses.field(init=False, metadata={'pytree_node': True})
+    f5 = optree.dataclasses.field(init=False, pytree_node=False)
+    assert f5.metadata['pytree_node'] is False
+    with pytest.raises(
+        TypeError,
+        match=re.escape('`pytree_node=True` is not allowed for non-init fields.'),
+    ):
+        optree.dataclasses.field(init=False, pytree_node=True)
+
+
+def test_dataclass_future_parameters():
     with pytest.raises(
         TypeError,
         match=re.escape("dataclass() missing 1 required keyword-only argument: 'namespace'"),
@@ -242,40 +278,6 @@ def test_invalid_parameters():
         optree.dataclasses.dataclass(slots=False, namespace='namespace')
         with pytest.raises(TypeError, match='got an unexpected keyword argument'):
             dataclasses.dataclass(slots=False)
-
-
-def test_field_with_init():
-    with pytest.raises(
-        TypeError,
-        match=re.escape("field() got an unexpected keyword argument 'pytree_node'"),
-    ):
-        dataclasses.field(pytree_node=True)
-
-    f1 = optree.dataclasses.field()
-    assert f1.metadata['pytree_node'] is True
-    f2 = optree.dataclasses.field(pytree_node=False)
-    assert f2.metadata['pytree_node'] is False
-    f3 = optree.dataclasses.field(pytree_node=True)
-    assert f3.metadata['pytree_node'] is True
-    with pytest.raises(
-        TypeError,
-        match=re.escape('`pytree_node=True` is not allowed for non-init fields.'),
-    ):
-        optree.dataclasses.field(init=False)
-    f4 = optree.dataclasses.field(init=False, metadata={'pytree_node': False})
-    assert f4.metadata['pytree_node'] is False
-    with pytest.raises(
-        TypeError,
-        match=re.escape('`pytree_node=True` is not allowed for non-init fields.'),
-    ):
-        optree.dataclasses.field(init=False, metadata={'pytree_node': True})
-    f5 = optree.dataclasses.field(init=False, pytree_node=False)
-    assert f5.metadata['pytree_node'] is False
-    with pytest.raises(
-        TypeError,
-        match=re.escape('`pytree_node=True` is not allowed for non-init fields.'),
-    ):
-        optree.dataclasses.field(init=False, pytree_node=True)
 
 
 def test_dataclass_with_init():
@@ -478,3 +480,205 @@ def test_dataclass_with_abstract_class():
             @abc.abstractmethod
             def norm(self, p: float = 2):
                 raise NotImplementedError
+
+
+def test_make_dataclass_future_parameters():
+    with pytest.raises(
+        TypeError,
+        match=re.escape("make_dataclass() missing 1 required keyword-only argument: 'namespace'"),
+    ):
+        optree.dataclasses.make_dataclass('Foo1', ['x', ('y', int), ('z', float, 0.0)])
+    if sys.version_info >= (3, 12):
+        assert (
+            optree.dataclasses.make_dataclass(
+                'Foo2',
+                ['x', ('y', int), ('z', float, 0.0)],
+                namespace='namespace',
+            ).__module__
+            == __name__
+        )
+        assert (
+            dataclasses.make_dataclass('Foo3', ['x', ('y', int), ('z', float, 0.0)]).__module__
+            == __name__
+        )
+        assert (
+            optree.dataclasses.make_dataclass(
+                'Foo4',
+                ['x', ('y', int), ('z', float, 0.0)],
+                module='some.module',
+                namespace='namespace',
+            ).__module__
+            == 'some.module'
+        )
+        assert (
+            dataclasses.make_dataclass(
+                'Foo5',
+                ['x', ('y', int), ('z', float, 0.0)],
+                module='some.module',
+            ).__module__
+            == 'some.module'
+        )
+    else:
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            optree.dataclasses.make_dataclass(
+                'Foo4',
+                ['x', ('y', int), ('z', float, 0.0)],
+                module='some.module',
+                namespace='error',
+            )
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.make_dataclass(
+                'Foo5',
+                ['x', ('y', int), ('z', float, 0.0)],
+                module='some.module',
+            )
+    if sys.version_info >= (3, 11):
+        optree.dataclasses.make_dataclass(
+            'Foo6',
+            ['x', ('y', int), ('z', float, 0.0)],
+            slots=True,
+            weakref_slot=True,
+            namespace='namespace',
+        )
+        dataclasses.make_dataclass(
+            'Foo7',
+            ['x', ('y', int), ('z', float, 0.0)],
+            slots=True,
+            weakref_slot=True,
+        )
+        optree.dataclasses.make_dataclass(
+            'Foo8',
+            ['x', ('y', int), ('z', float, 0.0)],
+            weakref_slot=False,
+            namespace='namespace',
+        )
+        dataclasses.make_dataclass('Foo9', ['x', ('y', int), ('z', float, 0.0)], weakref_slot=False)
+    else:
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            optree.dataclasses.make_dataclass(
+                'Foo6',
+                ['x', ('y', int), ('z', float, 0.0)],
+                weakref_slot=True,
+                namespace='error',
+            )
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.make_dataclass(
+                'Foo7',
+                ['x', ('y', int), ('z', float, 0.0)],
+                weakref_slot=True,
+            )
+        optree.dataclasses.make_dataclass(
+            'Foo8',
+            ['x', ('y', int), ('z', float, 0.0)],
+            weakref_slot=False,
+            namespace='namespace',
+        )
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.make_dataclass(
+                'Foo9',
+                ['x', ('y', int), ('z', float, 0.0)],
+                weakref_slot=False,
+            )
+    if sys.version_info >= (3, 10):
+        optree.dataclasses.make_dataclass(
+            'Foo10',
+            ['x', ('y', int), ('z', float, 0.0)],
+            match_args=True,
+            namespace='namespace',
+        )
+        dataclasses.make_dataclass('Foo11', ['x', ('y', int), ('z', float, 0.0)], match_args=True)
+        optree.dataclasses.make_dataclass(
+            'Foo12',
+            ['x', ('y', int), ('z', float, 0.0)],
+            match_args=False,
+            namespace='namespace',
+        )
+        dataclasses.make_dataclass('Foo13', ['x', ('y', int), ('z', float, 0.0)], match_args=False)
+        optree.dataclasses.make_dataclass(
+            'Foo14',
+            ['x', ('y', int), ('z', float, 0.0)],
+            kw_only=True,
+            namespace='namespace',
+        )
+        dataclasses.make_dataclass('Foo15', ['x', ('y', int), ('z', float, 0.0)], kw_only=True)
+        optree.dataclasses.make_dataclass(
+            'Foo16',
+            ['x', ('y', int), ('z', float, 0.0)],
+            kw_only=False,
+            namespace='namespace',
+        )
+        dataclasses.make_dataclass('Foo17', ['x', ('y', int), ('z', float, 0.0)], kw_only=False)
+        optree.dataclasses.make_dataclass(
+            'Foo18',
+            ['x', ('y', int), ('z', float, 0.0)],
+            slots=True,
+            namespace='namespace',
+        )
+        dataclasses.make_dataclass('Foo19', ['x', ('y', int), ('z', float, 0.0)], slots=True)
+        optree.dataclasses.make_dataclass(
+            'Foo20',
+            ['x', ('y', int), ('z', float, 0.0)],
+            slots=False,
+            namespace='namespace',
+        )
+        dataclasses.make_dataclass('Foo21', ['x', ('y', int), ('z', float, 0.0)], slots=False)
+    else:
+        optree.dataclasses.make_dataclass(
+            'Foo10',
+            ['x', ('y', int), ('z', float, 0.0)],
+            match_args=True,
+            namespace='namespace',
+        )
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.make_dataclass(
+                'Foo11',
+                ['x', ('y', int), ('z', float, 0.0)],
+                match_args=True,
+            )
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            optree.dataclasses.make_dataclass(
+                'Foo12',
+                ['x', ('y', int), ('z', float, 0.0)],
+                match_args=False,
+                namespace='error',
+            )
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.make_dataclass(
+                'Foo13',
+                ['x', ('y', int), ('z', float, 0.0)],
+                match_args=False,
+            )
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            optree.dataclasses.make_dataclass(
+                'Foo14',
+                ['x', ('y', int), ('z', float, 0.0)],
+                kw_only=True,
+                namespace='error',
+            )
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.make_dataclass('Foo15', ['x', ('y', int), ('z', float, 0.0)], kw_only=True)
+        optree.dataclasses.make_dataclass(
+            'Foo16',
+            ['x', ('y', int), ('z', float, 0.0)],
+            kw_only=False,
+            namespace='namespace',
+        )
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.make_dataclass('Foo17', ['x', ('y', int), ('z', float, 0.0)], kw_only=False)
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            optree.dataclasses.make_dataclass(
+                'Foo18',
+                ['x', ('y', int), ('z', float, 0.0)],
+                slots=True,
+                namespace='error',
+            )
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.make_dataclass('Foo19', ['x', ('y', int), ('z', float, 0.0)], slots=True)
+        optree.dataclasses.make_dataclass(
+            'Foo20',
+            ['x', ('y', int), ('z', float, 0.0)],
+            slots=False,
+            namespace='namespace',
+        )
+        with pytest.raises(TypeError, match='got an unexpected keyword argument'):
+            dataclasses.make_dataclass('Foo21', ['x', ('y', int), ('z', float, 0.0)], slots=False)
