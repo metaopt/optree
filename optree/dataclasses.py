@@ -273,9 +273,7 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901
     if namespace == '':
         raise ValueError('The namespace cannot be an empty string.')
 
-    kwargs = {
-        'bases': bases,
-        'namespace': ns,
+    dataclass_kwargs = {
         'init': init,
         'repr': repr,
         'eq': eq,
@@ -283,11 +281,15 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901
         'unsafe_hash': unsafe_hash,
         'frozen': frozen,
     }
+    make_dataclass_kwargs = {
+        'bases': bases,
+        'namespace': ns,
+    }
 
     if sys.version_info >= (3, 10):
-        kwargs['match_args'] = match_args
-        kwargs['kw_only'] = kw_only
-        kwargs['slots'] = slots
+        dataclass_kwargs['match_args'] = match_args
+        dataclass_kwargs['kw_only'] = kw_only
+        dataclass_kwargs['slots'] = slots
     elif match_args is not True:
         raise TypeError("make_dataclass() got an unexpected keyword argument 'match_args'")
     elif kw_only is not False:
@@ -296,7 +298,7 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901
         raise TypeError("make_dataclass() got an unexpected keyword argument 'slots'")
 
     if sys.version_info >= (3, 11):
-        kwargs['weakref_slot'] = weakref_slot
+        dataclass_kwargs['weakref_slot'] = weakref_slot
     elif weakref_slot is not False:
         raise TypeError("make_dataclass() got an unexpected keyword argument 'weakref_slot'")
 
@@ -305,13 +307,18 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901
             try:
                 # pylint: disable-next=protected-access
                 module = sys._getframemodulename(1) or '__main__'  # type: ignore[attr-defined]
-            except AttributeError:
+            except AttributeError:  # pragma: no cover
                 with contextlib.suppress(AttributeError, ValueError):
                     # pylint: disable-next=protected-access
                     module = sys._getframe(1).f_globals.get('__name__', '__main__')
-        kwargs['module'] = module
+        make_dataclass_kwargs['module'] = module
     elif module is not None:
         raise TypeError("make_dataclass() got an unexpected keyword argument'module'")
 
-    cls = dataclasses.make_dataclass(cls_name, fields=fields, **kwargs)  # type: ignore[arg-type]
-    return dataclass(cls, namespace=namespace)  # type: ignore[call-overload]
+    cls = dataclasses.make_dataclass(
+        cls_name,
+        fields=fields,
+        **dataclass_kwargs,  # type: ignore[arg-type]
+        **make_dataclass_kwargs,  # type: ignore[arg-type]
+    )
+    return dataclass(cls, **dataclass_kwargs, namespace=namespace)  # type: ignore[call-overload]
