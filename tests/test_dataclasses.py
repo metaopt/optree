@@ -24,6 +24,7 @@ from collections import OrderedDict
 import pytest
 
 import optree
+from helpers import GLOBAL_NAMESPACE
 
 
 def test_public_api():
@@ -394,6 +395,7 @@ def test_dataclass_with_duplicate_registrations():
     assert optree.tree_unflatten(treespec1, leaves1) == foo
     assert accessors1 == [optree.PyTreeAccessor()]
     assert leaves1 == [foo]
+    assert treespec1.namespace == ''
     assert treespec1.is_leaf()
     assert treespec1.kind == optree.PyTreeKind.LEAF
     assert treespec1.type is None
@@ -422,3 +424,37 @@ def test_dataclass_with_duplicate_registrations():
     assert treespec3.namespace == 'other-namespace'
     assert treespec3.kind == optree.PyTreeKind.CUSTOM
     assert treespec3.type is Foo
+
+
+def test_dataclass_with_invalid_namespace():
+    with pytest.raises(TypeError, match='The namespace must be a string'):
+
+        @optree.dataclasses.dataclass(namespace=1)
+        class Foo1:
+            x: int
+            y: float
+
+    with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
+
+        @optree.dataclasses.dataclass(namespace='')
+        class Foo2:
+            x: int
+            y: float
+
+    @optree.dataclasses.dataclass(namespace=GLOBAL_NAMESPACE)
+    class Foo:
+        x: int
+        y: float
+
+    foo = Foo(1, 2.0)
+    accessors, leaves, treespec = optree.tree_flatten_with_accessor(foo)
+    assert optree.tree_unflatten(treespec, leaves) == foo
+    assert accessors == [
+        optree.PyTreeAccessor((optree.DataclassEntry('x', Foo, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('y', Foo, optree.PyTreeKind.CUSTOM),)),
+    ]
+    assert [a(foo) for a in accessors] == [1, 2.0]
+    assert leaves == [1, 2.0]
+    assert treespec.namespace == ''
+    assert treespec.kind == optree.PyTreeKind.CUSTOM
+    assert treespec.type is Foo

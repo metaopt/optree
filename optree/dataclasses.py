@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import inspect
 import sys
 import types
 from dataclasses import *  # noqa: F401,F403,RUF100 # pylint: disable=wildcard-import,unused-wildcard-import
@@ -141,6 +142,9 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
     namespace: str,
 ) -> _TypeT | Callable[[_TypeT], _TypeT]:
     """Dataclass decorator with PyTree integration."""
+    # pylint: disable-next=import-outside-toplevel
+    from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
+
     kwargs = {
         'init': init,
         'repr': repr,
@@ -173,12 +177,16 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
 
         return decorator
 
-    if not isinstance(cls, type):
+    if not inspect.isclass(cls):
         raise TypeError(f'@{__name__}.dataclass() can only be used with classes, not {cls!r}.')
     if _FIELDS in cls.__dict__:
         raise TypeError(
             f'@{__name__}.dataclass() cannot be applied to {cls.__name__} more than once.',
         )
+    if namespace is not GLOBAL_NAMESPACE and not isinstance(namespace, str):
+        raise TypeError(f'The namespace must be a string, got {namespace!r}.')
+    if namespace == '':
+        raise ValueError('The namespace cannot be an empty string.')
 
     cls = dataclasses.dataclass(cls, **kwargs)  # type: ignore[assignment]
 
