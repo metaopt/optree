@@ -22,7 +22,7 @@ import inspect
 import sys
 import types
 from dataclasses import *  # noqa: F401,F403,RUF100 # pylint: disable=wildcard-import,unused-wildcard-import
-from typing import Any, Callable, TypeVar, overload
+from typing import Any, Callable, Iterable, TypeVar, overload
 from typing_extensions import Literal  # Python 3.8+
 from typing_extensions import dataclass_transform  # Python 3.11+
 
@@ -208,6 +208,7 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
         elif f.init:
             metadata_fields[f.name] = f
 
+    children_field_names = tuple(children_fields)
     children_fields = types.MappingProxyType(children_fields)
     metadata_fields = types.MappingProxyType(metadata_fields)
     setattr(cls, _FIELDS, (children_fields, metadata_fields))
@@ -219,12 +220,12 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
         tuple[tuple[str, Any], ...],
         tuple[str, ...],
     ]:
-        children = tuple(getattr(obj, name) for name in children_fields)
+        children = tuple(getattr(obj, name) for name in children_field_names)
         metadata = tuple((name, getattr(obj, name)) for name in metadata_fields)
-        return children, metadata, tuple(children_fields)
+        return children, metadata, children_field_names
 
     def unflatten_func(metadata: tuple[tuple[str, Any], ...], children: tuple[_U, ...]) -> _T:  # type: ignore[type-var]
-        kwargs = dict(zip(children_fields, children))
+        kwargs = dict(zip(children_field_names, children))
         kwargs.update(metadata)
         return cls(**kwargs)
 
@@ -240,7 +241,8 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
 # pylint: disable-next=function-redefined,too-many-arguments,too-many-locals
 def make_dataclass(  # type: ignore[no-redef] # noqa: C901
     cls_name: str,
-    fields: dict[str, Any],  # pylint: disable=redefined-outer-name
+    # pylint: disable-next=redefined-outer-name
+    fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],
     *,
     bases: tuple[type, ...] = (),
     ns: dict[str, Any] | None = None,  # redirect to `namespace` to `dataclasses.make_dataclass()`
