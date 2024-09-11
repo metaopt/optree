@@ -19,6 +19,7 @@ import abc
 import collections.abc
 import dataclasses
 import inspect
+import math
 import re
 import sys
 from collections import OrderedDict
@@ -505,6 +506,17 @@ def test_make_dataclass_future_parameters():
         match=re.escape("make_dataclass() missing 1 required keyword-only argument: 'namespace'"),
     ):
         optree.dataclasses.make_dataclass('Foo1', ['x', ('y', int), ('z', float, 0.0)])
+    with pytest.raises(
+        TypeError,
+        match=re.escape("make_dataclass() missing 1 required keyword-only argument: 'ns'"),
+    ):
+        optree.dataclasses.make_dataclass(
+            'Foo1',
+            ['x', ('y', int), ('z', float, 0.0)],
+            namespace={
+                'norm': lambda self: math.hypot(self.x, self.y, self.z),
+            },
+        )
     if sys.version_info >= (3, 12):
         assert (
             optree.dataclasses.make_dataclass(
