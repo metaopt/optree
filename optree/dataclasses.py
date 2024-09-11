@@ -22,7 +22,8 @@ The PyTree integration allows dataclasses to be flattened and unflattened recurs
 are stored in a special attribute named ``__optree_dataclass_fields__`` in the dataclass.
 
 >>> import math
->>> import optree
+... import optree
+...
 >>> @optree.dataclasses.dataclass(namespace='my_module')
 ... class Point:
 ...     x: float
