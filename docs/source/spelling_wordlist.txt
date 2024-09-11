@@ -90,3 +90,6 @@ accessor
 accessors
 subtype
 redef
+hypot
+init
+ns

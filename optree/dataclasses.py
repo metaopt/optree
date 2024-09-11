@@ -12,7 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""PyTree integration with :mod:`dataclasses`."""
+"""PyTree integration with :mod:`dataclasses`.
+
+This module implements PyTree integration with :mod:`dataclasses` by redefining the :func:`field`,
+:func:`dataclass`, and :func:`make_dataclass` functions. Other APIs are re-exported from the
+original :mod:`dataclasses` module.
+
+The PyTree integration allows dataclasses to be flattened and unflattened recursively. The fields
+are stored in a special attribute named ``__optree_dataclass_fields__`` in the dataclass.
+
+>>> import math
+>>> import optree
+>>> @optree.dataclasses.dataclass(namespace='my_module')
+... class Point:
+...     x: float
+...     y: float
+...     z: float = 0.0
+...     norm: float = optree.dataclasses.field(init=False, pytree_node=False)
+...
+...     def __post_init__(self):
+...         self.norm = math.hypot(self.x, self.y, self.z)
+...
+>>> point = Point(1.0, 2.0, 3.0)
+>>> leaves, treespec = optree.tree_flatten(point, namespace='my_module')
+>>> leaves
+[1.0, 2.0, 3.0]
+>>> point == optree.tree_unflatten(treespec, leaves)
+True
+"""
 
 from __future__ import annotations
 
@@ -51,7 +78,30 @@ def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-ma
     kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
     pytree_node: bool | None = None,
 ) -> dataclasses.Field:
-    """Field factory for :func:`dataclass`."""
+    """Field factory for :func:`dataclass`.
+
+    This factory function is used to define the fields in a dataclass. It is similar to the field
+    factory :func:`dataclasses.field`, but with an additional ``pytree_node`` parameter. If
+    ``pytree_node`` is :data:`True` (default), the field will be considered a child node in the
+    PyTree structure which can be recursively flattened and unflattened. Otherwise, the field will
+    be considered as PyTree metadata.
+
+    Setting `pytree_node` in the field factory is equivalent to setting the `pytree_node` metadata
+    in the original field factory. The `pytree_node` metadata can be accessed using the `metadata`.
+    If ``pytree_node`` is :data:`None`, the ``metadata.get('pytree_node', True)`` will be used.
+
+    .. note::
+        If a field is considered a child node, it must be included in the argument list of the
+        :meth:`__init__` method.
+
+    Args:
+        pytree_node (bool or None, optional): Whether the field is a PyTree node.
+        **kwargs (optional): Optional keyword arguments passed to :func:`dataclasses.field`.
+
+    Returns:
+        dataclasses.Field: The field defined using the provided arguments with
+            ``field.metadata['pytree_node']`` set.
+    """
     metadata = (metadata or {}).copy()
     if pytree_node is None:
         pytree_node = metadata.get('pytree_node', _PYTREE_NODE_DEFAULT)
@@ -141,7 +191,16 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
     weakref_slot: bool = False,  # Python 3.11+
     namespace: str,
 ) -> _TypeT | Callable[[_TypeT], _TypeT]:
-    """Dataclass decorator with PyTree integration."""
+    """Dataclass decorator with PyTree integration.
+
+    Args:
+        cls (type or None, optional): The class to decorate. If :data:`None`, return a decorator.
+        namespace (str): The registry namespace used for the PyTree registration.
+        **kwargs (optional): Optional keyword arguments passed to :func:`dataclasses.dataclass`.
+
+    Returns:
+        type or callable: The decorated class with PyTree integration or decorator function.
+    """
     # pylint: disable-next=import-outside-toplevel
     from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
 
@@ -257,9 +316,34 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901
     slots: bool = False,  # Python 3.10+
     weakref_slot: bool = False,  # Python 3.11+
     module: str | None = None,  # Python 3.12+
-    namespace: str,
+    namespace: str,  # the PyTree registration namespace
 ) -> type:
-    """Make a dataclass with PyTree integration."""
+    """Make a new dynamically created dataclass with PyTree integration.
+
+    The dataclass name will be ``cls_name``. ``fields`` is an iterable of either (name), (name, type),
+    or (name, type, Field) objects. If type is omitted, use the string :data:`typing.Any`. Field
+    objects are created by the equivalent of calling :func:`field` (name, type [, Field-info]).
+
+    The ``namespace`` parameter is the PyTree registration namespace which should be a string. The
+    ``namespace`` in the original :func:`dataclasses.make_dataclass` function is renamed to ``ns``
+    to avoid conflicts.
+
+    The remaining parameters are passed to :func:`dataclasses.make_dataclass`.
+    See :func:`dataclasses.make_dataclass` for more information.
+
+    Args:
+        cls_name: The name of the dataclass.
+        fields (Iterable[str | tuple[str, Any] | tuple[str, Any, Any]]): An iterable of either
+            (name), (name, type), or (name, type, Field) objects.
+        namespace (str): The registry namespace used for the PyTree registration.
+        ns (dict or None, optional): The namespace used in dynamic type creation.
+            See :func:`dataclasses.make_dataclass` and the builtin :func:`type` function for more
+            information.
+        **kwargs (optional): Optional keyword arguments passed to :func:`dataclasses.make_dataclass`.
+
+    Returns:
+        type: The dynamically created dataclass with PyTree integration.
+    """
     # pylint: disable-next=import-outside-toplevel
     from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
 
