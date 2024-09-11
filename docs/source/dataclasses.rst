@@ -3,6 +3,9 @@ Integration with :mod:`dataclasses`
 
 .. currentmodule:: optree.dataclasses
 
+.. automodule:: optree.dataclasses
+    :no-members:
+
 .. autosummary::
 
     field
