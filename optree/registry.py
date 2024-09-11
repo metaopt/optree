@@ -240,6 +240,10 @@ def register_pytree_node(
     """
     if not inspect.isclass(cls):
         raise TypeError(f'Expected a class, got {cls!r}.')
+    if len(getattr(cls, '__abstractmethods__', ())) > 0:
+        raise TypeError(
+            f'Cannot register abstract class {cls!r}, because it cannot be instantiated.',
+        )
     if not (inspect.isclass(path_entry_type) and issubclass(path_entry_type, PyTreeEntry)):
         raise TypeError(f'Expected a subclass of PyTreeEntry, got {path_entry_type!r}.')
     if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
@@ -383,6 +387,10 @@ def register_pytree_node_class(  # noqa: C901
         )  # type: ignore[return-value]
     if not inspect.isclass(cls):
         raise TypeError(f'Expected a class, got {cls!r}.')
+    if len(getattr(cls, '__abstractmethods__', ())) > 0:
+        raise TypeError(
+            f'Cannot register abstract class {cls!r}, because it cannot be instantiated.',
+        )
     if path_entry_type is None:
         path_entry_type = getattr(cls, 'TREE_PATH_ENTRY_TYPE', AutoEntry)
     if not (inspect.isclass(path_entry_type) and issubclass(path_entry_type, PyTreeEntry)):

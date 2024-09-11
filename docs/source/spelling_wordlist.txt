@@ -83,8 +83,13 @@ setattr
 delattr
 typecheck
 subclassed
+dataclass
 dataclasses
 subpath
 accessor
 accessors
 subtype
+redef
+hypot
+init
+ns
