@@ -158,14 +158,14 @@ def _tp_cache(func: Callable[P, T]) -> Callable[P, T]:
     def inner(*args: P.args, **kwargs: P.kwargs) -> T:
         try:
             return cached(*args, **kwargs)  # type: ignore[arg-type]
-        except TypeError:
+        except TypeError:  # pragma: no cover
             # All real errors (not unhashable args) are raised below.
             return func(*args, **kwargs)
 
     return inner
 
 
-class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
+class PyTree(Generic[T]):  # pragma: no cover
     """Generic PyTree type.
 
     >>> import torch
@@ -180,14 +180,16 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
     """
 
     @_tp_cache
-    def __class_getitem__(
+    def __class_getitem__(  # noqa: C901
         cls,
         item: T | tuple[T] | tuple[T, str | None],
     ) -> TypeAlias:
         """Instantiate a PyTree type with the given type."""
         if not isinstance(item, tuple):
             item = (item, None)
-        if len(item) != 2:
+        if len(item) == 1:
+            item = (item[0], None)
+        elif len(item) != 2:
             raise TypeError(
                 f'{cls.__name__}[...] only supports a tuple of 2 items, '
                 f'a parameter and a string of type name, got {item!r}.',
@@ -250,7 +252,7 @@ class PyTree(Generic[T]):  # pylint: disable=too-few-public-methods
         return self
 
 
-class PyTreeTypeVar:
+class PyTreeTypeVar:  # pragma: no cover
     """Type variable for PyTree.
 
     >>> import torch

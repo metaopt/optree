@@ -1,6 +1,5 @@
 [run]
 omit =
-    ../optree/typing.py
     ../optree/version.py
 
 [report]

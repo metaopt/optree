@@ -240,7 +240,7 @@ def register_pytree_node(
     """
     if not inspect.isclass(cls):
         raise TypeError(f'Expected a class, got {cls!r}.')
-    if len(getattr(cls, '__abstractmethods__', ())) > 0:
+    if inspect.isabstract(cls):
         raise TypeError(
             f'Cannot register abstract class {cls!r}, because it cannot be instantiated.',
         )
@@ -387,7 +387,7 @@ def register_pytree_node_class(  # noqa: C901
         )  # type: ignore[return-value]
     if not inspect.isclass(cls):
         raise TypeError(f'Expected a class, got {cls!r}.')
-    if len(getattr(cls, '__abstractmethods__', ())) > 0:
+    if inspect.isabstract(cls):
         raise TypeError(
             f'Cannot register abstract class {cls!r}, because it cannot be instantiated.',
         )
