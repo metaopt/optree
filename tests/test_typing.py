@@ -63,32 +63,57 @@ class FakeStructSequence(tuple):
 
 
 def test_is_namedtuple():
-    assert not optree.is_namedtuple((1, 2))
-    assert not optree.is_namedtuple([1, 2])
-    assert not optree.is_namedtuple(sys.float_info)
-    assert not optree.is_namedtuple(time.gmtime())
-    assert optree.is_namedtuple(CustomTuple(1, 2))
-    assert optree.is_namedtuple(CustomNamedTupleSubclass(1, 2))
-    assert not optree.is_namedtuple(FakeNamedTuple(1, 2, 3))
-    assert not optree.is_namedtuple(Vector2D(1, 2))
-    assert not optree.is_namedtuple(FakeStructSequence((1, 2)))
-    assert not optree.is_namedtuple_class(CustomTuple(1, 2))
-    assert not optree.is_namedtuple_class(CustomNamedTupleSubclass(1, 2))
-    assert not optree.is_namedtuple_class(FakeNamedTuple(1, 2, 3))
+    def is_namedtuple_(obj):
+        nonlocal is_namedtuple, is_namedtuple_class, is_namedtuple_instance
+        assert is_namedtuple(obj) == (is_namedtuple_class(obj) or is_namedtuple_instance(obj))
+        assert is_namedtuple_class(obj) == (isinstance(obj, type) and is_namedtuple(obj))
+        assert is_namedtuple_instance(obj) == (not isinstance(obj, type) and is_namedtuple(obj))
+        return is_namedtuple(obj)
 
-    assert not optree.is_namedtuple(type(sys.float_info))
-    assert not optree.is_namedtuple(time.struct_time)
-    assert optree.is_namedtuple(CustomTuple)
-    assert optree.is_namedtuple(CustomNamedTupleSubclass)
-    assert not optree.is_namedtuple(FakeNamedTuple)
-    assert not optree.is_namedtuple(Vector2D)
-    assert not optree.is_namedtuple_class(type(sys.float_info))
-    assert not optree.is_namedtuple_class(time.struct_time)
-    assert optree.is_namedtuple_class(CustomTuple)
-    assert optree.is_namedtuple_class(CustomNamedTupleSubclass)
-    assert not optree.is_namedtuple_class(FakeNamedTuple)
-    assert not optree.is_namedtuple_class(Vector2D)
-    assert not optree.is_namedtuple_class(FakeStructSequence)
+    for is_namedtuple, is_namedtuple_class, is_namedtuple_instance in (  # noqa: B007
+        (
+            optree.is_namedtuple,
+            optree.is_namedtuple_class,
+            optree.is_namedtuple_instance,
+        ),
+        (
+            optree.is_namedtuple.__cxx_implementation__,
+            optree.is_namedtuple_class.__cxx_implementation__,
+            optree.is_namedtuple_instance.__cxx_implementation__,
+        ),
+        (
+            optree.is_namedtuple.__python_implementation__,
+            optree.is_namedtuple_class.__python_implementation__,
+            optree.is_namedtuple_instance.__python_implementation__,
+        ),
+    ):
+
+        assert not is_namedtuple_((1, 2))
+        assert not is_namedtuple_([1, 2])
+        assert not is_namedtuple_(sys.float_info)
+        assert not is_namedtuple_(time.gmtime())
+        assert is_namedtuple_(CustomTuple(1, 2))
+        assert is_namedtuple_(CustomNamedTupleSubclass(1, 2))
+        assert not is_namedtuple_(FakeNamedTuple(1, 2, 3))
+        assert not is_namedtuple_(Vector2D(1, 2))
+        assert not is_namedtuple_(FakeStructSequence((1, 2)))
+        assert not is_namedtuple_class(CustomTuple(1, 2))
+        assert not is_namedtuple_class(CustomNamedTupleSubclass(1, 2))
+        assert not is_namedtuple_class(FakeNamedTuple(1, 2, 3))
+
+        assert not is_namedtuple_(type(sys.float_info))
+        assert not is_namedtuple_(time.struct_time)
+        assert is_namedtuple_(CustomTuple)
+        assert is_namedtuple_(CustomNamedTupleSubclass)
+        assert not is_namedtuple_(FakeNamedTuple)
+        assert not is_namedtuple_(Vector2D)
+        assert not is_namedtuple_class(type(sys.float_info))
+        assert not is_namedtuple_class(time.struct_time)
+        assert is_namedtuple_class(CustomTuple)
+        assert is_namedtuple_class(CustomNamedTupleSubclass)
+        assert not is_namedtuple_class(FakeNamedTuple)
+        assert not is_namedtuple_class(Vector2D)
+        assert not is_namedtuple_class(FakeStructSequence)
 
 
 @skipif_pypy
@@ -147,6 +172,70 @@ def test_is_namedtuple_cache():
     gc_collect()
     assert called_with == 'Foo'
     assert wr() is None
+
+
+def test_namedtuple_fields():
+    for namedtuple_fields in (
+        optree.namedtuple_fields,
+        optree.namedtuple_fields.__cxx_implementation__,
+        optree.namedtuple_fields.__python_implementation__,
+    ):
+        assert namedtuple_fields(CustomTuple) == ('foo', 'bar')
+        assert namedtuple_fields(CustomTuple(1, 2)) == ('foo', 'bar')
+        assert namedtuple_fields(CustomNamedTupleSubclass) == ('foo', 'bar')
+        assert namedtuple_fields(CustomNamedTupleSubclass(1, 2)) == ('foo', 'bar')
+
+        with pytest.raises(
+            TypeError,
+            match=re.escape(r'Expected an instance of collections.namedtuple type, got [1, 2].'),
+        ):
+            namedtuple_fields([1, 2])
+        with pytest.raises(
+            TypeError,
+            match=re.escape(r"Expected a collections.namedtuple type, got <class 'list'>."),
+        ):
+            namedtuple_fields(list)
+
+        with pytest.raises(
+            TypeError,
+            match=re.escape(r'Expected an instance of collections.namedtuple type, got (1, 2).'),
+        ):
+            namedtuple_fields((1, 2))
+        with pytest.raises(
+            TypeError,
+            match=re.escape(r"Expected a collections.namedtuple type, got <class 'tuple'>."),
+        ):
+            namedtuple_fields(tuple)
+
+        with pytest.raises(
+            TypeError,
+            match=re.escape(
+                r'Expected an instance of collections.namedtuple type, '
+                r'got time.struct_time(tm_year=0, tm_mon=1, tm_mday=2, tm_hour=3, tm_min=4, tm_sec=5, tm_wday=6, tm_yday=7, tm_isdst=8).',
+            ),
+        ):
+            namedtuple_fields(time.struct_time(range(9)))
+        with pytest.raises(
+            TypeError,
+            match=re.escape(
+                r"Expected a collections.namedtuple type, got <class 'time.struct_time'>.",
+            ),
+        ):
+            namedtuple_fields(time.struct_time)
+
+        with pytest.raises(
+            TypeError,
+            match=re.escape(
+                r'Expected an instance of collections.namedtuple type, '
+                r'got FakeNamedTuple(a=1, b=2, c=3).',
+            ),
+        ):
+            namedtuple_fields(FakeNamedTuple(1, 2, 3))
+        with pytest.raises(
+            TypeError,
+            match=r"Expected a collections.namedtuple type, got <class '.*\.FakeNamedTuple'>\.",
+        ):
+            namedtuple_fields(FakeNamedTuple)
 
 
 @skipif_pypy
@@ -215,6 +304,13 @@ def test_namedtuple_fields_cache():
 
 
 def test_is_structseq():
+    def is_structseq_(obj):
+        nonlocal is_structseq, is_structseq_class, is_structseq_instance
+        assert is_structseq(obj) == (is_structseq_class(obj) or is_structseq_instance(obj))
+        assert is_structseq_class(obj) == (isinstance(obj, type) and is_structseq(obj))
+        assert is_structseq_instance(obj) == (not isinstance(obj, type) and is_structseq(obj))
+        return is_structseq(obj)
+
     with pytest.raises(TypeError, match="type 'structseq' is not an acceptable base type"):
 
         class MyTuple(optree.typing.structseq):
@@ -223,31 +319,48 @@ def test_is_structseq():
     with pytest.raises(NotImplementedError):
         optree.typing.structseq(range(1))
 
-    assert not optree.is_structseq((1, 2))
-    assert not optree.is_structseq([1, 2])
-    assert optree.is_structseq(sys.float_info)
-    assert optree.is_structseq(time.gmtime())
-    assert not optree.is_structseq(CustomTuple(1, 2))
-    assert not optree.is_structseq(CustomNamedTupleSubclass(1, 2))
-    assert not optree.is_structseq(FakeNamedTuple(1, 2, 3))
-    assert not optree.is_structseq(Vector2D(1, 2))
-    assert not optree.is_structseq(FakeStructSequence((1, 2)))
-    assert not optree.is_structseq_class(sys.float_info)
-    assert not optree.is_structseq_class(time.gmtime())
+    for is_structseq, is_structseq_class, is_structseq_instance in (  # noqa: B007
+        (
+            optree.is_structseq,
+            optree.is_structseq_class,
+            optree.is_structseq_instance,
+        ),
+        (
+            optree.is_structseq.__cxx_implementation__,
+            optree.is_structseq_class.__cxx_implementation__,
+            optree.is_structseq_instance.__cxx_implementation__,
+        ),
+        (
+            optree.is_structseq.__python_implementation__,
+            optree.is_structseq_class.__python_implementation__,
+            optree.is_structseq_instance.__python_implementation__,
+        ),
+    ):
+        assert not is_structseq_((1, 2))
+        assert not is_structseq_([1, 2])
+        assert is_structseq_(sys.float_info)
+        assert is_structseq_(time.gmtime())
+        assert not is_structseq_(CustomTuple(1, 2))
+        assert not is_structseq_(CustomNamedTupleSubclass(1, 2))
+        assert not is_structseq_(FakeNamedTuple(1, 2, 3))
+        assert not is_structseq_(Vector2D(1, 2))
+        assert not is_structseq_(FakeStructSequence((1, 2)))
+        assert not is_structseq_class(sys.float_info)
+        assert not is_structseq_class(time.gmtime())
 
-    assert optree.is_structseq(type(sys.float_info))
-    assert optree.is_structseq(time.struct_time)
-    assert not optree.is_structseq(CustomTuple)
-    assert not optree.is_structseq(CustomNamedTupleSubclass)
-    assert not optree.is_structseq(FakeNamedTuple)
-    assert not optree.is_structseq(Vector2D)
-    assert optree.is_structseq_class(type(sys.float_info))
-    assert optree.is_structseq_class(time.struct_time)
-    assert not optree.is_structseq_class(CustomTuple)
-    assert not optree.is_structseq_class(CustomNamedTupleSubclass)
-    assert not optree.is_structseq_class(FakeNamedTuple)
-    assert not optree.is_structseq_class(Vector2D)
-    assert not optree.is_structseq_class(FakeStructSequence)
+        assert is_structseq_(type(sys.float_info))
+        assert is_structseq_(time.struct_time)
+        assert not is_structseq_(CustomTuple)
+        assert not is_structseq_(CustomNamedTupleSubclass)
+        assert not is_structseq_(FakeNamedTuple)
+        assert not is_structseq_(Vector2D)
+        assert is_structseq_class(type(sys.float_info))
+        assert is_structseq_class(time.struct_time)
+        assert not is_structseq_class(CustomTuple)
+        assert not is_structseq_class(CustomNamedTupleSubclass)
+        assert not is_structseq_class(FakeNamedTuple)
+        assert not is_structseq_class(Vector2D)
+        assert not is_structseq_class(FakeStructSequence)
 
 
 @skipif_pypy
@@ -308,158 +421,108 @@ def test_is_structseq_cache():
     assert wr() is None
 
 
-def test_namedtuple_fields():
-    assert optree.namedtuple_fields(CustomTuple) == ('foo', 'bar')
-    assert optree.namedtuple_fields(CustomTuple(1, 2)) == ('foo', 'bar')
-    assert optree.namedtuple_fields(CustomNamedTupleSubclass) == ('foo', 'bar')
-    assert optree.namedtuple_fields(CustomNamedTupleSubclass(1, 2)) == ('foo', 'bar')
-
-    with pytest.raises(
-        TypeError,
-        match=re.escape(r'Expected an instance of collections.namedtuple type, got [1, 2].'),
-    ):
-        optree.namedtuple_fields([1, 2])
-    with pytest.raises(
-        TypeError,
-        match=re.escape(r"Expected a collections.namedtuple type, got <class 'list'>."),
-    ):
-        optree.namedtuple_fields(list)
-
-    with pytest.raises(
-        TypeError,
-        match=re.escape(r'Expected an instance of collections.namedtuple type, got (1, 2).'),
-    ):
-        optree.namedtuple_fields((1, 2))
-    with pytest.raises(
-        TypeError,
-        match=re.escape(r"Expected a collections.namedtuple type, got <class 'tuple'>."),
-    ):
-        optree.namedtuple_fields(tuple)
-
-    with pytest.raises(
-        TypeError,
-        match=re.escape(
-            r'Expected an instance of collections.namedtuple type, '
-            r'got time.struct_time(tm_year=0, tm_mon=1, tm_mday=2, tm_hour=3, tm_min=4, tm_sec=5, tm_wday=6, tm_yday=7, tm_isdst=8).',
-        ),
-    ):
-        optree.namedtuple_fields(time.struct_time(range(9)))
-    with pytest.raises(
-        TypeError,
-        match=re.escape(r"Expected a collections.namedtuple type, got <class 'time.struct_time'>."),
-    ):
-        optree.namedtuple_fields(time.struct_time)
-
-    with pytest.raises(
-        TypeError,
-        match=re.escape(
-            r'Expected an instance of collections.namedtuple type, '
-            r'got FakeNamedTuple(a=1, b=2, c=3).',
-        ),
-    ):
-        optree.namedtuple_fields(FakeNamedTuple(1, 2, 3))
-    with pytest.raises(
-        TypeError,
-        match=r"Expected a collections.namedtuple type, got <class '.*\.FakeNamedTuple'>\.",
-    ):
-        optree.namedtuple_fields(FakeNamedTuple)
-
-
 def test_structseq_fields():
-    assert optree.structseq_fields(sys.float_info) == (
-        'max',
-        'max_exp',
-        'max_10_exp',
-        'min',
-        'min_exp',
-        'min_10_exp',
-        'dig',
-        'mant_dig',
-        'epsilon',
-        'radix',
-        'rounds',
-    )
-    assert optree.structseq_fields(type(sys.float_info)) == (
-        'max',
-        'max_exp',
-        'max_10_exp',
-        'min',
-        'min_exp',
-        'min_10_exp',
-        'dig',
-        'mant_dig',
-        'epsilon',
-        'radix',
-        'rounds',
-    )
-    assert optree.structseq_fields(time.gmtime()) == (
-        'tm_year',
-        'tm_mon',
-        'tm_mday',
-        'tm_hour',
-        'tm_min',
-        'tm_sec',
-        'tm_wday',
-        'tm_yday',
-        'tm_isdst',
-    )
-    assert optree.structseq_fields(time.struct_time) == (
-        'tm_year',
-        'tm_mon',
-        'tm_mday',
-        'tm_hour',
-        'tm_min',
-        'tm_sec',
-        'tm_wday',
-        'tm_yday',
-        'tm_isdst',
-    )
+    for structseq_fields in (
+        optree.structseq_fields,
+        optree.structseq_fields.__cxx_implementation__,
+        optree.structseq_fields.__python_implementation__,
+    ):
+        assert structseq_fields(sys.float_info) == (
+            'max',
+            'max_exp',
+            'max_10_exp',
+            'min',
+            'min_exp',
+            'min_10_exp',
+            'dig',
+            'mant_dig',
+            'epsilon',
+            'radix',
+            'rounds',
+        )
+        assert structseq_fields(type(sys.float_info)) == (
+            'max',
+            'max_exp',
+            'max_10_exp',
+            'min',
+            'min_exp',
+            'min_10_exp',
+            'dig',
+            'mant_dig',
+            'epsilon',
+            'radix',
+            'rounds',
+        )
+        assert structseq_fields(time.gmtime()) == (
+            'tm_year',
+            'tm_mon',
+            'tm_mday',
+            'tm_hour',
+            'tm_min',
+            'tm_sec',
+            'tm_wday',
+            'tm_yday',
+            'tm_isdst',
+        )
+        assert structseq_fields(time.struct_time) == (
+            'tm_year',
+            'tm_mon',
+            'tm_mday',
+            'tm_hour',
+            'tm_min',
+            'tm_sec',
+            'tm_wday',
+            'tm_yday',
+            'tm_isdst',
+        )
 
-    with pytest.raises(
-        TypeError,
-        match=re.escape(r'Expected an instance of PyStructSequence type, got [1, 2].'),
-    ):
-        optree.structseq_fields([1, 2])
-    with pytest.raises(
-        TypeError,
-        match=re.escape(r"Expected a PyStructSequence type, got <class 'list'>."),
-    ):
-        optree.structseq_fields(list)
+        with pytest.raises(
+            TypeError,
+            match=re.escape(r'Expected an instance of PyStructSequence type, got [1, 2].'),
+        ):
+            structseq_fields([1, 2])
+        with pytest.raises(
+            TypeError,
+            match=re.escape(r"Expected a PyStructSequence type, got <class 'list'>."),
+        ):
+            structseq_fields(list)
 
-    with pytest.raises(
-        TypeError,
-        match=re.escape(r'Expected an instance of PyStructSequence type, got (1, 2).'),
-    ):
-        optree.structseq_fields((1, 2))
-    with pytest.raises(
-        TypeError,
-        match=re.escape(r"Expected a PyStructSequence type, got <class 'tuple'>."),
-    ):
-        optree.structseq_fields(tuple)
+        with pytest.raises(
+            TypeError,
+            match=re.escape(r'Expected an instance of PyStructSequence type, got (1, 2).'),
+        ):
+            structseq_fields((1, 2))
+        with pytest.raises(
+            TypeError,
+            match=re.escape(r"Expected a PyStructSequence type, got <class 'tuple'>."),
+        ):
+            structseq_fields(tuple)
 
-    with pytest.raises(
-        TypeError,
-        match=re.escape(
-            r'Expected an instance of PyStructSequence type, got CustomTuple(foo=1, bar=2).',
-        ),
-    ):
-        optree.structseq_fields(CustomTuple(1, 2))
-    with pytest.raises(
-        TypeError,
-        match=re.escape(r"Expected a PyStructSequence type, got <class 'helpers.CustomTuple'>."),
-    ):
-        optree.structseq_fields(CustomTuple)
+        with pytest.raises(
+            TypeError,
+            match=re.escape(
+                r'Expected an instance of PyStructSequence type, got CustomTuple(foo=1, bar=2).',
+            ),
+        ):
+            structseq_fields(CustomTuple(1, 2))
+        with pytest.raises(
+            TypeError,
+            match=re.escape(
+                r"Expected a PyStructSequence type, got <class 'helpers.CustomTuple'>.",
+            ),
+        ):
+            structseq_fields(CustomTuple)
 
-    with pytest.raises(
-        TypeError,
-        match=re.escape(r'Expected an instance of PyStructSequence type, got (1, 2).'),
-    ):
-        optree.structseq_fields(FakeStructSequence((1, 2)))
-    with pytest.raises(
-        TypeError,
-        match=r"Expected a PyStructSequence type, got <class '.*\.FakeStructSequence'>\.",
-    ):
-        optree.structseq_fields(FakeStructSequence)
+        with pytest.raises(
+            TypeError,
+            match=re.escape(r'Expected an instance of PyStructSequence type, got (1, 2).'),
+        ):
+            structseq_fields(FakeStructSequence((1, 2)))
+        with pytest.raises(
+            TypeError,
+            match=r"Expected a PyStructSequence type, got <class '.*\.FakeStructSequence'>\.",
+        ):
+            structseq_fields(FakeStructSequence)
 
 
 @skipif_pypy

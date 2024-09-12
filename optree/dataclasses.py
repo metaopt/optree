@@ -254,7 +254,7 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
 
     if not inspect.isclass(cls):
         raise TypeError(f'@{__name__}.dataclass() can only be used with classes, not {cls!r}.')
-    if len(getattr(cls, '__abstractmethods__', ())) > 0:
+    if inspect.isabstract(cls):
         raise TypeError(
             f'@{__name__}.dataclass() cannot register abstract class {cls!r}, '
             'because it cannot be instantiated.',
