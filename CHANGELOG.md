@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Expose Python implementation for C utilities for `namedtuple` and `PyStructSequence` by [@XuehaiPan](https://github.com/XuehaiPan) in [#157](https://github.com/metaopt/optree/pull/157).
 - Add `dataclasses` integration by [@XuehaiPan](https://github.com/XuehaiPan) in [#142](https://github.com/metaopt/optree/pull/142).
 - Add Python 3.13 support by [@XuehaiPan](https://github.com/XuehaiPan) in [#156](https://github.com/metaopt/optree/pull/156).
 - Respect cmake variable `pybind11_DIR` by [@XuehaiPan](https://github.com/XuehaiPan) in [#155](https://github.com/metaopt/optree/pull/155).
