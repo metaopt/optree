@@ -34,6 +34,9 @@ limitations under the License.
 #include <pybind11/eval.h>  // pybind11::exec
 #include <pybind11/pybind11.h>
 
+#include "include/critical_section.h"
+#include "include/mutex.h"
+
 namespace py = pybind11;
 
 // The maximum size of the type cache.
@@ -372,19 +375,28 @@ inline bool IsNamedTupleClass(const py::handle& type) {
     }
 
     static auto cache = std::unordered_map<py::handle, bool, TypeHash, TypeEq>{};
-    const auto it = cache.find(type);
-    if (it != cache.end()) [[likely]] {
-        return it->second;
+    static read_write_mutex mutex{};
+
+    {
+        const scoped_read_lock_guard lock{mutex};
+        const auto it = cache.find(type);
+        if (it != cache.end()) [[likely]] {
+            return it->second;
+        }
     }
 
     const bool result = IsNamedTupleClassImpl(type);
-    if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-        cache.emplace(type, result);
-        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                              cache.erase(type);
-                              weakref.dec_ref();
-                          }))
-            .release();
+    {
+        const scoped_write_lock_guard lock{mutex};
+        if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+            cache.emplace(type, result);
+            (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                                  const scoped_write_lock_guard lock{mutex};
+                                  cache.erase(type);
+                                  weakref.dec_ref();
+                              }))
+                .release();
+        }
     }
     return result;
 }
@@ -462,19 +474,28 @@ inline bool IsStructSequenceClass(const py::handle& type) {
     }
 
     static auto cache = std::unordered_map<py::handle, bool, TypeHash, TypeEq>{};
-    const auto it = cache.find(type);
-    if (it != cache.end()) [[likely]] {
-        return it->second;
+    static read_write_mutex mutex{};
+
+    {
+        const scoped_read_lock_guard lock{mutex};
+        const auto it = cache.find(type);
+        if (it != cache.end()) [[likely]] {
+            return it->second;
+        }
     }
 
     const bool result = IsStructSequenceClassImpl(type);
-    if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-        cache.emplace(type, result);
-        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                              cache.erase(type);
-                              weakref.dec_ref();
-                          }))
-            .release();
+    {
+        const scoped_write_lock_guard lock{mutex};
+        if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+            cache.emplace(type, result);
+            (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                                  const scoped_write_lock_guard lock{mutex};
+                                  cache.erase(type);
+                                  weakref.dec_ref();
+                              }))
+                .release();
+        }
     }
     return result;
 }
@@ -535,32 +556,46 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
     }
 
     static auto cache = std::unordered_map<py::handle, py::handle, TypeHash, TypeEq>{};
-    const auto it = cache.find(type);
-    if (it != cache.end()) [[likely]] {
-        return py::reinterpret_borrow<py::tuple>(it->second);
+    static read_write_mutex mutex{};
+
+    {
+        const scoped_read_lock_guard lock{mutex};
+        const auto it = cache.find(type);
+        if (it != cache.end()) [[likely]] {
+            return py::reinterpret_borrow<py::tuple>(it->second);
+        }
     }
 
-    const py::tuple fields = StructSequenceGetFieldsImpl(type);
-    if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-        cache.emplace(type, fields);
-        fields.inc_ref();
-        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                              const auto it = cache.find(type);
-                              if (it != cache.end()) [[likely]] {
-                                  it->second.dec_ref();
-                                  cache.erase(it);
-                              }
-                              weakref.dec_ref();
-                          }))
-            .release();
+    py::tuple fields = StructSequenceGetFieldsImpl(type);
+    {
+        const scoped_write_lock_guard lock{mutex};
+        if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+            cache.emplace(type, fields);
+            fields.inc_ref();
+            (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                                  const scoped_write_lock_guard lock{mutex};
+                                  const auto it = cache.find(type);
+                                  if (it != cache.end()) [[likely]] {
+                                      it->second.dec_ref();
+                                      cache.erase(it);
+                                  }
+                                  weakref.dec_ref();
+                              }))
+                .release();
+        }
     }
     return fields;
 }
 
 inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
     try {
-        // Sort directly if possible.
-        if (static_cast<bool>(PyList_Sort(list.ptr()))) [[unlikely]] {
+        int retval = 0;
+        {
+            const scoped_critical_section cs{list};
+            // Sort directly if possible.
+            retval = PyList_Sort(list.ptr());
+        }
+        if (static_cast<bool>(retval)) [[unlikely]] {
             throw py::error_already_set();
         }
     } catch (py::error_already_set& ex1) {
@@ -576,7 +611,10 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
                         static_cast<std::string>(py::str(py::getattr(t, Py_Get_ID(__qualname__))))};
                     return py::make_tuple(qualname, o);
                 });
-                py::getattr(list, Py_Get_ID(sort))(py::arg("key") = sort_key_fn);
+                {
+                    const scoped_critical_section cs{list};
+                    py::getattr(list, Py_Get_ID(sort))(py::arg("key") = sort_key_fn);
+                }
             } catch (py::error_already_set& ex2) {
                 if (ex2.matches(PyExc_TypeError)) [[likely]] {
                     // Found incomparable user-defined key types.
@@ -593,6 +631,7 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
 }
 
 inline py::list DictKeys(const py::dict& dict) {
+    const scoped_critical_section cs{dict};
     return py::reinterpret_steal<py::list>(PyDict_Keys(dict.ptr()));
 }
 
@@ -603,6 +642,7 @@ inline py::list SortedDictKeys(const py::dict& dict) {
 }
 
 inline bool DictKeysEqual(const py::list& /*unique*/ keys, const py::dict& dict) {
+    const scoped_critical_section2 cs{keys, dict};
     const py::ssize_t list_len = GET_SIZE<py::list>(keys);
     const py::ssize_t dict_len = GET_SIZE<py::dict>(dict);
     if (list_len != dict_len) [[likely]] {  // assumes keys are unique
@@ -623,6 +663,7 @@ inline bool DictKeysEqual(const py::list& /*unique*/ keys, const py::dict& dict)
 
 inline std::pair<py::list, py::list> DictKeysDifference(const py::list& /*unique*/ keys,
                                                         const py::dict& dict) {
+    const scoped_critical_section2 cs{keys, dict};
     const py::set expected_keys{keys};
     const py::set got_keys{DictKeys(dict)};
     py::list missing_keys{expected_keys - got_keys};

@@ -29,6 +29,7 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
+#include "include/mutex.h"
 #include "include/registry.h"
 #include "include/utils.h"
 
@@ -208,6 +209,8 @@ class PyTreeSpec {
     // Check if should preserve the insertion order of the dictionary keys during flattening.
     static inline bool IsDictInsertionOrdered(const std::string &registry_namespace,
                                               const bool &inherit_global_namespace = true) {
+        const scoped_read_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
+
         return (sm_is_dict_insertion_ordered.find(registry_namespace) !=
                 sm_is_dict_insertion_ordered.end()) ||
                (inherit_global_namespace &&
@@ -217,6 +220,8 @@ class PyTreeSpec {
     // Set the namespace to preserve the insertion order of the dictionary keys during flattening.
     static inline void SetDictInsertionOrdered(const bool &mode,
                                                const std::string &registry_namespace) {
+        const scoped_write_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
+
         if (mode) [[likely]] {
             sm_is_dict_insertion_ordered.insert(registry_namespace);
         } else [[unlikely]] {
@@ -361,16 +366,7 @@ class PyTreeSpec {
     // A set of namespaces that preserve the insertion order of the dictionary keys during
     // flattening.
     static inline std::unordered_set<std::string> sm_is_dict_insertion_ordered{};
-
-    // A set of (treespec, thread_id) pairs that are currently being represented as strings.
-    static inline std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
-                                     ThreadIndentTypeHash>
-        sm_repr_running{};
-
-    // A set of (treespec, thread_id) pairs that are currently being hashed.
-    static inline std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
-                                     ThreadIndentTypeHash>
-        sm_hash_running{};
+    static inline read_write_mutex sm_is_dict_insertion_ordered_mutex{};
 };
 
 class PyTreeIter {

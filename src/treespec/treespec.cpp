@@ -28,10 +28,12 @@ limitations under the License.
 #include <thread>         // std::thread::id, std::this_thread
 #include <tuple>          // std::tuple
 #include <unordered_map>  // std::unordered_map
+#include <unordered_set>  // std::unordered_set
 #include <utility>        // std::move, std::pair
 #include <vector>         // std::vector
 
 #include "include/exceptions.h"
+#include "include/mutex.h"
 #include "include/registry.h"
 #include "include/utils.h"
 
@@ -1280,18 +1282,34 @@ std::string PyTreeSpec::ToStringImpl() const {
 }
 
 std::string PyTreeSpec::ToString() const {
-    const std::pair<const PyTreeSpec*, std::thread::id> indent{this, std::this_thread::get_id()};
-    if (sm_repr_running.find(indent) != sm_repr_running.end()) [[unlikely]] {
-        return "...";
+    using ThreadIndent = std::pair<const PyTreeSpec*, std::thread::id>;
+    static std::unordered_set<ThreadIndent, ThreadIndentTypeHash> running{};
+    static read_write_mutex mutex{};
+
+    const ThreadIndent indent{this, std::this_thread::get_id()};
+    {
+        const scoped_read_lock_guard lock{mutex};
+        if (running.find(indent) != running.end()) [[unlikely]] {
+            return "...";
+        }
     }
 
-    sm_repr_running.insert(indent);
+    {
+        const scoped_write_lock_guard lock{mutex};
+        running.insert(indent);
+    }
     try {
         std::string representation = ToStringImpl();
-        sm_repr_running.erase(indent);
+        {
+            const scoped_write_lock_guard lock{mutex};
+            running.erase(indent);
+        }
         return representation;
     } catch (...) {
-        sm_repr_running.erase(indent);
+        {
+            const scoped_write_lock_guard lock{mutex};
+            running.erase(indent);
+        }
         std::rethrow_exception(std::current_exception());
     }
 }
@@ -1361,18 +1379,34 @@ ssize_t PyTreeSpec::HashValueImpl() const {
 }
 
 ssize_t PyTreeSpec::HashValue() const {
-    const std::pair<const PyTreeSpec*, std::thread::id> indent{this, std::this_thread::get_id()};
-    if (sm_hash_running.find(indent) != sm_hash_running.end()) [[unlikely]] {
-        return 0;
+    using ThreadIndent = std::pair<const PyTreeSpec*, std::thread::id>;
+    static std::unordered_set<ThreadIndent, ThreadIndentTypeHash> running{};
+    static read_write_mutex mutex{};
+
+    const ThreadIndent indent{this, std::this_thread::get_id()};
+    {
+        const scoped_read_lock_guard lock{mutex};
+        if (running.find(indent) != running.end()) [[unlikely]] {
+            return 0;
+        }
     }
 
-    sm_hash_running.insert(indent);
+    {
+        const scoped_write_lock_guard lock{mutex};
+        running.insert(indent);
+    }
     try {
         const ssize_t result = HashValueImpl();
-        sm_hash_running.erase(indent);
+        {
+            const scoped_write_lock_guard lock{mutex};
+            running.erase(indent);
+        }
         return result;
     } catch (...) {
-        sm_hash_running.erase(indent);
+        {
+            const scoped_write_lock_guard lock{mutex};
+            running.erase(indent);
+        }
         std::rethrow_exception(std::current_exception());
     }
 }
