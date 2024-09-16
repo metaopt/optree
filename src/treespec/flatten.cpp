@@ -24,6 +24,7 @@ limitations under the License.
 #include <utility>    // std::move, std::pair, std::make_pair
 #include <vector>     // std::vector
 
+#include "include/critical_section.h"
 #include "include/exceptions.h"
 #include "include/registry.h"
 #include "include/treespec.h"
@@ -49,7 +50,12 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
     const ssize_t start_num_nodes = py::ssize_t_cast(m_traversal.size());
     const ssize_t start_num_leaves = py::ssize_t_cast(leaves.size());
 
-    if (leaf_predicate && py::cast<bool>((*leaf_predicate)(handle))) [[unlikely]] {
+    bool is_leaf = false;
+    {
+        const scoped_critical_section cs{handle};
+        is_leaf = (leaf_predicate && py::cast<bool>((*leaf_predicate)(handle)));
+    }
+    if (is_leaf) [[unlikely]] {
         leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
     } else [[likely]] {
         node.kind =
@@ -88,6 +94,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             }
 
             case PyTreeKind::List: {
+                const scoped_critical_section cs{handle};
                 node.arity = GET_SIZE<py::list>(handle);
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::list>(handle, i));
@@ -98,6 +105,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
+                const scoped_critical_section cs{handle};
                 const auto dict = py::reinterpret_borrow<py::dict>(handle);
                 node.arity = GET_SIZE<py::dict>(dict);
                 py::list keys = DictKeys(dict);
@@ -131,6 +139,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             }
 
             case PyTreeKind::Deque: {
+                const scoped_critical_section cs{handle};
                 const auto list = py::cast<py::list>(handle);
                 node.arity = GET_SIZE<py::list>(list);
                 node.node_data = py::getattr(handle, Py_Get_ID(maxlen));
@@ -141,6 +150,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             }
 
             case PyTreeKind::Custom: {
+                const scoped_critical_section cs{handle};
                 found_custom = true;
                 const py::tuple out = py::cast<py::tuple>(node.custom->flatten_func(handle));
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
@@ -262,7 +272,12 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
     const ssize_t start_num_nodes = py::ssize_t_cast(m_traversal.size());
     const ssize_t start_num_leaves = py::ssize_t_cast(leaves.size());
 
-    if (leaf_predicate && py::cast<bool>((*leaf_predicate)(handle))) [[unlikely]] {
+    bool is_leaf = false;
+    {
+        const scoped_critical_section cs{handle};
+        is_leaf = (leaf_predicate && py::cast<bool>((*leaf_predicate)(handle)));
+    }
+    if (is_leaf) [[unlikely]] {
         py::tuple path{depth};
         for (ssize_t d = 0; d < depth; ++d) {
             SET_ITEM<py::tuple>(path, d, stack[d]);
@@ -321,6 +336,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             }
 
             case PyTreeKind::List: {
+                const scoped_critical_section cs{handle};
                 node.arity = GET_SIZE<py::list>(handle);
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::list>(handle, i), py::int_(i));
@@ -331,6 +347,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
+                const scoped_critical_section cs{handle};
                 const auto dict = py::reinterpret_borrow<py::dict>(handle);
                 py::list keys = DictKeys(dict);
                 if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
@@ -364,6 +381,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             }
 
             case PyTreeKind::Deque: {
+                const scoped_critical_section cs{handle};
                 const auto list = py::cast<py::list>(handle);
                 node.arity = GET_SIZE<py::list>(list);
                 node.node_data = py::getattr(handle, Py_Get_ID(maxlen));
@@ -374,6 +392,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             }
 
             case PyTreeKind::Custom: {
+                const scoped_critical_section cs{handle};
                 found_custom = true;
                 const py::tuple out = py::cast<py::tuple>(node.custom->flatten_func(handle));
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
@@ -569,6 +588,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
             }
 
             case PyTreeKind::List: {
+                const scoped_critical_section cs{object};
                 AssertExact<py::list>(object);
                 const auto list = py::reinterpret_borrow<py::list>(object);
                 if (GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
@@ -587,6 +607,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
+                const scoped_critical_section2 cs{object, node.node_data};
                 AssertExactStandardDict(object);
                 const auto dict = py::reinterpret_borrow<py::dict>(object);
                 const py::list expected_keys =
@@ -646,6 +667,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
             }
 
             case PyTreeKind::Deque: {
+                const scoped_critical_section cs{object};
                 AssertExactDeque(object);
                 const auto list = py::cast<py::list>(object);
                 if (GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
@@ -686,6 +708,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
             }
 
             case PyTreeKind::Custom: {
+                const scoped_critical_section cs{object};
                 RegistrationPtr registration{nullptr};
                 if (m_none_is_leaf) [[unlikely]] {
                     registration =
@@ -748,8 +771,11 @@ template <bool NoneIsLeaf>
 bool IsLeafImpl(const py::handle& handle,
                 const std::optional<py::function>& leaf_predicate,
                 const std::string& registry_namespace) {
-    if (leaf_predicate && py::cast<bool>((*leaf_predicate)(handle))) [[unlikely]] {
-        return true;
+    {
+        const scoped_critical_section cs{handle};
+        if (leaf_predicate && py::cast<bool>((*leaf_predicate)(handle))) [[unlikely]] {
+            return true;
+        }
     }
     PyTreeTypeRegistry::RegistrationPtr custom{nullptr};
     return (PyTreeTypeRegistry::GetKind<NoneIsLeaf>(handle, custom, registry_namespace) ==
@@ -773,8 +799,11 @@ bool AllLeavesImpl(const py::iterable& iterable,
                    const std::string& registry_namespace) {
     PyTreeTypeRegistry::RegistrationPtr custom{nullptr};
     for (const py::handle& handle : iterable) {
-        if (leaf_predicate && py::cast<bool>((*leaf_predicate)(handle))) [[unlikely]] {
-            continue;
+        {
+            const scoped_critical_section cs{handle};
+            if (leaf_predicate && py::cast<bool>((*leaf_predicate)(handle))) [[unlikely]] {
+                continue;
+            }
         }
         if (PyTreeTypeRegistry::GetKind<NoneIsLeaf>(handle, custom, registry_namespace) !=
             PyTreeKind::Leaf) [[unlikely]] {

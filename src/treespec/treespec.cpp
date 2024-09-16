@@ -32,6 +32,7 @@ limitations under the License.
 #include <utility>        // std::move, std::pair
 #include <vector>         // std::vector
 
+#include "include/critical_section.h"
 #include "include/exceptions.h"
 #include "include/mutex.h"
 #include "include/registry.h"
@@ -114,6 +115,7 @@ namespace optree {
 
         case PyTreeKind::Dict: {
             py::dict dict{};
+            const scoped_critical_section2 cs{node.node_data, node.original_keys};
             const auto keys = py::reinterpret_borrow<py::list>(node.node_data);
             if (node.original_keys) [[unlikely]] {
                 for (ssize_t i = 0; i < node.arity; ++i) {
@@ -129,6 +131,7 @@ namespace optree {
 
         case PyTreeKind::OrderedDict: {
             const py::list items{node.arity};
+            const scoped_critical_section cs{node.node_data};
             const auto keys = py::reinterpret_borrow<py::list>(node.node_data);
             for (ssize_t i = 0; i < node.arity; ++i) {
                 SET_ITEM<py::list>(
@@ -142,6 +145,7 @@ namespace optree {
 
         case PyTreeKind::DefaultDict: {
             const py::dict dict{};
+            const scoped_critical_section2 cs{node.node_data, node.original_keys};
             const py::object default_factory =
                 GET_ITEM_BORROW<py::tuple>(node.node_data, ssize_t(0));
             const py::list keys = GET_ITEM_BORROW<py::tuple>(node.node_data, ssize_t(1));
@@ -159,6 +163,7 @@ namespace optree {
 
         case PyTreeKind::Custom: {
             const py::tuple tuple{node.arity};
+            const scoped_critical_section cs{node.node_data};
             for (ssize_t i = 0; i < node.arity; ++i) {
                 // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
                 SET_ITEM<py::tuple>(tuple, i, children[i]);
@@ -588,6 +593,7 @@ ssize_t PyTreeSpec::PathsImpl(Span& paths,  // NOLINT[misc-no-recursion]
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
+                const scoped_critical_section cs{root.node_data};
                 const auto keys = py::reinterpret_borrow<py::list>(
                     root.kind != PyTreeKind::DefaultDict
                         ? root.node_data
@@ -693,6 +699,7 @@ ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,  // NOLINT[misc-no-recursion]
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
+                const scoped_critical_section cs{root.node_data};
                 const auto keys = py::reinterpret_borrow<py::list>(
                     root.kind != PyTreeKind::DefaultDict
                         ? root.node_data
@@ -756,9 +763,11 @@ py::list PyTreeSpec::Entries() const {
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict: {
+            const scoped_critical_section cs{root.node_data};
             return py::getattr(root.node_data, Py_Get_ID(copy))();
         }
         case PyTreeKind::DefaultDict: {
+            const scoped_critical_section cs{root.node_data};
             return py::getattr(GET_ITEM_BORROW<py::tuple>(root.node_data, ssize_t(1)),
                                Py_Get_ID(copy))();
         }
@@ -793,9 +802,11 @@ py::object PyTreeSpec::Entry(ssize_t index) const {
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict: {
+            const scoped_critical_section cs{root.node_data};
             return GET_ITEM_BORROW<py::list>(root.node_data, index);
         }
         case PyTreeKind::DefaultDict: {
+            const scoped_critical_section cs{root.node_data};
             return GET_ITEM_BORROW<py::list>(GET_ITEM_BORROW<py::tuple>(root.node_data, ssize_t(1)),
                                              index);
         }
@@ -971,6 +982,7 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec& other, const bool& strict) const {
                     b->kind != PyTreeKind::DefaultDict) [[likely]] {
                     return false;
                 }
+                const scoped_critical_section2 cs(a->node_data, b->node_data);
                 const auto expected_keys = py::reinterpret_borrow<py::list>(
                     a->kind != PyTreeKind::DefaultDict
                         ? a->node_data
@@ -1035,6 +1047,7 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec& other, const bool& strict) const {
             case PyTreeKind::NamedTuple:
             case PyTreeKind::StructSequence:
             case PyTreeKind::Custom: {
+                const scoped_critical_section2 cs(a->node_data, b->node_data);
                 if (a->kind != b->kind || (a->node_data && a->node_data.not_equal(b->node_data)))
                     [[likely]] {
                     return false;
@@ -1074,6 +1087,7 @@ bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
             a->custom != b->custom) [[likely]] {
             return false;
         }
+        const scoped_critical_section2 cs(a->node_data, b->node_data);
         if (a->node_data && a->node_data.not_equal(b->node_data)) [[likely]] {
             return false;
         }
@@ -1131,6 +1145,7 @@ std::string PyTreeSpec::ToStringImpl() const {
 
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict: {
+                const scoped_critical_section cs{node.node_data};
                 EXPECT_EQ(GET_SIZE<py::list>(node.node_data),
                           node.arity,
                           "Number of keys and entries does not match.");
@@ -1184,6 +1199,7 @@ std::string PyTreeSpec::ToStringImpl() const {
             }
 
             case PyTreeKind::DefaultDict: {
+                const scoped_critical_section cs(node.node_data);
                 EXPECT_EQ(GET_SIZE<py::tuple>(node.node_data),
                           2,
                           "Number of auxiliary data mismatch.");
@@ -1250,6 +1266,7 @@ std::string PyTreeSpec::ToStringImpl() const {
             }
 
             case PyTreeKind::Custom: {
+                const scoped_critical_section cs{node.node_data};
                 const std::string kind = static_cast<std::string>(
                     py::str(py::getattr(node.custom->type, Py_Get_ID(__name__))));
                 sstream << "CustomTreeNode(" << kind << "[";
@@ -1328,6 +1345,7 @@ std::string PyTreeSpec::ToString() const {
         case PyTreeKind::NamedTuple:
         case PyTreeKind::Deque:
         case PyTreeKind::StructSequence: {
+            const scoped_critical_section cs{node.node_data};
             data_hash = py::hash(node.node_data ? node.node_data : py::none());
             break;
         }
@@ -1335,6 +1353,7 @@ std::string PyTreeSpec::ToString() const {
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
         case PyTreeKind::DefaultDict: {
+            const scoped_critical_section cs{node.node_data};
             if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
                 EXPECT_EQ(GET_SIZE<py::tuple>(node.node_data),
                           2,
@@ -1415,6 +1434,9 @@ py::object PyTreeSpec::ToPickleable() const {
     const py::tuple node_states{GetNumNodes()};
     ssize_t i = 0;
     for (const auto& node : m_traversal) {
+        const scoped_critical_section2 cs{
+            node.custom != nullptr ? py::handle{node.custom->type.ptr()} : py::handle{},
+            node.node_data};
         SET_ITEM<py::tuple>(node_states,
                             i++,
                             py::make_tuple(static_cast<ssize_t>(node.kind),

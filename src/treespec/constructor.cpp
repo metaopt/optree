@@ -24,6 +24,7 @@ limitations under the License.
 #include <utility>    // std::move
 #include <vector>     // std::vector
 
+#include "include/critical_section.h"
 #include "include/exceptions.h"
 #include "include/registry.h"
 #include "include/treespec.h"
@@ -152,6 +153,7 @@ template <bool NoneIsLeaf>
         }
 
         case PyTreeKind::List: {
+            const scoped_critical_section cs{handle};
             node.arity = GET_SIZE<py::list>(handle);
             for (ssize_t i = 0; i < node.arity; ++i) {
                 children.emplace_back(GET_ITEM_BORROW<py::list>(handle, i));
@@ -163,6 +165,7 @@ template <bool NoneIsLeaf>
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
         case PyTreeKind::DefaultDict: {
+            const scoped_critical_section cs{handle};
             const auto dict = py::reinterpret_borrow<py::dict>(handle);
             node.arity = GET_SIZE<py::dict>(dict);
             py::list keys = DictKeys(dict);
@@ -198,6 +201,7 @@ template <bool NoneIsLeaf>
         }
 
         case PyTreeKind::Deque: {
+            const scoped_critical_section cs{handle};
             const auto list = py::cast<py::list>(handle);
             node.arity = GET_SIZE<py::list>(list);
             node.node_data = py::getattr(handle, Py_Get_ID(maxlen));
@@ -209,6 +213,7 @@ template <bool NoneIsLeaf>
         }
 
         case PyTreeKind::Custom: {
+            const scoped_critical_section cs{handle};
             const py::tuple out = py::cast<py::tuple>(node.custom->flatten_func(handle));
             const ssize_t num_out = GET_SIZE<py::tuple>(out);
             if (num_out != 2 && num_out != 3) [[unlikely]] {
