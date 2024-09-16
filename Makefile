@@ -1,13 +1,16 @@
 PROJECT_NAME   = optree
 COPYRIGHT      = "MetaOPT Team. All Rights Reserved."
-PROJECT_PATH   = $(PROJECT_NAME)
 SHELL          = /bin/bash
+.SHELLFLAGS    := -eu -o pipefail -c
+PROJECT_PATH   = $(PROJECT_NAME)
 SOURCE_FOLDERS = $(PROJECT_PATH) include src tests docs
 PYTHON_FILES   = $(shell find $(SOURCE_FOLDERS) -type f -name "*.py" -o -name "*.pyi")
 CXX_FILES      = $(shell find $(SOURCE_FOLDERS) -type f -name "*.h" -o -name "*.cpp")
 COMMIT_HASH    = $(shell git rev-parse HEAD)
 COMMIT_HASH_SHORT = $(shell git rev-parse --short=7 HEAD)
-PATH           := $(PATH):$(HOME)/go/bin
+GOPATH         ?= $(HOME)/go
+GOBIN          ?= $(GOPATH)/bin
+PATH           := $(PATH):$(GOBIN)
 PYTHON         ?= $(shell command -v python3 || command -v python)
 PYTESTOPTS     ?=
 OPTREE_CXX_WERROR ?= ON
@@ -19,15 +22,12 @@ default: install
 install:
 	$(PYTHON) -m pip install -vvv .
 
-.PHONY: install-editable
-install-editable:
+.PHONY: install-editable install-e
+install-editable install-e:
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install --upgrade setuptools wheel
 	$(PYTHON) -m pip install --upgrade pybind11 cmake
 	OPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" $(PYTHON) -m pip install -vvv --no-build-isolation --editable .
-
-.PHONY: install-e
-install-e: install-editable  # alias
 
 .PHONY: uninstall
 uninstall:
@@ -127,8 +127,7 @@ clang-tidy-install:
 
 .PHONY: go-install
 go-install:
-	# requires go >= 1.16
-	command -v go || (sudo apt-get install -y golang && sudo ln -sf /usr/lib/go/bin/go /usr/bin/go)
+	command -v go || sudo apt-get satisfy -y 'golang (>= 1.16)'
 
 .PHONY: addlicense-install
 addlicense-install: go-install
@@ -136,17 +135,14 @@ addlicense-install: go-install
 
 # Tests
 
-.PHONY: pytest
-pytest: pytest-install
+.PHONY: pytest test
+pytest test: pytest-install
 	$(PYTHON) -m pytest --version
 	cd tests && $(PYTHON) -X dev -W 'always' -W 'error' -c 'import $(PROJECT_PATH)' && \
 	$(PYTHON) -X dev -W 'always' -W 'error' -c 'import $(PROJECT_PATH)._C; print(f"GLIBCXX_USE_CXX11_ABI={$(PROJECT_PATH)._C.GLIBCXX_USE_CXX11_ABI}")' && \
 	$(PYTHON) -X dev -m pytest --verbose --color=yes --durations=0 --showlocals \
 		--cov="$(PROJECT_PATH)" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
 		$(PYTESTOPTS) .
-
-.PHONY: test
-test: pytest
 
 # Python linters
 
@@ -206,12 +202,9 @@ cmake-configure: cmake-install
 		-DPython_EXECUTABLE="$(PYTHON)" \
 		-DOPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)"
 
-.PHONY: cmake-build
-cmake-build: cmake-configure
+.PHONY: cmake cmake-build
+cmake cmake-build: cmake-configure
 	cmake --build cmake-build-debug --parallel
-
-.PHONY: cmake
-cmake: cmake-build
 
 .PHONY: cpplint
 cpplint: cpplint-install
