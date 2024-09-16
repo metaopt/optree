@@ -21,7 +21,9 @@ limitations under the License.
 #include <string>     // std::string
 #include <utility>    // std::move
 
+#include "include/critical_section.h"
 #include "include/exceptions.h"
+#include "include/mutex.h"
 #include "include/registry.h"
 #include "include/treespec.h"
 #include "include/utils.h"
@@ -41,8 +43,11 @@ py::object PyTreeIter::NextImpl() {
             throw py::error_already_set();
         }
 
-        if (m_leaf_predicate && py::cast<bool>((*m_leaf_predicate)(object))) [[unlikely]] {
-            return object;
+        {
+            const scoped_critical_section cs{object};
+            if (m_leaf_predicate && py::cast<bool>((*m_leaf_predicate)(object))) [[unlikely]] {
+                return object;
+            }
         }
 
         PyTreeTypeRegistry::RegistrationPtr custom{nullptr};
@@ -73,6 +78,7 @@ py::object PyTreeIter::NextImpl() {
             }
 
             case PyTreeKind::List: {
+                const scoped_critical_section cs{object};
                 const ssize_t arity = GET_SIZE<py::list>(object);
                 for (ssize_t i = arity - 1; i >= 0; --i) {
                     m_agenda.emplace_back(GET_ITEM_BORROW<py::list>(object, i), depth);
@@ -83,6 +89,7 @@ py::object PyTreeIter::NextImpl() {
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
+                const scoped_critical_section cs{object};
                 const auto dict = py::reinterpret_borrow<py::dict>(object);
                 py::list keys = DictKeys(dict);
                 if (kind != PyTreeKind::OrderedDict && !m_is_dict_insertion_ordered) [[likely]] {
@@ -108,6 +115,7 @@ py::object PyTreeIter::NextImpl() {
             }
 
             case PyTreeKind::Deque: {
+                const scoped_critical_section cs{object};
                 const auto list = py::cast<py::list>(object);
                 const ssize_t arity = GET_SIZE<py::list>(list);
                 for (ssize_t i = arity - 1; i >= 0; --i) {
@@ -117,6 +125,7 @@ py::object PyTreeIter::NextImpl() {
             }
 
             case PyTreeKind::Custom: {
+                const scoped_critical_section cs{object};
                 const py::tuple out = py::cast<py::tuple>(custom->flatten_func(object));
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
@@ -157,6 +166,8 @@ py::object PyTreeIter::NextImpl() {
 }
 
 py::object PyTreeIter::Next() {
+    const scoped_lock_guard lock{m_agenda_mutex};
+
     if (m_none_is_leaf) [[unlikely]] {
         return NextImpl<NONE_IS_LEAF>();
     } else [[likely]] {
@@ -178,6 +189,7 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
 
                 const auto leaf = py::reinterpret_borrow<py::object>(*it);
                 if (f_leaf) [[likely]] {
+                    const scoped_critical_section cs{leaf};
                     agenda.emplace_back((*f_leaf)(leaf));
                 } else [[unlikely]] {
                     agenda.emplace_back(leaf);
@@ -204,7 +216,11 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
                     SET_ITEM<py::tuple>(tuple, i, agenda.back());
                     agenda.pop_back();
                 }
-                agenda.emplace_back(f_node(tuple, (node.node_data ? node.node_data : py::none())));
+                {
+                    const scoped_critical_section cs{node.node_data};
+                    agenda.emplace_back(
+                        f_node(tuple, node.node_data ? node.node_data : py::none()));
+                }
                 break;
             }
 

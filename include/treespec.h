@@ -402,6 +402,7 @@ class PyTreeIter {
     const bool m_none_is_leaf;
     const std::string m_namespace;
     const bool m_is_dict_insertion_ordered;
+    mutable mutex m_agenda_mutex;
 
     template <bool NoneIsLeaf>
     [[nodiscard]] py::object NextImpl();
