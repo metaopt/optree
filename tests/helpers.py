@@ -20,6 +20,7 @@ import gc
 import itertools
 import platform
 import sys
+import sysconfig
 import time
 from collections import OrderedDict, UserDict, defaultdict, deque, namedtuple
 from typing import Any, NamedTuple
@@ -27,6 +28,7 @@ from typing import Any, NamedTuple
 import pytest
 
 import optree
+from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
 
 
 PYPY = platform.python_implementation() == 'PyPy'
@@ -35,12 +37,12 @@ skipif_pypy = pytest.mark.skipif(
     reason='PyPy does not support weakref and refcount correctly',
 )
 
-
-GLOBAL_NAMESPACE = optree.registry.__GLOBAL_NAMESPACE  # pylint: disable=protected-access
+Py_GIL_DISABLED = sysconfig.get_config_var('Py_GIL_DISABLED') is not None
+NUM_GC_REPEAT = 10 if Py_GIL_DISABLED else 5
 
 
 def gc_collect():
-    for _ in range(3):
+    for _ in range(NUM_GC_REPEAT):
         gc.collect()
 
 

@@ -647,6 +647,10 @@ def dict_insertion_ordered(mode: bool, *, namespace: str) -> Generator[None]:
         PyTreeSpec({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}, namespace='some-namespace')
     )
 
+    .. warning::
+        The dictionary sorting mode is a global setting and is **not thread-safe**. It is
+        recommended to use this context manager in a single-threaded environment.
+
     Args:
         mode (bool): The dictionary sorting mode to set.
         namespace (str): The namespace to set the dictionary sorting mode for.
