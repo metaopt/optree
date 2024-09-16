@@ -26,6 +26,7 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
+#include "include/mutex.h"
 #include "include/utils.h"
 
 namespace optree {
@@ -137,6 +138,8 @@ class PyTreeTypeRegistry {
                        NamedTypeHash,
                        NamedTypeEq>
         m_named_registrations{};
+
+    static inline read_write_mutex sm_mutex{};
 };
 
 }  // namespace optree

@@ -26,6 +26,7 @@ limitations under the License.
 #include <Python.h>
 
 #include "include/exceptions.h"
+#include "include/mutex.h"
 #include "include/utils.h"
 
 namespace optree {
@@ -153,6 +154,8 @@ template <bool NoneIsLeaf>
                                              const py::function& unflatten_func,
                                              const py::object& path_entry_type,
                                              const std::string& registry_namespace) {
+    const scoped_write_lock_guard lock{sm_mutex};
+
     RegisterImpl<NONE_IS_NODE>(cls,
                                flatten_func,
                                unflatten_func,
@@ -224,6 +227,8 @@ template <bool NoneIsLeaf>
 
 /*static*/ void PyTreeTypeRegistry::Unregister(const py::object& cls,
                                                const std::string& registry_namespace) {
+    const scoped_write_lock_guard lock{sm_mutex};
+
     const auto registration1 = UnregisterImpl<NONE_IS_NODE>(cls, registry_namespace);
     const auto registration2 = UnregisterImpl<NONE_IS_LEAF>(cls, registry_namespace);
     EXPECT_TRUE(registration1->type.is(registration2->type));
@@ -240,6 +245,8 @@ template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup(
     const py::object& cls,
     const std::string& registry_namespace) {
+    const scoped_read_lock_guard lock{sm_mutex};
+
     PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
     if (!registry_namespace.empty()) [[unlikely]] {
         const auto named_it =
@@ -295,6 +302,8 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ void PyTreeTypeRegistry::Clear() {
+    const scoped_write_lock_guard lock{sm_mutex};
+
     PyTreeTypeRegistry* registry1 = PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
     PyTreeTypeRegistry* registry2 = PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
 
