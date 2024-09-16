@@ -112,6 +112,7 @@ optree = ['*.so', '*.pyd']
 # Reference: https://cibuildwheel.readthedocs.io
 [tool.cibuildwheel]
 archs = ["native"]
+free-threaded-support = true
 skip = "*musllinux*"
 build-frontend = "build"
 test-extras = ["test"]
