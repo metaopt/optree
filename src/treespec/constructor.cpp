@@ -153,10 +153,12 @@ template <bool NoneIsLeaf>
         }
 
         case PyTreeKind::List: {
-            const scoped_critical_section cs{handle};
-            node.arity = GET_SIZE<py::list>(handle);
-            for (ssize_t i = 0; i < node.arity; ++i) {
-                children.emplace_back(GET_ITEM_BORROW<py::list>(handle, i));
+            {
+                const scoped_critical_section cs{handle};
+                node.arity = GET_SIZE<py::list>(handle);
+                for (ssize_t i = 0; i < node.arity; ++i) {
+                    children.emplace_back(GET_ITEM_BORROW<py::list>(handle, i));
+                }
             }
             verify_children(children, treespecs, registry_namespace);
             break;
@@ -165,18 +167,21 @@ template <bool NoneIsLeaf>
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
         case PyTreeKind::DefaultDict: {
-            const scoped_critical_section cs{handle};
-            const auto dict = py::reinterpret_borrow<py::dict>(handle);
-            node.arity = GET_SIZE<py::dict>(dict);
-            py::list keys = DictKeys(dict);
-            if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
-                node.original_keys = py::getattr(keys, Py_Get_ID(copy))();
-                if (!IsDictInsertionOrdered(registry_namespace)) [[likely]] {
-                    TotalOrderSort(keys);
+            py::list keys;
+            {
+                const scoped_critical_section cs{handle};
+                const auto dict = py::reinterpret_borrow<py::dict>(handle);
+                node.arity = GET_SIZE<py::dict>(dict);
+                keys = DictKeys(dict);
+                if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
+                    node.original_keys = py::getattr(keys, Py_Get_ID(copy))();
+                    if (!IsDictInsertionOrdered(registry_namespace)) [[likely]] {
+                        TotalOrderSort(keys);
+                    }
                 }
-            }
-            for (const py::handle& key : keys) {
-                children.emplace_back(dict[key]);
+                for (const py::handle& key : keys) {
+                    children.emplace_back(dict[key]);
+                }
             }
             verify_children(children, treespecs, registry_namespace);
             if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
@@ -201,8 +206,7 @@ template <bool NoneIsLeaf>
         }
 
         case PyTreeKind::Deque: {
-            const scoped_critical_section cs{handle};
-            const auto list = py::cast<py::list>(handle);
+            const auto list = EVALUATE_WITH_LOCK_HELD(py::cast<py::list>(handle), handle);
             node.arity = GET_SIZE<py::list>(list);
             node.node_data = py::getattr(handle, Py_Get_ID(maxlen));
             for (ssize_t i = 0; i < node.arity; ++i) {
@@ -213,8 +217,10 @@ template <bool NoneIsLeaf>
         }
 
         case PyTreeKind::Custom: {
-            const scoped_critical_section cs{handle};
-            const py::tuple out = py::cast<py::tuple>(node.custom->flatten_func(handle));
+            const py::tuple out =
+                EVALUATE_WITH_LOCK_HELD2(py::cast<py::tuple>(node.custom->flatten_func(handle)),
+                                         handle,
+                                         node.custom->flatten_func);
             const ssize_t num_out = GET_SIZE<py::tuple>(out);
             if (num_out != 2 && num_out != 3) [[unlikely]] {
                 std::ostringstream oss{};
@@ -224,11 +230,14 @@ template <bool NoneIsLeaf>
             }
             node.arity = 0;
             node.node_data = GET_ITEM_BORROW<py::tuple>(out, ssize_t(1));
-            auto children_iterator =
-                py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
-            for (const py::handle& child : children_iterator) {
-                ++node.arity;
-                children.emplace_back(py::reinterpret_borrow<py::object>(child));
+            {
+                auto children_iterator =
+                    py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
+                const scoped_critical_section cs{children_iterator};
+                for (const py::handle& child : children_iterator) {
+                    ++node.arity;
+                    children.emplace_back(py::reinterpret_borrow<py::object>(child));
+                }
             }
             verify_children(children, treespecs, registry_namespace);
             if (num_out == 3) [[likely]] {

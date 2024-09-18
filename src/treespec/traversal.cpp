@@ -43,11 +43,11 @@ py::object PyTreeIter::NextImpl() {
             throw py::error_already_set();
         }
 
-        {
-            const scoped_critical_section cs{object};
-            if (m_leaf_predicate && py::cast<bool>((*m_leaf_predicate)(object))) [[unlikely]] {
-                return object;
-            }
+        if (m_leaf_predicate &&
+            EVALUATE_WITH_LOCK_HELD2(py::cast<bool>((*m_leaf_predicate)(object)),
+                                     object,
+                                     *m_leaf_predicate)) [[unlikely]] {
+            return object;
         }
 
         PyTreeTypeRegistry::RegistrationPtr custom{nullptr};
@@ -115,8 +115,7 @@ py::object PyTreeIter::NextImpl() {
             }
 
             case PyTreeKind::Deque: {
-                const scoped_critical_section cs{object};
-                const auto list = py::cast<py::list>(object);
+                const auto list = EVALUATE_WITH_LOCK_HELD(py::cast<py::list>(object), object);
                 const ssize_t arity = GET_SIZE<py::list>(list);
                 for (ssize_t i = arity - 1; i >= 0; --i) {
                     m_agenda.emplace_back(GET_ITEM_BORROW<py::list>(list, i), depth);
@@ -125,8 +124,10 @@ py::object PyTreeIter::NextImpl() {
             }
 
             case PyTreeKind::Custom: {
-                const scoped_critical_section cs{object};
-                const py::tuple out = py::cast<py::tuple>(custom->flatten_func(object));
+                const py::tuple out =
+                    EVALUATE_WITH_LOCK_HELD2(py::cast<py::tuple>(custom->flatten_func(object)),
+                                             object,
+                                             custom->flatten_func);
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
@@ -188,12 +189,8 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
                 }
 
                 const auto leaf = py::reinterpret_borrow<py::object>(*it);
-                if (f_leaf) [[likely]] {
-                    const scoped_critical_section cs{leaf};
-                    agenda.emplace_back((*f_leaf)(leaf));
-                } else [[unlikely]] {
-                    agenda.emplace_back(leaf);
-                }
+                agenda.emplace_back(
+                    f_leaf ? EVALUATE_WITH_LOCK_HELD2((*f_leaf)(leaf), leaf, *f_leaf) : leaf);
                 ++it;
                 break;
             }
@@ -216,11 +213,10 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
                     SET_ITEM<py::tuple>(tuple, i, agenda.back());
                     agenda.pop_back();
                 }
-                {
-                    const scoped_critical_section cs{node.node_data};
-                    agenda.emplace_back(
-                        f_node(tuple, node.node_data ? node.node_data : py::none()));
-                }
+                agenda.emplace_back(EVALUATE_WITH_LOCK_HELD2(
+                    f_node(tuple, (node.node_data ? node.node_data : py::none())),
+                    node.node_data,
+                    f_node));
                 break;
             }
 

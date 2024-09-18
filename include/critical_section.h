@@ -119,3 +119,18 @@ class scoped_critical_section2 {
     PyCriticalSection2 m_critical_section2{};
 #endif
 };
+
+#ifdef Py_GIL_DISABLED
+
+#define EVALUATE_WITH_LOCK_HELD(expression, handle)                                                \
+    (((void)scoped_critical_section{(handle)}), (expression))
+
+#define EVALUATE_WITH_LOCK_HELD2(expression, handle1, handle2)                                     \
+    (((void)scoped_critical_section2{(handle1), (handle2)}), (expression))
+
+#else
+
+#define EVALUATE_WITH_LOCK_HELD(expression, handle) (expression)
+#define EVALUATE_WITH_LOCK_HELD2(expression, handle1, handle2) (expression)
+
+#endif

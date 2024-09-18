@@ -566,7 +566,7 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
         }
     }
 
-    py::tuple fields = StructSequenceGetFieldsImpl(type);
+    const py::tuple fields = StructSequenceGetFieldsImpl(type);
     {
         const scoped_write_lock_guard lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
@@ -589,13 +589,9 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
 
 inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
     try {
-        int retval = 0;
-        {
-            const scoped_critical_section cs{list};
-            // Sort directly if possible.
-            retval = PyList_Sort(list.ptr());
-        }
-        if (static_cast<bool>(retval)) [[unlikely]] {
+        // Sort directly if possible.
+        if (static_cast<bool>(EVALUATE_WITH_LOCK_HELD(PyList_Sort(list.ptr()), list)))
+            [[unlikely]] {
             throw py::error_already_set();
         }
     } catch (py::error_already_set& ex1) {
@@ -663,9 +659,8 @@ inline bool DictKeysEqual(const py::list& /*unique*/ keys, const py::dict& dict)
 
 inline std::pair<py::list, py::list> DictKeysDifference(const py::list& /*unique*/ keys,
                                                         const py::dict& dict) {
-    const scoped_critical_section2 cs{keys, dict};
-    const py::set expected_keys{keys};
-    const py::set got_keys{DictKeys(dict)};
+    const py::set expected_keys = EVALUATE_WITH_LOCK_HELD(py::set{keys}, keys);
+    const py::set got_keys = EVALUATE_WITH_LOCK_HELD(py::set{dict}, dict);
     py::list missing_keys{expected_keys - got_keys};
     py::list extra_keys{got_keys - expected_keys};
     TotalOrderSort(missing_keys);

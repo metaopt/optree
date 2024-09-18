@@ -92,9 +92,11 @@ namespace optree {
                 SET_ITEM<py::tuple>(tuple, i, children[i]);
             }
             if (node.kind == PyTreeKind::NamedTuple) [[unlikely]] {
+                const scoped_critical_section cs{node.node_data};
                 return node.node_data(*tuple);
             }
             if (node.kind == PyTreeKind::StructSequence) [[unlikely]] {
+                const scoped_critical_section cs{node.node_data};
                 return node.node_data(std::move(tuple));
             }
             return std::move(tuple);
@@ -163,12 +165,14 @@ namespace optree {
 
         case PyTreeKind::Custom: {
             const py::tuple tuple{node.arity};
-            const scoped_critical_section cs{node.node_data};
             for (ssize_t i = 0; i < node.arity; ++i) {
                 // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
                 SET_ITEM<py::tuple>(tuple, i, children[i]);
             }
-            return node.custom->unflatten_func(node.node_data, tuple);
+            {
+                const scoped_critical_section2 cs{node.node_data, node.custom->unflatten_func};
+                return node.custom->unflatten_func(node.node_data, tuple);
+            }
         }
 
         default:
@@ -316,6 +320,7 @@ namespace optree {
                 throw py::value_error(oss.str());
             }
 
+            const scoped_critical_section2 cs{root.node_data, other_root.node_data};
             const auto expected_keys = py::reinterpret_borrow<py::list>(
                 root.kind != PyTreeKind::DefaultDict
                     ? root.node_data
@@ -413,11 +418,14 @@ namespace optree {
                     << ", got: " << other_root.arity << ".";
                 throw py::value_error(oss.str());
             }
-            if (root.node_data.not_equal(other_root.node_data)) [[unlikely]] {
-                std::ostringstream oss{};
-                oss << "Mismatch custom node data; expected: " << PyRepr(root.node_data)
-                    << ", got: " << PyRepr(other_root.node_data) << ".";
-                throw py::value_error(oss.str());
+            {
+                const scoped_critical_section2 cs{root.node_data, other_root.node_data};
+                if (root.node_data.not_equal(other_root.node_data)) [[unlikely]] {
+                    std::ostringstream oss{};
+                    oss << "Mismatch custom node data; expected: " << PyRepr(root.node_data)
+                        << ", got: " << PyRepr(other_root.node_data) << ".";
+                    throw py::value_error(oss.str());
+                }
             }
             break;
         }
@@ -655,7 +663,10 @@ ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,  // NOLINT[misc-no-recursion]
                              const ssize_t& cur,
                              const py::handle& entry,
                              const py::handle& path_entry_type) -> ssize_t {
-        stack.emplace_back(path_entry_type(entry, node_type, node_kind));
+        {
+            const scoped_critical_section2 cs{path_entry_type, node_type};
+            stack.emplace_back(path_entry_type(entry, node_type, node_kind));
+        }
         const ssize_t num_nodes = AccessorsImpl(accessors, stack, cur, depth + 1);
         stack.pop_back();
         return num_nodes;
@@ -677,7 +688,10 @@ ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,  // NOLINT[misc-no-recursion]
                 for (ssize_t d = 0; d < depth; ++d) {
                     SET_ITEM<py::tuple>(typed_path, d, stack[d]);
                 }
-                accessors.emplace_back(PyTreeAccessor(typed_path));
+                {
+                    const scoped_critical_section cs{PyTreeAccessor};
+                    accessors.emplace_back(PyTreeAccessor(typed_path));
+                }
                 break;
             }
 
