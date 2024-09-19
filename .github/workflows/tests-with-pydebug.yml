@@ -55,7 +55,7 @@ jobs:
             python-version: "3.13"
             python-abiflags: "td"
       fail-fast: false
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -130,4 +130,4 @@ jobs:
 
       - name: Test with pytest
         run: |
-          make test PYTESTOPTS="--exitfirst --verbosity=0 --durations=10"
+          make test PYTESTOPTS="--exitfirst --durations=10"
