@@ -167,7 +167,7 @@ py::object PyTreeIter::NextImpl() {
 }
 
 py::object PyTreeIter::Next() {
-    const scoped_lock_guard lock{m_agenda_mutex};
+    const scoped_lock_guard lock{m_mutex};
 
     if (m_none_is_leaf) [[unlikely]] {
         return NextImpl<NONE_IS_LEAF>();

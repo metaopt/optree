@@ -21,13 +21,41 @@ limitations under the License.
 
 #include <Python.h>
 
+#ifdef Py_GIL_DISABLED
+
+class pymutex {
+ public:
+    pymutex() = default;
+    ~pymutex() = default;
+
+    pymutex(const pymutex &) = delete;
+    pymutex &operator=(const pymutex &) = delete;
+    pymutex(pymutex &&) = delete;
+    pymutex &operator=(pymutex &&) = delete;
+
+    void lock() { PyMutex_Lock(&mutex); }
+    void unlock() { PyMutex_Unlock(&mutex); }
+
+ private:
+    PyMutex mutex{0};
+};
+
+using mutex = pymutex;
+using recursive_mutex = std::recursive_mutex;
+
+#else
+
 using mutex = std::mutex;
 using recursive_mutex = std::recursive_mutex;
+
+#endif
 
 using scoped_lock_guard = std::lock_guard<mutex>;
 using scoped_recursive_lock_guard = std::lock_guard<recursive_mutex>;
 
-#if defined(__APPLE__) && PY_VERSION_HEX < 0x030C00F0  // Python 3.12.0
+#if defined(Py_GIL_DISABLED) /* use mutex implementation from Python rather than STL */ ||         \
+    (defined(__APPLE__) /* header <shared_mutex> is not available on macOS build target */ &&      \
+     PY_VERSION_HEX < /* Python 3.12.0 */ 0x030C00F0)
 
 using read_write_mutex = mutex;
 using scoped_read_lock_guard = scoped_lock_guard;

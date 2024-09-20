@@ -379,7 +379,8 @@ class PyTreeIter {
           m_leaf_predicate{leaf_predicate},
           m_none_is_leaf{none_is_leaf},
           m_namespace{registry_namespace},
-          m_is_dict_insertion_ordered{PyTreeSpec::IsDictInsertionOrdered(registry_namespace)} {}
+          m_is_dict_insertion_ordered{PyTreeSpec::IsDictInsertionOrdered(registry_namespace)},
+          m_mutex{} {};
 
     PyTreeIter() = delete;
     ~PyTreeIter() = default;
@@ -402,7 +403,7 @@ class PyTreeIter {
     const bool m_none_is_leaf;
     const std::string m_namespace;
     const bool m_is_dict_insertion_ordered;
-    mutable mutex m_agenda_mutex;
+    mutable mutex m_mutex;
 
     template <bool NoneIsLeaf>
     [[nodiscard]] py::object NextImpl();
