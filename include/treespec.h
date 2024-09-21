@@ -375,12 +375,12 @@ class PyTreeIter {
                         const std::optional<py::function> &leaf_predicate,
                         const bool &none_is_leaf,
                         const std::string &registry_namespace)
-        : m_agenda{{{tree, 0}}},
+        : m_root{tree},
+          m_agenda{{{tree, 0}}},
           m_leaf_predicate{leaf_predicate},
           m_none_is_leaf{none_is_leaf},
           m_namespace{registry_namespace},
-          m_is_dict_insertion_ordered{PyTreeSpec::IsDictInsertionOrdered(registry_namespace)},
-          m_mutex{} {};
+          m_is_dict_insertion_ordered{PyTreeSpec::IsDictInsertionOrdered(registry_namespace)} {}
 
     PyTreeIter() = delete;
     ~PyTreeIter() = default;
@@ -398,12 +398,15 @@ class PyTreeIter {
     static int PyTpTraverse(PyObject *self_base, visitproc visit, void *arg);
 
  private:
+    const py::object m_root;
     std::vector<std::pair<py::object, ssize_t>> m_agenda;
     const std::optional<py::function> m_leaf_predicate;
     const bool m_none_is_leaf;
     const std::string m_namespace;
     const bool m_is_dict_insertion_ordered;
-    mutable mutex m_mutex;
+#ifdef Py_GIL_DISABLED
+    mutable mutex m_mutex{};
+#endif
 
     template <bool NoneIsLeaf>
     [[nodiscard]] py::object NextImpl();

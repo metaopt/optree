@@ -1613,6 +1613,7 @@ size_t PyTreeSpec::ThreadIndentTypeHash::operator()(
     for (const auto& pair : self.m_agenda) {
         Py_VISIT(pair.first.ptr());
     }
+    Py_VISIT(self.m_root.ptr());
     return 0;
 }
 

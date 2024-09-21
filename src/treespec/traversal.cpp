@@ -23,10 +23,13 @@ limitations under the License.
 
 #include "include/critical_section.h"
 #include "include/exceptions.h"
-#include "include/mutex.h"
 #include "include/registry.h"
 #include "include/treespec.h"
 #include "include/utils.h"
+
+#ifdef Py_GIL_DISABLED
+#include "include/mutex.h"
+#endif
 
 namespace optree {
 
@@ -167,7 +170,9 @@ py::object PyTreeIter::NextImpl() {
 }
 
 py::object PyTreeIter::Next() {
+#ifdef Py_GIL_DISABLED
     const scoped_lock_guard lock{m_mutex};
+#endif
 
     if (m_none_is_leaf) [[unlikely]] {
         return NextImpl<NONE_IS_LEAF>();
