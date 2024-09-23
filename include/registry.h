@@ -17,14 +17,14 @@ limitations under the License.
 
 #pragma once
 
-#include <pybind11/pybind11.h>
-
 #include <cstdint>        // std::uint8_t
 #include <memory>         // std::shared_ptr
 #include <string>         // std::string
 #include <unordered_map>  // std::unordered_map
 #include <unordered_set>  // std::unordered_set
 #include <utility>        // std::pair
+
+#include <pybind11/pybind11.h>
 
 #include "include/utils.h"
 
@@ -130,7 +130,7 @@ class PyTreeTypeRegistry {
     static RegistrationPtr UnregisterImpl(const py::object &cls,
                                           const std::string &registry_namespace);
 
-    inline static std::unordered_set<py::handle, TypeHash, TypeEq> sm_builtins_types{};
+    static inline std::unordered_set<py::handle, TypeHash, TypeEq> sm_builtins_types{};
     std::unordered_map<py::handle, RegistrationPtr, TypeHash, TypeEq> m_registrations{};
     std::unordered_map<std::pair<std::string, py::handle>,
                        RegistrationPtr,

@@ -69,7 +69,8 @@ namespace optree {
 template <bool NoneIsLeaf>
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeFromCollectionImpl(
-    const py::handle& handle, std::string registry_namespace) {
+    const py::handle& handle,
+    std::string registry_namespace) {
     auto children = reserved_vector<py::object>(4);
     auto treespecs = reserved_vector<PyTreeSpec>(4);
 
@@ -265,7 +266,9 @@ template <bool NoneIsLeaf>
 }
 
 /*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeFromCollection(
-    const py::object& object, const bool& none_is_leaf, const std::string& registry_namespace) {
+    const py::object& object,
+    const bool& none_is_leaf,
+    const std::string& registry_namespace) {
     if (none_is_leaf) [[unlikely]] {
         return MakeFromCollectionImpl<NONE_IS_LEAF>(object, registry_namespace);
     } else [[likely]] {

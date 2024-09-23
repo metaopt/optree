@@ -17,8 +17,6 @@ limitations under the License.
 
 #pragma once
 
-#include <pybind11/pybind11.h>
-
 #include <algorithm>      // std::min
 #include <memory>         // std::unique_ptr
 #include <optional>       // std::optional, std::nullopt
@@ -28,6 +26,8 @@ limitations under the License.
 #include <unordered_set>  // std::unordered_set
 #include <utility>        // std::pair, std::make_pair
 #include <vector>         // std::vector
+
+#include <pybind11/pybind11.h>
 
 #include "include/registry.h"
 #include "include/utils.h"
@@ -206,7 +206,7 @@ class PyTreeSpec {
         const std::string &registry_namespace = "");
 
     // Check if should preserve the insertion order of the dictionary keys during flattening.
-    inline static bool IsDictInsertionOrdered(const std::string &registry_namespace,
+    static inline bool IsDictInsertionOrdered(const std::string &registry_namespace,
                                               const bool &inherit_global_namespace = true) {
         return (sm_is_dict_insertion_ordered.find(registry_namespace) !=
                 sm_is_dict_insertion_ordered.end()) ||
@@ -215,7 +215,7 @@ class PyTreeSpec {
     }
 
     // Set the namespace to preserve the insertion order of the dictionary keys during flattening.
-    inline static void SetDictInsertionOrdered(const bool &mode,
+    static inline void SetDictInsertionOrdered(const bool &mode,
                                                const std::string &registry_namespace) {
         if (mode) [[likely]] {
             sm_is_dict_insertion_ordered.insert(registry_namespace);
@@ -360,15 +360,15 @@ class PyTreeSpec {
 
     // A set of namespaces that preserve the insertion order of the dictionary keys during
     // flattening.
-    inline static std::unordered_set<std::string> sm_is_dict_insertion_ordered{};
+    static inline std::unordered_set<std::string> sm_is_dict_insertion_ordered{};
 
     // A set of (treespec, thread_id) pairs that are currently being represented as strings.
-    inline static std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
+    static inline std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
                                      ThreadIndentTypeHash>
         sm_repr_running{};
 
     // A set of (treespec, thread_id) pairs that are currently being hashed.
-    inline static std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
+    static inline std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
                                      ThreadIndentTypeHash>
         sm_hash_running{};
 };

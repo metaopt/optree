@@ -15,12 +15,12 @@ limitations under the License.
 ================================================================================
 */
 
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-
 #include <memory>    // std::unique_ptr
 #include <optional>  // std::optional, std::nullopt
 #include <string>    // std::string
+
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 #include "include/exceptions.h"
 #include "include/registry.h"
@@ -224,8 +224,9 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              &PyTreeSpec::Child,
              "Return the treespec for the child at the given index.",
              py::arg("index"))
-        .def_property_readonly(
-            "num_leaves", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
+        .def_property_readonly("num_leaves",
+                               &PyTreeSpec::GetNumLeaves,
+                               "Number of leaves in the tree.")
         .def_property_readonly("num_nodes",
                                &PyTreeSpec::GetNumNodes,
                                "Number of nodes in the tree. "

@@ -58,8 +58,11 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             // NOLINTNEXTLINE[misc-no-recursion]
             [this, &found_custom, &leaf_predicate, &registry_namespace, &leaves, &depth](
                 const py::handle& child) -> void {
-            found_custom |= FlattenIntoImpl<NoneIsLeaf, DictShouldBeSorted>(
-                child, leaves, depth + 1, leaf_predicate, registry_namespace);
+            found_custom |= FlattenIntoImpl<NoneIsLeaf, DictShouldBeSorted>(child,
+                                                                            leaves,
+                                                                            depth + 1,
+                                                                            leaf_predicate,
+                                                                            registry_namespace);
         };
         switch (node.kind) {
             case PyTreeKind::Leaf: {
@@ -189,19 +192,31 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
                              const std::string& registry_namespace) {
     if (none_is_leaf) [[unlikely]] {
         if (!IsDictInsertionOrdered(registry_namespace)) [[likely]] {
-            return FlattenIntoImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/true>(
-                handle, leaves, 0, leaf_predicate, registry_namespace);
+            return FlattenIntoImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/true>(handle,
+                                                                              leaves,
+                                                                              0,
+                                                                              leaf_predicate,
+                                                                              registry_namespace);
         } else [[unlikely]] {
-            return FlattenIntoImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/false>(
-                handle, leaves, 0, leaf_predicate, registry_namespace);
+            return FlattenIntoImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/false>(handle,
+                                                                               leaves,
+                                                                               0,
+                                                                               leaf_predicate,
+                                                                               registry_namespace);
         }
     } else [[likely]] {
         if (!IsDictInsertionOrdered(registry_namespace)) [[likely]] {
-            return FlattenIntoImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/true>(
-                handle, leaves, 0, leaf_predicate, registry_namespace);
+            return FlattenIntoImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/true>(handle,
+                                                                              leaves,
+                                                                              0,
+                                                                              leaf_predicate,
+                                                                              registry_namespace);
         } else [[unlikely]] {
-            return FlattenIntoImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/false>(
-                handle, leaves, 0, leaf_predicate, registry_namespace);
+            return FlattenIntoImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/false>(handle,
+                                                                               leaves,
+                                                                               0,
+                                                                               leaf_predicate,
+                                                                               registry_namespace);
         }
     }
 }
@@ -267,8 +282,14 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                               &stack,
                               &depth](const py::handle& child, const py::handle& entry) -> void {
             stack.emplace_back(entry);
-            found_custom |= FlattenIntoWithPathImpl<NoneIsLeaf, DictShouldBeSorted>(
-                child, leaves, paths, stack, depth + 1, leaf_predicate, registry_namespace);
+            found_custom |=
+                FlattenIntoWithPathImpl<NoneIsLeaf, DictShouldBeSorted>(child,
+                                                                        leaves,
+                                                                        paths,
+                                                                        stack,
+                                                                        depth + 1,
+                                                                        leaf_predicate,
+                                                                        registry_namespace);
             stack.pop_back();
         };
         switch (node.kind) {
@@ -424,18 +445,42 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
     if (none_is_leaf) [[unlikely]] {
         if (!IsDictInsertionOrdered(registry_namespace)) [[likely]] {
             return FlattenIntoWithPathImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/true>(
-                handle, leaves, paths, stack, 0, leaf_predicate, registry_namespace);
+                handle,
+                leaves,
+                paths,
+                stack,
+                0,
+                leaf_predicate,
+                registry_namespace);
         } else [[unlikely]] {
             return FlattenIntoWithPathImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/false>(
-                handle, leaves, paths, stack, 0, leaf_predicate, registry_namespace);
+                handle,
+                leaves,
+                paths,
+                stack,
+                0,
+                leaf_predicate,
+                registry_namespace);
         }
     } else [[likely]] {
         if (!IsDictInsertionOrdered(registry_namespace)) [[likely]] {
             return FlattenIntoWithPathImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/true>(
-                handle, leaves, paths, stack, 0, leaf_predicate, registry_namespace);
+                handle,
+                leaves,
+                paths,
+                stack,
+                0,
+                leaf_predicate,
+                registry_namespace);
         } else [[unlikely]] {
             return FlattenIntoWithPathImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/false>(
-                handle, leaves, paths, stack, 0, leaf_predicate, registry_namespace);
+                handle,
+                leaves,
+                paths,
+                stack,
+                0,
+                leaf_predicate,
+                registry_namespace);
         }
     }
 }
@@ -449,8 +494,12 @@ PyTreeSpec::FlattenWithPath(const py::object& tree,
     auto paths = reserved_vector<py::tuple>(4);
     auto treespec = std::make_unique<PyTreeSpec>();
     treespec->m_none_is_leaf = none_is_leaf;
-    if (treespec->FlattenIntoWithPath(
-            tree, leaves, paths, leaf_predicate, none_is_leaf, registry_namespace) ||
+    if (treespec->FlattenIntoWithPath(tree,
+                                      leaves,
+                                      paths,
+                                      leaf_predicate,
+                                      none_is_leaf,
+                                      registry_namespace) ||
         IsDictInsertionOrdered(registry_namespace, /*inherit_global_namespace=*/false))
         [[unlikely]] {
         treespec->m_namespace = registry_namespace;

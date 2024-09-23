@@ -17,6 +17,14 @@ limitations under the License.
 
 #pragma once
 
+#include <exception>      // std::rethrow_exception, std::current_exception
+#include <functional>     // std::hash
+#include <sstream>        // std::ostringstream
+#include <string>         // std::string
+#include <unordered_map>  // std::unordered_map
+#include <utility>        // std::move, std::pair, std::make_pair
+#include <vector>         // std::vector
+
 #include <Python.h>
 
 #if PY_VERSION_HEX < 0x030C00F0  // Python 3.12.0
@@ -25,14 +33,6 @@ limitations under the License.
 
 #include <pybind11/eval.h>  // pybind11::exec
 #include <pybind11/pybind11.h>
-
-#include <exception>      // std::rethrow_exception, std::current_exception
-#include <functional>     // std::hash
-#include <sstream>        // std::ostringstream
-#include <string>         // std::string
-#include <unordered_map>  // std::unordered_map
-#include <utility>        // std::move, std::pair, std::make_pair
-#include <vector>         // std::vector
 
 namespace py = pybind11;
 
@@ -108,21 +108,21 @@ class NamedTypeEq {
 constexpr bool NONE_IS_LEAF = true;
 constexpr bool NONE_IS_NODE = false;
 
-#define Py_Declare_ID(name)                                                            \
-    namespace {                                                                        \
-    static inline PyObject* Py_ID_##name() {                                           \
-        PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyObject*> storage; \
-        return storage                                                                 \
-            .call_once_and_store_result([]() -> PyObject* {                            \
-                PyObject* ptr = PyUnicode_InternFromString(#name);                     \
-                if (ptr == nullptr) [[unlikely]] {                                     \
-                    throw py::error_already_set();                                     \
-                }                                                                      \
-                Py_INCREF(ptr); /* leak a reference on purpose */                      \
-                return ptr;                                                            \
-            })                                                                         \
-            .get_stored();                                                             \
-    }                                                                                  \
+#define Py_Declare_ID(name)                                                                        \
+    namespace {                                                                                    \
+    static inline PyObject* Py_ID_##name() {                                                       \
+        PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyObject*> storage;             \
+        return storage                                                                             \
+            .call_once_and_store_result([]() -> PyObject* {                                        \
+                PyObject* ptr = PyUnicode_InternFromString(#name);                                 \
+                if (ptr == nullptr) [[unlikely]] {                                                 \
+                    throw py::error_already_set();                                                 \
+                }                                                                                  \
+                Py_INCREF(ptr); /* leak a reference on purpose */                                  \
+                return ptr;                                                                        \
+            })                                                                                     \
+            .get_stored();                                                                         \
+    }                                                                                              \
     }  // namespace
 
 #define Py_Get_ID(name) (::Py_ID_##name())

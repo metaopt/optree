@@ -214,7 +214,7 @@ cpplint: cpplint-install
 .PHONY: clang-format
 clang-format: clang-format-install
 	clang-format --version
-	clang-format --style=file -i $(CXX_FILES) -n --Werror
+	clang-format --style=file --Werror -i $(CXX_FILES)
 
 .PHONY: clang-tidy
 clang-tidy: clang-tidy-install cmake-configure

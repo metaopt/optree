@@ -17,13 +17,13 @@ limitations under the License.
 
 #include "include/registry.h"
 
-#include <Python.h>
-
 #include <memory>       // std::make_shared
 #include <sstream>      // std::ostringstream
 #include <string>       // std::string
 #include <type_traits>  // std::remove_const_t
 #include <utility>      // std::move, std::pair, std::make_pair
+
+#include <Python.h>
 
 #include "include/exceptions.h"
 #include "include/utils.h"
@@ -153,10 +153,16 @@ template <bool NoneIsLeaf>
                                              const py::function& unflatten_func,
                                              const py::object& path_entry_type,
                                              const std::string& registry_namespace) {
-    RegisterImpl<NONE_IS_NODE>(
-        cls, flatten_func, unflatten_func, path_entry_type, registry_namespace);
-    RegisterImpl<NONE_IS_LEAF>(
-        cls, flatten_func, unflatten_func, path_entry_type, registry_namespace);
+    RegisterImpl<NONE_IS_NODE>(cls,
+                               flatten_func,
+                               unflatten_func,
+                               path_entry_type,
+                               registry_namespace);
+    RegisterImpl<NONE_IS_LEAF>(cls,
+                               flatten_func,
+                               unflatten_func,
+                               path_entry_type,
+                               registry_namespace);
     cls.inc_ref();
     flatten_func.inc_ref();
     unflatten_func.inc_ref();
@@ -165,7 +171,8 @@ template <bool NoneIsLeaf>
 
 template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::UnregisterImpl(
-    const py::object& cls, const std::string& registry_namespace) {
+    const py::object& cls,
+    const std::string& registry_namespace) {
     if (sm_builtins_types.find(cls) != sm_builtins_types.end()) [[unlikely]] {
         throw py::value_error("PyTree type " + PyRepr(cls) +
                               " is a built-in type and cannot be unregistered.");
@@ -231,7 +238,8 @@ template <bool NoneIsLeaf>
 
 template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup(
-    const py::object& cls, const std::string& registry_namespace) {
+    const py::object& cls,
+    const std::string& registry_namespace) {
     PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
     if (!registry_namespace.empty()) [[unlikely]] {
         const auto named_it =
@@ -245,9 +253,11 @@ template <bool NoneIsLeaf>
 }
 
 template PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(
-    const py::object&, const std::string&);
+    const py::object&,
+    const std::string&);
 template PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(
-    const py::object&, const std::string&);
+    const py::object&,
+    const std::string&);
 
 template <bool NoneIsLeaf>
 /*static*/ PyTreeKind PyTreeTypeRegistry::GetKind(

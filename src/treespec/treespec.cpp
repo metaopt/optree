@@ -655,8 +655,9 @@ ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,  // NOLINT[misc-no-recursion]
 
     const py::object path_entry_type = GetPathEntryType(root);
     if (root.node_entries) [[unlikely]] {
-        EXPECT_EQ(
-            root.kind, PyTreeKind::Custom, "Node entries are only supported for custom nodes.");
+        EXPECT_EQ(root.kind,
+                  PyTreeKind::Custom,
+                  "Node entries are only supported for custom nodes.");
         EXPECT_NE(root.custom, nullptr, "The custom registration is null.");
         for (ssize_t i = root.arity - 1; i >= 0; --i) {
             cur -= recurse(cur, GET_ITEM_HANDLE<py::tuple>(root.node_entries, i), path_entry_type);
@@ -996,8 +997,9 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec& other, const bool& strict) const {
                     }
                     std::reverse(other_num_nodes.begin(), other_num_nodes.end());
                     std::reverse(other_offsets.begin(), other_offsets.end());
-                    EXPECT_EQ(
-                        other_offsets.front(), b->num_nodes, "PyTreeSpec traversal out of range.");
+                    EXPECT_EQ(other_offsets.front(),
+                              b->num_nodes,
+                              "PyTreeSpec traversal out of range.");
                     auto reordered_index_to_index = std::unordered_map<ssize_t, ssize_t>{};
                     for (ssize_t i = a->arity - 1; i >= 0; --i) {
                         const py::object key = GET_ITEM_BORROW<py::list>(expected_keys, i);
@@ -1180,8 +1182,9 @@ std::string PyTreeSpec::ToStringImpl() const {
             }
 
             case PyTreeKind::DefaultDict: {
-                EXPECT_EQ(
-                    GET_SIZE<py::tuple>(node.node_data), 2, "Number of auxiliary data mismatch.");
+                EXPECT_EQ(GET_SIZE<py::tuple>(node.node_data),
+                          2,
+                          "Number of auxiliary data mismatch.");
                 const py::object default_factory =
                     GET_ITEM_BORROW<py::tuple>(node.node_data, ssize_t(0));
                 const auto keys = py::reinterpret_borrow<py::list>(
@@ -1315,8 +1318,9 @@ std::string PyTreeSpec::ToString() const {
         case PyTreeKind::OrderedDict:
         case PyTreeKind::DefaultDict: {
             if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
-                EXPECT_EQ(
-                    GET_SIZE<py::tuple>(node.node_data), 2, "Number of auxiliary data mismatch.");
+                EXPECT_EQ(GET_SIZE<py::tuple>(node.node_data),
+                          2,
+                          "Number of auxiliary data mismatch.");
                 const py::object default_factory =
                     GET_ITEM_BORROW<py::tuple>(node.node_data, ssize_t(0));
                 data_hash = py::hash(default_factory);
@@ -1325,8 +1329,9 @@ std::string PyTreeSpec::ToString() const {
                 node.kind != PyTreeKind::DefaultDict
                     ? node.node_data
                     : GET_ITEM_BORROW<py::tuple>(node.node_data, ssize_t(1)));
-            EXPECT_EQ(
-                GET_SIZE<py::list>(keys), node.arity, "Number of keys and entries does not match.");
+            EXPECT_EQ(GET_SIZE<py::list>(keys),
+                      node.arity,
+                      "Number of keys and entries does not match.");
             for (const py::handle& key : keys) {
                 HashCombine(data_hash, py::hash(key));
             }

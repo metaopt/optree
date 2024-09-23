@@ -1,6 +1,46 @@
 BasedOnStyle: Google
+UseTab: Never
 IndentWidth: 4
+ContinuationIndentWidth: 4
 AccessModifierOffset: -3
 ColumnLimit: 100
+AlignAfterOpenBracket: Align
+AlignEscapedNewlines: Right
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortIfStatementsOnASingleLine: Never
 BinPackArguments: false
 BinPackParameters: false
+BreakBeforeTernaryOperators: true
+FixNamespaceComments: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^(<|")Python\.h("|>)$'
+    Priority: 2
+    CaseSensitive: true
+  - Regex: '^(<|")(pybind11/.*)("|>)$'
+    Priority: 3
+    CaseSensitive: true
+  - Regex: '^<[[:alnum:]_]+(\.h)?>$'
+    Priority: 1
+  - Regex: '^"include/'
+    Priority: 4
+    CaseSensitive: true
+  - Regex: ".*"
+    Priority: 5
+IndentAccessModifiers: false
+IndentCaseBlocks: false
+IndentPPDirectives: None
+InsertBraces: true
+InsertTrailingCommas: Wrapped
+LambdaBodyIndentation: Signature
+PackConstructorInitializers: NextLine
+PointerAlignment: Right
+QualifierAlignment: Custom
+QualifierOrder: [friend, static, inline, const, constexpr, volatile, type, restrict]
+ReferenceAlignment: Right
+RemoveParentheses: MultipleParentheses
+RemoveSemicolon: true
+SeparateDefinitionBlocks: Leave
+SortIncludes: CaseSensitive
+SpaceAroundPointerQualifiers: Both
