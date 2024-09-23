@@ -19,6 +19,7 @@ import builtins
 import enum
 from collections.abc import Callable, Iterable, Iterator
 from typing import Any
+from typing_extensions import Self
 
 from optree.typing import (
     CustomTreeNode,
@@ -144,7 +145,7 @@ class PyTreeIter(Iterator[T]):
         node_is_leaf: bool = False,
         namespace: str = '',
     ) -> None: ...
-    def __iter__(self) -> PyTreeIter[T]: ...
+    def __iter__(self) -> Self: ...
     def __next__(self) -> T: ...
 
 def register_node(

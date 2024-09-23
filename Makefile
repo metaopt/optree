@@ -219,7 +219,7 @@ clang-format: clang-format-install
 .PHONY: clang-tidy
 clang-tidy: clang-tidy-install cmake-configure
 	clang-tidy --version
-	clang-tidy --extra-arg="-v" -p=cmake-build-debug $(CXX_FILES)
+	clang-tidy --extra-arg="-v" --extra-arg="-std=c++17" --fix -p=cmake-build-debug $(CXX_FILES)
 
 # Documentation
 

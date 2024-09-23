@@ -23,7 +23,7 @@ limitations under the License.
 #include <memory>         // std::unique_ptr
 #include <optional>       // std::optional, std::nullopt
 #include <string>         // std::string
-#include <thread>         // std::thread::id // NOLINT[build/c++11]
+#include <thread>         // std::thread::id
 #include <tuple>          // std::tuple
 #include <unordered_set>  // std::unordered_set
 #include <utility>        // std::pair, std::make_pair
@@ -81,6 +81,12 @@ class PyTreeSpec {
 
  public:
     PyTreeSpec() = default;
+    ~PyTreeSpec() = default;
+
+    PyTreeSpec(const PyTreeSpec &) = default;
+    PyTreeSpec &operator=(const PyTreeSpec &) = default;
+    PyTreeSpec(PyTreeSpec &&) = default;
+    PyTreeSpec &operator=(PyTreeSpec &&) = default;
 
     // Flatten a PyTree into a list of leaves and a PyTreeSpec.
     // Return references to the flattened objects, which might be temporary objects in the case of
@@ -118,7 +124,7 @@ class PyTreeSpec {
     // Map a function over a PyTree structure, applying f_leaf to each leaf, and
     // f_node(children, node_data) to each container node.
     [[nodiscard]] py::object Walk(const py::function &f_node,
-                                  const py::object &f_leaf,
+                                  const std::optional<py::function> &f_leaf,
                                   const py::iterable &leaves) const;
 
     // Return paths to all leaves in the PyTreeSpec.
@@ -181,9 +187,6 @@ class PyTreeSpec {
     // Used to implement `PyTreeSpec.__getstate__`.
     [[nodiscard]] py::object ToPickleable() const;
 
-    // Used in tp_traverse to traverse the PyTreeSpec.
-    [[nodiscard]] const std::vector<Node> &GetTraversal() const { return m_traversal; }
-
     // Transform the object returned by `ToPickleable()` back to PyTreeSpec.
     // Used to implement `PyTreeSpec.__setstate__`.
     static std::unique_ptr<PyTreeSpec> FromPickleable(const py::object &pickleable);
@@ -220,6 +223,9 @@ class PyTreeSpec {
             sm_is_dict_insertion_ordered.erase(registry_namespace);
         }
     }
+
+    // Used in tp_traverse for GC support.
+    static int PyTpTraverse(PyObject *self_base, visitproc visit, void *arg);
 
  private:
     using RegistrationPtr = PyTreeTypeRegistry::RegistrationPtr;
@@ -272,7 +278,7 @@ class PyTreeSpec {
 
     // Helper that manufactures an instance of a node given its children.
     static py::object MakeNode(const Node &node,
-                               const py::object *children,
+                               const py::object children[],  // NOLINT[hicpp-avoid-c-arrays]
                                const size_t &num_children);
 
     // Helper that identifies the path entry class for a node.
@@ -369,43 +375,37 @@ class PyTreeSpec {
 
 class PyTreeIter {
  public:
-    PyTreeIter(const py::object &tree,
-               const std::optional<py::function> &leaf_predicate,
-               const bool &none_is_leaf,
-               const std::string &registry_namespace)
-        : m_agenda({std::make_pair(tree, 0)}),
-          m_leaf_predicate(leaf_predicate),
-          m_none_is_leaf(none_is_leaf),
-          m_namespace(registry_namespace),
-          m_is_dict_insertion_ordered(PyTreeSpec::IsDictInsertionOrdered(registry_namespace)) {};
+    explicit PyTreeIter(const py::object &tree,
+                        const std::optional<py::function> &leaf_predicate,
+                        const bool &none_is_leaf,
+                        const std::string &registry_namespace)
+        : m_agenda{{{tree, 0}}},
+          m_leaf_predicate{leaf_predicate},
+          m_none_is_leaf{none_is_leaf},
+          m_namespace{registry_namespace},
+          m_is_dict_insertion_ordered{PyTreeSpec::IsDictInsertionOrdered(registry_namespace)} {}
 
     PyTreeIter() = delete;
-
     ~PyTreeIter() = default;
 
     PyTreeIter(const PyTreeIter &) = delete;
-
-    PyTreeIter operator=(const PyTreeIter &) = delete;
-
-    PyTreeIter(PyTreeIter &&) = default;
-
-    PyTreeIter &operator=(PyTreeIter &&) = default;
+    PyTreeIter &operator=(const PyTreeIter &) = delete;
+    PyTreeIter(PyTreeIter &&) = delete;
+    PyTreeIter &operator=(PyTreeIter &&) = delete;
 
     [[nodiscard]] PyTreeIter &Iter() { return *this; }
 
     [[nodiscard]] py::object Next();
 
-    // Used in tp_traverse to traverse the PyTreeIter.
-    [[nodiscard]] const std::vector<std::pair<py::object, ssize_t>> &GetAgenda() const {
-        return m_agenda;
-    }
+    // Used in tp_traverse for GC support.
+    static int PyTpTraverse(PyObject *self_base, visitproc visit, void *arg);
 
  private:
     std::vector<std::pair<py::object, ssize_t>> m_agenda;
-    std::optional<py::function> m_leaf_predicate;
-    bool m_none_is_leaf;
-    std::string m_namespace;
-    bool m_is_dict_insertion_ordered;
+    const std::optional<py::function> m_leaf_predicate;
+    const bool m_none_is_leaf;
+    const std::string m_namespace;
+    const bool m_is_dict_insertion_ordered;
 
     template <bool NoneIsLeaf>
     [[nodiscard]] py::object NextImpl();

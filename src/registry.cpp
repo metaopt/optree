@@ -38,8 +38,8 @@ template <bool NoneIsLeaf>
             .call_once_and_store_result([]() -> PyTreeTypeRegistry {
                 PyTreeTypeRegistry registry{};
 
-                auto add_builtin_type = [&registry](const py::object& cls,
-                                                    const PyTreeKind& kind) -> void {
+                const auto add_builtin_type = [&registry](const py::object& cls,
+                                                          const PyTreeKind& kind) -> void {
                     auto registration =
                         std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
                     registration->kind = kind;
@@ -173,7 +173,7 @@ template <bool NoneIsLeaf>
 
     PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
     if (registry_namespace.empty()) [[unlikely]] {
-        auto it = registry->m_registrations.find(cls);
+        const auto it = registry->m_registrations.find(cls);
         if (it == registry->m_registrations.end()) [[unlikely]] {
             std::ostringstream oss{};
             oss << "PyTree type " << PyRepr(cls) << " ";
@@ -192,7 +192,7 @@ template <bool NoneIsLeaf>
         registry->m_registrations.erase(it);
         return registration;
     } else [[likely]] {
-        auto named_it =
+        const auto named_it =
             registry->m_named_registrations.find(std::make_pair(registry_namespace, cls));
         if (named_it == registry->m_named_registrations.end()) [[unlikely]] {
             std::ostringstream oss{};
@@ -217,8 +217,8 @@ template <bool NoneIsLeaf>
 
 /*static*/ void PyTreeTypeRegistry::Unregister(const py::object& cls,
                                                const std::string& registry_namespace) {
-    auto registration1 = UnregisterImpl<NONE_IS_NODE>(cls, registry_namespace);
-    auto registration2 = UnregisterImpl<NONE_IS_LEAF>(cls, registry_namespace);
+    const auto registration1 = UnregisterImpl<NONE_IS_NODE>(cls, registry_namespace);
+    const auto registration2 = UnregisterImpl<NONE_IS_LEAF>(cls, registry_namespace);
     EXPECT_TRUE(registration1->type.is(registration2->type));
     EXPECT_TRUE(registration1->flatten_func.is(registration2->flatten_func));
     EXPECT_TRUE(registration1->unflatten_func.is(registration2->unflatten_func));
@@ -234,13 +234,13 @@ template <bool NoneIsLeaf>
     const py::object& cls, const std::string& registry_namespace) {
     PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
     if (!registry_namespace.empty()) [[unlikely]] {
-        auto named_it =
+        const auto named_it =
             registry->m_named_registrations.find(std::make_pair(registry_namespace, cls));
         if (named_it != registry->m_named_registrations.end()) [[likely]] {
             return named_it->second;
         }
     }
-    auto it = registry->m_registrations.find(cls);
+    const auto it = registry->m_registrations.find(cls);
     return it != registry->m_registrations.end() ? it->second : nullptr;
 }
 
@@ -254,7 +254,8 @@ template <bool NoneIsLeaf>
     const py::handle& handle,
     PyTreeTypeRegistry::RegistrationPtr& custom,  // NOLINT[runtime/references]
     const std::string& registry_namespace) {
-    RegistrationPtr registration = Lookup<NoneIsLeaf>(py::type::of(handle), registry_namespace);
+    const RegistrationPtr registration =
+        Lookup<NoneIsLeaf>(py::type::of(handle), registry_namespace);
     if (registration) [[likely]] {
         if (registration->kind == PyTreeKind::Custom) [[unlikely]] {
             custom = registration;
@@ -296,7 +297,7 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
         EXPECT_NE(registry1->m_registrations.find(cls), registry1->m_registrations.end());
     }
     for (const auto& entry : registry2->m_registrations) {
-        auto it = registry1->m_registrations.find(entry.first);
+        const auto it = registry1->m_registrations.find(entry.first);
         EXPECT_NE(it, registry1->m_registrations.end());
 
         const auto& registration1 = it->second;
@@ -307,7 +308,7 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
         EXPECT_TRUE(registration1->path_entry_type.is(registration2->path_entry_type));
     }
     for (const auto& entry : registry2->m_named_registrations) {
-        auto it = registry1->m_named_registrations.find(entry.first);
+        const auto it = registry1->m_named_registrations.find(entry.first);
         EXPECT_NE(it, registry1->m_named_registrations.end());
 
         const auto& registration1 = it->second;

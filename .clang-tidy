@@ -1,29 +1,27 @@
 ---
 # NOTE: there must be no spaces before the '-', so put the comma last.
 InheritParentConfig: true
+FormatStyle: file
+UseColor: true
+WarningsAsErrors: '*'
 Checks: '
 bugprone-*,
 -bugprone-easily-swappable-parameters,
 clang-analyzer-*,
 cppcoreguidelines-*,
--cppcoreguidelines-avoid-non-const-global-variables,
 -cppcoreguidelines-macro-usage,
 -cppcoreguidelines-pro-type-reinterpret-cast,
-hicpp-avoid-goto,
-hicpp-exception-baseclass,
+hicpp-*,
 misc-*,
--misc-const-correctness,
 modernize-*,
 -modernize-use-trailing-return-type,
 performance-*,
 readability-*,
--readability-convert-member-functions-to-static,
 -readability-redundant-inline-specifier,
 -readability-redundant-member-init,
 -readability-identifier-length,
 '
-HeaderFilterRegex: '^include/.*$'
-WarningsAsErrors: '*'
-FormatStyle: file
 CheckOptions:
     misc-include-cleaner.IgnoreHeaders: 'python.*/.*;pybind11/.*'
+HeaderFilterRegex: '^include/.*$'
+...

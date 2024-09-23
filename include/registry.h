@@ -65,9 +65,10 @@ class PyTreeTypeRegistry {
  public:
     PyTreeTypeRegistry() = default;
     ~PyTreeTypeRegistry() = default;
+
     PyTreeTypeRegistry(const PyTreeTypeRegistry &) = delete;
+    PyTreeTypeRegistry &operator=(const PyTreeTypeRegistry &) = delete;
     PyTreeTypeRegistry(PyTreeTypeRegistry &&) = default;
-    PyTreeTypeRegistry operator=(const PyTreeTypeRegistry &) = delete;
     PyTreeTypeRegistry &operator=(PyTreeTypeRegistry &&) = default;
 
     struct Registration {

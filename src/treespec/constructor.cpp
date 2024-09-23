@@ -76,9 +76,9 @@ template <bool NoneIsLeaf>
     Node node;
     node.kind = PyTreeTypeRegistry::GetKind<NoneIsLeaf>(handle, node.custom, registry_namespace);
 
-    auto verify_children = [&handle, &node](const std::vector<py::object>& children,
-                                            std::vector<PyTreeSpec>& treespecs,
-                                            std::string& register_namespace) -> void {
+    const auto verify_children = [&handle, &node](const std::vector<py::object>& children,
+                                                  std::vector<PyTreeSpec>& treespecs,
+                                                  std::string& register_namespace) -> void {
         for (const py::object& child : children) {
             if (!py::isinstance<PyTreeSpec>(child)) [[unlikely]] {
                 std::ostringstream oss{};
@@ -86,7 +86,7 @@ template <bool NoneIsLeaf>
                     << PyRepr(handle) << ".";
                 throw py::value_error(oss.str());
             }
-            treespecs.emplace_back(py::cast<PyTreeSpec>(child));
+            treespecs.emplace_back(py::cast<PyTreeSpec&>(child));
         }
 
         std::string common_registry_namespace{};
@@ -162,7 +162,7 @@ template <bool NoneIsLeaf>
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
         case PyTreeKind::DefaultDict: {
-            auto dict = py::reinterpret_borrow<py::dict>(handle);
+            const auto dict = py::reinterpret_borrow<py::dict>(handle);
             node.arity = GET_SIZE<py::dict>(dict);
             py::list keys = DictKeys(dict);
             if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
@@ -186,7 +186,7 @@ template <bool NoneIsLeaf>
 
         case PyTreeKind::NamedTuple:
         case PyTreeKind::StructSequence: {
-            auto tuple = py::reinterpret_borrow<py::tuple>(handle);
+            const auto tuple = py::reinterpret_borrow<py::tuple>(handle);
             node.arity = GET_SIZE<py::tuple>(tuple);
             node.node_data = py::type::of(tuple);
             for (ssize_t i = 0; i < node.arity; ++i) {
@@ -197,7 +197,7 @@ template <bool NoneIsLeaf>
         }
 
         case PyTreeKind::Deque: {
-            auto list = py::cast<py::list>(handle);
+            const auto list = py::cast<py::list>(handle);
             node.arity = GET_SIZE<py::list>(list);
             node.node_data = py::getattr(handle, Py_Get_ID(maxlen));
             for (ssize_t i = 0; i < node.arity; ++i) {
@@ -208,7 +208,7 @@ template <bool NoneIsLeaf>
         }
 
         case PyTreeKind::Custom: {
-            py::tuple out = py::cast<py::tuple>(node.custom->flatten_func(handle));
+            const py::tuple out = py::cast<py::tuple>(node.custom->flatten_func(handle));
             const ssize_t num_out = GET_SIZE<py::tuple>(out);
             if (num_out != 2 && num_out != 3) [[unlikely]] {
                 std::ostringstream oss{};
@@ -218,8 +218,9 @@ template <bool NoneIsLeaf>
             }
             node.arity = 0;
             node.node_data = GET_ITEM_BORROW<py::tuple>(out, ssize_t(1));
-            for (const py::handle& child :
-                 py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)))) {
+            auto children_iterator =
+                py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
+            for (const py::handle& child : children_iterator) {
                 ++node.arity;
                 children.emplace_back(py::reinterpret_borrow<py::object>(child));
             }

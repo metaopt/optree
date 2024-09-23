@@ -180,23 +180,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         py::custom_type_setup([](PyHeapTypeObject* heap_type) -> void {
             auto* type = &heap_type->ht_type;
             type->tp_flags |= Py_TPFLAGS_HAVE_GC;
-            type->tp_traverse = [](PyObject* self_base, visitproc visit, void* arg) -> int {
-#if PY_VERSION_HEX >= 0x03090000  // Python 3.9
-                Py_VISIT(Py_TYPE(self_base));
-#endif
-                auto* instance = reinterpret_cast<py::detail::instance*>(self_base);
-                if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
-                    // The holder is not constructed yet. Skip the traversal to avoid segfault.
-                    return 0;
-                }
-                auto& self = py::cast<PyTreeSpec&>(py::handle(self_base));
-                for (const auto& node : self.GetTraversal()) {
-                    Py_VISIT(node.node_data.ptr());
-                    Py_VISIT(node.node_entries.ptr());
-                    Py_VISIT(node.original_keys.ptr());
-                }
-                return 0;
-            };
+            type->tp_traverse = &PyTreeSpec::PyTpTraverse;
         }),
         // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
         py::module_local());
@@ -333,21 +317,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         py::custom_type_setup([](PyHeapTypeObject* heap_type) -> void {
             auto* type = &heap_type->ht_type;
             type->tp_flags |= Py_TPFLAGS_HAVE_GC;
-            type->tp_traverse = [](PyObject* self_base, visitproc visit, void* arg) -> int {
-#if PY_VERSION_HEX >= 0x03090000  // Python 3.9
-                Py_VISIT(Py_TYPE(self_base));
-#endif
-                auto* instance = reinterpret_cast<py::detail::instance*>(self_base);
-                if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
-                    // The holder is not constructed yet. Skip the traversal to avoid segfault.
-                    return 0;
-                }
-                auto& self = py::cast<PyTreeIter&>(py::handle(self_base));
-                for (const auto& pair : self.GetAgenda()) {
-                    Py_VISIT(pair.first.ptr());
-                }
-                return 0;
-            };
+            type->tp_traverse = &PyTreeIter::PyTpTraverse;
         }),
         // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
         py::module_local());
