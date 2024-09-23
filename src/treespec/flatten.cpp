@@ -26,6 +26,7 @@ limitations under the License.
 
 #include "include/critical_section.h"
 #include "include/exceptions.h"
+#include "include/mutex.h"
 #include "include/registry.h"
 #include "include/treespec.h"
 #include "include/utils.h"
@@ -50,9 +51,10 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
     const ssize_t start_num_nodes = py::ssize_t_cast(m_traversal.size());
     const ssize_t start_num_leaves = py::ssize_t_cast(leaves.size());
 
-    if (leaf_predicate && EVALUATE_WITH_LOCK_HELD2(py::cast<bool>((*leaf_predicate)(handle)),
-                                                   handle,
-                                                   *leaf_predicate)) [[unlikely]] {
+    if (leaf_predicate &&
+        EVALUATE_WITH_LOCK_HELD2(thread_safe_cast<bool>((*leaf_predicate)(handle)),
+                                 handle,
+                                 *leaf_predicate)) [[unlikely]] {
         leaves.emplace_back(py::reinterpret_borrow<py::object>(handle));
     } else [[likely]] {
         node.kind =
@@ -119,6 +121,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                     }
                 }
                 if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
+                    const scoped_critical_section cs{handle};
                     node.node_data = py::make_tuple(py::getattr(handle, Py_Get_ID(default_factory)),
                                                     std::move(keys));
                 } else [[likely]] {
@@ -139,9 +142,10 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
             }
 
             case PyTreeKind::Deque: {
-                const auto list = EVALUATE_WITH_LOCK_HELD(py::cast<py::list>(handle), handle);
+                const auto list = thread_safe_cast<py::list>(handle);
                 node.arity = GET_SIZE<py::list>(list);
-                node.node_data = py::getattr(handle, Py_Get_ID(maxlen));
+                node.node_data =
+                    EVALUATE_WITH_LOCK_HELD(py::getattr(handle, Py_Get_ID(maxlen)), handle);
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::list>(list, i));
                 }
@@ -150,10 +154,10 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
 
             case PyTreeKind::Custom: {
                 found_custom = true;
-                const py::tuple out =
-                    EVALUATE_WITH_LOCK_HELD2(py::cast<py::tuple>(node.custom->flatten_func(handle)),
-                                             handle,
-                                             node.custom->flatten_func);
+                const py::tuple out = EVALUATE_WITH_LOCK_HELD2(
+                    thread_safe_cast<py::tuple>(node.custom->flatten_func(handle)),
+                    handle,
+                    node.custom->flatten_func);
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
@@ -165,7 +169,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 node.node_data = GET_ITEM_BORROW<py::tuple>(out, ssize_t(1));
                 {
                     auto children =
-                        py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
+                        thread_safe_cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
                     const scoped_critical_section cs{children};
                     for (const py::handle& child : children) {
                         ++node.arity;
@@ -173,9 +177,9 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                     }
                 }
                 if (num_out == 3) [[likely]] {
-                    py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, ssize_t(2));
+                    const py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, ssize_t(2));
                     if (!node_entries.is_none()) [[likely]] {
-                        node.node_entries = py::cast<py::tuple>(std::move(node_entries));
+                        node.node_entries = thread_safe_cast<py::tuple>(node_entries);
                         const ssize_t num_entries = GET_SIZE<py::tuple>(node.node_entries);
                         if (num_entries != node.arity) [[unlikely]] {
                             std::ostringstream oss{};
@@ -244,10 +248,15 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
     auto leaves = reserved_vector<py::object>(4);
     auto treespec = std::make_unique<PyTreeSpec>();
     treespec->m_none_is_leaf = none_is_leaf;
-    if (treespec->FlattenInto(tree, leaves, leaf_predicate, none_is_leaf, registry_namespace) ||
-        IsDictInsertionOrdered(registry_namespace, /*inherit_global_namespace=*/false))
-        [[unlikely]] {
-        treespec->m_namespace = registry_namespace;
+    {
+#ifdef HAVE_READ_WRITE_LOCK
+        const scoped_read_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
+#endif
+        if (treespec->FlattenInto(tree, leaves, leaf_predicate, none_is_leaf, registry_namespace) ||
+            IsDictInsertionOrdered(registry_namespace, /*inherit_global_namespace=*/false))
+            [[unlikely]] {
+            treespec->m_namespace = registry_namespace;
+        }
     }
     treespec->m_traversal.shrink_to_fit();
     return std::make_pair(std::move(leaves), std::move(treespec));
@@ -277,9 +286,10 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
     const ssize_t start_num_nodes = py::ssize_t_cast(m_traversal.size());
     const ssize_t start_num_leaves = py::ssize_t_cast(leaves.size());
 
-    if (leaf_predicate && EVALUATE_WITH_LOCK_HELD2(py::cast<bool>((*leaf_predicate)(handle)),
-                                                   handle,
-                                                   *leaf_predicate)) [[unlikely]] {
+    if (leaf_predicate &&
+        EVALUATE_WITH_LOCK_HELD2(thread_safe_cast<bool>((*leaf_predicate)(handle)),
+                                 handle,
+                                 *leaf_predicate)) [[unlikely]] {
         py::tuple path{depth};
         for (ssize_t d = 0; d < depth; ++d) {
             SET_ITEM<py::tuple>(path, d, stack[d]);
@@ -351,6 +361,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             case PyTreeKind::DefaultDict: {
                 const scoped_critical_section cs{handle};
                 const auto dict = py::reinterpret_borrow<py::dict>(handle);
+                node.arity = GET_SIZE<py::dict>(dict);
                 py::list keys = DictKeys(dict);
                 if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
                     node.original_keys = py::getattr(keys, Py_Get_ID(copy))();
@@ -361,7 +372,6 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 for (const py::handle& key : keys) {
                     recurse(dict[key], key);
                 }
-                node.arity = GET_SIZE<py::dict>(dict);
                 if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
                     node.node_data = py::make_tuple(py::getattr(handle, Py_Get_ID(default_factory)),
                                                     std::move(keys));
@@ -383,9 +393,10 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
             }
 
             case PyTreeKind::Deque: {
-                const auto list = EVALUATE_WITH_LOCK_HELD(py::cast<py::list>(handle), handle);
+                const auto list = thread_safe_cast<py::list>(handle);
                 node.arity = GET_SIZE<py::list>(list);
-                node.node_data = py::getattr(handle, Py_Get_ID(maxlen));
+                node.node_data =
+                    EVALUATE_WITH_LOCK_HELD(py::getattr(handle, Py_Get_ID(maxlen)), handle);
                 for (ssize_t i = 0; i < node.arity; ++i) {
                     recurse(GET_ITEM_HANDLE<py::list>(list, i), py::int_(i));
                 }
@@ -394,10 +405,10 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
 
             case PyTreeKind::Custom: {
                 found_custom = true;
-                const py::tuple out =
-                    EVALUATE_WITH_LOCK_HELD2(py::cast<py::tuple>(node.custom->flatten_func(handle)),
-                                             handle,
-                                             node.custom->flatten_func);
+                const py::tuple out = EVALUATE_WITH_LOCK_HELD2(
+                    thread_safe_cast<py::tuple>(node.custom->flatten_func(handle)),
+                    handle,
+                    node.custom->flatten_func);
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
@@ -415,17 +426,17 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 }
                 if (node_entries.is_none()) [[unlikely]] {
                     auto children =
-                        py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
+                        thread_safe_cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
                     const scoped_critical_section cs{children};
                     for (const py::handle& child : children) {
                         recurse(child, py::int_(node.arity++));
                     }
                 } else [[likely]] {
-                    node.node_entries = py::cast<py::tuple>(std::move(node_entries));
+                    node.node_entries = thread_safe_cast<py::tuple>(node_entries);
                     node.arity = GET_SIZE<py::tuple>(node.node_entries);
                     ssize_t num_children = 0;
                     auto children =
-                        py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
+                        thread_safe_cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
                     const scoped_critical_section cs{children};
                     for (const py::handle& child : children) {
                         if (num_children >= node.arity) [[unlikely]] {
@@ -518,15 +529,20 @@ PyTreeSpec::FlattenWithPath(const py::object& tree,
     auto paths = reserved_vector<py::tuple>(4);
     auto treespec = std::make_unique<PyTreeSpec>();
     treespec->m_none_is_leaf = none_is_leaf;
-    if (treespec->FlattenIntoWithPath(tree,
-                                      leaves,
-                                      paths,
-                                      leaf_predicate,
-                                      none_is_leaf,
-                                      registry_namespace) ||
-        IsDictInsertionOrdered(registry_namespace, /*inherit_global_namespace=*/false))
-        [[unlikely]] {
-        treespec->m_namespace = registry_namespace;
+    {
+#ifdef HAVE_READ_WRITE_LOCK
+        const scoped_read_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
+#endif
+        if (treespec->FlattenIntoWithPath(tree,
+                                          leaves,
+                                          paths,
+                                          leaf_predicate,
+                                          none_is_leaf,
+                                          registry_namespace) ||
+            IsDictInsertionOrdered(registry_namespace, /*inherit_global_namespace=*/false))
+            [[unlikely]] {
+            treespec->m_namespace = registry_namespace;
+        }
     }
     treespec->m_traversal.shrink_to_fit();
     return std::make_tuple(std::move(paths), std::move(leaves), std::move(treespec));
@@ -673,7 +689,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
 
             case PyTreeKind::Deque: {
                 AssertExactDeque(object);
-                const auto list = EVALUATE_WITH_LOCK_HELD(py::cast<py::list>(object), object);
+                const auto list = thread_safe_cast<py::list>(object);
                 if (GET_SIZE<py::list>(list) != node.arity) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "deque arity mismatch; expected: " << node.arity
@@ -727,10 +743,10 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                         << "; value: " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
-                const py::tuple out =
-                    EVALUATE_WITH_LOCK_HELD2(py::cast<py::tuple>(node.custom->flatten_func(object)),
-                                             object,
-                                             node.custom->flatten_func);
+                const py::tuple out = EVALUATE_WITH_LOCK_HELD2(
+                    thread_safe_cast<py::tuple>(node.custom->flatten_func(object)),
+                    object,
+                    node.custom->flatten_func);
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
@@ -752,7 +768,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 ssize_t arity = 0;
                 {
                     auto children =
-                        py::cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
+                        thread_safe_cast<py::iterable>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
                     const scoped_critical_section cs{children};
                     for (const py::handle& child : children) {
                         ++arity;
@@ -785,9 +801,10 @@ template <bool NoneIsLeaf>
 bool IsLeafImpl(const py::handle& handle,
                 const std::optional<py::function>& leaf_predicate,
                 const std::string& registry_namespace) {
-    if (leaf_predicate && EVALUATE_WITH_LOCK_HELD2(py::cast<bool>((*leaf_predicate)(handle)),
-                                                   handle,
-                                                   *leaf_predicate)) [[unlikely]] {
+    if (leaf_predicate &&
+        EVALUATE_WITH_LOCK_HELD2(thread_safe_cast<bool>((*leaf_predicate)(handle)),
+                                 handle,
+                                 *leaf_predicate)) [[unlikely]] {
         return true;
     }
     PyTreeTypeRegistry::RegistrationPtr custom{nullptr};
@@ -812,9 +829,10 @@ bool AllLeavesImpl(const py::iterable& iterable,
                    const std::string& registry_namespace) {
     PyTreeTypeRegistry::RegistrationPtr custom{nullptr};
     for (const py::handle& handle : iterable) {
-        if (leaf_predicate && EVALUATE_WITH_LOCK_HELD2(py::cast<bool>((*leaf_predicate)(handle)),
-                                                       handle,
-                                                       *leaf_predicate)) [[unlikely]] {
+        if (leaf_predicate &&
+            EVALUATE_WITH_LOCK_HELD2(thread_safe_cast<bool>((*leaf_predicate)(handle)),
+                                     handle,
+                                     *leaf_predicate)) [[unlikely]] {
             continue;
         }
         if (PyTreeTypeRegistry::GetKind<NoneIsLeaf>(handle, custom, registry_namespace) !=
@@ -829,6 +847,7 @@ bool AllLeaves(const py::iterable& iterable,
                const std::optional<py::function>& leaf_predicate,
                const bool& none_is_leaf,
                const std::string& registry_namespace) {
+    const scoped_critical_section cs{iterable};
     if (none_is_leaf) [[unlikely]] {
         return AllLeavesImpl<NONE_IS_LEAF>(iterable, leaf_predicate, registry_namespace);
     } else [[likely]] {

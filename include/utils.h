@@ -184,6 +184,11 @@ inline std::vector<T> reserved_vector(const py::size_t& size) {
     return v;
 }
 
+template <typename T>
+inline T thread_safe_cast(const py::handle& handle) {
+    return EVALUATE_WITH_LOCK_HELD(py::cast<T>(handle), handle);
+}
+
 template <typename Sized = py::object>
 inline py::ssize_t GetSize(const py::handle& sized) {
     return py::ssize_t_cast(py::len(sized));
@@ -264,8 +269,12 @@ inline void SET_ITEM<py::list>(const py::handle& container,
     PyList_SET_ITEM(container.ptr(), item, value.inc_ref().ptr());
 }
 
+inline std::string PyStr(const py::handle& object) {
+    return EVALUATE_WITH_LOCK_HELD(static_cast<std::string>(py::str(object)), object);
+}
+inline std::string PyStr(const std::string& string) { return string; }
 inline std::string PyRepr(const py::handle& object) {
-    return static_cast<std::string>(py::repr(object));
+    return EVALUATE_WITH_LOCK_HELD(static_cast<std::string>(py::repr(object)), object);
 }
 inline std::string PyRepr(const std::string& string) {
     return static_cast<std::string>(py::repr(py::str(string)));
@@ -601,10 +610,8 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
                 // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
                 const auto sort_key_fn = py::cpp_function([](const py::object& o) -> py::tuple {
                     const py::handle t = py::type::handle_of(o);
-                    const py::str qualname{
-                        static_cast<std::string>(py::str(py::getattr(t, Py_Get_ID(__module__)))) +
-                        "." +
-                        static_cast<std::string>(py::str(py::getattr(t, Py_Get_ID(__qualname__))))};
+                    const py::str qualname{PyStr(py::getattr(t, Py_Get_ID(__module__))) + "." +
+                                           PyStr(py::getattr(t, Py_Get_ID(__qualname__)))};
                     return py::make_tuple(qualname, o);
                 });
                 {

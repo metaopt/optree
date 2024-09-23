@@ -23,13 +23,10 @@ limitations under the License.
 
 #include "include/critical_section.h"
 #include "include/exceptions.h"
+#include "include/mutex.h"
 #include "include/registry.h"
 #include "include/treespec.h"
 #include "include/utils.h"
-
-#ifdef Py_GIL_DISABLED
-#include "include/mutex.h"
-#endif
 
 namespace optree {
 
@@ -47,7 +44,7 @@ py::object PyTreeIter::NextImpl() {
         }
 
         if (m_leaf_predicate &&
-            EVALUATE_WITH_LOCK_HELD2(py::cast<bool>((*m_leaf_predicate)(object)),
+            EVALUATE_WITH_LOCK_HELD2(thread_safe_cast<bool>((*m_leaf_predicate)(object)),
                                      object,
                                      *m_leaf_predicate)) [[unlikely]] {
             return object;
@@ -118,7 +115,7 @@ py::object PyTreeIter::NextImpl() {
             }
 
             case PyTreeKind::Deque: {
-                const auto list = EVALUATE_WITH_LOCK_HELD(py::cast<py::list>(object), object);
+                const auto list = thread_safe_cast<py::list>(object);
                 const ssize_t arity = GET_SIZE<py::list>(list);
                 for (ssize_t i = arity - 1; i >= 0; --i) {
                     m_agenda.emplace_back(GET_ITEM_BORROW<py::list>(list, i), depth);
@@ -127,10 +124,10 @@ py::object PyTreeIter::NextImpl() {
             }
 
             case PyTreeKind::Custom: {
-                const py::tuple out =
-                    EVALUATE_WITH_LOCK_HELD2(py::cast<py::tuple>(custom->flatten_func(object)),
-                                             object,
-                                             custom->flatten_func);
+                const py::tuple out = EVALUATE_WITH_LOCK_HELD2(
+                    thread_safe_cast<py::tuple>(custom->flatten_func(object)),
+                    object,
+                    custom->flatten_func);
                 const ssize_t num_out = GET_SIZE<py::tuple>(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
@@ -138,13 +135,14 @@ py::object PyTreeIter::NextImpl() {
                         << " should return a 2- or 3-tuple, got " << num_out << ".";
                     throw std::runtime_error(oss.str());
                 }
-                auto children = py::cast<py::tuple>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
+                auto children =
+                    thread_safe_cast<py::tuple>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
                 const ssize_t arity = GET_SIZE<py::tuple>(children);
                 if (num_out == 3) [[likely]] {
-                    py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, ssize_t(2));
+                    const py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, ssize_t(2));
                     if (!node_entries.is_none()) [[likely]] {
                         const ssize_t num_entries =
-                            GET_SIZE<py::tuple>(py::cast<py::tuple>(std::move(node_entries)));
+                            GET_SIZE<py::tuple>(thread_safe_cast<py::tuple>(node_entries));
                         if (num_entries != arity) [[unlikely]] {
                             std::ostringstream oss{};
                             oss << "PyTree custom flatten function for type "
@@ -184,6 +182,7 @@ py::object PyTreeIter::Next() {
 py::object PyTreeSpec::Walk(const py::function& f_node,
                             const std::optional<py::function>& f_leaf,
                             const py::iterable& leaves) const {
+    const scoped_critical_section cs{leaves};
     auto agenda = reserved_vector<py::object>(4);
     auto it = leaves.begin();
     for (const Node& node : m_traversal) {

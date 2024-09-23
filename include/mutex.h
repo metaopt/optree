@@ -53,15 +53,18 @@ using recursive_mutex = std::recursive_mutex;
 using scoped_lock_guard = std::lock_guard<mutex>;
 using scoped_recursive_lock_guard = std::lock_guard<recursive_mutex>;
 
-#if defined(Py_GIL_DISABLED) /* use mutex implementation from Python rather than STL */ ||         \
-    (defined(__APPLE__) /* header <shared_mutex> is not available on macOS build target */ &&      \
+#if (defined(__APPLE__) /* header <shared_mutex> is not available on macOS build target */ &&      \
      PY_VERSION_HEX < /* Python 3.12.0 */ 0x030C00F0)
+
+#undef HAVE_READ_WRITE_LOCK
 
 using read_write_mutex = mutex;
 using scoped_read_lock_guard = scoped_lock_guard;
 using scoped_write_lock_guard = scoped_lock_guard;
 
 #else
+
+#define HAVE_READ_WRITE_LOCK
 
 #include <shared_mutex>  // std::shared_mutex, std::shared_lock
 
