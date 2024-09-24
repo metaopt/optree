@@ -1174,12 +1174,12 @@ std::string PyTreeSpec::ToStringImpl() const {
 
             case PyTreeKind::NamedTuple: {
                 const py::object type = node.node_data;
-                const auto fields =
-                    py::reinterpret_borrow<py::tuple>(py::getattr(type, Py_Get_ID(_fields)));
+                const auto fields = NamedTupleGetFields(type);
                 EXPECT_EQ(GET_SIZE<py::tuple>(fields),
                           node.arity,
                           "Number of fields and entries does not match.");
-                const std::string kind = PyStr(py::getattr(type, Py_Get_ID(__name__)));
+                const std::string kind =
+                    PyStr(EVALUATE_WITH_LOCK_HELD(py::getattr(type, Py_Get_ID(__name__)), type));
                 sstream << kind << "(";
                 bool first = true;
                 auto child_iter = agenda.cend() - node.arity;
@@ -1237,8 +1237,9 @@ std::string PyTreeSpec::ToStringImpl() const {
                 EXPECT_EQ(GET_SIZE<py::tuple>(fields),
                           node.arity,
                           "Number of fields and entries does not match.");
-                const py::object module_name =
-                    py::getattr(type, Py_Get_ID(__module__), Py_Get_ID(__main__));
+                const py::object module_name = EVALUATE_WITH_LOCK_HELD(
+                    py::getattr(type, Py_Get_ID(__module__), Py_Get_ID(__main__)),
+                    type);
                 if (!module_name.is_none()) [[likely]] {
                     const std::string name = PyStr(module_name);
                     if (!(name.empty() || name == "__main__" || name == "builtins" ||
@@ -1246,7 +1247,8 @@ std::string PyTreeSpec::ToStringImpl() const {
                         sstream << name << ".";
                     }
                 }
-                const py::object qualname = py::getattr(type, Py_Get_ID(__qualname__));
+                const py::object qualname =
+                    EVALUATE_WITH_LOCK_HELD(py::getattr(type, Py_Get_ID(__qualname__)), type);
                 sstream << PyStr(qualname) << "(";
                 bool first = true;
                 auto child_iter = agenda.cend() - node.arity;
@@ -1263,8 +1265,9 @@ std::string PyTreeSpec::ToStringImpl() const {
             }
 
             case PyTreeKind::Custom: {
-                const scoped_critical_section2 cs{node.custom->type, node.node_data};
-                const std::string kind = PyStr(py::getattr(node.custom->type, Py_Get_ID(__name__)));
+                const std::string kind = PyStr(
+                    EVALUATE_WITH_LOCK_HELD(py::getattr(node.custom->type, Py_Get_ID(__name__)),
+                                            node.custom->type));
                 sstream << "CustomTreeNode(" << kind << "[";
                 if (node.node_data) [[likely]] {
                     sstream << PyRepr(node.node_data);

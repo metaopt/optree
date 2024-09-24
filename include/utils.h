@@ -394,7 +394,7 @@ inline bool IsNamedTupleClass(const py::handle& type) {
         }
     }
 
-    const bool result = IsNamedTupleClassImpl(type);
+    const bool result = EVALUATE_WITH_LOCK_HELD(IsNamedTupleClassImpl(type), type);
     {
         const scoped_write_lock_guard lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
@@ -437,7 +437,7 @@ inline py::tuple NamedTupleGetFields(const py::handle& object) {
                                  PyRepr(object) + ".");
         }
     }
-    return py::getattr(type, Py_Get_ID(_fields));
+    return EVALUATE_WITH_LOCK_HELD(py::getattr(type, Py_Get_ID(_fields)), type);
 }
 
 inline bool IsStructSequenceClassImpl(const py::handle& type) {
@@ -493,7 +493,7 @@ inline bool IsStructSequenceClass(const py::handle& type) {
         }
     }
 
-    const bool result = IsStructSequenceClassImpl(type);
+    const bool result = EVALUATE_WITH_LOCK_HELD(IsStructSequenceClassImpl(type), type);
     {
         const scoped_write_lock_guard lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
@@ -539,7 +539,7 @@ inline py::tuple StructSequenceGetFieldsImpl(const py::handle& type) {
     return py::tuple{fields};
 #else
     const auto n_sequence_fields =
-        py::cast<py::ssize_t>(getattr(type, Py_Get_ID(n_sequence_fields)));
+        py::cast<py::ssize_t>(py::getattr(type, Py_Get_ID(n_sequence_fields)));
     const auto* const members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
     py::tuple fields{n_sequence_fields};
     for (py::ssize_t i = 0; i < n_sequence_fields; ++i) {
@@ -575,7 +575,7 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
         }
     }
 
-    const py::tuple fields = StructSequenceGetFieldsImpl(type);
+    const py::tuple fields = EVALUATE_WITH_LOCK_HELD(StructSequenceGetFieldsImpl(type), type);
     {
         const scoped_write_lock_guard lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
@@ -610,8 +610,10 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
                 // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
                 const auto sort_key_fn = py::cpp_function([](const py::object& o) -> py::tuple {
                     const py::handle t = py::type::handle_of(o);
-                    const py::str qualname{PyStr(py::getattr(t, Py_Get_ID(__module__))) + "." +
-                                           PyStr(py::getattr(t, Py_Get_ID(__qualname__)))};
+                    const py::str qualname{
+                        EVALUATE_WITH_LOCK_HELD(PyStr(py::getattr(t, Py_Get_ID(__module__))) + "." +
+                                                    PyStr(py::getattr(t, Py_Get_ID(__qualname__))),
+                                                t)};
                     return py::make_tuple(qualname, o);
                 });
                 {
