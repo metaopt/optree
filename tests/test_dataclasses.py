@@ -15,8 +15,6 @@
 
 # pylint: disable=missing-function-docstring,invalid-name,wrong-import-order
 
-import abc
-import collections.abc
 import dataclasses
 import inspect
 import math
@@ -465,41 +463,6 @@ def test_dataclass_with_invalid_namespace():
     assert treespec.type is Foo
 
 
-def test_dataclass_with_abstract_class():
-    with pytest.raises(
-        TypeError,
-        match=(
-            r'@optree\.dataclasses\.dataclass\(\) cannot register abstract class .*, '
-            r'because it cannot be instantiated\.'
-        ),
-    ):
-
-        @optree.dataclasses.dataclass(namespace='error')
-        class Vec(abc.ABC):
-            x: float
-            y: float
-
-            @abc.abstractmethod
-            def norm(self, p: float = 2):
-                raise NotImplementedError
-
-    with pytest.raises(
-        TypeError,
-        match=(
-            r'@optree\.dataclasses\.dataclass\(\) cannot register abstract class .*, '
-            r'because it cannot be instantiated\.'
-        ),
-    ):
-
-        @optree.dataclasses.dataclass(namespace='error')
-        class Vec(collections.abc.Sequence):
-            x: float
-            y: float
-
-            def __len__(self):
-                return 2
-
-
 def test_make_dataclass_future_parameters():
     with pytest.raises(
         TypeError,
@@ -850,39 +813,3 @@ def test_make_dataclass_with_invalid_namespace():
     assert treespec.namespace == ''
     assert treespec.kind == optree.PyTreeKind.CUSTOM
     assert treespec.type is Bar
-
-
-def test_make_dataclass_with_abstract_class():
-    with pytest.raises(
-        TypeError,
-        match=(
-            r'@optree\.dataclasses\.dataclass\(\) cannot register abstract class .*, '
-            r'because it cannot be instantiated\.'
-        ),
-    ):
-        optree.dataclasses.make_dataclass(
-            'Vec',
-            [('x', float), ('y', float)],
-            bases=(abc.ABC,),
-            ns={
-                'norm': abc.abstractmethod(lambda self, p=2: (self.x**p + self.y**p) ** (1 / p)),
-            },
-            namespace='error',
-        )
-
-    with pytest.raises(
-        TypeError,
-        match=(
-            r'@optree\.dataclasses\.dataclass\(\) cannot register abstract class .*, '
-            r'because it cannot be instantiated\.'
-        ),
-    ):
-        optree.dataclasses.make_dataclass(
-            'Vec',
-            [('x', float), ('y', float)],
-            bases=(collections.abc.Sequence,),
-            ns={
-                '__len__': lambda self: 2,
-            },
-            namespace='error',
-        )

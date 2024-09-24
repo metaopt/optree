@@ -15,8 +15,6 @@
 
 # pylint: disable=missing-function-docstring,invalid-name
 
-import abc
-import collections.abc
 import re
 import weakref
 from collections import UserDict, UserList, namedtuple
@@ -171,37 +169,6 @@ def test_register_pytree_node_with_invalid_namespace():
             lambda s: (sorted(s), None, None),
             lambda _, s: set(s),
             namespace='',
-        )
-
-
-def test_register_pytree_node_with_abstract_class():
-    with pytest.raises(
-        TypeError,
-        match=r'Cannot register abstract class .*, because it cannot be instantiated\.',
-    ):
-
-        @optree.register_pytree_node_class(namespace='error')
-        class MyList(UserList, abc.ABC):
-            def tree_flatten(self):
-                return self.data, None, None
-
-            @classmethod
-            def tree_unflatten(cls, metadata, children):
-                return cls(children)
-
-            @abc.abstractmethod
-            def copy(self):
-                return type(self)(self)
-
-    with pytest.raises(
-        TypeError,
-        match=r'Cannot register abstract class .*, because it cannot be instantiated\.',
-    ):
-        optree.register_pytree_node(
-            collections.abc.Sequence,
-            lambda seq: (list(seq), type(seq), None),
-            lambda cls, seq: cls(seq),
-            namespace='error',
         )
 
 

@@ -254,11 +254,6 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
 
     if not inspect.isclass(cls):
         raise TypeError(f'@{__name__}.dataclass() can only be used with classes, not {cls!r}.')
-    if inspect.isabstract(cls):
-        raise TypeError(
-            f'@{__name__}.dataclass() cannot register abstract class {cls!r}, '
-            'because it cannot be instantiated.',
-        )
     if _FIELDS in cls.__dict__:
         raise TypeError(
             f'@{__name__}.dataclass() cannot be applied to {cls.__name__} more than once.',
