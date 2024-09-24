@@ -130,4 +130,4 @@ jobs:
 
       - name: Test with pytest
         run: |
-          make test PYTESTOPTS="--exitfirst --durations=10"
+          make test PYTESTOPTS="--exitfirst"

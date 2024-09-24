@@ -70,18 +70,18 @@ py::object PyTreeIter::NextImpl() {
             }
 
             case PyTreeKind::Tuple: {
-                const ssize_t arity = GET_SIZE<py::tuple>(object);
+                const ssize_t arity = TupleGetSize(object);
                 for (ssize_t i = arity - 1; i >= 0; --i) {
-                    m_agenda.emplace_back(GET_ITEM_BORROW<py::tuple>(object, i), depth);
+                    m_agenda.emplace_back(TupleGetItem(object, i), depth);
                 }
                 break;
             }
 
             case PyTreeKind::List: {
                 const scoped_critical_section cs{object};
-                const ssize_t arity = GET_SIZE<py::list>(object);
+                const ssize_t arity = ListGetSize(object);
                 for (ssize_t i = arity - 1; i >= 0; --i) {
-                    m_agenda.emplace_back(GET_ITEM_BORROW<py::list>(object, i), depth);
+                    m_agenda.emplace_back(ListGetItem(object, i), depth);
                 }
                 break;
             }
@@ -99,7 +99,7 @@ py::object PyTreeIter::NextImpl() {
                     throw py::error_already_set();
                 }
                 for (const py::handle& key : keys) {
-                    m_agenda.emplace_back(dict[key], depth);
+                    m_agenda.emplace_back(DictGetItem(dict, key), depth);
                 }
                 break;
             }
@@ -107,18 +107,18 @@ py::object PyTreeIter::NextImpl() {
             case PyTreeKind::NamedTuple:
             case PyTreeKind::StructSequence: {
                 const auto tuple = py::reinterpret_borrow<py::tuple>(object);
-                const ssize_t arity = GET_SIZE<py::tuple>(tuple);
+                const ssize_t arity = TupleGetSize(tuple);
                 for (ssize_t i = arity - 1; i >= 0; --i) {
-                    m_agenda.emplace_back(GET_ITEM_BORROW<py::tuple>(tuple, i), depth);
+                    m_agenda.emplace_back(TupleGetItem(tuple, i), depth);
                 }
                 break;
             }
 
             case PyTreeKind::Deque: {
                 const auto list = thread_safe_cast<py::list>(object);
-                const ssize_t arity = GET_SIZE<py::list>(list);
+                const ssize_t arity = ListGetSize(list);
                 for (ssize_t i = arity - 1; i >= 0; --i) {
-                    m_agenda.emplace_back(GET_ITEM_BORROW<py::list>(list, i), depth);
+                    m_agenda.emplace_back(ListGetItem(list, i), depth);
                 }
                 break;
             }
@@ -128,21 +128,20 @@ py::object PyTreeIter::NextImpl() {
                     thread_safe_cast<py::tuple>(custom->flatten_func(object)),
                     object,
                     custom->flatten_func);
-                const ssize_t num_out = GET_SIZE<py::tuple>(out);
+                const ssize_t num_out = TupleGetSize(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "PyTree custom flatten function for type " << PyRepr(custom->type)
                         << " should return a 2- or 3-tuple, got " << num_out << ".";
                     throw std::runtime_error(oss.str());
                 }
-                auto children =
-                    thread_safe_cast<py::tuple>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
-                const ssize_t arity = GET_SIZE<py::tuple>(children);
+                auto children = thread_safe_cast<py::tuple>(TupleGetItem(out, 0));
+                const ssize_t arity = TupleGetSize(children);
                 if (num_out == 3) [[likely]] {
-                    const py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, ssize_t(2));
+                    const py::object node_entries = TupleGetItem(out, 2);
                     if (!node_entries.is_none()) [[likely]] {
                         const ssize_t num_entries =
-                            GET_SIZE<py::tuple>(thread_safe_cast<py::tuple>(node_entries));
+                            TupleGetSize(thread_safe_cast<py::tuple>(node_entries));
                         if (num_entries != arity) [[unlikely]] {
                             std::ostringstream oss{};
                             oss << "PyTree custom flatten function for type "
@@ -154,7 +153,7 @@ py::object PyTreeIter::NextImpl() {
                     }
                 }
                 for (ssize_t i = arity - 1; i >= 0; --i) {
-                    m_agenda.emplace_back(GET_ITEM_BORROW<py::tuple>(children, i), depth);
+                    m_agenda.emplace_back(TupleGetItem(children, i), depth);
                 }
                 break;
             }
@@ -214,7 +213,7 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
                           "Too few elements for custom type.");
                 const py::tuple tuple{node.arity};
                 for (ssize_t i = node.arity - 1; i >= 0; --i) {
-                    SET_ITEM<py::tuple>(tuple, i, agenda.back());
+                    TupleSetItem(tuple, i, agenda.back());
                     agenda.pop_back();
                 }
                 agenda.emplace_back(EVALUATE_WITH_LOCK_HELD2(

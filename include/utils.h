@@ -21,6 +21,7 @@ limitations under the License.
 #include <functional>     // std::hash
 #include <sstream>        // std::ostringstream
 #include <string>         // std::string
+#include <type_traits>    // std::enable_if_t, std::is_base_of_v
 #include <unordered_map>  // std::unordered_map
 #include <utility>        // std::move, std::pair, std::make_pair
 #include <vector>         // std::vector
@@ -189,84 +190,70 @@ inline T thread_safe_cast(const py::handle& handle) {
     return EVALUATE_WITH_LOCK_HELD(py::cast<T>(handle), handle);
 }
 
-template <typename Sized = py::object>
-inline py::ssize_t GetSize(const py::handle& sized) {
-    return py::ssize_t_cast(py::len(sized));
-}
-template <>
-inline py::ssize_t GetSize<py::tuple>(const py::handle& sized) {
-    return PyTuple_Size(sized.ptr());
-}
-template <>
-inline py::ssize_t GetSize<py::list>(const py::handle& sized) {
-    return PyList_Size(sized.ptr());
-}
-template <>
-inline py::ssize_t GetSize<py::dict>(const py::handle& sized) {
-    return PyDict_Size(sized.ptr());
-}
-
-template <typename Sized = py::object>
-inline py::ssize_t GET_SIZE(const py::handle& sized) {
-    return py::ssize_t_cast(py::len(sized));
-}
-template <>
-inline py::ssize_t GET_SIZE<py::tuple>(const py::handle& sized) {
-    return PyTuple_GET_SIZE(sized.ptr());
-}
-template <>
-inline py::ssize_t GET_SIZE<py::list>(const py::handle& sized) {
-    return PyList_GET_SIZE(sized.ptr());
-}
-#ifndef PyDict_GET_SIZE
-#define PyDict_GET_SIZE PyDict_Size
+inline py::ssize_t TupleGetSize(const py::handle& tuple) { return PyTuple_GET_SIZE(tuple.ptr()); }
+inline py::ssize_t ListGetSize(const py::handle& list) { return PyList_GET_SIZE(list.ptr()); }
+inline py::ssize_t DictGetSize(const py::handle& dict) {
+#ifdef PyDict_GET_SIZE
+    return PyDict_GET_SIZE(dict.ptr());
+#else
+    return PyDict_Size(dict.ptr());
 #endif
-template <>
-inline py::ssize_t GET_SIZE<py::dict>(const py::handle& sized) {
-    return PyDict_GET_SIZE(sized.ptr());
 }
 
-template <typename Container, typename Item>
-inline py::handle GET_ITEM_HANDLE(const py::handle& container, const Item& item) {
-    return container[item];
+template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, T>>>
+inline T TupleGetItemAs(const py::handle& tuple, const py::ssize_t& index) {
+    return py::reinterpret_borrow<T>(PyTuple_GET_ITEM(tuple.ptr(), index));
 }
-template <>
-inline py::handle GET_ITEM_HANDLE<py::tuple>(const py::handle& container, const py::ssize_t& item) {
-    return PyTuple_GET_ITEM(container.ptr(), item);
+inline py::object TupleGetItem(const py::handle& tuple, const py::ssize_t& index) {
+    return TupleGetItemAs<py::object>(tuple, index);
 }
-template <>
-inline py::handle GET_ITEM_HANDLE<py::list>(const py::handle& container, const py::ssize_t& item) {
-    return PyList_GET_ITEM(container.ptr(), item);
+template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, T>>>
+inline T ListGetItemAs(const py::handle& list, const py::ssize_t& index) {
+#if PY_VERSION_HEX >= 0x030D00A4  // Python 3.13.0a4
+    PyObject* item = PyList_GetItemRef(list.ptr(), index);
+    if (item == nullptr) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    return py::reinterpret_steal<T>(item);
+#else
+    return py::reinterpret_borrow<T>(PyList_GET_ITEM(list.ptr(), index));
+#endif
+}
+inline py::object ListGetItem(const py::handle& list, const py::ssize_t& index) {
+    return ListGetItemAs<py::object>(list, index);
+}
+template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, T>>>
+inline T DictGetItemAs(const py::handle& dict, const py::handle& key) {
+#if PY_VERSION_HEX >= 0x030D00A1  // Python 3.13.0a1
+    PyObject* value = nullptr;
+    if (PyDict_GetItemRef(dict.ptr(), key.ptr(), &value) < 0) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    if (value == nullptr) [[unlikely]] {
+        py::set_error(PyExc_KeyError, py::make_tuple(key));
+        throw py::error_already_set();
+    }
+    return py::reinterpret_steal<T>(value);
+#else
+    return py::reinterpret_borrow<T>(PyDict_GetItem(dict.ptr(), key.ptr()));
+#endif
+}
+inline py::object DictGetItem(const py::handle& dict, const py::handle& key) {
+    return DictGetItemAs<py::object>(dict, key);
 }
 
-template <typename Container, typename Item>
-inline py::object GET_ITEM_BORROW(const py::handle& container, const Item& item) {
-    return py::reinterpret_borrow<py::object>(container[item]);
+inline void TupleSetItem(const py::handle& tuple,
+                         const py::ssize_t& index,
+                         const py::handle& value) {
+    PyTuple_SET_ITEM(tuple.ptr(), index, value.inc_ref().ptr());
 }
-template <>
-inline py::object GET_ITEM_BORROW<py::tuple>(const py::handle& container, const py::ssize_t& item) {
-    return py::reinterpret_borrow<py::object>(PyTuple_GET_ITEM(container.ptr(), item));
+inline void ListSetItem(const py::handle& list, const py::ssize_t& index, const py::handle& value) {
+    PyList_SET_ITEM(list.ptr(), index, value.inc_ref().ptr());
 }
-template <>
-inline py::object GET_ITEM_BORROW<py::list>(const py::handle& container, const py::ssize_t& item) {
-    return py::reinterpret_borrow<py::object>(PyList_GET_ITEM(container.ptr(), item));
-}
-
-template <typename Container, typename Item>
-inline void SET_ITEM(const py::handle& container, const Item& item, const py::handle& value) {
-    container[item] = value;
-}
-template <>
-inline void SET_ITEM<py::tuple>(const py::handle& container,
-                                const py::ssize_t& item,
-                                const py::handle& value) {
-    PyTuple_SET_ITEM(container.ptr(), item, value.inc_ref().ptr());
-}
-template <>
-inline void SET_ITEM<py::list>(const py::handle& container,
-                               const py::ssize_t& item,
-                               const py::handle& value) {
-    PyList_SET_ITEM(container.ptr(), item, value.inc_ref().ptr());
+inline void DictSetItem(const py::handle& dict, const py::handle& key, const py::handle& value) {
+    if (PyDict_SetItem(dict.ptr(), key.ptr(), value.ptr()) < 0) [[unlikely]] {
+        throw py::error_already_set();
+    }
 }
 
 inline std::string PyStr(const py::handle& object) {
@@ -280,29 +267,17 @@ inline std::string PyRepr(const std::string& string) {
     return static_cast<std::string>(py::repr(py::str(string)));
 }
 
-template <typename PyType>
-inline void AssertExact(const py::handle& object) {
-    if (!py::isinstance<PyType>(object)) [[unlikely]] {
-        std::ostringstream oss{};
-        oss << "Expected an instance of " << typeid(PyType).name() << ", got " << PyRepr(object)
-            << ".";
-        throw py::value_error(oss.str());
-    }
-}
-template <>
-inline void AssertExact<py::list>(const py::handle& object) {
+inline void AssertExactList(const py::handle& object) {
     if (!PyList_CheckExact(object.ptr())) [[unlikely]] {
         throw py::value_error("Expected an instance of list, got " + PyRepr(object) + ".");
     }
 }
-template <>
-inline void AssertExact<py::tuple>(const py::handle& object) {
+inline void AssertExactTuple(const py::handle& object) {
     if (!PyTuple_CheckExact(object.ptr())) [[unlikely]] {
         throw py::value_error("Expected an instance of tuple, got " + PyRepr(object) + ".");
     }
 }
-template <>
-inline void AssertExact<py::dict>(const py::handle& object) {
+inline void AssertExactDict(const py::handle& object) {
     if (!PyDict_CheckExact(object.ptr())) [[unlikely]] {
         throw py::value_error("Expected an instance of dict, got " + PyRepr(object) + ".");
     }
@@ -544,7 +519,7 @@ inline py::tuple StructSequenceGetFieldsImpl(const py::handle& type) {
     py::tuple fields{n_sequence_fields};
     for (py::ssize_t i = 0; i < n_sequence_fields; ++i) {
         // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
-        SET_ITEM<py::tuple>(fields, i, py::str(members[i].name));
+        TupleSetItem(fields, i, py::str(members[i].name));
     }
     return fields;
 #endif
@@ -648,13 +623,13 @@ inline py::list SortedDictKeys(const py::dict& dict) {
 
 inline bool DictKeysEqual(const py::list& /*unique*/ keys, const py::dict& dict) {
     const scoped_critical_section2 cs{keys, dict};
-    const py::ssize_t list_len = GET_SIZE<py::list>(keys);
-    const py::ssize_t dict_len = GET_SIZE<py::dict>(dict);
+    const py::ssize_t list_len = ListGetSize(keys);
+    const py::ssize_t dict_len = DictGetSize(dict);
     if (list_len != dict_len) [[likely]] {  // assumes keys are unique
         return false;
     }
     for (py::ssize_t i = 0; i < list_len; ++i) {
-        const py::object key = GET_ITEM_BORROW<py::list>(keys, i);
+        const py::object key = ListGetItem(keys, i);
         const int result = PyDict_Contains(dict.ptr(), key.ptr());
         if (result == -1) [[unlikely]] {
             throw py::error_already_set();
