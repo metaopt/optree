@@ -209,35 +209,52 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
                              const std::optional<py::function>& leaf_predicate,
                              const bool& none_is_leaf,
                              const std::string& registry_namespace) {
+    bool found_custom = false;
+    bool is_dict_insertion_ordered = false;
+    bool is_dict_insertion_ordered_in_current_namespace = false;
+    {
+#ifdef HAVE_READ_WRITE_LOCK
+        const scoped_read_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
+#endif
+        is_dict_insertion_ordered = IsDictInsertionOrdered(registry_namespace);
+        is_dict_insertion_ordered_in_current_namespace =
+            IsDictInsertionOrdered(registry_namespace, /*inherit_global_namespace=*/false);
+    }
+
     if (none_is_leaf) [[unlikely]] {
-        if (!IsDictInsertionOrdered(registry_namespace)) [[likely]] {
-            return FlattenIntoImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/true>(handle,
-                                                                              leaves,
-                                                                              0,
-                                                                              leaf_predicate,
-                                                                              registry_namespace);
+        if (!is_dict_insertion_ordered) [[likely]] {
+            found_custom =
+                FlattenIntoImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/true>(handle,
+                                                                           leaves,
+                                                                           0,
+                                                                           leaf_predicate,
+                                                                           registry_namespace);
         } else [[unlikely]] {
-            return FlattenIntoImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/false>(handle,
-                                                                               leaves,
-                                                                               0,
-                                                                               leaf_predicate,
-                                                                               registry_namespace);
+            found_custom =
+                FlattenIntoImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/false>(handle,
+                                                                            leaves,
+                                                                            0,
+                                                                            leaf_predicate,
+                                                                            registry_namespace);
         }
     } else [[likely]] {
-        if (!IsDictInsertionOrdered(registry_namespace)) [[likely]] {
-            return FlattenIntoImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/true>(handle,
-                                                                              leaves,
-                                                                              0,
-                                                                              leaf_predicate,
-                                                                              registry_namespace);
+        if (!is_dict_insertion_ordered) [[likely]] {
+            found_custom =
+                FlattenIntoImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/true>(handle,
+                                                                           leaves,
+                                                                           0,
+                                                                           leaf_predicate,
+                                                                           registry_namespace);
         } else [[unlikely]] {
-            return FlattenIntoImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/false>(handle,
-                                                                               leaves,
-                                                                               0,
-                                                                               leaf_predicate,
-                                                                               registry_namespace);
+            found_custom =
+                FlattenIntoImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/false>(handle,
+                                                                            leaves,
+                                                                            0,
+                                                                            leaf_predicate,
+                                                                            registry_namespace);
         }
     }
+    return found_custom || is_dict_insertion_ordered_in_current_namespace;
 }
 
 /*static*/ std::pair<std::vector<py::object>, std::unique_ptr<PyTreeSpec>> PyTreeSpec::Flatten(
@@ -248,15 +265,9 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
     auto leaves = reserved_vector<py::object>(4);
     auto treespec = std::make_unique<PyTreeSpec>();
     treespec->m_none_is_leaf = none_is_leaf;
-    {
-#ifdef HAVE_READ_WRITE_LOCK
-        const scoped_read_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
-#endif
-        if (treespec->FlattenInto(tree, leaves, leaf_predicate, none_is_leaf, registry_namespace) ||
-            IsDictInsertionOrdered(registry_namespace, /*inherit_global_namespace=*/false))
-            [[unlikely]] {
-            treespec->m_namespace = registry_namespace;
-        }
+    if (treespec->FlattenInto(tree, leaves, leaf_predicate, none_is_leaf, registry_namespace))
+        [[unlikely]] {
+        treespec->m_namespace = registry_namespace;
     }
     treespec->m_traversal.shrink_to_fit();
     return std::make_pair(std::move(leaves), std::move(treespec));
@@ -476,10 +487,22 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
                                      const std::optional<py::function>& leaf_predicate,
                                      const bool& none_is_leaf,
                                      const std::string& registry_namespace) {
+    bool found_custom = false;
+    bool is_dict_insertion_ordered = false;
+    bool is_dict_insertion_ordered_in_current_namespace = false;
+    {
+#ifdef HAVE_READ_WRITE_LOCK
+        const scoped_read_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
+#endif
+        is_dict_insertion_ordered = IsDictInsertionOrdered(registry_namespace);
+        is_dict_insertion_ordered_in_current_namespace =
+            IsDictInsertionOrdered(registry_namespace, /*inherit_global_namespace=*/false);
+    }
+
     auto stack = reserved_vector<py::handle>(4);
     if (none_is_leaf) [[unlikely]] {
-        if (!IsDictInsertionOrdered(registry_namespace)) [[likely]] {
-            return FlattenIntoWithPathImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/true>(
+        if (!is_dict_insertion_ordered) [[likely]] {
+            found_custom = FlattenIntoWithPathImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/true>(
                 handle,
                 leaves,
                 paths,
@@ -488,7 +511,7 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
                 leaf_predicate,
                 registry_namespace);
         } else [[unlikely]] {
-            return FlattenIntoWithPathImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/false>(
+            found_custom = FlattenIntoWithPathImpl<NONE_IS_LEAF, /*DictShouldBeSorted=*/false>(
                 handle,
                 leaves,
                 paths,
@@ -498,8 +521,8 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
                 registry_namespace);
         }
     } else [[likely]] {
-        if (!IsDictInsertionOrdered(registry_namespace)) [[likely]] {
-            return FlattenIntoWithPathImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/true>(
+        if (!is_dict_insertion_ordered) [[likely]] {
+            found_custom = FlattenIntoWithPathImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/true>(
                 handle,
                 leaves,
                 paths,
@@ -508,7 +531,7 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
                 leaf_predicate,
                 registry_namespace);
         } else [[unlikely]] {
-            return FlattenIntoWithPathImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/false>(
+            found_custom = FlattenIntoWithPathImpl<NONE_IS_NODE, /*DictShouldBeSorted=*/false>(
                 handle,
                 leaves,
                 paths,
@@ -518,6 +541,7 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
                 registry_namespace);
         }
     }
+    return found_custom || is_dict_insertion_ordered_in_current_namespace;
 }
 
 /*static*/ std::tuple<std::vector<py::tuple>, std::vector<py::object>, std::unique_ptr<PyTreeSpec>>
@@ -529,20 +553,13 @@ PyTreeSpec::FlattenWithPath(const py::object& tree,
     auto paths = reserved_vector<py::tuple>(4);
     auto treespec = std::make_unique<PyTreeSpec>();
     treespec->m_none_is_leaf = none_is_leaf;
-    {
-#ifdef HAVE_READ_WRITE_LOCK
-        const scoped_read_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
-#endif
-        if (treespec->FlattenIntoWithPath(tree,
-                                          leaves,
-                                          paths,
-                                          leaf_predicate,
-                                          none_is_leaf,
-                                          registry_namespace) ||
-            IsDictInsertionOrdered(registry_namespace, /*inherit_global_namespace=*/false))
-            [[unlikely]] {
-            treespec->m_namespace = registry_namespace;
-        }
+    if (treespec->FlattenIntoWithPath(tree,
+                                      leaves,
+                                      paths,
+                                      leaf_predicate,
+                                      none_is_leaf,
+                                      registry_namespace)) [[unlikely]] {
+        treespec->m_namespace = registry_namespace;
     }
     treespec->m_traversal.shrink_to_fit();
     return std::make_tuple(std::move(paths), std::move(leaves), std::move(treespec));
