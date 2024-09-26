@@ -88,7 +88,7 @@ template <bool NoneIsLeaf>
                     << PyRepr(handle) << ".";
                 throw py::value_error(oss.str());
             }
-            treespecs.emplace_back(thread_safe_cast<PyTreeSpec&>(child));
+            treespecs.emplace_back(thread_safe_cast<PyTreeSpec>(child));
         }
 
         std::string common_registry_namespace{};
