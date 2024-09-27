@@ -241,13 +241,13 @@ class PyTreeSpec {
         // Arity for non-Leaf types.
         ssize_t arity = 0;
 
-        // Kind-specific auxiliary data.
+        // Kind-specific metadata.
         // For a NamedTuple/PyStructSequence, contains the tuple type object.
         // For a Dict, contains a sorted list of keys.
         // For a OrderedDict, contains a list of keys.
         // For a DefaultDict, contains a tuple of (default_factory, sorted list of keys).
         // For a Deque, contains the `maxlen` attribute.
-        // For a Custom type, contains the auxiliary data returned by the `flatten_func` function.
+        // For a Custom type, contains the metadata returned by the `flatten_func` function.
         py::object node_data{};
 
         // The tuple of path entries.

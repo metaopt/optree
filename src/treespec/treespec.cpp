@@ -121,7 +121,7 @@ namespace optree {
             py::dict dict{};
             const scoped_critical_section2 cs{node.node_data, node.original_keys};
             if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
-                EXPECT_EQ(TupleGetSize(node.node_data), 2, "Number of auxiliary data mismatch.");
+                EXPECT_EQ(TupleGetSize(node.node_data), 2, "Number of metadata mismatch.");
             }
             const auto keys = (node.kind != PyTreeKind::DefaultDict
                                    ? py::reinterpret_borrow<py::list>(node.node_data)
@@ -1186,7 +1186,7 @@ std::string PyTreeSpec::ToStringImpl() const {
 
             case PyTreeKind::DefaultDict: {
                 const scoped_critical_section cs(node.node_data);
-                EXPECT_EQ(TupleGetSize(node.node_data), 2, "Number of auxiliary data mismatch.");
+                EXPECT_EQ(TupleGetSize(node.node_data), 2, "Number of metadata mismatch.");
                 const py::object default_factory = TupleGetItem(node.node_data, 0);
                 const auto keys = TupleGetItemAs<py::list>(node.node_data, 1);
                 EXPECT_EQ(ListGetSize(keys),
@@ -1339,7 +1339,7 @@ std::string PyTreeSpec::ToString() const {
         case PyTreeKind::DefaultDict: {
             const scoped_critical_section cs{node.node_data};
             if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
-                EXPECT_EQ(TupleGetSize(node.node_data), 2, "Number of auxiliary data mismatch.");
+                EXPECT_EQ(TupleGetSize(node.node_data), 2, "Number of metadata mismatch.");
                 const py::object default_factory = TupleGetItem(node.node_data, 0);
                 data_hash = EVALUATE_WITH_LOCK_HELD(py::hash(default_factory), default_factory);
             }
