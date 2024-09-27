@@ -15,13 +15,13 @@ BreakBeforeTernaryOperators: true
 FixNamespaceComments: true
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^(<|")Python\.h("|>)$'
+  - Regex: '^[<"]Python\.h[">]$'
     Priority: 2
     CaseSensitive: true
-  - Regex: '^(<|")(pybind11/.*)("|>)$'
+  - Regex: '^[<"]pybind11/.*[">]$'
     Priority: 3
     CaseSensitive: true
-  - Regex: '^<[[:alnum:]_]+(\.h)?>$'
+  - Regex: '^<[[:alnum:]_/]+(\.h)?>$'
     Priority: 1
   - Regex: '^"include/'
     Priority: 4
