@@ -27,6 +27,7 @@ import optree
 from helpers import (
     CustomNamedTupleSubclass,
     CustomTuple,
+    Py_GIL_DISABLED,
     Vector2D,
     gc_collect,
     getrefcount,
@@ -133,7 +134,8 @@ def test_is_namedtuple_cache():
     assert wr() is Point
     del Point
     gc_collect()
-    assert wr() is None
+    if not Py_GIL_DISABLED:
+        assert wr() is None
 
     refcount = getrefcount(time.struct_time)
     weakrefcount = weakref.getweakrefcount(time.struct_time)
@@ -170,8 +172,9 @@ def test_is_namedtuple_cache():
     assert wr() is Foo
     del Foo
     gc_collect()
-    assert called_with == 'Foo'
-    assert wr() is None
+    if not Py_GIL_DISABLED:
+        assert called_with == 'Foo'
+        assert wr() is None
 
 
 def test_namedtuple_fields():
@@ -264,7 +267,8 @@ def test_namedtuple_fields_cache():
 
     del Point
     gc_collect()
-    assert wr() is None
+    if not Py_GIL_DISABLED:
+        assert wr() is None
 
     with pytest.raises(
         TypeError,
@@ -299,8 +303,9 @@ def test_namedtuple_fields_cache():
     assert wr() is Foo
     del Foo
     gc_collect()
-    assert called_with == 'Foo'
-    assert wr() is None
+    if not Py_GIL_DISABLED:
+        assert called_with == 'Foo'
+        assert wr() is None
 
 
 def test_is_structseq():
@@ -380,7 +385,8 @@ def test_is_structseq_cache():
     assert wr() is Point
     del Point
     gc_collect()
-    assert wr() is None
+    if not Py_GIL_DISABLED:
+        assert wr() is None
 
     refcount = getrefcount(time.struct_time)
     weakrefcount = weakref.getweakrefcount(time.struct_time)
@@ -417,8 +423,9 @@ def test_is_structseq_cache():
     assert wr() is Foo
     del Foo
     gc_collect()
-    assert called_with == 'Foo'
-    assert wr() is None
+    if not Py_GIL_DISABLED:
+        assert called_with == 'Foo'
+        assert wr() is None
 
 
 def test_structseq_fields():
@@ -547,7 +554,8 @@ def test_structseq_fields_cache():
     assert wr() is Point
     del Point
     gc_collect()
-    assert wr() is None
+    if not Py_GIL_DISABLED:
+        assert wr() is None
 
     refcount = getrefcount(time.struct_time)
     weakrefcount = weakref.getweakrefcount(time.struct_time)
@@ -583,5 +591,6 @@ def test_structseq_fields_cache():
     assert wr() is Foo
     del Foo
     gc_collect()
-    assert called_with == 'Foo'
-    assert wr() is None
+    if not Py_GIL_DISABLED:
+        assert called_with == 'Foo'
+        assert wr() is None

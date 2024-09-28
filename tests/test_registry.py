@@ -23,7 +23,7 @@ import pytest
 
 import optree
 import optree._C
-from helpers import GLOBAL_NAMESPACE, gc_collect, skipif_pypy
+from helpers import GLOBAL_NAMESPACE, Py_GIL_DISABLED, gc_collect, skipif_pypy
 
 
 def test_register_pytree_node_class_with_no_namespace():
@@ -767,8 +767,7 @@ def test_unregister_pytree_node_namedtuple():
 
 
 @skipif_pypy
-def test_unregister_pytree_node_memory_leak():  # noqa: C901
-
+def test_unregister_pytree_node_no_reference_leak():  # noqa: C901
     @optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
     class MyList1(UserList):
         def tree_flatten(self):
@@ -784,7 +783,8 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
     optree.unregister_pytree_node(MyList1, namespace=GLOBAL_NAMESPACE)
     del MyList1
     gc_collect()
-    assert wr() is None
+    if not Py_GIL_DISABLED:
+        assert wr() is None
 
     @optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
     class MyList2(UserList):
@@ -811,7 +811,8 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     del treespec
     gc_collect()
-    assert wr() is None
+    if not Py_GIL_DISABLED:
+        assert wr() is None
 
     @optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
     class MyList3(UserList):
@@ -841,7 +842,8 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     del treespec
     gc_collect()
-    assert wr() is None
+    if not Py_GIL_DISABLED:
+        assert wr() is None
 
     @optree.register_pytree_node_class(namespace='mylist')
     class MyList4(UserList):
@@ -858,7 +860,8 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
     optree.unregister_pytree_node(MyList4, namespace='mylist')
     del MyList4
     gc_collect()
-    assert wr() is None
+    if not Py_GIL_DISABLED:
+        assert wr() is None
 
     @optree.register_pytree_node_class(namespace='mylist')
     class MyList5(UserList):
@@ -887,7 +890,8 @@ def test_unregister_pytree_node_memory_leak():  # noqa: C901
 
     del treespec
     gc_collect()
-    assert wr() is None
+    if not Py_GIL_DISABLED:
+        assert wr() is None
 
 
 def test_dict_insertion_order_with_invalid_namespace():

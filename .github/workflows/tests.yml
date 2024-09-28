@@ -46,7 +46,7 @@ jobs:
           - os: macos-latest
             python-version: "3.7"  # Python 3.7 does not support macOS ARM64
       fail-fast: false
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@v4

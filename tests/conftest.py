@@ -15,6 +15,13 @@
 
 import os
 import random
+import threading
+
+
+thread = threading.Thread(target=object)  # no-op
+thread.start()
+thread.join()
+del threading, thread
 
 
 os.environ['PYTHONHASHSEED'] = '0'

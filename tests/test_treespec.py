@@ -248,7 +248,6 @@ def test_treespec_self_referential():
     wr = weakref.ref(treespec)
     del treespec, key, other
     gc_collect()
-
     if not PYPY:
         assert wr() is None
 
@@ -279,7 +278,6 @@ def test_treeiter_self_referential():
 
     del it, d
     gc_collect()
-
     if not PYPY:
         assert wr() is None
 

@@ -2438,7 +2438,7 @@ def tree_flatten_one_level(
     tuple[Any, ...],
     Callable[[MetaData, list[PyTree[T]]], PyTree[T]],
 ]:
-    """Flatten the pytree one level, returning a 4-tuple of children, auxiliary data, path entries, and an unflatten function.
+    """Flatten the pytree one level, returning a 4-tuple of children, metadata, path entries, and an unflatten function.
 
     See also :func:`tree_flatten`, :func:`tree_flatten_with_path`.
 
@@ -2468,9 +2468,9 @@ def tree_flatten_one_level(
 
     Returns:
         A 4-tuple ``(children, metadata, entries, unflatten_func)``. The first element is a list of
-        one-level children of the pytree node. The second element is the auxiliary data used to
+        one-level children of the pytree node. The second element is the metadata used to
         reconstruct the pytree node. The third element is a tuple of path entries to the children.
-        The fourth element is a function that can be used to unflatten the auxiliary data and
+        The fourth element is a function that can be used to unflatten the metadata and
         children back to the pytree node.
     """  # pylint: disable=line-too-long
     node_type = type(tree)
@@ -3209,11 +3209,11 @@ def _prefix_error(
     ):
         yield lambda name: ValueError(
             f'pytree structure error: different types at key path\n'
-            f'    {{name}}{accessor.codify("") if accessor else " tree root"}\n'
-            f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
+            f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
+            f'At that key path, the prefix pytree {name} has a subtree of type\n'
             f'    {type(prefix_tree)}\n'
             f'but at the same key path the full pytree has a subtree of different type\n'
-            f'    {type(full_tree)}.'.format(name=name),
+            f'    {type(full_tree)}.',
         )
         return  # don't look for more errors in this subtree
 
@@ -3254,15 +3254,15 @@ def _prefix_error(
                 key_difference += f'\nextra key(s):\n    {extra_keys}'
             yield lambda name: ValueError(
                 f'pytree structure error: different pytree keys at key path\n'
-                f'    {{name}}{accessor.codify("") if accessor else " tree root"}\n'
-                f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
+                f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
+                f'At that key path, the prefix pytree {name} has a subtree of type\n'
                 f'    {prefix_tree_type}\n'
                 f'with {len(prefix_tree_keys)} key(s)\n'
                 f'    {prefix_tree_keys}\n'
                 f'but at the same key path the full pytree has a subtree of type\n'
                 f'    {full_tree_type}\n'
                 f'but with {len(full_tree_keys)} key(s)\n'
-                f'    {full_tree_keys}{key_difference}'.format(name=name),
+                f'    {full_tree_keys}{key_difference}',
             )
             return  # don't look for more errors in this subtree
 
@@ -3272,12 +3272,12 @@ def _prefix_error(
     if len(prefix_tree_children) != len(full_tree_children):
         yield lambda name: ValueError(
             f'pytree structure error: different numbers of pytree children at key path\n'
-            f'    {{name}}{accessor.codify("") if accessor else " tree root"}\n'
-            f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
+            f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
+            f'At that key path, the prefix pytree {name} has a subtree of type\n'
             f'    {prefix_tree_type}\n'
             f'with {len(prefix_tree_children)} children, '
             f'but at the same key path the full pytree has a subtree of the same '
-            f'type but with {len(full_tree_children)} children.'.format(name=name),
+            f'type but with {len(full_tree_children)} children.',
         )
         return  # don't look for more errors in this subtree
 
@@ -3303,8 +3303,8 @@ def _prefix_error(
         )
         yield lambda name: ValueError(
             f'pytree structure error: different pytree metadata at key path\n'
-            f'    {{name}}{accessor.codify("") if accessor else " tree root"}\n'
-            f'At that key path, the prefix pytree {{name}} has a subtree of type\n'
+            f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
+            f'At that key path, the prefix pytree {name} has a subtree of type\n'
             f'    {prefix_tree_type}\n'
             f'with metadata\n'
             f'    {prefix_tree_metadata_repr}\n'
@@ -3312,7 +3312,7 @@ def _prefix_error(
             f'type but with metadata\n'
             f'    {full_tree_metadata_repr}\n'
             f'so the diff in the metadata at these pytree nodes is\n'
-            f'{metadata_diff}'.format(name=name),
+            f'{metadata_diff}',
         )
         return  # don't look for more errors in this subtree
 

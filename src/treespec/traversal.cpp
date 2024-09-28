@@ -21,7 +21,9 @@ limitations under the License.
 #include <string>     // std::string
 #include <utility>    // std::move
 
+#include "include/critical_section.h"
 #include "include/exceptions.h"
+#include "include/mutex.h"
 #include "include/registry.h"
 #include "include/treespec.h"
 #include "include/utils.h"
@@ -41,7 +43,10 @@ py::object PyTreeIter::NextImpl() {
             throw py::error_already_set();
         }
 
-        if (m_leaf_predicate && py::cast<bool>((*m_leaf_predicate)(object))) [[unlikely]] {
+        if (m_leaf_predicate &&
+            EVALUATE_WITH_LOCK_HELD2(thread_safe_cast<bool>((*m_leaf_predicate)(object)),
+                                     object,
+                                     *m_leaf_predicate)) [[unlikely]] {
             return object;
         }
 
@@ -65,17 +70,18 @@ py::object PyTreeIter::NextImpl() {
             }
 
             case PyTreeKind::Tuple: {
-                const ssize_t arity = GET_SIZE<py::tuple>(object);
+                const ssize_t arity = TupleGetSize(object);
                 for (ssize_t i = arity - 1; i >= 0; --i) {
-                    m_agenda.emplace_back(GET_ITEM_BORROW<py::tuple>(object, i), depth);
+                    m_agenda.emplace_back(TupleGetItem(object, i), depth);
                 }
                 break;
             }
 
             case PyTreeKind::List: {
-                const ssize_t arity = GET_SIZE<py::list>(object);
+                const scoped_critical_section cs{object};
+                const ssize_t arity = ListGetSize(object);
                 for (ssize_t i = arity - 1; i >= 0; --i) {
-                    m_agenda.emplace_back(GET_ITEM_BORROW<py::list>(object, i), depth);
+                    m_agenda.emplace_back(ListGetItem(object, i), depth);
                 }
                 break;
             }
@@ -83,6 +89,7 @@ py::object PyTreeIter::NextImpl() {
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
             case PyTreeKind::DefaultDict: {
+                const scoped_critical_section cs{object};
                 const auto dict = py::reinterpret_borrow<py::dict>(object);
                 py::list keys = DictKeys(dict);
                 if (kind != PyTreeKind::OrderedDict && !m_is_dict_insertion_ordered) [[likely]] {
@@ -92,7 +99,7 @@ py::object PyTreeIter::NextImpl() {
                     throw py::error_already_set();
                 }
                 for (const py::handle& key : keys) {
-                    m_agenda.emplace_back(dict[key], depth);
+                    m_agenda.emplace_back(DictGetItem(dict, key), depth);
                 }
                 break;
             }
@@ -100,38 +107,41 @@ py::object PyTreeIter::NextImpl() {
             case PyTreeKind::NamedTuple:
             case PyTreeKind::StructSequence: {
                 const auto tuple = py::reinterpret_borrow<py::tuple>(object);
-                const ssize_t arity = GET_SIZE<py::tuple>(tuple);
+                const ssize_t arity = TupleGetSize(tuple);
                 for (ssize_t i = arity - 1; i >= 0; --i) {
-                    m_agenda.emplace_back(GET_ITEM_BORROW<py::tuple>(tuple, i), depth);
+                    m_agenda.emplace_back(TupleGetItem(tuple, i), depth);
                 }
                 break;
             }
 
             case PyTreeKind::Deque: {
-                const auto list = py::cast<py::list>(object);
-                const ssize_t arity = GET_SIZE<py::list>(list);
+                const auto list = thread_safe_cast<py::list>(object);
+                const ssize_t arity = ListGetSize(list);
                 for (ssize_t i = arity - 1; i >= 0; --i) {
-                    m_agenda.emplace_back(GET_ITEM_BORROW<py::list>(list, i), depth);
+                    m_agenda.emplace_back(ListGetItem(list, i), depth);
                 }
                 break;
             }
 
             case PyTreeKind::Custom: {
-                const py::tuple out = py::cast<py::tuple>(custom->flatten_func(object));
-                const ssize_t num_out = GET_SIZE<py::tuple>(out);
+                const py::tuple out = EVALUATE_WITH_LOCK_HELD2(
+                    thread_safe_cast<py::tuple>(custom->flatten_func(object)),
+                    object,
+                    custom->flatten_func);
+                const ssize_t num_out = TupleGetSize(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
                     std::ostringstream oss{};
                     oss << "PyTree custom flatten function for type " << PyRepr(custom->type)
                         << " should return a 2- or 3-tuple, got " << num_out << ".";
                     throw std::runtime_error(oss.str());
                 }
-                auto children = py::cast<py::tuple>(GET_ITEM_BORROW<py::tuple>(out, ssize_t(0)));
-                const ssize_t arity = GET_SIZE<py::tuple>(children);
+                auto children = thread_safe_cast<py::tuple>(TupleGetItem(out, 0));
+                const ssize_t arity = TupleGetSize(children);
                 if (num_out == 3) [[likely]] {
-                    py::object node_entries = GET_ITEM_BORROW<py::tuple>(out, ssize_t(2));
+                    const py::object node_entries = TupleGetItem(out, 2);
                     if (!node_entries.is_none()) [[likely]] {
                         const ssize_t num_entries =
-                            GET_SIZE<py::tuple>(py::cast<py::tuple>(std::move(node_entries)));
+                            TupleGetSize(thread_safe_cast<py::tuple>(node_entries));
                         if (num_entries != arity) [[unlikely]] {
                             std::ostringstream oss{};
                             oss << "PyTree custom flatten function for type "
@@ -143,7 +153,7 @@ py::object PyTreeIter::NextImpl() {
                     }
                 }
                 for (ssize_t i = arity - 1; i >= 0; --i) {
-                    m_agenda.emplace_back(GET_ITEM_BORROW<py::tuple>(children, i), depth);
+                    m_agenda.emplace_back(TupleGetItem(children, i), depth);
                 }
                 break;
             }
@@ -157,6 +167,10 @@ py::object PyTreeIter::NextImpl() {
 }
 
 py::object PyTreeIter::Next() {
+#ifdef Py_GIL_DISABLED
+    const scoped_lock_guard lock{m_mutex};
+#endif
+
     if (m_none_is_leaf) [[unlikely]] {
         return NextImpl<NONE_IS_LEAF>();
     } else [[likely]] {
@@ -167,6 +181,7 @@ py::object PyTreeIter::Next() {
 py::object PyTreeSpec::Walk(const py::function& f_node,
                             const std::optional<py::function>& f_leaf,
                             const py::iterable& leaves) const {
+    const scoped_critical_section cs{leaves};
     auto agenda = reserved_vector<py::object>(4);
     auto it = leaves.begin();
     for (const Node& node : m_traversal) {
@@ -177,11 +192,8 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
                 }
 
                 const auto leaf = py::reinterpret_borrow<py::object>(*it);
-                if (f_leaf) [[likely]] {
-                    agenda.emplace_back((*f_leaf)(leaf));
-                } else [[unlikely]] {
-                    agenda.emplace_back(leaf);
-                }
+                agenda.emplace_back(
+                    f_leaf ? EVALUATE_WITH_LOCK_HELD2((*f_leaf)(leaf), leaf, *f_leaf) : leaf);
                 ++it;
                 break;
             }
@@ -201,10 +213,13 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
                           "Too few elements for custom type.");
                 const py::tuple tuple{node.arity};
                 for (ssize_t i = node.arity - 1; i >= 0; --i) {
-                    SET_ITEM<py::tuple>(tuple, i, agenda.back());
+                    TupleSetItem(tuple, i, agenda.back());
                     agenda.pop_back();
                 }
-                agenda.emplace_back(f_node(tuple, (node.node_data ? node.node_data : py::none())));
+                agenda.emplace_back(EVALUATE_WITH_LOCK_HELD2(
+                    f_node(tuple, (node.node_data ? node.node_data : py::none())),
+                    node.node_data,
+                    f_node));
                 break;
             }
 

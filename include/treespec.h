@@ -29,6 +29,7 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
+#include "include/mutex.h"
 #include "include/registry.h"
 #include "include/utils.h"
 
@@ -208,6 +209,8 @@ class PyTreeSpec {
     // Check if should preserve the insertion order of the dictionary keys during flattening.
     static inline bool IsDictInsertionOrdered(const std::string &registry_namespace,
                                               const bool &inherit_global_namespace = true) {
+        const scoped_read_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
+
         return (sm_is_dict_insertion_ordered.find(registry_namespace) !=
                 sm_is_dict_insertion_ordered.end()) ||
                (inherit_global_namespace &&
@@ -217,6 +220,8 @@ class PyTreeSpec {
     // Set the namespace to preserve the insertion order of the dictionary keys during flattening.
     static inline void SetDictInsertionOrdered(const bool &mode,
                                                const std::string &registry_namespace) {
+        const scoped_write_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
+
         if (mode) [[likely]] {
             sm_is_dict_insertion_ordered.insert(registry_namespace);
         } else [[unlikely]] {
@@ -236,13 +241,13 @@ class PyTreeSpec {
         // Arity for non-Leaf types.
         ssize_t arity = 0;
 
-        // Kind-specific auxiliary data.
+        // Kind-specific metadata.
         // For a NamedTuple/PyStructSequence, contains the tuple type object.
         // For a Dict, contains a sorted list of keys.
         // For a OrderedDict, contains a list of keys.
         // For a DefaultDict, contains a tuple of (default_factory, sorted list of keys).
         // For a Deque, contains the `maxlen` attribute.
-        // For a Custom type, contains the auxiliary data returned by the `flatten_func` function.
+        // For a Custom type, contains the metadata returned by the `flatten_func` function.
         py::object node_data{};
 
         // The tuple of path entries.
@@ -361,16 +366,7 @@ class PyTreeSpec {
     // A set of namespaces that preserve the insertion order of the dictionary keys during
     // flattening.
     static inline std::unordered_set<std::string> sm_is_dict_insertion_ordered{};
-
-    // A set of (treespec, thread_id) pairs that are currently being represented as strings.
-    static inline std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
-                                     ThreadIndentTypeHash>
-        sm_repr_running{};
-
-    // A set of (treespec, thread_id) pairs that are currently being hashed.
-    static inline std::unordered_set<std::pair<const PyTreeSpec *, std::thread::id>,
-                                     ThreadIndentTypeHash>
-        sm_hash_running{};
+    static inline read_write_mutex sm_is_dict_insertion_ordered_mutex{};
 };
 
 class PyTreeIter {
@@ -379,7 +375,8 @@ class PyTreeIter {
                         const std::optional<py::function> &leaf_predicate,
                         const bool &none_is_leaf,
                         const std::string &registry_namespace)
-        : m_agenda{{{tree, 0}}},
+        : m_root{tree},
+          m_agenda{{{tree, 0}}},
           m_leaf_predicate{leaf_predicate},
           m_none_is_leaf{none_is_leaf},
           m_namespace{registry_namespace},
@@ -401,11 +398,15 @@ class PyTreeIter {
     static int PyTpTraverse(PyObject *self_base, visitproc visit, void *arg);
 
  private:
+    const py::object m_root;
     std::vector<std::pair<py::object, ssize_t>> m_agenda;
     const std::optional<py::function> m_leaf_predicate;
     const bool m_none_is_leaf;
     const std::string m_namespace;
     const bool m_is_dict_insertion_ordered;
+#ifdef Py_GIL_DISABLED
+    mutable mutex m_mutex{};
+#endif
 
     template <bool NoneIsLeaf>
     [[nodiscard]] py::object NextImpl();

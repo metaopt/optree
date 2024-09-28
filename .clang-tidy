@@ -22,6 +22,6 @@ readability-*,
 -readability-identifier-length,
 '
 CheckOptions:
-    misc-include-cleaner.IgnoreHeaders: 'python.*/.*;pybind11/.*'
+    misc-include-cleaner.IgnoreHeaders: 'python.*/.*;pybind11/.*;include/.*'
 HeaderFilterRegex: '^include/.*$'
 ...

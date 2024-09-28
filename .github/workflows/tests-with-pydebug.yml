@@ -37,9 +37,25 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-        python-abiflags: ["d"]
+        python-abiflags: ["d", "td"]
+        exclude:
+          - python-version: "3.7"
+            python-abiflags: "td"
+          - python-version: "3.8"
+            python-abiflags: "td"
+          - python-version: "3.9"
+            python-abiflags: "td"
+          - python-version: "3.10"
+            python-abiflags: "td"
+          - python-version: "3.11"
+            python-abiflags: "td"
+          - python-version: "3.12"
+            python-abiflags: "td"
+          - os: windows-latest  # pyenv-win does not support Python 3.13t yet
+            python-version: "3.13"
+            python-abiflags: "td"
       fail-fast: false
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -65,7 +81,12 @@ jobs:
         shell: bash
         run: |
           pyenv install --list
-          if ! PYTHON_VERSION="$(pyenv latest --known "${{ matrix.python-version }}")"; then
+          if [[ "${{ matrix.python-abiflags }}" == *t* ]]; then
+            PYTHON_VERSION="$(
+              pyenv install --list | tr -d ' ' | grep -E "^${{ matrix.python-version }}" |
+                grep -vF '-' | grep -E '[0-9]t$' | sort -rV | head -n 1
+            )"
+          elif ! PYTHON_VERSION="$(pyenv latest --known "${{ matrix.python-version }}")"; then
             PYTHON_VERSION="$(
               pyenv install --list | tr -d ' ' | grep -E "^${{ matrix.python-version }}" |
                 grep -vF '-' | grep -E '[0-9]$' | sort -rV | head -n 1
@@ -109,4 +130,4 @@ jobs:
 
       - name: Test with pytest
         run: |
-          make test PYTESTOPTS="--exitfirst --verbosity=0 --durations=10"
+          make test PYTESTOPTS="--exitfirst"

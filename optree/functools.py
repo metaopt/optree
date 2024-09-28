@@ -148,7 +148,7 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
         Callable[..., Any],
         tuple[str, str],
     ]:
-        """Flatten the :class:`partial` instance to children and auxiliary data."""
+        """Flatten the :class:`partial` instance to children and metadata."""
         return (self.args, self.keywords), self.func, ('args', 'keywords')
 
     @classmethod
@@ -157,7 +157,7 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
         metadata: Callable[..., Any],
         children: tuple[tuple[T, ...], dict[str, T]],
     ) -> Self:
-        """Unflatten the children and auxiliary data into a :class:`partial` instance."""
+        """Unflatten the children and metadata into a :class:`partial` instance."""
         args, keywords = children
         return cls(metadata, *args, **keywords)
 

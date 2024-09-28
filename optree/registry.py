@@ -139,13 +139,13 @@ def register_pytree_node(
         cls (type): A Python type to treat as an internal pytree node.
         flatten_func (callable): A function to be used during flattening, taking an instance of ``cls``
             and returning a triple or optionally a pair, with (1) an iterable for the children to be
-            flattened recursively, and (2) some hashable auxiliary data to be stored in the treespec
-            and to be passed to the ``unflatten_func``, and (3) (optional) an iterable for the tree
-            path entries to the corresponding children. If the entries are not provided or given by
+            flattened recursively, and (2) some hashable metadata to be stored in the treespec and
+            to be passed to the ``unflatten_func``, and (3) (optional) an iterable for the tree path
+            entries to the corresponding children. If the entries are not provided or given by
             :data:`None`, then `range(len(children))` will be used.
-        unflatten_func (callable): A function taking two arguments: the auxiliary data that was
-            returned by ``flatten_func`` and stored in the treespec, and the unflattened children.
-            The function should return an instance of ``cls``.
+        unflatten_func (callable): A function taking two arguments: the metadata that was returned
+            by ``flatten_func`` and stored in the treespec, and the unflattened children. The
+            function should return an instance of ``cls``.
         path_entry_type (type, optional): The type of the path entry to be used in the treespec.
             (default: :class:`AutoEntry`)
         namespace (str): A non-empty string that uniquely identifies the namespace of the type registry.
@@ -646,6 +646,10 @@ def dict_insertion_ordered(mode: bool, *, namespace: str) -> Generator[None]:
         [2, 3, 4, 1, 5],
         PyTreeSpec({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}, namespace='some-namespace')
     )
+
+    .. warning::
+        The dictionary sorting mode is a global setting and is **not thread-safe**. It is
+        recommended to use this context manager in a single-threaded environment.
 
     Args:
         mode (bool): The dictionary sorting mode to set.

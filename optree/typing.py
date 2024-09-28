@@ -141,11 +141,11 @@ class CustomTreeNode(Protocol[T]):
         # With optionally implemented path entries
         tuple[Children[T], MetaData, Iterable[Any] | None]
     ):
-        """Flatten the custom pytree node into children and auxiliary data."""
+        """Flatten the custom pytree node into children and metadata."""
 
     @classmethod
     def tree_unflatten(cls, metadata: MetaData, children: Children[T]) -> CustomTreeNode[T]:
-        """Unflatten the children and auxiliary data into the custom pytree node."""
+        """Unflatten the children and metadata into the custom pytree node."""
 
 
 _UnionType = type(Union[int, str])
@@ -452,10 +452,7 @@ def is_structseq_class(cls: type) -> bool:
         # Check the type does not allow subclassing
         if platform.python_implementation() == 'PyPy':
             try:
-                # pylint: disable-next=too-few-public-methods
-                class _(cls):  # noqa: N801
-                    pass
-
+                types.new_class('subclass', bases=(cls,))
             except (AssertionError, TypeError):
                 return True
             return False

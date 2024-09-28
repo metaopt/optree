@@ -21,6 +21,7 @@ limitations under the License.
 #include <functional>     // std::hash
 #include <sstream>        // std::ostringstream
 #include <string>         // std::string
+#include <type_traits>    // std::enable_if_t, std::is_base_of_v
 #include <unordered_map>  // std::unordered_map
 #include <utility>        // std::move, std::pair, std::make_pair
 #include <vector>         // std::vector
@@ -33,6 +34,9 @@ limitations under the License.
 
 #include <pybind11/eval.h>  // pybind11::exec
 #include <pybind11/pybind11.h>
+
+#include "include/critical_section.h"
+#include "include/mutex.h"
 
 namespace py = pybind11;
 
@@ -181,116 +185,99 @@ inline std::vector<T> reserved_vector(const py::size_t& size) {
     return v;
 }
 
-template <typename Sized = py::object>
-inline py::ssize_t GetSize(const py::handle& sized) {
-    return py::ssize_t_cast(py::len(sized));
-}
-template <>
-inline py::ssize_t GetSize<py::tuple>(const py::handle& sized) {
-    return PyTuple_Size(sized.ptr());
-}
-template <>
-inline py::ssize_t GetSize<py::list>(const py::handle& sized) {
-    return PyList_Size(sized.ptr());
-}
-template <>
-inline py::ssize_t GetSize<py::dict>(const py::handle& sized) {
-    return PyDict_Size(sized.ptr());
+template <typename T>
+inline T thread_safe_cast(const py::handle& handle) {
+    return EVALUATE_WITH_LOCK_HELD(py::cast<T>(handle), handle);
 }
 
-template <typename Sized = py::object>
-inline py::ssize_t GET_SIZE(const py::handle& sized) {
-    return py::ssize_t_cast(py::len(sized));
-}
-template <>
-inline py::ssize_t GET_SIZE<py::tuple>(const py::handle& sized) {
-    return PyTuple_GET_SIZE(sized.ptr());
-}
-template <>
-inline py::ssize_t GET_SIZE<py::list>(const py::handle& sized) {
-    return PyList_GET_SIZE(sized.ptr());
-}
-#ifndef PyDict_GET_SIZE
-#define PyDict_GET_SIZE PyDict_Size
+inline py::ssize_t TupleGetSize(const py::handle& tuple) { return PyTuple_GET_SIZE(tuple.ptr()); }
+inline py::ssize_t ListGetSize(const py::handle& list) { return PyList_GET_SIZE(list.ptr()); }
+inline py::ssize_t DictGetSize(const py::handle& dict) {
+#ifdef PyDict_GET_SIZE
+    return PyDict_GET_SIZE(dict.ptr());
+#else
+    return PyDict_Size(dict.ptr());
 #endif
-template <>
-inline py::ssize_t GET_SIZE<py::dict>(const py::handle& sized) {
-    return PyDict_GET_SIZE(sized.ptr());
 }
 
-template <typename Container, typename Item>
-inline py::handle GET_ITEM_HANDLE(const py::handle& container, const Item& item) {
-    return container[item];
+template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, T>>>
+inline T TupleGetItemAs(const py::handle& tuple, const py::ssize_t& index) {
+    return py::reinterpret_borrow<T>(PyTuple_GET_ITEM(tuple.ptr(), index));
 }
-template <>
-inline py::handle GET_ITEM_HANDLE<py::tuple>(const py::handle& container, const py::ssize_t& item) {
-    return PyTuple_GET_ITEM(container.ptr(), item);
+inline py::object TupleGetItem(const py::handle& tuple, const py::ssize_t& index) {
+    return TupleGetItemAs<py::object>(tuple, index);
 }
-template <>
-inline py::handle GET_ITEM_HANDLE<py::list>(const py::handle& container, const py::ssize_t& item) {
-    return PyList_GET_ITEM(container.ptr(), item);
+template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, T>>>
+inline T ListGetItemAs(const py::handle& list, const py::ssize_t& index) {
+#if PY_VERSION_HEX >= 0x030D00A4  // Python 3.13.0a4
+    PyObject* item = PyList_GetItemRef(list.ptr(), index);
+    if (item == nullptr) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    return py::reinterpret_steal<T>(item);
+#else
+    return py::reinterpret_borrow<T>(PyList_GET_ITEM(list.ptr(), index));
+#endif
+}
+inline py::object ListGetItem(const py::handle& list, const py::ssize_t& index) {
+    return ListGetItemAs<py::object>(list, index);
+}
+template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, T>>>
+inline T DictGetItemAs(const py::handle& dict, const py::handle& key) {
+#if PY_VERSION_HEX >= 0x030D00A1  // Python 3.13.0a1
+    PyObject* value = nullptr;
+    if (PyDict_GetItemRef(dict.ptr(), key.ptr(), &value) < 0) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    if (value == nullptr) [[unlikely]] {
+        py::set_error(PyExc_KeyError, py::make_tuple(key));
+        throw py::error_already_set();
+    }
+    return py::reinterpret_steal<T>(value);
+#else
+    return py::reinterpret_borrow<T>(PyDict_GetItem(dict.ptr(), key.ptr()));
+#endif
+}
+inline py::object DictGetItem(const py::handle& dict, const py::handle& key) {
+    return DictGetItemAs<py::object>(dict, key);
 }
 
-template <typename Container, typename Item>
-inline py::object GET_ITEM_BORROW(const py::handle& container, const Item& item) {
-    return py::reinterpret_borrow<py::object>(container[item]);
+inline void TupleSetItem(const py::handle& tuple,
+                         const py::ssize_t& index,
+                         const py::handle& value) {
+    PyTuple_SET_ITEM(tuple.ptr(), index, value.inc_ref().ptr());
 }
-template <>
-inline py::object GET_ITEM_BORROW<py::tuple>(const py::handle& container, const py::ssize_t& item) {
-    return py::reinterpret_borrow<py::object>(PyTuple_GET_ITEM(container.ptr(), item));
+inline void ListSetItem(const py::handle& list, const py::ssize_t& index, const py::handle& value) {
+    PyList_SET_ITEM(list.ptr(), index, value.inc_ref().ptr());
 }
-template <>
-inline py::object GET_ITEM_BORROW<py::list>(const py::handle& container, const py::ssize_t& item) {
-    return py::reinterpret_borrow<py::object>(PyList_GET_ITEM(container.ptr(), item));
-}
-
-template <typename Container, typename Item>
-inline void SET_ITEM(const py::handle& container, const Item& item, const py::handle& value) {
-    container[item] = value;
-}
-template <>
-inline void SET_ITEM<py::tuple>(const py::handle& container,
-                                const py::ssize_t& item,
-                                const py::handle& value) {
-    PyTuple_SET_ITEM(container.ptr(), item, value.inc_ref().ptr());
-}
-template <>
-inline void SET_ITEM<py::list>(const py::handle& container,
-                               const py::ssize_t& item,
-                               const py::handle& value) {
-    PyList_SET_ITEM(container.ptr(), item, value.inc_ref().ptr());
+inline void DictSetItem(const py::handle& dict, const py::handle& key, const py::handle& value) {
+    if (PyDict_SetItem(dict.ptr(), key.ptr(), value.ptr()) < 0) [[unlikely]] {
+        throw py::error_already_set();
+    }
 }
 
+inline std::string PyStr(const py::handle& object) {
+    return EVALUATE_WITH_LOCK_HELD(static_cast<std::string>(py::str(object)), object);
+}
+inline std::string PyStr(const std::string& string) { return string; }
 inline std::string PyRepr(const py::handle& object) {
-    return static_cast<std::string>(py::repr(object));
+    return EVALUATE_WITH_LOCK_HELD(static_cast<std::string>(py::repr(object)), object);
 }
 inline std::string PyRepr(const std::string& string) {
     return static_cast<std::string>(py::repr(py::str(string)));
 }
 
-template <typename PyType>
-inline void AssertExact(const py::handle& object) {
-    if (!py::isinstance<PyType>(object)) [[unlikely]] {
-        std::ostringstream oss{};
-        oss << "Expected an instance of " << typeid(PyType).name() << ", got " << PyRepr(object)
-            << ".";
-        throw py::value_error(oss.str());
-    }
-}
-template <>
-inline void AssertExact<py::list>(const py::handle& object) {
+inline void AssertExactList(const py::handle& object) {
     if (!PyList_CheckExact(object.ptr())) [[unlikely]] {
         throw py::value_error("Expected an instance of list, got " + PyRepr(object) + ".");
     }
 }
-template <>
-inline void AssertExact<py::tuple>(const py::handle& object) {
+inline void AssertExactTuple(const py::handle& object) {
     if (!PyTuple_CheckExact(object.ptr())) [[unlikely]] {
         throw py::value_error("Expected an instance of tuple, got " + PyRepr(object) + ".");
     }
 }
-template <>
-inline void AssertExact<py::dict>(const py::handle& object) {
+inline void AssertExactDict(const py::handle& object) {
     if (!PyDict_CheckExact(object.ptr())) [[unlikely]] {
         throw py::value_error("Expected an instance of dict, got " + PyRepr(object) + ".");
     }
@@ -372,19 +359,28 @@ inline bool IsNamedTupleClass(const py::handle& type) {
     }
 
     static auto cache = std::unordered_map<py::handle, bool, TypeHash, TypeEq>{};
-    const auto it = cache.find(type);
-    if (it != cache.end()) [[likely]] {
-        return it->second;
+    static read_write_mutex mutex{};
+
+    {
+        const scoped_read_lock_guard lock{mutex};
+        const auto it = cache.find(type);
+        if (it != cache.end()) [[likely]] {
+            return it->second;
+        }
     }
 
-    const bool result = IsNamedTupleClassImpl(type);
-    if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-        cache.emplace(type, result);
-        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                              cache.erase(type);
-                              weakref.dec_ref();
-                          }))
-            .release();
+    const bool result = EVALUATE_WITH_LOCK_HELD(IsNamedTupleClassImpl(type), type);
+    {
+        const scoped_write_lock_guard lock{mutex};
+        if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+            cache.emplace(type, result);
+            (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                                  const scoped_write_lock_guard lock{mutex};
+                                  cache.erase(type);
+                                  weakref.dec_ref();
+                              }))
+                .release();
+        }
     }
     return result;
 }
@@ -416,7 +412,7 @@ inline py::tuple NamedTupleGetFields(const py::handle& object) {
                                  PyRepr(object) + ".");
         }
     }
-    return py::getattr(type, Py_Get_ID(_fields));
+    return EVALUATE_WITH_LOCK_HELD(py::getattr(type, Py_Get_ID(_fields)), type);
 }
 
 inline bool IsStructSequenceClassImpl(const py::handle& type) {
@@ -462,19 +458,28 @@ inline bool IsStructSequenceClass(const py::handle& type) {
     }
 
     static auto cache = std::unordered_map<py::handle, bool, TypeHash, TypeEq>{};
-    const auto it = cache.find(type);
-    if (it != cache.end()) [[likely]] {
-        return it->second;
+    static read_write_mutex mutex{};
+
+    {
+        const scoped_read_lock_guard lock{mutex};
+        const auto it = cache.find(type);
+        if (it != cache.end()) [[likely]] {
+            return it->second;
+        }
     }
 
-    const bool result = IsStructSequenceClassImpl(type);
-    if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-        cache.emplace(type, result);
-        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                              cache.erase(type);
-                              weakref.dec_ref();
-                          }))
-            .release();
+    const bool result = EVALUATE_WITH_LOCK_HELD(IsStructSequenceClassImpl(type), type);
+    {
+        const scoped_write_lock_guard lock{mutex};
+        if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+            cache.emplace(type, result);
+            (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                                  const scoped_write_lock_guard lock{mutex};
+                                  cache.erase(type);
+                                  weakref.dec_ref();
+                              }))
+                .release();
+        }
     }
     return result;
 }
@@ -509,12 +514,12 @@ inline py::tuple StructSequenceGetFieldsImpl(const py::handle& type) {
     return py::tuple{fields};
 #else
     const auto n_sequence_fields =
-        py::cast<py::ssize_t>(getattr(type, Py_Get_ID(n_sequence_fields)));
+        py::cast<py::ssize_t>(py::getattr(type, Py_Get_ID(n_sequence_fields)));
     const auto* const members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
     py::tuple fields{n_sequence_fields};
     for (py::ssize_t i = 0; i < n_sequence_fields; ++i) {
         // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
-        SET_ITEM<py::tuple>(fields, i, py::str(members[i].name));
+        TupleSetItem(fields, i, py::str(members[i].name));
     }
     return fields;
 #endif
@@ -535,24 +540,33 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
     }
 
     static auto cache = std::unordered_map<py::handle, py::handle, TypeHash, TypeEq>{};
-    const auto it = cache.find(type);
-    if (it != cache.end()) [[likely]] {
-        return py::reinterpret_borrow<py::tuple>(it->second);
+    static read_write_mutex mutex{};
+
+    {
+        const scoped_read_lock_guard lock{mutex};
+        const auto it = cache.find(type);
+        if (it != cache.end()) [[likely]] {
+            return py::reinterpret_borrow<py::tuple>(it->second);
+        }
     }
 
-    const py::tuple fields = StructSequenceGetFieldsImpl(type);
-    if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-        cache.emplace(type, fields);
-        fields.inc_ref();
-        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                              const auto it = cache.find(type);
-                              if (it != cache.end()) [[likely]] {
-                                  it->second.dec_ref();
-                                  cache.erase(it);
-                              }
-                              weakref.dec_ref();
-                          }))
-            .release();
+    const py::tuple fields = EVALUATE_WITH_LOCK_HELD(StructSequenceGetFieldsImpl(type), type);
+    {
+        const scoped_write_lock_guard lock{mutex};
+        if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+            cache.emplace(type, fields);
+            fields.inc_ref();
+            (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                                  const scoped_write_lock_guard lock{mutex};
+                                  const auto it = cache.find(type);
+                                  if (it != cache.end()) [[likely]] {
+                                      it->second.dec_ref();
+                                      cache.erase(it);
+                                  }
+                                  weakref.dec_ref();
+                              }))
+                .release();
+        }
     }
     return fields;
 }
@@ -560,7 +574,8 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
 inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
     try {
         // Sort directly if possible.
-        if (static_cast<bool>(PyList_Sort(list.ptr()))) [[unlikely]] {
+        if (static_cast<bool>(EVALUATE_WITH_LOCK_HELD(PyList_Sort(list.ptr()), list)))
+            [[unlikely]] {
             throw py::error_already_set();
         }
     } catch (py::error_already_set& ex1) {
@@ -571,12 +586,15 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
                 const auto sort_key_fn = py::cpp_function([](const py::object& o) -> py::tuple {
                     const py::handle t = py::type::handle_of(o);
                     const py::str qualname{
-                        static_cast<std::string>(py::str(py::getattr(t, Py_Get_ID(__module__)))) +
-                        "." +
-                        static_cast<std::string>(py::str(py::getattr(t, Py_Get_ID(__qualname__))))};
+                        EVALUATE_WITH_LOCK_HELD(PyStr(py::getattr(t, Py_Get_ID(__module__))) + "." +
+                                                    PyStr(py::getattr(t, Py_Get_ID(__qualname__))),
+                                                t)};
                     return py::make_tuple(qualname, o);
                 });
-                py::getattr(list, Py_Get_ID(sort))(py::arg("key") = sort_key_fn);
+                {
+                    const scoped_critical_section cs{list};
+                    py::getattr(list, Py_Get_ID(sort))(py::arg("key") = sort_key_fn);
+                }
             } catch (py::error_already_set& ex2) {
                 if (ex2.matches(PyExc_TypeError)) [[likely]] {
                     // Found incomparable user-defined key types.
@@ -593,6 +611,7 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
 }
 
 inline py::list DictKeys(const py::dict& dict) {
+    const scoped_critical_section cs{dict};
     return py::reinterpret_steal<py::list>(PyDict_Keys(dict.ptr()));
 }
 
@@ -603,13 +622,14 @@ inline py::list SortedDictKeys(const py::dict& dict) {
 }
 
 inline bool DictKeysEqual(const py::list& /*unique*/ keys, const py::dict& dict) {
-    const py::ssize_t list_len = GET_SIZE<py::list>(keys);
-    const py::ssize_t dict_len = GET_SIZE<py::dict>(dict);
+    const scoped_critical_section2 cs{keys, dict};
+    const py::ssize_t list_len = ListGetSize(keys);
+    const py::ssize_t dict_len = DictGetSize(dict);
     if (list_len != dict_len) [[likely]] {  // assumes keys are unique
         return false;
     }
     for (py::ssize_t i = 0; i < list_len; ++i) {
-        const py::object key = GET_ITEM_BORROW<py::list>(keys, i);
+        const py::object key = ListGetItem(keys, i);
         const int result = PyDict_Contains(dict.ptr(), key.ptr());
         if (result == -1) [[unlikely]] {
             throw py::error_already_set();
@@ -623,8 +643,8 @@ inline bool DictKeysEqual(const py::list& /*unique*/ keys, const py::dict& dict)
 
 inline std::pair<py::list, py::list> DictKeysDifference(const py::list& /*unique*/ keys,
                                                         const py::dict& dict) {
-    const py::set expected_keys{keys};
-    const py::set got_keys{DictKeys(dict)};
+    const py::set expected_keys = EVALUATE_WITH_LOCK_HELD(py::set{keys}, keys);
+    const py::set got_keys = EVALUATE_WITH_LOCK_HELD(py::set{dict}, dict);
     py::list missing_keys{expected_keys - got_keys};
     py::list extra_keys{got_keys - expected_keys};
     TotalOrderSort(missing_keys);
