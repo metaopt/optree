@@ -34,43 +34,36 @@ namespace optree {
 template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton() {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyTreeTypeRegistry> storage;
-    return &(
-        storage
-            .call_once_and_store_result([]() -> PyTreeTypeRegistry {
-                PyTreeTypeRegistry registry{};
+    return &(storage
+                 .call_once_and_store_result([]() -> PyTreeTypeRegistry {
+                     PyTreeTypeRegistry registry{};
 
-                const auto add_builtin_type = [&registry](const py::object& cls,
-                                                          const PyTreeKind& kind) -> void {
-                    auto registration =
-                        std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
-                    registration->kind = kind;
-                    registration->type = py::reinterpret_borrow<py::object>(cls);
-                    EXPECT_TRUE(
-                        registry.m_registrations.emplace(cls, std::move(registration)).second,
-                        "PyTree type " + PyRepr(cls) +
-                            " is already registered in the global namespace.");
-                    if (sm_builtins_types.emplace(cls).second) [[likely]] {
-                        cls.inc_ref();
-                    }
-                };
-                if constexpr (!NoneIsLeaf) {
-                    add_builtin_type(py::type::of(py::none()), PyTreeKind::None);
-                }
-                add_builtin_type(
-                    py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyTuple_Type)),
-                    PyTreeKind::Tuple);
-                add_builtin_type(
-                    py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyList_Type)),
-                    PyTreeKind::List);
-                add_builtin_type(
-                    py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyDict_Type)),
-                    PyTreeKind::Dict);
-                add_builtin_type(PyOrderedDictTypeObject, PyTreeKind::OrderedDict);
-                add_builtin_type(PyDefaultDictTypeObject, PyTreeKind::DefaultDict);
-                add_builtin_type(PyDequeTypeObject, PyTreeKind::Deque);
-                return registry;
-            })
-            .get_stored());
+                     const auto add_builtin_type = [&registry](const py::object& cls,
+                                                               const PyTreeKind& kind) -> void {
+                         auto registration =
+                             std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
+                         registration->kind = kind;
+                         registration->type = py::reinterpret_borrow<py::object>(cls);
+                         EXPECT_TRUE(
+                             registry.m_registrations.emplace(cls, std::move(registration)).second,
+                             "PyTree type " + PyRepr(cls) +
+                                 " is already registered in the global namespace.");
+                         if (sm_builtins_types.emplace(cls).second) [[likely]] {
+                             cls.inc_ref();
+                         }
+                     };
+                     if constexpr (!NoneIsLeaf) {
+                         add_builtin_type(PyNoneTypeObject, PyTreeKind::None);
+                     }
+                     add_builtin_type(PyTupleTypeObject, PyTreeKind::Tuple);
+                     add_builtin_type(PyListTypeObject, PyTreeKind::List);
+                     add_builtin_type(PyDictTypeObject, PyTreeKind::Dict);
+                     add_builtin_type(PyOrderedDictTypeObject, PyTreeKind::OrderedDict);
+                     add_builtin_type(PyDefaultDictTypeObject, PyTreeKind::DefaultDict);
+                     add_builtin_type(PyDequeTypeObject, PyTreeKind::Deque);
+                     return registry;
+                 })
+                 .get_stored());
 }
 
 template PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
@@ -87,7 +80,7 @@ template <bool NoneIsLeaf>
                               " is a built-in type and cannot be re-registered.");
     }
 
-    PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
+    PyTreeTypeRegistry* const registry = Singleton<NoneIsLeaf>();
     auto registration = std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
     registration->kind = PyTreeKind::Custom;
     registration->type = py::reinterpret_borrow<py::object>(cls);
@@ -181,7 +174,7 @@ template <bool NoneIsLeaf>
                               " is a built-in type and cannot be unregistered.");
     }
 
-    PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
+    PyTreeTypeRegistry* const registry = Singleton<NoneIsLeaf>();
     if (registry_namespace.empty()) [[unlikely]] {
         const auto it = registry->m_registrations.find(cls);
         if (it == registry->m_registrations.end()) [[unlikely]] {
@@ -247,7 +240,7 @@ template <bool NoneIsLeaf>
     const std::string& registry_namespace) {
     const scoped_read_lock_guard lock{sm_mutex};
 
-    PyTreeTypeRegistry* registry = Singleton<NoneIsLeaf>();
+    PyTreeTypeRegistry* const registry = Singleton<NoneIsLeaf>();
     if (!registry_namespace.empty()) [[unlikely]] {
         const auto named_it =
             registry->m_named_registrations.find(std::make_pair(registry_namespace, cls));
@@ -304,8 +297,8 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 /*static*/ void PyTreeTypeRegistry::Clear() {
     const scoped_write_lock_guard lock{sm_mutex};
 
-    PyTreeTypeRegistry* registry1 = PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
-    PyTreeTypeRegistry* registry2 = PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
+    PyTreeTypeRegistry* const registry1 = PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
+    PyTreeTypeRegistry* const registry2 = PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
 
     EXPECT_LE(sm_builtins_types.size(), registry1->m_registrations.size());
     EXPECT_EQ(registry1->m_registrations.size(), registry2->m_registrations.size() + 1);

@@ -815,8 +815,8 @@ bool IsLeafImpl(const py::handle& handle,
         return true;
     }
     PyTreeTypeRegistry::RegistrationPtr custom{nullptr};
-    return (PyTreeTypeRegistry::GetKind<NoneIsLeaf>(handle, custom, registry_namespace) ==
-            PyTreeKind::Leaf);
+    return PyTreeTypeRegistry::GetKind<NoneIsLeaf>(handle, custom, registry_namespace) ==
+           PyTreeKind::Leaf;
 }
 
 bool IsLeaf(const py::object& object,

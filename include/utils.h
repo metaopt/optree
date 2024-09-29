@@ -58,13 +58,13 @@ inline void HashCombine(py::ssize_t& seed, const T& v) {  // NOLINT[runtime/refe
 }
 
 class TypeHash {
- public:
+public:
     using is_transparent = void;
     py::size_t operator()(const py::object& t) const { return std::hash<PyObject*>{}(t.ptr()); }
     py::size_t operator()(const py::handle& t) const { return std::hash<PyObject*>{}(t.ptr()); }
 };
 class TypeEq {
- public:
+public:
     using is_transparent = void;
     bool operator()(const py::object& a, const py::object& b) const { return a.ptr() == b.ptr(); }
     bool operator()(const py::object& a, const py::handle& b) const { return a.ptr() == b.ptr(); }
@@ -73,7 +73,7 @@ class TypeEq {
 };
 
 class NamedTypeHash {
- public:
+public:
     using is_transparent = void;
     py::size_t operator()(const std::pair<std::string, py::object>& p) const {
         py::size_t seed = 0;
@@ -89,7 +89,7 @@ class NamedTypeHash {
     }
 };
 class NamedTypeEq {
- public:
+public:
     using is_transparent = void;
     bool operator()(const std::pair<std::string, py::object>& a,
                     const std::pair<std::string, py::object>& b) const {
@@ -114,11 +114,11 @@ constexpr bool NONE_IS_NODE = false;
 
 #define Py_Declare_ID(name)                                                                        \
     namespace {                                                                                    \
-    static inline PyObject* Py_ID_##name() {                                                       \
+    inline PyObject* Py_ID_##name() {                                                              \
         PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyObject*> storage;             \
         return storage                                                                             \
             .call_once_and_store_result([]() -> PyObject* {                                        \
-                PyObject* ptr = PyUnicode_InternFromString(#name);                                 \
+                PyObject* const ptr = PyUnicode_InternFromString(#name);                           \
                 if (ptr == nullptr) [[unlikely]] {                                                 \
                     throw py::error_already_set();                                                 \
                 }                                                                                  \
@@ -147,6 +147,14 @@ Py_Declare_ID(n_fields);           // structseq.n_fields
 Py_Declare_ID(n_sequence_fields);  // structseq.n_sequence_fields
 Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
 
+#define PyNoneTypeObject                                                                           \
+    (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(Py_TYPE(Py_None))))
+#define PyTupleTypeObject                                                                          \
+    (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyTuple_Type)))
+#define PyListTypeObject                                                                           \
+    (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyList_Type)))
+#define PyDictTypeObject                                                                           \
+    (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyDict_Type)))
 #define PyOrderedDictTypeObject (ImportOrderedDict())
 #define PyDefaultDictTypeObject (ImportDefaultDict())
 #define PyDequeTypeObject (ImportDeque())
@@ -210,7 +218,7 @@ inline py::object TupleGetItem(const py::handle& tuple, const py::ssize_t& index
 template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, T>>>
 inline T ListGetItemAs(const py::handle& list, const py::ssize_t& index) {
 #if PY_VERSION_HEX >= 0x030D00A4  // Python 3.13.0a4
-    PyObject* item = PyList_GetItemRef(list.ptr(), index);
+    PyObject* const item = PyList_GetItemRef(list.ptr(), index);
     if (item == nullptr) [[unlikely]] {
         throw py::error_already_set();
     }
@@ -418,7 +426,7 @@ inline py::tuple NamedTupleGetFields(const py::handle& object) {
 inline bool IsStructSequenceClassImpl(const py::handle& type) {
     // We can only identify PyStructSequences heuristically, here by the presence of
     // n_fields, n_sequence_fields, n_unnamed_fields attributes.
-    auto* type_object = reinterpret_cast<PyTypeObject*>(type.ptr());
+    auto* const type_object = reinterpret_cast<PyTypeObject*>(type.ptr());
     if (PyType_FastSubclass(type_object, Py_TPFLAGS_TUPLE_SUBCLASS) &&
         type_object->tp_bases != nullptr &&
         static_cast<bool>(PyTuple_CheckExact(type_object->tp_bases)) &&
@@ -426,9 +434,9 @@ inline bool IsStructSequenceClassImpl(const py::handle& type) {
         PyTuple_GET_ITEM(type_object->tp_bases, 0) == reinterpret_cast<PyObject*>(&PyTuple_Type))
         [[unlikely]] {
         // NOLINTNEXTLINE[readability-use-anyofallof]
-        for (PyObject* name :
+        for (PyObject* const name :
              {Py_Get_ID(n_fields), Py_Get_ID(n_sequence_fields), Py_Get_ID(n_unnamed_fields)}) {
-            if (PyObject* attr = PyObject_GetAttr(type.ptr(), name)) [[unlikely]] {
+            if (const PyObject* const attr = PyObject_GetAttr(type.ptr(), name)) [[unlikely]] {
                 const bool result = static_cast<bool>(PyLong_CheckExact(attr));
                 Py_DECREF(attr);
                 if (!result) [[unlikely]] {
@@ -443,11 +451,11 @@ inline bool IsStructSequenceClassImpl(const py::handle& type) {
         try {
             py::exec("class _(cls): pass", py::dict(py::arg("cls") = type));
         } catch (py::error_already_set& ex) {
-            return (ex.matches(PyExc_AssertionError) || ex.matches(PyExc_TypeError));
+            return ex.matches(PyExc_AssertionError) || ex.matches(PyExc_TypeError);
         }
         return false;
 #else
-        return (!static_cast<bool>(PyType_HasFeature(type_object, Py_TPFLAGS_BASETYPE)));
+        return !static_cast<bool>(PyType_HasFeature(type_object, Py_TPFLAGS_BASETYPE));
 #endif
     }
     return false;
@@ -513,8 +521,8 @@ inline py::tuple StructSequenceGetFieldsImpl(const py::handle& type) {
         py::dict(py::arg("cls") = type, py::arg("fields") = fields));
     return py::tuple{fields};
 #else
-    const auto n_sequence_fields =
-        py::cast<py::ssize_t>(py::getattr(type, Py_Get_ID(n_sequence_fields)));
+    const auto n_sequence_fields = thread_safe_cast<py::ssize_t>(
+        EVALUATE_WITH_LOCK_HELD(py::getattr(type, Py_Get_ID(n_sequence_fields)), type));
     const auto* const members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
     py::tuple fields{n_sequence_fields};
     for (py::ssize_t i = 0; i < n_sequence_fields; ++i) {
@@ -584,11 +592,11 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
             try {
                 // Sort with `(f'{o.__class__.__module__}.{o.__class__.__qualname__}', o)`
                 const auto sort_key_fn = py::cpp_function([](const py::object& o) -> py::tuple {
-                    const py::handle t = py::type::handle_of(o);
-                    const py::str qualname{
-                        EVALUATE_WITH_LOCK_HELD(PyStr(py::getattr(t, Py_Get_ID(__module__))) + "." +
-                                                    PyStr(py::getattr(t, Py_Get_ID(__qualname__))),
-                                                t)};
+                    const py::handle cls = py::type::handle_of(o);
+                    const py::str qualname{EVALUATE_WITH_LOCK_HELD(
+                        PyStr(py::getattr(cls, Py_Get_ID(__module__))) + "." +
+                            PyStr(py::getattr(cls, Py_Get_ID(__qualname__))),
+                        cls)};
                     return py::make_tuple(qualname, o);
                 });
                 {

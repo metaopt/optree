@@ -41,7 +41,7 @@ using ssize_t = py::ssize_t;
 
 // The maximum depth of a pytree.
 #ifndef Py_C_RECURSION_LIMIT
-#define Py_C_RECURSION_LIMIT 1000
+#define Py_C_RECURSION_LIMIT (1000)
 #endif
 #ifndef PYPY_VERSION
 constexpr ssize_t MAX_RECURSION_DEPTH = std::min(1000, Py_C_RECURSION_LIMIT);
@@ -77,10 +77,10 @@ py::module_ GetCxxModule(const std::optional<py::module_> &module = std::nullopt
 // the interior nodes are tuples, lists, dictionaries, or user-defined containers, and the leaves
 // are other objects.
 class PyTreeSpec {
- private:
+private:
     struct Node;
 
- public:
+public:
     PyTreeSpec() = default;
     ~PyTreeSpec() = default;
 
@@ -232,7 +232,7 @@ class PyTreeSpec {
     // Used in tp_traverse for GC support.
     static int PyTpTraverse(PyObject *self_base, visitproc visit, void *arg);
 
- private:
+private:
     using RegistrationPtr = PyTreeTypeRegistry::RegistrationPtr;
 
     struct Node {
@@ -358,7 +358,7 @@ class PyTreeSpec {
                                                               std::string registry_namespace);
 
     class ThreadIndentTypeHash {
-     public:
+    public:
         using is_transparent = void;
         size_t operator()(const std::pair<const PyTreeSpec *, std::thread::id> &p) const;
     };
@@ -370,7 +370,7 @@ class PyTreeSpec {
 };
 
 class PyTreeIter {
- public:
+public:
     explicit PyTreeIter(const py::object &tree,
                         const std::optional<py::function> &leaf_predicate,
                         const bool &none_is_leaf,
@@ -397,7 +397,7 @@ class PyTreeIter {
     // Used in tp_traverse for GC support.
     static int PyTpTraverse(PyObject *self_base, visitproc visit, void *arg);
 
- private:
+private:
     const py::object m_root;
     std::vector<std::pair<py::object, ssize_t>> m_agenda;
     const std::optional<py::function> m_leaf_predicate;

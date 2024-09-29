@@ -63,7 +63,7 @@ constexpr PyTreeKind kStructSequence = PyTreeKind::StructSequence;
 
 // Registry of custom node types.
 class PyTreeTypeRegistry {
- public:
+public:
     PyTreeTypeRegistry() = default;
     ~PyTreeTypeRegistry() = default;
 
@@ -116,7 +116,7 @@ class PyTreeTypeRegistry {
     // Clear the registry on cleanup.
     static void Clear();
 
- private:
+private:
     template <bool NoneIsLeaf>
     static PyTreeTypeRegistry *Singleton();
 

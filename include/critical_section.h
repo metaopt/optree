@@ -40,7 +40,7 @@ inline bool Py_IsConstant(PyObject* x) { return Py_IsNone(x) || Py_IsTrue(x) || 
 #define Py_IsConstant(x) Py_IsConstant(x)
 
 class scoped_critical_section {
- public:
+public:
     scoped_critical_section() = delete;
 
 #ifdef Py_GIL_DISABLED
@@ -65,7 +65,7 @@ class scoped_critical_section {
     scoped_critical_section(scoped_critical_section&&) = delete;
     scoped_critical_section& operator=(scoped_critical_section&&) = delete;
 
- private:
+private:
 #ifdef Py_GIL_DISABLED
     PyObject* m_ptr{nullptr};
     PyCriticalSection m_critical_section{};
@@ -73,7 +73,7 @@ class scoped_critical_section {
 };
 
 class scoped_critical_section2 {
- public:
+public:
     scoped_critical_section2() = delete;
 
 #ifdef Py_GIL_DISABLED
@@ -111,7 +111,7 @@ class scoped_critical_section2 {
     scoped_critical_section2(scoped_critical_section2&&) = delete;
     scoped_critical_section2& operator=(scoped_critical_section2&&) = delete;
 
- private:
+private:
 #ifdef Py_GIL_DISABLED
     PyObject* m_ptr1{nullptr};
     PyObject* m_ptr2{nullptr};

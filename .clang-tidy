@@ -4,24 +4,24 @@ InheritParentConfig: true
 FormatStyle: file
 UseColor: true
 WarningsAsErrors: '*'
-Checks: '
-bugprone-*,
--bugprone-easily-swappable-parameters,
-clang-analyzer-*,
-cppcoreguidelines-*,
--cppcoreguidelines-macro-usage,
--cppcoreguidelines-pro-type-reinterpret-cast,
-hicpp-*,
-misc-*,
-modernize-*,
--modernize-use-trailing-return-type,
-performance-*,
-readability-*,
--readability-redundant-inline-specifier,
--readability-redundant-member-init,
--readability-identifier-length,
-'
-CheckOptions:
-    misc-include-cleaner.IgnoreHeaders: 'python.*/.*;pybind11/.*;include/.*'
 HeaderFilterRegex: '^include/.*$'
-...
+
+Checks: |
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  -cppcoreguidelines-macro-usage,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  hicpp-*,
+  misc-*,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  performance-*,
+  readability-*,
+  -readability-redundant-inline-specifier,
+  -readability-redundant-member-init,
+  -readability-identifier-length,
+
+CheckOptions:
+  misc-include-cleaner.IgnoreHeaders: 'python.*/.*;pybind11/.*;include/.*'

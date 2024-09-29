@@ -168,7 +168,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             .value("DEFAULTDICT", PyTreeKind::DefaultDict, "A collections.defaultdict.")
             .value("DEQUE", PyTreeKind::Deque, "A collections.deque.")
             .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.");
-    auto* PyTreeKind_Type = reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr());
+    auto* const PyTreeKind_Type = reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr());
     PyTreeKind_Type->tp_name = "optree.PyTreeKind";
     py::setattr(PyTreeKindTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
 
@@ -178,13 +178,13 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         "Representing the structure of the pytree.",
         // NOLINTBEGIN[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
         py::custom_type_setup([](PyHeapTypeObject* heap_type) -> void {
-            auto* type = &heap_type->ht_type;
+            auto* const type = &heap_type->ht_type;
             type->tp_flags |= Py_TPFLAGS_HAVE_GC;
             type->tp_traverse = &PyTreeSpec::PyTpTraverse;
         }),
         // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
         py::module_local());
-    auto* PyTreeSpec_Type = reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr());
+    auto* const PyTreeSpec_Type = reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr());
     PyTreeSpec_Type->tp_name = "optree.PyTreeSpec";
     py::setattr(PyTreeSpecTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
 
@@ -316,13 +316,13 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         "Iterator over the leaves of a pytree.",
         // NOLINTBEGIN[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
         py::custom_type_setup([](PyHeapTypeObject* heap_type) -> void {
-            auto* type = &heap_type->ht_type;
+            auto* const type = &heap_type->ht_type;
             type->tp_flags |= Py_TPFLAGS_HAVE_GC;
             type->tp_traverse = &PyTreeIter::PyTpTraverse;
         }),
         // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
         py::module_local());
-    auto* PyTreeIter_Type = reinterpret_cast<PyTypeObject*>(PyTreeIterTypeObject.ptr());
+    auto* const PyTreeIter_Type = reinterpret_cast<PyTypeObject*>(PyTreeIterTypeObject.ptr());
     PyTreeIter_Type->tp_name = "optree.PyTreeIter";
     py::setattr(PyTreeIterTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
 

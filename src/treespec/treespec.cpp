@@ -885,13 +885,13 @@ py::object PyTreeSpec::GetType(const std::optional<Node>& node) const {
         case PyTreeKind::Leaf:
             return py::none();
         case PyTreeKind::None:
-            return py::type::of(py::none());
+            return PyNoneTypeObject;
         case PyTreeKind::Tuple:
-            return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyTuple_Type));
+            return PyTupleTypeObject;
         case PyTreeKind::List:
-            return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyList_Type));
+            return PyListTypeObject;
         case PyTreeKind::Dict:
-            return py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyDict_Type));
+            return PyDictTypeObject;
         case PyTreeKind::NamedTuple:
         case PyTreeKind::StructSequence:
             return py::reinterpret_borrow<py::object>(n.node_data);
@@ -1052,7 +1052,7 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec& other, const bool& strict) const {
         }
     }
     EXPECT_EQ(b, other_traversal.rend(), "PyTreeSpec traversal did not yield a singleton.");
-    return (!strict || !all_leaves_match);
+    return !strict || !all_leaves_match;
 }
 
 bool PyTreeSpec::operator==(const PyTreeSpec& other) const {
@@ -1549,7 +1549,7 @@ size_t PyTreeSpec::ThreadIndentTypeHash::operator()(
 #if PY_VERSION_HEX >= 0x03090000  // Python 3.9
     Py_VISIT(Py_TYPE(self_base));
 #endif
-    auto* instance = reinterpret_cast<py::detail::instance*>(self_base);
+    auto* const instance = reinterpret_cast<py::detail::instance*>(self_base);
     if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
         // The holder is not constructed yet. Skip the traversal to avoid segfault.
         return 0;
@@ -1568,7 +1568,7 @@ size_t PyTreeSpec::ThreadIndentTypeHash::operator()(
 #if PY_VERSION_HEX >= 0x03090000  // Python 3.9
     Py_VISIT(Py_TYPE(self_base));
 #endif
-    auto* instance = reinterpret_cast<py::detail::instance*>(self_base);
+    auto* const instance = reinterpret_cast<py::detail::instance*>(self_base);
     if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
         // The holder is not constructed yet. Skip the traversal to avoid segfault.
         return 0;

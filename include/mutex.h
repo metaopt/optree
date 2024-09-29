@@ -24,7 +24,7 @@ limitations under the License.
 #ifdef Py_GIL_DISABLED
 
 class pymutex {
- public:
+public:
     pymutex() = default;
     ~pymutex() = default;
 
@@ -36,7 +36,7 @@ class pymutex {
     void lock() { PyMutex_Lock(&mutex); }
     void unlock() { PyMutex_Unlock(&mutex); }
 
- private:
+private:
     PyMutex mutex{0};
 };
 

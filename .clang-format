@@ -1,9 +1,13 @@
+---
 BasedOnStyle: Google
 UseTab: Never
 IndentWidth: 4
 ContinuationIndentWidth: 4
-AccessModifierOffset: -3
+AccessModifierOffset: -4
 ColumnLimit: 100
+
+Language: Cpp
+Standard: c++17
 AlignAfterOpenBracket: Align
 AlignEscapedNewlines: Right
 AllowAllArgumentsOnNextLine: false
@@ -12,6 +16,7 @@ AllowShortIfStatementsOnASingleLine: Never
 BinPackArguments: false
 BinPackParameters: false
 BreakBeforeTernaryOperators: true
+CommentPragmas: 'NOLINT(NEXTLINE|BEGIN|END)?\[.*\]'
 FixNamespaceComments: true
 IncludeBlocks: Regroup
 IncludeCategories:
@@ -34,13 +39,17 @@ IndentPPDirectives: None
 InsertBraces: true
 InsertTrailingCommas: Wrapped
 LambdaBodyIndentation: Signature
+MacroBlockBegin: '^Py_BEGIN_(ALLOW_THREADS|CRITICAL_SECTION(2)?(_MUT)?)$'
+MacroBlockEnd: '^Py_END_(ALLOW_THREADS|CRITICAL_SECTION(2)?(_MUT)?)$'
 PackConstructorInitializers: NextLine
 PointerAlignment: Right
 QualifierAlignment: Custom
-QualifierOrder: [friend, static, inline, const, constexpr, volatile, type, restrict]
+QualifierOrder:
+  [friend, static, inline, const, constexpr, volatile, type, restrict]
 ReferenceAlignment: Right
-RemoveParentheses: MultipleParentheses
+RemoveParentheses: ReturnStatement
 RemoveSemicolon: true
 SeparateDefinitionBlocks: Leave
+SkipMacroDefinitionBody: false
 SortIncludes: CaseSensitive
 SpaceAroundPointerQualifiers: Both
