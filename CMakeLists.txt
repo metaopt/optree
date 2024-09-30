@@ -88,7 +88,7 @@ if(OPTREE_CXX_WERROR)
 endif()
 
 string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_PATH_PREFIX_SIZE)
-add_definitions("-DSOURCE_PATH_PREFIX_SIZE=(${SOURCE_PATH_PREFIX_SIZE})")
+add_definitions("-DSOURCE_PATH_PREFIX_SIZE=${SOURCE_PATH_PREFIX_SIZE}")
 
 function(system)
     set(options STRIP)

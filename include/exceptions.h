@@ -23,11 +23,11 @@ limitations under the License.
 #include <string>     // std::string
 
 #ifndef SOURCE_PATH_PREFIX_SIZE
-#define SOURCE_PATH_PREFIX_SIZE (0)
+#define SOURCE_PATH_PREFIX_SIZE 0
 #endif
 
 #ifndef FILE_RELPATH
-#define FILE_RELPATH (&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
+#define FILE_RELPATH ((const char*)&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
 #endif
 
 #define VA_FUNC2_(__0, __1, NAME, ...) NAME

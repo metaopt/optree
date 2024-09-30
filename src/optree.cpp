@@ -15,17 +15,19 @@ limitations under the License.
 ================================================================================
 */
 
-#include <memory>    // std::unique_ptr
-#include <optional>  // std::optional, std::nullopt
-#include <string>    // std::string
+#include <functional>  // std::{not_,}equal_to, std::less{,_equal}, std::greater{,_equal}
+#include <memory>      // std::unique_ptr
+#include <optional>    // std::optional, std::nullopt
+#include <string>      // std::string
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
 #include "include/exceptions.h"
+#include "include/pymacros.h"
+#include "include/pytypes.h"
 #include "include/registry.h"
 #include "include/treespec.h"
-#include "include/utils.h"
 
 namespace optree {
 
@@ -44,13 +46,13 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
 
     mod.doc() = "Optimized PyTree Utilities.";
     py::register_local_exception<InternalError>(mod, "InternalError", PyExc_SystemError);
-    mod.attr("MAX_RECURSION_DEPTH") = py::ssize_t_cast(MAX_RECURSION_DEPTH);
-    mod.attr("Py_TPFLAGS_BASETYPE") = py::ssize_t_cast(Py_TPFLAGS_BASETYPE);
+    mod.attr("MAX_RECURSION_DEPTH") = py::int_(MAX_RECURSION_DEPTH);
+    mod.attr("Py_TPFLAGS_BASETYPE") = py::int_(Py_TPFLAGS_BASETYPE);
 #ifdef _GLIBCXX_USE_CXX11_ABI
     // NOLINTNEXTLINE[modernize-use-bool-literals]
-    mod.attr("GLIBCXX_USE_CXX11_ABI") = static_cast<bool>(_GLIBCXX_USE_CXX11_ABI);
+    mod.attr("GLIBCXX_USE_CXX11_ABI") = py::bool_(static_cast<bool>(_GLIBCXX_USE_CXX11_ABI));
 #else
-    mod.attr("GLIBCXX_USE_CXX11_ABI") = false;
+    mod.attr("GLIBCXX_USE_CXX11_ABI") = py::bool_(false);
 #endif
 
     mod.def("register_node",
@@ -264,42 +266,36 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              "Test whether this treespec is a suffix of the given treespec.",
              py::arg("other"),
              py::arg("strict") = false)
-        .def(
-            "__eq__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a == b; },
-            "Test for equality to another object.",
-            py::is_operator(),
-            py::arg("other"))
-        .def(
-            "__ne__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a != b; },
-            "Test for inequality to another object.",
-            py::is_operator(),
-            py::arg("other"))
-        .def(
-            "__lt__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a < b; },
-            "Test for this treespec is a strict prefix of another object.",
-            py::is_operator(),
-            py::arg("other"))
-        .def(
-            "__le__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a <= b; },
-            "Test for this treespec is a prefix of another object.",
-            py::is_operator(),
-            py::arg("other"))
-        .def(
-            "__gt__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a > b; },
-            "Test for this treespec is a strict suffix of another object.",
-            py::is_operator(),
-            py::arg("other"))
-        .def(
-            "__ge__",
-            [](const PyTreeSpec& a, const PyTreeSpec& b) -> bool { return a >= b; },
-            "Test for this treespec is a suffix of another object.",
-            py::is_operator(),
-            py::arg("other"))
+        .def("__eq__",
+             std::equal_to<PyTreeSpec>(),
+             "Test for equality to another object.",
+             py::is_operator(),
+             py::arg("other"))
+        .def("__ne__",
+             std::not_equal_to<PyTreeSpec>(),
+             "Test for inequality to another object.",
+             py::is_operator(),
+             py::arg("other"))
+        .def("__lt__",
+             std::less<PyTreeSpec>(),
+             "Test for this treespec is a strict prefix of another object.",
+             py::is_operator(),
+             py::arg("other"))
+        .def("__le__",
+             std::less_equal<PyTreeSpec>(),
+             "Test for this treespec is a prefix of another object.",
+             py::is_operator(),
+             py::arg("other"))
+        .def("__gt__",
+             std::greater<PyTreeSpec>(),
+             "Test for this treespec is a strict suffix of another object.",
+             py::is_operator(),
+             py::arg("other"))
+        .def("__ge__",
+             std::greater_equal<PyTreeSpec>(),
+             "Test for this treespec is a suffix of another object.",
+             py::is_operator(),
+             py::arg("other"))
         .def("__repr__", &PyTreeSpec::ToString, "Return a string representation of the treespec.")
         .def("__hash__", &PyTreeSpec::HashValue, "Return the hash of the treespec.")
         .def("__len__", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")

@@ -24,14 +24,15 @@ limitations under the License.
 #include <thread>         // std::thread::id
 #include <tuple>          // std::tuple
 #include <unordered_set>  // std::unordered_set
-#include <utility>        // std::pair, std::make_pair
+#include <utility>        // std::pair
 #include <vector>         // std::vector
 
 #include <pybind11/pybind11.h>
 
+#include "include/exceptions.h"
+#include "include/hashing.h"
 #include "include/mutex.h"
 #include "include/registry.h"
-#include "include/utils.h"
 
 namespace optree {
 
@@ -41,7 +42,7 @@ using ssize_t = py::ssize_t;
 
 // The maximum depth of a pytree.
 #ifndef Py_C_RECURSION_LIMIT
-#define Py_C_RECURSION_LIMIT (1000)
+#define Py_C_RECURSION_LIMIT 1000
 #endif
 #ifndef PYPY_VERSION
 constexpr ssize_t MAX_RECURSION_DEPTH = std::min(1000, Py_C_RECURSION_LIMIT);
@@ -146,37 +147,67 @@ public:
     // Return the child at the given index of the PyTreeSpec.
     [[nodiscard]] std::unique_ptr<PyTreeSpec> Child(ssize_t index) const;
 
-    [[nodiscard]] ssize_t GetNumLeaves() const;
+    [[nodiscard]] inline Py_ALWAYS_INLINE ssize_t GetNumLeaves() const {
+        EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+        return m_traversal.back().num_leaves;
+    }
 
-    [[nodiscard]] ssize_t GetNumNodes() const;
+    [[nodiscard]] inline Py_ALWAYS_INLINE ssize_t GetNumNodes() const {
+        return py::ssize_t_cast(m_traversal.size());
+    }
 
-    [[nodiscard]] ssize_t GetNumChildren() const;
+    [[nodiscard]] inline Py_ALWAYS_INLINE ssize_t GetNumChildren() const {
+        EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+        return m_traversal.back().arity;
+    }
 
-    [[nodiscard]] bool GetNoneIsLeaf() const;
+    [[nodiscard]] inline Py_ALWAYS_INLINE bool GetNoneIsLeaf() const { return m_none_is_leaf; }
 
-    [[nodiscard]] std::string GetNamespace() const;
+    [[nodiscard]] inline Py_ALWAYS_INLINE std::string GetNamespace() const { return m_namespace; }
 
     [[nodiscard]] py::object GetType(const std::optional<Node> &node = std::nullopt) const;
 
-    [[nodiscard]] PyTreeKind GetPyTreeKind() const;
+    [[nodiscard]] inline Py_ALWAYS_INLINE PyTreeKind GetPyTreeKind() const {
+        EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+        return m_traversal.back().kind;
+    }
 
     // Test whether this PyTreeSpec represents a leaf.
-    [[nodiscard]] bool IsLeaf(const bool &strict = true) const;
+    [[nodiscard]] inline Py_ALWAYS_INLINE bool IsLeaf(const bool &strict = true) const {
+        if (strict) [[likely]] {
+            return GetNumNodes() == 1 && GetNumLeaves() == 1;
+        }
+        return GetNumNodes() == 1;
+    }
 
     // Return true if this PyTreeSpec is a prefix of `other`.
     [[nodiscard]] bool IsPrefix(const PyTreeSpec &other, const bool &strict = false) const;
 
     // Return true if this PyTreeSpec is a suffix of `other`.
-    [[nodiscard]] inline bool IsSuffix(const PyTreeSpec &other, const bool &strict = false) const {
+    [[nodiscard]] inline Py_ALWAYS_INLINE bool IsSuffix(const PyTreeSpec &other,
+                                                        const bool &strict = false) const {
         return other.IsPrefix(*this, strict);
     }
 
-    bool operator==(const PyTreeSpec &other) const;
-    inline bool operator!=(const PyTreeSpec &other) const { return !(*this == other); }
-    inline bool operator<(const PyTreeSpec &other) const { return IsPrefix(other, true); }
-    inline bool operator<=(const PyTreeSpec &other) const { return IsPrefix(other, false); }
-    inline bool operator>(const PyTreeSpec &other) const { return IsSuffix(other, true); }
-    inline bool operator>=(const PyTreeSpec &other) const { return IsSuffix(other, false); }
+    [[nodiscard]] bool EqualTo(const PyTreeSpec &other) const;
+    inline Py_ALWAYS_INLINE bool operator==(const PyTreeSpec &other) const {
+        return EqualTo(other);
+    }
+    inline Py_ALWAYS_INLINE bool operator!=(const PyTreeSpec &other) const {
+        return !EqualTo(other);
+    }
+    inline Py_ALWAYS_INLINE bool operator<(const PyTreeSpec &other) const {
+        return IsPrefix(other, /*strict=*/true);
+    }
+    inline Py_ALWAYS_INLINE bool operator<=(const PyTreeSpec &other) const {
+        return IsPrefix(other, /*strict=*/false);
+    }
+    inline Py_ALWAYS_INLINE bool operator>(const PyTreeSpec &other) const {
+        return IsSuffix(other, /*strict=*/true);
+    }
+    inline Py_ALWAYS_INLINE bool operator>=(const PyTreeSpec &other) const {
+        return IsSuffix(other, /*strict=*/false);
+    }
 
     // Return a string representation of the PyTreeSpec.
     [[nodiscard]] std::string ToString() const;
@@ -207,8 +238,9 @@ public:
         const std::string &registry_namespace = "");
 
     // Check if should preserve the insertion order of the dictionary keys during flattening.
-    static inline bool IsDictInsertionOrdered(const std::string &registry_namespace,
-                                              const bool &inherit_global_namespace = true) {
+    static inline Py_ALWAYS_INLINE bool IsDictInsertionOrdered(
+        const std::string &registry_namespace,
+        const bool &inherit_global_namespace = true) {
         const scoped_read_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
 
         return (sm_is_dict_insertion_ordered.find(registry_namespace) !=
@@ -218,8 +250,9 @@ public:
     }
 
     // Set the namespace to preserve the insertion order of the dictionary keys during flattening.
-    static inline void SetDictInsertionOrdered(const bool &mode,
-                                               const std::string &registry_namespace) {
+    static inline Py_ALWAYS_INLINE void SetDictInsertionOrdered(
+        const bool &mode,
+        const std::string &registry_namespace) {
         const scoped_write_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
 
         if (mode) [[likely]] {
@@ -229,11 +262,11 @@ public:
         }
     }
 
-    // Used in tp_traverse for GC support.
-    static int PyTpTraverse(PyObject *self_base, visitproc visit, void *arg);
+    friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
 
 private:
     using RegistrationPtr = PyTreeTypeRegistry::RegistrationPtr;
+    using ThreadedIdentity = std::pair<const optree::PyTreeSpec *, std::thread::id>;
 
     struct Node {
         PyTreeKind kind = PyTreeKind::Leaf;
@@ -270,7 +303,7 @@ private:
 
     // Nodes, in a post-order traversal. We use an ordered traversal to minimize allocations, and
     // post-order corresponds to the order we need to rebuild the tree structure.
-    std::vector<Node> m_traversal = reserved_vector<Node>(1);
+    std::vector<Node> m_traversal{};
 
     // Whether to treat `None` as a leaf. If false, `None` is a non-leaf node with arity 0.
     bool m_none_is_leaf = false;
@@ -348,20 +381,14 @@ private:
 
     [[nodiscard]] std::string ToStringImpl() const;
 
-    // Get the hash value of the node.
-    static void HashCombineNode(ssize_t &seed, const Node &node);  // NOLINT[runtime/references]
-
     [[nodiscard]] ssize_t HashValueImpl() const;
 
     template <bool NoneIsLeaf>
     static std::unique_ptr<PyTreeSpec> MakeFromCollectionImpl(const py::handle &handle,
                                                               std::string registry_namespace);
 
-    class ThreadIndentTypeHash {
-    public:
-        using is_transparent = void;
-        size_t operator()(const std::pair<const PyTreeSpec *, std::thread::id> &p) const;
-    };
+    // Used in tp_traverse for GC support.
+    static int PyTpTraverse(PyObject *self_base, visitproc visit, void *arg);
 
     // A set of namespaces that preserve the insertion order of the dictionary keys during
     // flattening.
@@ -394,8 +421,7 @@ public:
 
     [[nodiscard]] py::object Next();
 
-    // Used in tp_traverse for GC support.
-    static int PyTpTraverse(PyObject *self_base, visitproc visit, void *arg);
+    friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
 
 private:
     const py::object m_root;
@@ -410,6 +436,9 @@ private:
 
     template <bool NoneIsLeaf>
     [[nodiscard]] py::object NextImpl();
+
+    // Used in tp_traverse for GC support.
+    static int PyTpTraverse(PyObject *self_base, visitproc visit, void *arg);
 };
 
 }  // namespace optree

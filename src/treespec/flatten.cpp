@@ -27,9 +27,10 @@ limitations under the License.
 #include "include/critical_section.h"
 #include "include/exceptions.h"
 #include "include/mutex.h"
+#include "include/pytypes.h"
 #include "include/registry.h"
+#include "include/stdutils.h"
 #include "include/treespec.h"
-#include "include/utils.h"
 
 namespace optree {
 

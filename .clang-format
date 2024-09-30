@@ -53,3 +53,6 @@ SeparateDefinitionBlocks: Leave
 SkipMacroDefinitionBody: false
 SortIncludes: CaseSensitive
 SpaceAroundPointerQualifiers: Both
+StatementAttributeLikeMacros:
+  - Py_ALWAYS_INLINE
+  - Py_NO_INLINE

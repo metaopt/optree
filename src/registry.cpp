@@ -21,13 +21,13 @@ limitations under the License.
 #include <sstream>      // std::ostringstream
 #include <string>       // std::string
 #include <type_traits>  // std::remove_const_t
-#include <utility>      // std::move, std::pair, std::make_pair
+#include <utility>      // std::move, std::make_pair
 
 #include <Python.h>
 
 #include "include/exceptions.h"
 #include "include/mutex.h"
-#include "include/utils.h"
+#include "include/pytypes.h"
 
 namespace optree {
 

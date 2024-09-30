@@ -18,15 +18,15 @@ limitations under the License.
 #include <optional>   // std::optional
 #include <sstream>    // std::ostringstream
 #include <stdexcept>  // std::runtime_error
-#include <string>     // std::string
 #include <utility>    // std::move
 
 #include "include/critical_section.h"
 #include "include/exceptions.h"
 #include "include/mutex.h"
+#include "include/pytypes.h"
 #include "include/registry.h"
+#include "include/stdutils.h"
 #include "include/treespec.h"
-#include "include/utils.h"
 
 namespace optree {
 

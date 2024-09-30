@@ -21,23 +21,9 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
+#include "include/pymacros.h"  // Py_ALWAYS_INLINE, Py_IsConstant
+
 namespace py = pybind11;
-
-#ifndef Py_Is
-#define Py_Is(x, y) ((x) == (y))
-#endif
-#ifndef Py_IsNone
-#define Py_IsNone(x) Py_Is((x), Py_None)
-#endif
-#ifndef Py_IsTrue
-#define Py_IsTrue(x) Py_Is((x), Py_True)
-#endif
-#ifndef Py_IsFalse
-#define Py_IsFalse(x) Py_Is((x), Py_False)
-#endif
-
-inline bool Py_IsConstant(PyObject* x) { return Py_IsNone(x) || Py_IsTrue(x) || Py_IsFalse(x); }
-#define Py_IsConstant(x) Py_IsConstant(x)
 
 class scoped_critical_section {
 public:
@@ -134,3 +120,8 @@ private:
 #define EVALUATE_WITH_LOCK_HELD2(expression, handle1, handle2) (expression)
 
 #endif
+
+template <typename T>
+inline Py_ALWAYS_INLINE T thread_safe_cast(const py::handle& handle) {
+    return EVALUATE_WITH_LOCK_HELD(py::cast<T>(handle), handle);
+}
