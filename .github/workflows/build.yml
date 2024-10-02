@@ -88,7 +88,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version:
-          ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "pypy-3.9", "pypy-3.10"]
+          ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.13t", "pypy-3.9", "pypy-3.10"]
         archs: [
             # Generic
             "auto",
@@ -152,10 +152,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Determine Python version
+        shell: bash
+        run: |
+          PYTHON_VERSION="${{ matrix.python-version }}"
+          PYTHON_VERSION="${PYTHON_VERSION%t}"
+          echo "Using Python version: ${PYTHON_VERSION}"
+          echo "PYTHON_VERSION=${PYTHON_VERSION}" >> "${GITHUB_ENV}"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.PYTHON_VERSION }}
           update-environment: true
           allow-prereleases: true
 
@@ -173,7 +181,21 @@ jobs:
         run: python setup.py --version
 
       - name: Set CIBW_BUILD
-        run: python .github/workflows/set_cibw_build.py
+        shell: bash
+        run: |
+          pytag="$(
+            python -c \
+              "import sys; print(
+                '{0.name[0]}p{1.major}{1.minor}'.format(
+                  sys.implementation,
+                  sys.version_info,
+                ).lower(),
+              )"
+          )"
+          if [[ "${{ matrix.python-version }}" == *"t" ]]; then
+            pytag="${pytag}t"
+          fi
+          echo "CIBW_BUILD=*${pytag}-*" | tee -a "${GITHUB_ENV}"
 
       - name: Set up QEMU
         if: runner.os == 'Linux'

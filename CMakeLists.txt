@@ -60,6 +60,7 @@ endif()
 if(MSVC)
     string(
         APPEND CMAKE_CXX_FLAGS
+        " /EHsc /bigobj"
         " /Zc:preprocessor"
         " /experimental:external /external:anglebrackets /external:W0"
         " /Wall /Wv:19.40"  # Visual Studio 2022 version 17.10
