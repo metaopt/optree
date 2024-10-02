@@ -263,8 +263,8 @@ template <bool NoneIsLeaf>
     auto out = std::make_unique<PyTreeSpec>();
     ssize_t num_leaves = ((node.kind == PyTreeKind::Leaf) ? 1 : 0);
     for (const PyTreeSpec& treespec : treespecs) {
-        std::copy(treespec.m_traversal.begin(),
-                  treespec.m_traversal.end(),
+        std::copy(treespec.m_traversal.cbegin(),
+                  treespec.m_traversal.cend(),
                   std::back_inserter(out->m_traversal));
         num_leaves += treespec.GetNumLeaves();
     }

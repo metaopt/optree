@@ -46,7 +46,7 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec &other, const bool &strict) const {
     // NOLINTNEXTLINE[readability-qualified-auto]
     auto b = other_traversal.rbegin();
     // NOLINTNEXTLINE[readability-qualified-auto]
-    for (auto a = m_traversal.rbegin(); a != m_traversal.rend(); ++a, ++b) {
+    for (auto a = m_traversal.crbegin(); a != m_traversal.crend(); ++a, ++b) {
         if (b == other_traversal.rend()) [[unlikely]] {
             return false;
         }
@@ -131,7 +131,7 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec &other, const bool &strict) const {
                     EXPECT_EQ(reordered_other_offsets.front(),
                               b->num_nodes,
                               "PyTreeSpec traversal out of range.");
-                    auto original_b = other.m_traversal.rbegin() + (b - other_traversal.rbegin());
+                    auto original_b = other.m_traversal.crbegin() + (b - other_traversal.crbegin());
                     for (const auto &[i, j] : reordered_index_to_index) {
                         std::copy(original_b + other_offsets[j + 1],
                                   original_b + other_offsets[j],
@@ -161,7 +161,7 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec &other, const bool &strict) const {
             return false;
         }
     }
-    EXPECT_EQ(b, other_traversal.rend(), "PyTreeSpec traversal did not yield a singleton.");
+    EXPECT_EQ(b, other_traversal.crend(), "PyTreeSpec traversal did not yield a singleton.");
     return !strict || !all_leaves_match;
 }
 

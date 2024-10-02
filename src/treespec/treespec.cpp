@@ -206,15 +206,15 @@ namespace optree {
     ssize_t other_cur = other_pos - 1;
 
     if (root.kind == PyTreeKind::Leaf) [[likely]] {
-        std::copy(other_traversal.rend() - (other_pos + 1),
-                  other_traversal.rend() - (other_pos - other_root.num_nodes + 1),
+        std::copy(other_traversal.crend() - (other_pos + 1),
+                  other_traversal.crend() - (other_pos - other_root.num_nodes + 1),
                   std::back_inserter(nodes));
         other_cur -= other_root.num_nodes - 1;
         return {pos - cur, other_pos - other_cur, other_root.num_nodes, other_root.num_leaves};
     }
     if (other_root.kind == PyTreeKind::Leaf) [[likely]] {
-        std::copy(traversal.rend() - (pos + 1),
-                  traversal.rend() - (pos - root.num_nodes + 1),
+        std::copy(traversal.crend() - (pos + 1),
+                  traversal.crend() - (pos - root.num_nodes + 1),
                   std::back_inserter(nodes));
         cur -= root.num_nodes - 1;
         return {pos - cur, other_pos - other_cur, root.num_nodes, root.num_leaves};
@@ -475,8 +475,8 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
     const ssize_t num_inner_nodes = inner_treespec.GetNumNodes();
     for (const Node& node : m_traversal) {
         if (node.kind == PyTreeKind::Leaf) [[likely]] {
-            std::copy(inner_treespec.m_traversal.begin(),
-                      inner_treespec.m_traversal.end(),
+            std::copy(inner_treespec.m_traversal.cbegin(),
+                      inner_treespec.m_traversal.cend(),
                       std::back_inserter(treespec->m_traversal));
         } else [[unlikely]] {
             Node new_node{node};
@@ -784,8 +784,8 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
         children[i]->m_namespace = m_namespace;
         const Node& node = m_traversal.at(pos - 1);
         EXPECT_GE(pos, node.num_nodes, "PyTreeSpec::Children() walked off start of array.");
-        std::copy(m_traversal.begin() + pos - node.num_nodes,
-                  m_traversal.begin() + pos,
+        std::copy(m_traversal.cbegin() + pos - node.num_nodes,
+                  m_traversal.cbegin() + pos,
                   std::back_inserter(children[i]->m_traversal));
         children[i]->m_traversal.shrink_to_fit();
         pos -= node.num_nodes;
@@ -816,8 +816,8 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
     child->m_namespace = m_namespace;
     const Node& node = m_traversal.at(pos - 1);
     EXPECT_GE(pos, node.num_nodes, "PyTreeSpec::Child() walked off start of array.");
-    std::copy(m_traversal.begin() + pos - node.num_nodes,
-              m_traversal.begin() + pos,
+    std::copy(m_traversal.cbegin() + pos - node.num_nodes,
+              m_traversal.cbegin() + pos,
               std::back_inserter(child->m_traversal));
     child->m_traversal.shrink_to_fit();
     return child;
