@@ -153,6 +153,7 @@ public:
     }
 
     [[nodiscard]] inline Py_ALWAYS_INLINE ssize_t GetNumNodes() const {
+        EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
         return py::ssize_t_cast(m_traversal.size());
     }
 
@@ -417,7 +418,7 @@ public:
     PyTreeIter(PyTreeIter &&) = delete;
     PyTreeIter &operator=(PyTreeIter &&) = delete;
 
-    [[nodiscard]] PyTreeIter &Iter() { return *this; }
+    [[nodiscard]] PyTreeIter &Iter() noexcept { return *this; }
 
     [[nodiscard]] py::object Next();
 

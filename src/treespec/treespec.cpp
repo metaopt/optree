@@ -65,7 +65,7 @@ namespace optree {
                 const scoped_critical_section cs{node.node_data};
                 return node.node_data(std::move(tuple));
             }
-            return std::move(tuple);
+            return tuple;
         }
 
         case PyTreeKind::List:
@@ -78,7 +78,7 @@ namespace optree {
             if (node.kind == PyTreeKind::Deque) [[unlikely]] {
                 return PyDequeTypeObject(std::move(list), py::arg("maxlen") = node.node_data);
             }
-            return std::move(list);
+            return list;
         }
 
         case PyTreeKind::Dict:
@@ -110,7 +110,7 @@ namespace optree {
                     PyDefaultDictTypeObject(default_factory, std::move(dict)),
                     default_factory);
             }
-            return std::move(dict);
+            return dict;
         }
 
         case PyTreeKind::Custom: {
@@ -568,8 +568,8 @@ ssize_t PyTreeSpec::PathsImpl(Span& paths,  // NOLINT[misc-no-recursion]
 }
 
 std::vector<py::tuple> PyTreeSpec::Paths() const {
-    auto paths = std::vector<py::tuple>{};
     const ssize_t num_leaves = GetNumLeaves();
+    auto paths = reserved_vector<py::tuple>(num_leaves);
     if (num_leaves == 0) [[unlikely]] {
         return paths;
     }
@@ -578,7 +578,6 @@ std::vector<py::tuple> PyTreeSpec::Paths() const {
         paths.emplace_back();
         return paths;
     }
-    paths.reserve(num_leaves);
     auto stack = reserved_vector<py::handle>(4);
     const ssize_t num_nodes_walked = PathsImpl(paths, stack, num_nodes - 1, 0);
     std::reverse(paths.begin(), paths.end());

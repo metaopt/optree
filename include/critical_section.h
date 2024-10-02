@@ -42,8 +42,8 @@ public:
         }
     }
 #else
-    explicit scoped_critical_section(const py::handle& /*unused*/) {}
-    ~scoped_critical_section() = default;
+    explicit scoped_critical_section(const py::handle& /*unused*/) noexcept {}
+    ~scoped_critical_section() noexcept = default;
 #endif
 
     scoped_critical_section(const scoped_critical_section&) = delete;
@@ -88,8 +88,9 @@ public:
         }
     }
 #else
-    explicit scoped_critical_section2(const py::handle& /*unused*/, const py::handle& /*unused*/) {}
-    ~scoped_critical_section2() = default;
+    explicit scoped_critical_section2(const py::handle& /*unused*/,
+                                      const py::handle& /*unused*/) noexcept {}
+    ~scoped_critical_section2() noexcept = default;
 #endif
 
     scoped_critical_section2(const scoped_critical_section2&) = delete;

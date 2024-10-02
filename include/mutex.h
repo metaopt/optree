@@ -25,8 +25,8 @@ limitations under the License.
 
 class pymutex {
 public:
-    pymutex() = default;
-    ~pymutex() = default;
+    pymutex() noexcept = default;
+    ~pymutex() noexcept = default;
 
     pymutex(const pymutex &) = delete;
     pymutex &operator=(const pymutex &) = delete;

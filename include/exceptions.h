@@ -37,10 +37,11 @@ namespace optree {
 
 class InternalError : public std::logic_error {
 public:
-    explicit InternalError(const std::string& msg) : std::logic_error{msg} {}
+    explicit InternalError(const std::string& msg) noexcept(noexcept(std::logic_error{msg}))
+        : std::logic_error{msg} {}
     explicit InternalError(const std::string& msg,
                            const std::string& file,
-                           const std::size_t& lineno)
+                           const std::size_t& lineno) noexcept(noexcept(std::logic_error{msg}))
         : InternalError([&msg, &file, &lineno]() -> std::string {
               std::ostringstream oss{};
               oss << msg << " (at file " << file << ":" << lineno << ")\n\n"

@@ -77,7 +77,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
         throw py::value_error(oss.str());
     }
     EXPECT_EQ(agenda.size(), 1, "PyTreeSpec traversal did not yield a singleton.");
-    return std::move(agenda.back());
+    return agenda.back();
 }
 
 py::object PyTreeSpec::Unflatten(const py::iterable& leaves) const {
