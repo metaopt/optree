@@ -59,6 +59,7 @@ if(MSVC)
         " /wd4514"  # unreferenced inline function has been removed
         " /wd4710"  # function not inlined
         " /wd4711"  # function selected for inline expansion
+        " /wd4714"  # function marked as forceinline not inlined
         " /wd4820"  # bytes padding added after construct 'member_name'
         " /wd4868"  # compiler may not enforce left-to-right evaluation order in braced initializer list
         " /wd5045"  # compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
