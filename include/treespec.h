@@ -31,8 +31,8 @@ limitations under the License.
 
 #include "include/exceptions.h"
 #include "include/hashing.h"
-#include "include/mutex.h"
 #include "include/registry.h"
+#include "include/synchronization.h"
 
 namespace optree {
 

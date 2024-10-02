@@ -74,6 +74,13 @@ jobs:
             python -m pip install -r tests/requirements.txt
           fi
 
+      - name: Test installable with C++17
+        if: runner.os != 'Windows'
+        run: |
+          OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 python -m pip install -vvv --editable .
+          python -X dev -W 'always' -W 'error' -c 'import optree'
+          python -m pip uninstall -y optree
+
       - name: Install OpTree
         run: |
           python -m pip install -vvv --editable '.[test]'
@@ -83,8 +90,8 @@ jobs:
           make test PYTESTOPTS="--exitfirst"
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
         if: runner.os == 'Linux'
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./tests/coverage.xml

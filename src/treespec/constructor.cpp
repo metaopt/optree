@@ -24,11 +24,11 @@ limitations under the License.
 #include <utility>    // std::move
 #include <vector>     // std::vector
 
-#include "include/critical_section.h"
 #include "include/exceptions.h"
 #include "include/pytypes.h"
 #include "include/registry.h"
 #include "include/stdutils.h"
+#include "include/synchronization.h"
 #include "include/treespec.h"
 
 namespace optree {

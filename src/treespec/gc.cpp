@@ -15,7 +15,7 @@ limitations under the License.
 ================================================================================
 */
 
-#include "include/critical_section.h"
+#include "include/synchronization.h"
 #include "include/treespec.h"
 
 namespace optree {

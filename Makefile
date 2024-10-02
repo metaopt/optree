@@ -13,7 +13,8 @@ GOBIN          ?= $(GOPATH)/bin
 PATH           := $(PATH):$(GOBIN)
 PYTHON         ?= $(shell command -v python3 || command -v python)
 PYTESTOPTS     ?=
-OPTREE_CXX_WERROR ?= ON
+CMAKE_CXX_STANDARD ?= 20
+OPTREE_CXX_WERROR  ?= ON
 
 .PHONY: default
 default: install
@@ -27,7 +28,8 @@ install-editable install-e:
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install --upgrade setuptools wheel
 	$(PYTHON) -m pip install --upgrade pybind11 cmake
-	OPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" $(PYTHON) -m pip install -vvv --no-build-isolation --editable .
+	OPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" CMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
+		$(PYTHON) -m pip install -vvv --no-build-isolation --editable .
 
 .PHONY: uninstall
 uninstall:
@@ -198,6 +200,7 @@ cmake-configure: cmake-install
 	cmake --version
 	cmake -S . -B cmake-build-debug \
 		-DCMAKE_BUILD_TYPE=Debug \
+		-DCMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
 		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
 		-DPython_EXECUTABLE="$(PYTHON)" \
 		-DOPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)"
@@ -225,7 +228,8 @@ clang-tidy: clang-tidy-install cmake-configure
 
 .PHONY: addlicense
 addlicense: addlicense-install
-	addlicense -c $(COPYRIGHT) -ignore tests/coverage.xml -l apache -y 2022-$(shell date +"%Y") -check $(SOURCE_FOLDERS)
+	addlicense -c $(COPYRIGHT) -l apache -y 2022-$(shell date +"%Y") \
+		-ignore tests/coverage.xml -check $(SOURCE_FOLDERS)
 
 .PHONY: docstyle
 docstyle: docs-install
@@ -256,7 +260,8 @@ format: py-format-install ruff-install clang-format-install addlicense-install
 	$(PYTHON) -m black $(PYTHON_FILES)
 	$(PYTHON) -m ruff check --fix --exit-zero .
 	$(CLANG_FORMAT) -style=file -i $(CXX_FILES)
-	addlicense -c $(COPYRIGHT) -ignore tests/coverage.xml -l apache -y 2022-$(shell date +"%Y") $(SOURCE_FOLDERS)
+	addlicense -c $(COPYRIGHT) -l apache -y 2022-$(shell date +"%Y") \
+		-ignore tests/coverage.xml $(SOURCE_FOLDERS)
 
 .PHONY: clean-py
 clean-py:

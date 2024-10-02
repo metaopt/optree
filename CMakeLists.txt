@@ -32,8 +32,17 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_STANDARD 20)  # for likely/unlikely attributes
+if(NOT DEFINED CMAKE_CXX_STANDARD AND NOT "$ENV{CMAKE_CXX_STANDARD}" STREQUAL "")
+    set(CMAKE_CXX_STANDARD "$ENV{CMAKE_CXX_STANDARD}")
+endif()
+if(NOT CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 20)  # for likely/unlikely attributes
+endif()
+if (CMAKE_CXX_STANDARD VERSION_LESS 17)
+    message(FATAL_ERROR "C++17 or higher is required")
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+message(STATUS "Use C++ standard: C++${CMAKE_CXX_STANDARD}")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)  # -fPIC
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)  # -fvisibility=hidden

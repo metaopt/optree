@@ -32,10 +32,9 @@ limitations under the License.
 #include <pybind11/eval.h>  // pybind11::exec
 #include <pybind11/pybind11.h>
 
-#include "include/critical_section.h"
 #include "include/hashing.h"
-#include "include/mutex.h"
 #include "include/pymacros.h"
+#include "include/synchronization.h"
 
 namespace py = pybind11;
 

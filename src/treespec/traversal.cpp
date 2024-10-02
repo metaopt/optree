@@ -19,12 +19,11 @@ limitations under the License.
 #include <sstream>    // std::ostringstream
 #include <stdexcept>  // std::runtime_error
 
-#include "include/critical_section.h"
 #include "include/exceptions.h"
-#include "include/mutex.h"
 #include "include/pytypes.h"
 #include "include/registry.h"
 #include "include/stdutils.h"
+#include "include/synchronization.h"
 #include "include/treespec.h"
 
 namespace optree {

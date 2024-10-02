@@ -21,11 +21,10 @@ limitations under the License.
 #include <thread>         // std::this_thread::get_id
 #include <unordered_set>  // std::unordered_set
 
-#include "include/critical_section.h"
 #include "include/exceptions.h"
-#include "include/mutex.h"
 #include "include/pytypes.h"
 #include "include/registry.h"
+#include "include/synchronization.h"
 #include "include/treespec.h"
 
 namespace optree {

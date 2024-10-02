@@ -26,8 +26,8 @@ limitations under the License.
 #include <Python.h>
 
 #include "include/exceptions.h"
-#include "include/mutex.h"
 #include "include/pytypes.h"
+#include "include/synchronization.h"
 
 namespace optree {
 
