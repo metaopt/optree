@@ -13,6 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+-
+
+### Changed
+
+-
+
+### Fixed
+
+-
+
+### Removed
+
+-
+
+------
+
+## [0.13.0] - 2024-10-03
+
+### Added
+
 - Add Python 3.13t support by [@XuehaiPan](https://github.com/XuehaiPan) in [#137](https://github.com/metaopt/optree/pull/137).
 - Expose Python implementation for C utilities for `namedtuple` and `PyStructSequence` by [@XuehaiPan](https://github.com/XuehaiPan) in [#157](https://github.com/metaopt/optree/pull/157).
 - Add `dataclasses` integration by [@XuehaiPan](https://github.com/XuehaiPan) in [#142](https://github.com/metaopt/optree/pull/142).
@@ -28,10 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix potential segmentation fault for `structseq_fields` cache support by [@XuehaiPan](https://github.com/XuehaiPan) in [#150](https://github.com/metaopt/optree/pull/150).
-
-### Removed
-
--
 
 ------
 
@@ -327,7 +343,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/metaopt/optree/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/metaopt/optree/compare/v0.11.0...v0.12.1
 [0.12.0]: https://github.com/metaopt/optree/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/metaopt/optree/compare/v0.10.0...v0.11.0
