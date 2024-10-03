@@ -32,18 +32,18 @@ env:
 
 jobs:
   test:
-    name: Test for Python ${{ matrix.python-version }} on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Test for Python ${{ matrix.python-version }} on ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        runner: [ubuntu-latest, windows-latest, macos-latest]
         python-version:
           ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "pypy-3.9", "pypy-3.10"]
         include:
-          - os: macos-13
+          - runner: macos-13
             python-version: "3.7"
         exclude:
-          - os: macos-latest
+          - runner: macos-latest
             python-version: "3.7"  # Python 3.7 does not support macOS ARM64
       fail-fast: false
     timeout-minutes: 90

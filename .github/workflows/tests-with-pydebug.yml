@@ -31,11 +31,11 @@ env:
 
 jobs:
   test:
-    name: Test for Python ${{ matrix.python-version }}${{ matrix.python-abiflags }} on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Test for Python ${{ matrix.python-version }}${{ matrix.python-abiflags }} on ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        runner: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         python-abiflags: ["d", "td"]
         exclude:
@@ -51,7 +51,7 @@ jobs:
             python-abiflags: "td"
           - python-version: "3.12"
             python-abiflags: "td"
-          - os: windows-latest  # pyenv-win does not support Python 3.13t yet
+          - runner: windows-latest  # pyenv-win does not support Python 3.13t yet
             python-version: "3.13"
             python-abiflags: "td"
       fail-fast: false
