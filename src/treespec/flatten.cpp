@@ -24,12 +24,12 @@ limitations under the License.
 #include <utility>    // std::move, std::pair, std::make_pair
 #include <vector>     // std::vector
 
-#include "include/critical_section.h"
 #include "include/exceptions.h"
-#include "include/mutex.h"
+#include "include/pytypes.h"
 #include "include/registry.h"
+#include "include/stdutils.h"
+#include "include/synchronization.h"
 #include "include/treespec.h"
-#include "include/utils.h"
 
 namespace optree {
 
@@ -568,11 +568,11 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
     auto agenda = reserved_vector<py::object>(4);
     agenda.emplace_back(py::reinterpret_borrow<py::object>(full_tree));
 
-    auto it = m_traversal.rbegin();
+    auto it = m_traversal.crbegin();
     py::list leaves{num_leaves};
     ssize_t leaf = num_leaves - 1;
     while (!agenda.empty()) {
-        if (it == m_traversal.rend()) [[unlikely]] {
+        if (it == m_traversal.crend()) [[unlikely]] {
             std::ostringstream oss{};
             oss << "Tree structures did not match; expected: " << ToString()
                 << ", got: " << PyRepr(full_tree) << ".";
@@ -795,7 +795,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
                 INTERNAL_ERROR();
         }
     }
-    if (it != m_traversal.rend() || leaf != -1) [[unlikely]] {
+    if (it != m_traversal.crend() || leaf != -1) [[unlikely]] {
         std::ostringstream oss{};
         oss << "Tree structures did not match; expected: " << ToString()
             << ", got: " << PyRepr(full_tree) << ".";

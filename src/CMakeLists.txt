@@ -22,6 +22,10 @@ set(
     treespec/flatten.cpp
     treespec/unflatten.cpp
     treespec/traversal.cpp
+    treespec/serialization.cpp
+    treespec/hashing.cpp
+    treespec/richcomparison.cpp
+    treespec/gc.cpp
 )
 
 pybind11_add_module(_C MODULE THIN_LTO "${optree_csrc}")

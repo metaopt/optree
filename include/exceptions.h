@@ -23,11 +23,11 @@ limitations under the License.
 #include <string>     // std::string
 
 #ifndef SOURCE_PATH_PREFIX_SIZE
-#define SOURCE_PATH_PREFIX_SIZE (0)
+#define SOURCE_PATH_PREFIX_SIZE 0
 #endif
 
 #ifndef FILE_RELPATH
-#define FILE_RELPATH (&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
+#define FILE_RELPATH ((const char*)&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
 #endif
 
 #define VA_FUNC2_(__0, __1, NAME, ...) NAME
@@ -37,10 +37,11 @@ namespace optree {
 
 class InternalError : public std::logic_error {
 public:
-    explicit InternalError(const std::string& msg) : std::logic_error{msg} {}
+    explicit InternalError(const std::string& msg) noexcept(noexcept(std::logic_error{msg}))
+        : std::logic_error{msg} {}
     explicit InternalError(const std::string& msg,
                            const std::string& file,
-                           const std::size_t& lineno)
+                           const std::size_t& lineno) noexcept(noexcept(std::logic_error{msg}))
         : InternalError([&msg, &file, &lineno]() -> std::string {
               std::ostringstream oss{};
               oss << msg << " (at file " << file << ":" << lineno << ")\n\n"

@@ -18,15 +18,13 @@ limitations under the License.
 #include <optional>   // std::optional
 #include <sstream>    // std::ostringstream
 #include <stdexcept>  // std::runtime_error
-#include <string>     // std::string
-#include <utility>    // std::move
 
-#include "include/critical_section.h"
 #include "include/exceptions.h"
-#include "include/mutex.h"
+#include "include/pytypes.h"
 #include "include/registry.h"
+#include "include/stdutils.h"
+#include "include/synchronization.h"
 #include "include/treespec.h"
-#include "include/utils.h"
 
 namespace optree {
 
@@ -232,7 +230,7 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
     }
 
     EXPECT_EQ(agenda.size(), 1, "PyTreeSpec traversal did not yield a singleton.");
-    return std::move(agenda.back());
+    return agenda.back();
 }
 
 }  // namespace optree

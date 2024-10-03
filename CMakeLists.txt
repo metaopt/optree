@@ -32,8 +32,17 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_STANDARD 20)  # for likely/unlikely attributes
+if(NOT DEFINED CMAKE_CXX_STANDARD AND NOT "$ENV{CMAKE_CXX_STANDARD}" STREQUAL "")
+    set(CMAKE_CXX_STANDARD "$ENV{CMAKE_CXX_STANDARD}")
+endif()
+if(NOT CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 20)  # for likely/unlikely attributes
+endif()
+if (CMAKE_CXX_STANDARD VERSION_LESS 17)
+    message(FATAL_ERROR "C++17 or higher is required")
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+message(STATUS "Use C++ standard: C++${CMAKE_CXX_STANDARD}")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)  # -fPIC
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)  # -fvisibility=hidden
@@ -51,6 +60,7 @@ endif()
 if(MSVC)
     string(
         APPEND CMAKE_CXX_FLAGS
+        " /EHsc /bigobj"
         " /Zc:preprocessor"
         " /experimental:external /external:anglebrackets /external:W0"
         " /Wall /Wv:19.40"  # Visual Studio 2022 version 17.10
@@ -59,6 +69,7 @@ if(MSVC)
         " /wd4514"  # unreferenced inline function has been removed
         " /wd4710"  # function not inlined
         " /wd4711"  # function selected for inline expansion
+        " /wd4714"  # function marked as forceinline not inlined
         " /wd4820"  # bytes padding added after construct 'member_name'
         " /wd4868"  # compiler may not enforce left-to-right evaluation order in braced initializer list
         " /wd5045"  # compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
@@ -88,7 +99,7 @@ if(OPTREE_CXX_WERROR)
 endif()
 
 string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_PATH_PREFIX_SIZE)
-add_definitions("-DSOURCE_PATH_PREFIX_SIZE=(${SOURCE_PATH_PREFIX_SIZE})")
+add_definitions("-DSOURCE_PATH_PREFIX_SIZE=${SOURCE_PATH_PREFIX_SIZE}")
 
 function(system)
     set(options STRIP)

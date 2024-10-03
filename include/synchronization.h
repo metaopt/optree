@@ -17,27 +17,68 @@ limitations under the License.
 
 #pragma once
 
+#include <mutex>  // std::mutex, std::recursive_mutex, std::lock_guard, std::unique_lock
+
 #include <Python.h>
 
 #include <pybind11/pybind11.h>
 
+#include "include/pymacros.h"  // Py_ALWAYS_INLINE, Py_IsConstant
+
 namespace py = pybind11;
 
-#ifndef Py_Is
-#define Py_Is(x, y) ((x) == (y))
-#endif
-#ifndef Py_IsNone
-#define Py_IsNone(x) Py_Is((x), Py_None)
-#endif
-#ifndef Py_IsTrue
-#define Py_IsTrue(x) Py_Is((x), Py_True)
-#endif
-#ifndef Py_IsFalse
-#define Py_IsFalse(x) Py_Is((x), Py_False)
+#ifdef Py_GIL_DISABLED
+
+class pymutex {
+public:
+    pymutex() noexcept = default;
+    ~pymutex() noexcept = default;
+
+    pymutex(const pymutex&) = delete;
+    pymutex& operator=(const pymutex&) = delete;
+    pymutex(pymutex&&) = delete;
+    pymutex& operator=(pymutex&&) = delete;
+
+    void lock() { PyMutex_Lock(&mutex); }
+    void unlock() { PyMutex_Unlock(&mutex); }
+
+private:
+    PyMutex mutex{0};
+};
+
+using mutex = pymutex;
+using recursive_mutex = std::recursive_mutex;
+
+#else
+
+using mutex = std::mutex;
+using recursive_mutex = std::recursive_mutex;
+
 #endif
 
-inline bool Py_IsConstant(PyObject* x) { return Py_IsNone(x) || Py_IsTrue(x) || Py_IsFalse(x); }
-#define Py_IsConstant(x) Py_IsConstant(x)
+using scoped_lock_guard = std::lock_guard<mutex>;
+using scoped_recursive_lock_guard = std::lock_guard<recursive_mutex>;
+
+#if (defined(__APPLE__) /* header <shared_mutex> is not available on macOS build target */ &&      \
+     PY_VERSION_HEX < /* Python 3.12.0 */ 0x030C00F0)
+
+#undef HAVE_READ_WRITE_LOCK
+
+using read_write_mutex = mutex;
+using scoped_read_lock_guard = scoped_lock_guard;
+using scoped_write_lock_guard = scoped_lock_guard;
+
+#else
+
+#define HAVE_READ_WRITE_LOCK
+
+#include <shared_mutex>  // std::shared_mutex, std::shared_lock
+
+using read_write_mutex = std::shared_mutex;
+using scoped_read_lock_guard = std::shared_lock<read_write_mutex>;
+using scoped_write_lock_guard = std::unique_lock<read_write_mutex>;
+
+#endif
 
 class scoped_critical_section {
 public:
@@ -56,8 +97,8 @@ public:
         }
     }
 #else
-    explicit scoped_critical_section(const py::handle& /*unused*/) {}
-    ~scoped_critical_section() = default;
+    explicit scoped_critical_section(const py::handle& /*unused*/) noexcept {}
+    ~scoped_critical_section() noexcept = default;
 #endif
 
     scoped_critical_section(const scoped_critical_section&) = delete;
@@ -102,8 +143,9 @@ public:
         }
     }
 #else
-    explicit scoped_critical_section2(const py::handle& /*unused*/, const py::handle& /*unused*/) {}
-    ~scoped_critical_section2() = default;
+    explicit scoped_critical_section2(const py::handle& /*unused*/,
+                                      const py::handle& /*unused*/) noexcept {}
+    ~scoped_critical_section2() noexcept = default;
 #endif
 
     scoped_critical_section2(const scoped_critical_section2&) = delete;
@@ -134,3 +176,8 @@ private:
 #define EVALUATE_WITH_LOCK_HELD2(expression, handle1, handle2) (expression)
 
 #endif
+
+template <typename T>
+inline Py_ALWAYS_INLINE T thread_safe_cast(const py::handle& handle) {
+    return EVALUATE_WITH_LOCK_HELD(py::cast<T>(handle), handle);
+}

@@ -26,14 +26,17 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
-#include "include/mutex.h"
-#include "include/utils.h"
+#include "include/hashing.h"
+#include "include/synchronization.h"
 
 namespace optree {
 
 namespace py = pybind11;
 using size_t = py::size_t;
 using ssize_t = py::ssize_t;
+
+constexpr bool NONE_IS_LEAF = true;
+constexpr bool NONE_IS_NODE = false;
 
 enum class PyTreeKind : std::uint8_t {
     Custom = 0,      // A custom type
@@ -113,8 +116,7 @@ public:
                               RegistrationPtr &custom,  // NOLINT[runtime/references]
                               const std::string &registry_namespace);
 
-    // Clear the registry on cleanup.
-    static void Clear();
+    friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
 
 private:
     template <bool NoneIsLeaf>
@@ -131,14 +133,13 @@ private:
     static RegistrationPtr UnregisterImpl(const py::object &cls,
                                           const std::string &registry_namespace);
 
-    static inline std::unordered_set<py::handle, TypeHash, TypeEq> sm_builtins_types{};
-    std::unordered_map<py::handle, RegistrationPtr, TypeHash, TypeEq> m_registrations{};
-    std::unordered_map<std::pair<std::string, py::handle>,
-                       RegistrationPtr,
-                       NamedTypeHash,
-                       NamedTypeEq>
-        m_named_registrations{};
+    // Clear the registry on cleanup.
+    static void Clear();
 
+    std::unordered_map<py::handle, RegistrationPtr> m_registrations{};
+    std::unordered_map<std::pair<std::string, py::handle>, RegistrationPtr> m_named_registrations{};
+
+    static inline std::unordered_set<py::handle> sm_builtins_types{};
     static inline read_write_mutex sm_mutex{};
 };
 

@@ -17,6 +17,7 @@ Checks: |
   misc-*,
   modernize-*,
   -modernize-use-trailing-return-type,
+  -modernize-use-transparent-functors,
   performance-*,
   readability-*,
   -readability-redundant-inline-specifier,

@@ -18,11 +18,11 @@ limitations under the License.
 #include <sstream>  // std::ostringstream
 #include <utility>  // std::move
 
-#include "include/critical_section.h"
 #include "include/exceptions.h"
 #include "include/registry.h"
+#include "include/stdutils.h"
+#include "include/synchronization.h"
 #include "include/treespec.h"
-#include "include/utils.h"
 
 namespace optree {
 
@@ -77,7 +77,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
         throw py::value_error(oss.str());
     }
     EXPECT_EQ(agenda.size(), 1, "PyTreeSpec traversal did not yield a singleton.");
-    return std::move(agenda.back());
+    return agenda.back();
 }
 
 py::object PyTreeSpec::Unflatten(const py::iterable& leaves) const {

@@ -24,44 +24,41 @@ limitations under the License.
 #include <utility>    // std::move
 #include <vector>     // std::vector
 
-#include "include/critical_section.h"
 #include "include/exceptions.h"
+#include "include/pytypes.h"
 #include "include/registry.h"
+#include "include/stdutils.h"
+#include "include/synchronization.h"
 #include "include/treespec.h"
-#include "include/utils.h"
 
 namespace optree {
 
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeLeaf(
-    const bool& none_is_leaf,
-    // NOLINTNEXTLINE[readability-named-parameter]
-    const std::string& /*unused*/) {
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeLeaf(const bool& none_is_leaf,
+                                                            const std::string& /*unused*/) {
     auto out = std::make_unique<PyTreeSpec>();
-    Node node;
-    node.kind = PyTreeKind::Leaf;
-    node.arity = 0;
-    node.num_leaves = 1;
-    node.num_nodes = 1;
-    out->m_traversal.emplace_back(std::move(node));
+    out->m_traversal.emplace_back(Node{
+        .kind = PyTreeKind::Leaf,
+        .arity = 0,
+        .num_leaves = 1,
+        .num_nodes = 1,
+    });
     out->m_none_is_leaf = none_is_leaf;
     out->m_traversal.shrink_to_fit();
     return out;
 }
 
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeNone(
-    const bool& none_is_leaf,
-    // NOLINTNEXTLINE[readability-named-parameter]
-    const std::string& /*unused*/) {
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeNone(const bool& none_is_leaf,
+                                                            const std::string& /*unused*/) {
     if (none_is_leaf) [[unlikely]] {
         return MakeLeaf(none_is_leaf);
     }
     auto out = std::make_unique<PyTreeSpec>();
-    Node node;
-    node.kind = PyTreeKind::None;
-    node.arity = 0;
-    node.num_leaves = 0;
-    node.num_nodes = 1;
-    out->m_traversal.emplace_back(std::move(node));
+    out->m_traversal.emplace_back(Node{
+        .kind = PyTreeKind::None,
+        .arity = 0,
+        .num_leaves = 0,
+        .num_nodes = 1,
+    });
     out->m_none_is_leaf = none_is_leaf;
     out->m_traversal.shrink_to_fit();
     return out;
@@ -266,8 +263,8 @@ template <bool NoneIsLeaf>
     auto out = std::make_unique<PyTreeSpec>();
     ssize_t num_leaves = ((node.kind == PyTreeKind::Leaf) ? 1 : 0);
     for (const PyTreeSpec& treespec : treespecs) {
-        std::copy(treespec.m_traversal.begin(),
-                  treespec.m_traversal.end(),
+        std::copy(treespec.m_traversal.cbegin(),
+                  treespec.m_traversal.cend(),
                   std::back_inserter(out->m_traversal));
         num_leaves += treespec.GetNumLeaves();
     }

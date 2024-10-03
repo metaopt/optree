@@ -74,7 +74,7 @@ jobs:
 
       - name: clang-tidy
         run: |
-          make clang-tidy
+          make clang-tidy CMAKE_CXX_STANDARD=17
 
       - name: addlicense
         run: |

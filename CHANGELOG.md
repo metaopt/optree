@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Split implementation files and add more `inline` / `constexpr` / `noexcept` qualifiers by [@XuehaiPan](https://github.com/XuehaiPan) in [#159](https://github.com/metaopt/optree/pull/159).
 - Use `cmake`'s `FindPython` module by [@XuehaiPan](https://github.com/XuehaiPan) in [#151](https://github.com/metaopt/optree/pull/151).
 
 ### Fixed
