@@ -128,8 +128,7 @@ F = TypeVar('F', bound=Callable[..., Any])
 
 
 Children: TypeAlias = Iterable[T]
-_MetaData = TypeVar('_MetaData', bound=Hashable)
-MetaData: TypeAlias = Optional[_MetaData]
+MetaData: TypeAlias = Optional[Hashable]
 
 
 @runtime_checkable

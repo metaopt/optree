@@ -27,7 +27,7 @@ from typing import Any, Callable, ClassVar, Iterable, Mapping, overload
 
 from optree import _C
 from optree.accessor import PyTreeAccessor, PyTreeEntry
-from optree.registry import PyTreeNodeRegistryEntry, register_pytree_node
+from optree.registry import register_pytree_node
 from optree.typing import (
     CustomTreeNode,
     MetaData,
@@ -2477,7 +2477,7 @@ def tree_flatten_one_level(
     if (tree is None and none_is_leaf) or (is_leaf is not None and is_leaf(tree)):  # type: ignore[unreachable,arg-type]
         raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
 
-    handler: PyTreeNodeRegistryEntry | None = register_pytree_node.get(node_type, namespace=namespace)  # type: ignore[attr-defined]
+    handler = register_pytree_node.get(node_type, namespace=namespace)
     if handler is None:
         raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
 
@@ -2489,8 +2489,9 @@ def tree_flatten_one_level(
             f'PyTree custom flatten function for type {node_type} should return a 2- or 3-tuple, '
             f'got {len(flattened)}.',
         )
+    flattened: tuple[Iterable[PyTree[T]], MetaData, Iterable[Any] | None]
     children, metadata, entries = flattened
-    children = list(children)  # type: ignore[arg-type]
+    children = list(children)
     entries = tuple(range(len(children)) if entries is None else entries)
     if len(children) != len(entries):
         raise RuntimeError(
