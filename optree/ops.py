@@ -2478,26 +2478,26 @@ def tree_flatten_one_level(
         raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
 
     handler: PyTreeNodeRegistryEntry | None = register_pytree_node.get(node_type, namespace=namespace)  # type: ignore[attr-defined]
-    if handler:
-        flattened = tuple(handler.flatten_func(tree))  # type: ignore[arg-type]
-        if len(flattened) == 2:
-            flattened = (*flattened, None)
-        elif len(flattened) != 3:
-            raise RuntimeError(
-                f'PyTree custom flatten function for type {node_type} should return a 2- or 3-tuple, '
-                f'got {len(flattened)}.',
-            )
-        children, metadata, entries = flattened
-        children = list(children)  # type: ignore[arg-type]
-        entries = tuple(range(len(children)) if entries is None else entries)
-        if len(children) != len(entries):
-            raise RuntimeError(
-                f'PyTree custom flatten function for type {node_type} returned inconsistent '
-                f'number of children ({len(children)}) and number of entries ({len(entries)}).',
-            )
-        return children, metadata, entries, handler.unflatten_func  # type: ignore[return-value]
+    if handler is None:
+        raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
 
-    raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
+    flattened = tuple(handler.flatten_func(tree))  # type: ignore[arg-type]
+    if len(flattened) == 2:
+        flattened = (*flattened, None)
+    elif len(flattened) != 3:
+        raise RuntimeError(
+            f'PyTree custom flatten function for type {node_type} should return a 2- or 3-tuple, '
+            f'got {len(flattened)}.',
+        )
+    children, metadata, entries = flattened
+    children = list(children)  # type: ignore[arg-type]
+    entries = tuple(range(len(children)) if entries is None else entries)
+    if len(children) != len(entries):
+        raise RuntimeError(
+            f'PyTree custom flatten function for type {node_type} returned inconsistent '
+            f'number of children ({len(children)}) and number of entries ({len(entries)}).',
+        )
+    return children, metadata, entries, handler.unflatten_func  # type: ignore[return-value]
 
 
 def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
@@ -3267,7 +3267,7 @@ def _prefix_error(
             return  # don't look for more errors in this subtree
 
         # If the keys agree, we should ensure that the children are in the same order:
-        full_tree_children = [full_tree[k] for k in prefix_tree_keys]  # type: ignore[index]
+        full_tree_children = [full_tree[k] for k in prefix_tree_keys]  # type: ignore[misc]
 
     if len(prefix_tree_children) != len(full_tree_children):
         yield lambda name: ValueError(

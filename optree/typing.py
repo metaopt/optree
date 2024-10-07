@@ -28,7 +28,10 @@ from typing import (
     Dict,
     ForwardRef,
     Generic,
+    ItemsView,
     Iterable,
+    Iterator,
+    KeysView,
     List,
     NoReturn,
     Optional,
@@ -36,6 +39,7 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
+    ValuesView,
 )
 from typing_extensions import Final  # Python 3.8+
 from typing_extensions import NamedTuple  # Generic NamedTuple: Python 3.11+
@@ -174,7 +178,7 @@ class PyTree(Generic[T]):  # pragma: no cover
     typing.Union[torch.Tensor,
                  typing.Tuple[ForwardRef('PyTree[torch.Tensor]'), ...],
                  typing.List[ForwardRef('PyTree[torch.Tensor]')],
-                 typing.Dict[typing.Any, ForwardRef('PyTree[torch.Tensor]')],
+                 typing.Dict[collections.abc.Hashable, ForwardRef('PyTree[torch.Tensor]')],
                  typing.Deque[ForwardRef('PyTree[torch.Tensor]')],
                  optree.typing.CustomTreeNode[ForwardRef('PyTree[torch.Tensor]')]]
     """
@@ -228,7 +232,7 @@ class PyTree(Generic[T]):  # pragma: no cover
             param,  # type: ignore[valid-type]
             Tuple[recurse_ref, ...],  # type: ignore[valid-type] # Tuple, NamedTuple, PyStructSequence
             List[recurse_ref],  # type: ignore[valid-type]
-            Dict[Any, recurse_ref],  # type: ignore[valid-type] # Dict, OrderedDict, DefaultDict
+            Dict[Hashable, recurse_ref],  # type: ignore[valid-type] # Dict, OrderedDict, DefaultDict
             Deque[recurse_ref],  # type: ignore[valid-type]
             CustomTreeNode[recurse_ref],  # type: ignore[valid-type]
         ]
@@ -243,15 +247,52 @@ class PyTree(Generic[T]):  # pragma: no cover
         """Prohibit subclassing."""
         raise TypeError('Cannot subclass special typing classes.')
 
-    def __copy__(self) -> PyTree:
-        """Immutable copy."""
-        return self
+    def __getitem__(self, key: Any) -> PyTree[T] | T:
+        """Emulate collection-like behavior."""
+        raise NotImplementedError
 
-    def __deepcopy__(self, memo: dict[int, Any]) -> PyTree:
-        """Immutable copy."""
-        return self
+    def __getattr__(self, name: str) -> PyTree[T] | T:
+        """Emulate dataclass-like behavior."""
+        raise NotImplementedError
+
+    def __contains__(self, key: Any | T) -> bool:
+        """Emulate collection-like behavior."""
+        raise NotImplementedError
+
+    def __len__(self) -> int:
+        """Emulate collection-like behavior."""
+        raise NotImplementedError
+
+    def __iter__(self) -> Iterator[PyTree[T] | T | Any]:
+        """Emulate collection-like behavior."""
+        raise NotImplementedError
+
+    def index(self, key: Any | T) -> int:
+        """Emulate sequence-like behavior."""
+        raise NotImplementedError
+
+    def count(self, key: Any | T) -> int:
+        """Emulate sequence-like behavior."""
+        raise NotImplementedError
+
+    def get(self, key: Any, default: T | None = None) -> T | None:
+        """Emulate mapping-like behavior."""
+        raise NotImplementedError
+
+    def keys(self) -> KeysView[Any]:
+        """Emulate mapping-like behavior."""
+        raise NotImplementedError
+
+    def values(self) -> ValuesView[PyTree[T] | T]:
+        """Emulate mapping-like behavior."""
+        raise NotImplementedError
+
+    def items(self) -> ItemsView[Any, PyTree[T] | T]:
+        """Emulate mapping-like behavior."""
+        raise NotImplementedError
 
 
+# pylint: disable-next=too-few-public-methods
 class PyTreeTypeVar:  # pragma: no cover
     """Type variable for PyTree.
 
@@ -261,7 +302,7 @@ class PyTreeTypeVar:  # pragma: no cover
     typing.Union[torch.Tensor,
                  typing.Tuple[ForwardRef('TensorTree'), ...],
                  typing.List[ForwardRef('TensorTree')],
-                 typing.Dict[typing.Any, ForwardRef('TensorTree')],
+                 typing.Dict[collections.abc.Hashable, ForwardRef('TensorTree')],
                  typing.Deque[ForwardRef('TensorTree')],
                  optree.typing.CustomTreeNode[ForwardRef('TensorTree')]]
     """
@@ -276,14 +317,6 @@ class PyTreeTypeVar:  # pragma: no cover
     def __init_subclass__(cls, *args: Any, **kwargs: Any) -> NoReturn:
         """Prohibit subclassing."""
         raise TypeError('Cannot subclass special typing classes.')
-
-    def __copy__(self) -> TypeAlias:
-        """Immutable copy."""
-        return self
-
-    def __deepcopy__(self, memo: dict[int, Any]) -> TypeAlias:
-        """Immutable copy."""
-        return self
 
 
 FlattenFunc: TypeAlias = Callable[

@@ -791,7 +791,7 @@ with warnings.catch_warnings():
     register_keypaths(tuple, lambda tup: list(map(GetitemKeyPathEntry, range(len(tup)))))  # type: ignore[arg-type]
     register_keypaths(list, lambda lst: list(map(GetitemKeyPathEntry, range(len(lst)))))  # type: ignore[arg-type]
     register_keypaths(dict, lambda dct: list(map(GetitemKeyPathEntry, _sorted_keys(dct))))  # type: ignore[arg-type]
-    register_keypaths(OrderedDict, lambda odct: list(map(GetitemKeyPathEntry, odct)))  # type: ignore[arg-type,call-overload]
+    register_keypaths(OrderedDict, lambda odct: list(map(GetitemKeyPathEntry, odct)))  # type: ignore[arg-type]
     register_keypaths(defaultdict, lambda ddct: list(map(GetitemKeyPathEntry, _sorted_keys(ddct))))  # type: ignore[arg-type]
     register_keypaths(deque, lambda dq: list(map(GetitemKeyPathEntry, range(len(dq)))))  # type: ignore[arg-type]
 
