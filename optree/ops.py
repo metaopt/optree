@@ -2481,7 +2481,7 @@ def tree_flatten_one_level(
     if handler is None:
         raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
 
-    flattened = tuple(handler.flatten_func(tree))  # type: ignore[arg-type]
+    flattened = tuple(handler.flatten_func(tree))
     if len(flattened) == 2:
         flattened = (*flattened, None)
     elif len(flattened) != 3:

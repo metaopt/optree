@@ -30,6 +30,7 @@ from typing import (
     Any,
     Callable,
     ClassVar,
+    Collection,
     Generator,
     Generic,
     Iterable,
@@ -56,7 +57,6 @@ from optree.typing import (
     VT,
     CustomTreeNode,
     FlattenFunc,
-    PyTree,
     T,
     UnflattenFunc,
     is_namedtuple_class,
@@ -82,12 +82,12 @@ SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}  # Python 3.10+
 
 
 @dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, **SLOTS)
-class PyTreeNodeRegistryEntry:
+class PyTreeNodeRegistryEntry(Generic[T]):
     """A dataclass that stores the information of a pytree node type."""
 
-    type: builtins.type
-    flatten_func: FlattenFunc
-    unflatten_func: UnflattenFunc
+    type: builtins.type[Collection[T]]
+    flatten_func: FlattenFunc[T]
+    unflatten_func: UnflattenFunc[T]
 
     if sys.version_info >= (3, 10):
         _: dataclasses.KW_ONLY  # Python 3.10+
@@ -176,18 +176,15 @@ def _pytree_node_registry_get(
     return None
 
 
-CustomTreeNodeT: TypeAlias = Type[CustomTreeNode[T]]
-
-
 @_add_get(_pytree_node_registry_get)
 def register_pytree_node(
-    cls: CustomTreeNodeT,
-    flatten_func: FlattenFunc,
-    unflatten_func: UnflattenFunc,
+    cls: type[Collection[T]],
+    flatten_func: FlattenFunc[T],
+    unflatten_func: UnflattenFunc[T],
     *,
     path_entry_type: type[PyTreeEntry] = AutoEntry,
     namespace: str,
-) -> CustomTreeNodeT:
+) -> type[Collection[T]]:
     """Extend the set of types that are considered internal nodes in pytrees.
 
     See also :func:`register_pytree_node_class` and :func:`unregister_pytree_node`.
@@ -342,30 +339,33 @@ def register_pytree_node(
 del _pytree_node_registry_get
 
 
+CustomTreeNodeType: TypeAlias = Type[CustomTreeNode[T]]
+
+
 @overload
 def register_pytree_node_class(
     cls: str | None = None,
     *,
     path_entry_type: type[PyTreeEntry] | None = None,
     namespace: str | None = None,
-) -> Callable[[CustomTreeNodeT], CustomTreeNodeT]: ...
+) -> Callable[[CustomTreeNodeType], CustomTreeNodeType]: ...
 
 
 @overload
 def register_pytree_node_class(
-    cls: CustomTreeNodeT,
+    cls: CustomTreeNodeType,
     *,
     path_entry_type: type[PyTreeEntry] | None,
     namespace: str,
-) -> CustomTreeNodeT: ...
+) -> CustomTreeNodeType: ...
 
 
 def register_pytree_node_class(  # noqa: C901
-    cls: CustomTreeNodeT | str | None = None,
+    cls: CustomTreeNodeType | str | None = None,
     *,
     path_entry_type: type[PyTreeEntry] | None = None,
     namespace: str | None = None,
-) -> CustomTreeNodeT | Callable[[CustomTreeNodeT], CustomTreeNodeT]:
+) -> CustomTreeNodeType | Callable[[CustomTreeNodeType], CustomTreeNodeType]:
     """Extend the set of types that are considered internal nodes in pytrees.
 
     See also :func:`register_pytree_node` and :func:`unregister_pytree_node`.
@@ -467,11 +467,7 @@ def register_pytree_node_class(  # noqa: C901
     return cls
 
 
-def unregister_pytree_node(
-    cls: type[CustomTreeNode[T]],
-    *,
-    namespace: str,
-) -> PyTreeNodeRegistryEntry:
+def unregister_pytree_node(cls: type, *, namespace: str) -> PyTreeNodeRegistryEntry:
     """Remove a type from the pytree node registry.
 
     See also :func:`register_pytree_node` and :func:`register_pytree_node_class`.
@@ -796,8 +792,8 @@ with warnings.catch_warnings():
             """Pretty name of the key path entry."""
             return f'[<flat index {self.key}>]'
 
-    KeyPathHandler = Callable[[PyTree], Sequence[KeyPathEntry]]
-    _KEYPATH_REGISTRY: dict[type[CustomTreeNode], KeyPathHandler] = {}
+    KeyPathHandler = Callable[[Collection[T]], Sequence[KeyPathEntry]]
+    _KEYPATH_REGISTRY: dict[type[Collection], KeyPathHandler] = {}
 
     @deprecated(
         'The key path API is deprecated and will be removed in a future version. '
@@ -806,9 +802,9 @@ with warnings.catch_warnings():
     )
     @_add_get(_KEYPATH_REGISTRY.get)
     def register_keypaths(
-        cls: type[CustomTreeNode[T]],
-        handler: KeyPathHandler,
-    ) -> KeyPathHandler:
+        cls: type[Collection[T]],
+        handler: KeyPathHandler[T],
+    ) -> KeyPathHandler[T]:
         """Register a key path handler for a custom pytree node type."""
         if not inspect.isclass(cls):
             raise TypeError(f'Expected a class, got {cls!r}.')
@@ -818,11 +814,11 @@ with warnings.catch_warnings():
         _KEYPATH_REGISTRY[cls] = handler
         return handler
 
-    register_keypaths(tuple, lambda tup: list(map(GetitemKeyPathEntry, range(len(tup)))))  # type: ignore[arg-type]
-    register_keypaths(list, lambda lst: list(map(GetitemKeyPathEntry, range(len(lst)))))  # type: ignore[arg-type]
+    register_keypaths(tuple, lambda tup: list(map(GetitemKeyPathEntry, range(len(tup)))))
+    register_keypaths(list, lambda lst: list(map(GetitemKeyPathEntry, range(len(lst)))))
     register_keypaths(dict, lambda dct: list(map(GetitemKeyPathEntry, _sorted_keys(dct))))  # type: ignore[arg-type]
-    register_keypaths(OrderedDict, lambda odct: list(map(GetitemKeyPathEntry, odct)))  # type: ignore[arg-type]
+    register_keypaths(OrderedDict, lambda odct: list(map(GetitemKeyPathEntry, odct)))
     register_keypaths(defaultdict, lambda ddct: list(map(GetitemKeyPathEntry, _sorted_keys(ddct))))  # type: ignore[arg-type]
-    register_keypaths(deque, lambda dq: list(map(GetitemKeyPathEntry, range(len(dq)))))  # type: ignore[arg-type]
+    register_keypaths(deque, lambda dq: list(map(GetitemKeyPathEntry, range(len(dq)))))
 
 del _add_get

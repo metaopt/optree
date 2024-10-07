@@ -23,6 +23,7 @@ from collections.abc import Hashable
 from typing import (
     Any,
     Callable,
+    Collection,
     DefaultDict,
     Deque,
     Dict,
@@ -147,7 +148,7 @@ class CustomTreeNode(Protocol[T]):
         """Flatten the custom pytree node into children and metadata."""
 
     @classmethod
-    def tree_unflatten(cls, metadata: MetaData, children: Children[T]) -> CustomTreeNode[T]:
+    def tree_unflatten(cls, metadata: MetaData, children: Children[T]) -> Self:
         """Unflatten the children and metadata into the custom pytree node."""
 
 
@@ -319,13 +320,13 @@ class PyTreeTypeVar:  # pragma: no cover
 
 
 FlattenFunc: TypeAlias = Callable[
-    [CustomTreeNode[T]],
+    [Collection[T]],
     Union[
         Tuple[Children[T], MetaData],
         Tuple[Children[T], MetaData, Optional[Iterable[Any]]],
     ],
 ]
-UnflattenFunc: TypeAlias = Callable[[MetaData, Children[T]], CustomTreeNode[T]]
+UnflattenFunc: TypeAlias = Callable[[MetaData, Children[T]], Collection[T]]
 
 
 def _override_with_(cxx_implementation: F) -> Callable[[F], F]:
@@ -401,7 +402,9 @@ def namedtuple_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
 _T_co = TypeVar('_T_co', covariant=True)
 
 
-class _StructSequenceMeta(type):
+class StructSequenceMeta(type):
+    """The metaclass for PyStructSequence stub type."""
+
     def __subclasscheck__(cls, subclass: type) -> bool:
         """Return whether the class is a PyStructSequence type.
 
@@ -433,7 +436,7 @@ class _StructSequenceMeta(type):
 # This is an internal CPython type that is like, but subtly different from a NamedTuple.
 # `structseq` classes are unsubclassable, so are all decorated with `@final`.
 # pylint: disable-next=invalid-name,missing-class-docstring
-class structseq(Tuple[_T_co], metaclass=_StructSequenceMeta):  # type: ignore[misc] # noqa: N801
+class structseq(Tuple[_T_co], metaclass=StructSequenceMeta):  # type: ignore[misc] # noqa: N801
     """A generic type stub for CPython's ``PyStructSequence`` type."""
 
     n_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
@@ -449,7 +452,7 @@ class structseq(Tuple[_T_co], metaclass=_StructSequenceMeta):  # type: ignore[mi
         raise NotImplementedError
 
 
-del _StructSequenceMeta
+del StructSequenceMeta
 
 
 @_override_with_(_C.is_structseq)
