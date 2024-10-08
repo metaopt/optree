@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 def total_order_sorted(
     iterable: Iterable[T],
+    /,
     *,
     key: Callable[[T], Any] | None = None,
     reverse: bool = False,
@@ -61,32 +62,36 @@ def total_order_sorted(
 
 @overload
 def safe_zip(
-    __iter1: Iterable[T],
+    iter1: Iterable[T],
+    /,
 ) -> zip[tuple[T]]: ...
 
 
 @overload
 def safe_zip(
-    __iter1: Iterable[T],
-    __iter2: Iterable[S],
+    iter1: Iterable[T],
+    iter2: Iterable[S],
+    /,
 ) -> zip[tuple[T, S]]: ...
 
 
 @overload
 def safe_zip(
-    __iter1: Iterable[T],
-    __iter2: Iterable[S],
-    __iter3: Iterable[U],
+    iter1: Iterable[T],
+    iter2: Iterable[S],
+    iter3: Iterable[U],
+    /,
 ) -> zip[tuple[T, S, U]]: ...
 
 
 @overload
 def safe_zip(
-    __iter1: Iterable[Any],
-    __iter2: Iterable[Any],
-    __iter3: Iterable[Any],
-    __iter4: Iterable[Any],
-    *__iters: Iterable[Any],
+    iter1: Iterable[Any],
+    iter2: Iterable[Any],
+    iter3: Iterable[Any],
+    iter4: Iterable[Any],
+    /,
+    *iters: Iterable[Any],
 ) -> zip[tuple[Any, ...]]: ...
 
 
@@ -98,7 +103,7 @@ def safe_zip(*args: Iterable[Any]) -> zip[tuple[Any, ...]]:
     return zip(*seqs)
 
 
-def unzip2(xys: Iterable[tuple[T, S]]) -> tuple[tuple[T, ...], tuple[S, ...]]:
+def unzip2(xys: Iterable[tuple[T, S]], /) -> tuple[tuple[T, ...], tuple[S, ...]]:
     """Unzip sequence of length-2 tuples into two tuples."""
     # Note: we deliberately don't use zip(*xys) because it is lazily evaluated,
     # is too permissive about inputs, and does not guarantee a length-2 output.

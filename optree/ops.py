@@ -126,6 +126,7 @@ NONE_IS_LEAF: bool = True  # literal constant
 
 def tree_flatten(
     tree: PyTree[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -194,6 +195,7 @@ def tree_flatten(
 
 def tree_flatten_with_path(
     tree: PyTree[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -267,6 +269,7 @@ def tree_flatten_with_path(
 
 def tree_flatten_with_accessor(
     tree: PyTree[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -389,6 +392,7 @@ def tree_unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
 
 def tree_iter(
     tree: PyTree[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -430,6 +434,7 @@ def tree_iter(
 
 def tree_leaves(
     tree: PyTree[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -471,6 +476,7 @@ def tree_leaves(
 
 def tree_structure(
     tree: PyTree[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -512,6 +518,7 @@ def tree_structure(
 
 def tree_paths(
     tree: PyTree[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -553,6 +560,7 @@ def tree_paths(
 
 def tree_accessors(
     tree: PyTree[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -608,6 +616,7 @@ def tree_accessors(
 
 def tree_is_leaf(
     tree: PyTree[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -646,6 +655,7 @@ def tree_is_leaf(
 
 def all_leaves(
     iterable: Iterable[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -699,6 +709,7 @@ def all_leaves(
 def tree_map(
     func: Callable[..., U],
     tree: PyTree[T],
+    /,
     *rests: PyTree[S],
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -755,6 +766,7 @@ def tree_map(
 def tree_map_(
     func: Callable[..., Any],
     tree: PyTree[T],
+    /,
     *rests: PyTree[S],
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -796,6 +808,7 @@ def tree_map_(
 def tree_map_with_path(
     func: Callable[..., U],
     tree: PyTree[T],
+    /,
     *rests: PyTree[S],
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -846,6 +859,7 @@ def tree_map_with_path(
 def tree_map_with_path_(
     func: Callable[..., Any],
     tree: PyTree[T],
+    /,
     *rests: PyTree[S],
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -889,6 +903,7 @@ def tree_map_with_path_(
 def tree_map_with_accessor(
     func: Callable[..., U],
     tree: PyTree[T],
+    /,
     *rests: PyTree[S],
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -962,6 +977,7 @@ def tree_map_with_accessor(
 def tree_map_with_accessor_(
     func: Callable[..., Any],
     tree: PyTree[T],
+    /,
     *rests: PyTree[S],
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -1002,7 +1018,7 @@ def tree_map_with_accessor_(
     return tree
 
 
-def tree_replace_nones(sentinel: Any, tree: PyTree[T] | None, namespace: str = '') -> PyTree[T]:
+def tree_replace_nones(sentinel: Any, tree: PyTree[T] | None, /, namespace: str = '') -> PyTree[T]:
     """Replace :data:`None` in ``tree`` with ``sentinel``.
 
     See also :func:`tree_flatten` and :func:`tree_map`.
@@ -1035,6 +1051,7 @@ def tree_transpose(
     outer_treespec: PyTreeSpec,
     inner_treespec: PyTreeSpec,
     tree: PyTree[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
 ) -> PyTree[T]:  # PyTree[PyTree[T]]
     """Transform a tree having tree structure (outer, inner) into one having structure (inner, outer).
@@ -1111,6 +1128,7 @@ def tree_transpose(
 def tree_transpose_map(
     func: Callable[..., PyTree[U]],
     tree: PyTree[T],
+    /,
     *rests: PyTree[S],
     inner_treespec: PyTreeSpec | None = None,
     is_leaf: Callable[[T], bool] | None = None,
@@ -1203,6 +1221,7 @@ def tree_transpose_map(
 def tree_transpose_map_with_path(
     func: Callable[..., PyTree[U]],
     tree: PyTree[T],
+    /,
     *rests: PyTree[S],
     inner_treespec: PyTreeSpec | None = None,
     is_leaf: Callable[[T], bool] | None = None,
@@ -1289,6 +1308,7 @@ def tree_transpose_map_with_path(
 def tree_transpose_map_with_accessor(
     func: Callable[..., PyTree[U]],
     tree: PyTree[T],
+    /,
     *rests: PyTree[S],
     inner_treespec: PyTreeSpec | None = None,
     is_leaf: Callable[[T], bool] | None = None,
@@ -1402,6 +1422,7 @@ def tree_transpose_map_with_accessor(
 def tree_broadcast_prefix(
     prefix_tree: PyTree[T],
     full_tree: PyTree[S],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -1482,6 +1503,7 @@ def tree_broadcast_prefix(
 def broadcast_prefix(
     prefix_tree: PyTree[T],
     full_tree: PyTree[S],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -1564,6 +1586,7 @@ def broadcast_prefix(
 def tree_broadcast_common(
     tree: PyTree[T],
     other_tree: PyTree[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -1657,6 +1680,7 @@ def tree_broadcast_common(
 def broadcast_common(
     tree: PyTree[T],
     other_tree: PyTree[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -1739,6 +1763,7 @@ def broadcast_common(
 
 def _tree_broadcast_common(
     tree: PyTree[T],
+    /,
     *rests: PyTree[T],
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -1774,6 +1799,7 @@ def _tree_broadcast_common(
 def tree_broadcast_map(
     func: Callable[..., U],
     tree: PyTree[T],
+    /,
     *rests: PyTree[T],
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -1844,6 +1870,7 @@ def tree_broadcast_map(
 def tree_broadcast_map_with_path(
     func: Callable[..., U],
     tree: PyTree[T],
+    /,
     *rests: PyTree[T],
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -1921,6 +1948,7 @@ def tree_broadcast_map_with_path(
 def tree_broadcast_map_with_accessor(
     func: Callable[..., U],
     tree: PyTree[T],
+    /,
     *rests: PyTree[T],
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -2026,6 +2054,7 @@ del MissingSentinel
 def tree_reduce(
     func: Callable[[T, T], T],
     tree: PyTree[T],
+    /,
     *,
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -2037,6 +2066,7 @@ def tree_reduce(
 def tree_reduce(
     func: Callable[[T, S], T],
     tree: PyTree[S],
+    /,
     initial: T = __MISSING,
     *,
     is_leaf: Callable[[S], bool] | None = None,
@@ -2048,6 +2078,7 @@ def tree_reduce(
 def tree_reduce(
     func: Callable[[T, S], T],
     tree: PyTree[S],
+    /,
     initial: T = __MISSING,
     *,
     is_leaf: Callable[[S], bool] | None = None,
@@ -2094,6 +2125,7 @@ def tree_reduce(
 
 def tree_sum(
     tree: PyTree[T],
+    /,
     start: T = 0,  # type: ignore[assignment]
     *,
     is_leaf: Callable[[T], bool] | None = None,
@@ -2146,6 +2178,7 @@ def tree_sum(
 @overload
 def tree_max(
     tree: PyTree[T],
+    /,
     *,
     is_leaf: Callable[[T], bool] | None = None,
     key: Callable[[T], Any] | None = None,
@@ -2157,6 +2190,7 @@ def tree_max(
 @overload
 def tree_max(
     tree: PyTree[T],
+    /,
     *,
     default: T = __MISSING,
     key: Callable[[T], Any] | None = None,
@@ -2168,6 +2202,7 @@ def tree_max(
 
 def tree_max(
     tree: PyTree[T],
+    /,
     *,
     default: T = __MISSING,
     key: Callable[[T], Any] | None = None,
@@ -2235,6 +2270,7 @@ def tree_max(
 @overload
 def tree_min(
     tree: PyTree[T],
+    /,
     *,
     key: Callable[[T], Any] | None = None,
     is_leaf: Callable[[T], bool] | None = None,
@@ -2246,6 +2282,7 @@ def tree_min(
 @overload
 def tree_min(
     tree: PyTree[T],
+    /,
     *,
     default: T = __MISSING,
     key: Callable[[T], Any] | None = None,
@@ -2257,6 +2294,7 @@ def tree_min(
 
 def tree_min(
     tree: PyTree[T],
+    /,
     *,
     default: T = __MISSING,
     key: Callable[[T], Any] | None = None,
@@ -2323,6 +2361,7 @@ def tree_min(
 
 def tree_all(
     tree: PyTree[T],
+    /,
     *,
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -2374,6 +2413,7 @@ def tree_all(
 
 def tree_any(
     tree: PyTree[T],
+    /,
     *,
     is_leaf: Callable[[T], bool] | None = None,
     none_is_leaf: bool = False,
@@ -2455,6 +2495,7 @@ class FlattenOneLevelOutputEx(FlattenOneLevelOutput[T]):
 
 def tree_flatten_one_level(
     tree: PyTree[T],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -2535,7 +2576,7 @@ def tree_flatten_one_level(
     return output
 
 
-def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
+def treespec_paths(treespec: PyTreeSpec, /) -> list[tuple[Any, ...]]:
     """Return a list of paths to the leaves of a treespec.
 
     See also :func:`tree_flatten_with_path`, :func:`tree_paths`, and :meth:`PyTreeSpec.paths`.
@@ -2543,7 +2584,7 @@ def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
     return treespec.paths()
 
 
-def treespec_accessors(treespec: PyTreeSpec) -> list[PyTreeAccessor]:
+def treespec_accessors(treespec: PyTreeSpec, /) -> list[PyTreeAccessor]:
     """Return a list of accessors to the leaves of a treespec.
 
     See also :func:`tree_flatten_with_accessor`, :func:`tree_accessors` and
@@ -2552,7 +2593,7 @@ def treespec_accessors(treespec: PyTreeSpec) -> list[PyTreeAccessor]:
     return treespec.accessors()
 
 
-def treespec_entries(treespec: PyTreeSpec) -> list[Any]:
+def treespec_entries(treespec: PyTreeSpec, /) -> list[Any]:
     """Return a list of one-level entries of a treespec to its children.
 
     See also :func:`treespec_entry`, :func:`treespec_paths`, :func:`treespec_children`,
@@ -2561,7 +2602,7 @@ def treespec_entries(treespec: PyTreeSpec) -> list[Any]:
     return treespec.entries()
 
 
-def treespec_entry(treespec: PyTreeSpec, index: int) -> Any:
+def treespec_entry(treespec: PyTreeSpec, index: int, /) -> Any:
     """Return the entry of a treespec at the given index.
 
     See also :func:`treespec_entries`, :func:`treespec_children`, and :meth:`PyTreeSpec.entry`.
@@ -2569,7 +2610,7 @@ def treespec_entry(treespec: PyTreeSpec, index: int) -> Any:
     return treespec.entry(index)
 
 
-def treespec_children(treespec: PyTreeSpec) -> list[PyTreeSpec]:
+def treespec_children(treespec: PyTreeSpec, /) -> list[PyTreeSpec]:
     """Return a list of treespecs for the children of a treespec.
 
     See also :func:`treespec_child`, :func:`treespec_paths`, :func:`treespec_entries`,
@@ -2578,7 +2619,7 @@ def treespec_children(treespec: PyTreeSpec) -> list[PyTreeSpec]:
     return treespec.children()
 
 
-def treespec_child(treespec: PyTreeSpec, index: int) -> PyTreeSpec:
+def treespec_child(treespec: PyTreeSpec, index: int, /) -> PyTreeSpec:
     """Return the treespec of the child of a treespec at the given index.
 
     See also :func:`treespec_children`, :func:`treespec_entries`, and :meth:`PyTreeSpec.child`.
@@ -2586,7 +2627,7 @@ def treespec_child(treespec: PyTreeSpec, index: int) -> PyTreeSpec:
     return treespec.child(index)
 
 
-def treespec_is_leaf(treespec: PyTreeSpec, strict: bool = True) -> bool:
+def treespec_is_leaf(treespec: PyTreeSpec, /, *, strict: bool = True) -> bool:
     """Return whether the treespec is a leaf that has no children.
 
     See also :func:`treespec_is_strict_leaf` and :meth:`PyTreeSpec.is_leaf`.
@@ -2630,7 +2671,7 @@ def treespec_is_leaf(treespec: PyTreeSpec, strict: bool = True) -> bool:
     return treespec.num_nodes == 1
 
 
-def treespec_is_strict_leaf(treespec: PyTreeSpec) -> bool:
+def treespec_is_strict_leaf(treespec: PyTreeSpec, /) -> bool:
     """Return whether the treespec is a strict leaf.
 
     See also :func:`treespec_is_leaf` and :meth:`PyTreeSpec.is_leaf`.
@@ -2666,6 +2707,8 @@ def treespec_is_strict_leaf(treespec: PyTreeSpec) -> bool:
 def treespec_is_prefix(
     treespec: PyTreeSpec,
     other_treespec: PyTreeSpec,
+    /,
+    *,
     strict: bool = False,
 ) -> bool:
     """Return whether ``treespec`` is a prefix of ``other_treespec``.
@@ -2678,6 +2721,8 @@ def treespec_is_prefix(
 def treespec_is_suffix(
     treespec: PyTreeSpec,
     other_treespec: PyTreeSpec,
+    /,
+    *,
     strict: bool = False,
 ) -> bool:
     """Return whether ``treespec`` is a suffix of ``other_treespec``.
@@ -2789,11 +2834,12 @@ def treespec_none(
 
 def treespec_tuple(
     iterable: Iterable[PyTreeSpec] = (),
+    /,
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a tuple treespec from a list of child treespecs.
+    """Make a tuple treespec from an iterable of child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -2834,11 +2880,12 @@ def treespec_tuple(
 
 def treespec_list(
     iterable: Iterable[PyTreeSpec] = (),
+    /,
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a list treespec from a list of child treespecs.
+    """Make a list treespec from an iterable of child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -2879,6 +2926,7 @@ def treespec_list(
 
 def treespec_dict(
     mapping: Mapping[Any, PyTreeSpec] | Iterable[tuple[Any, PyTreeSpec]] = (),
+    /,
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
@@ -2926,6 +2974,7 @@ def treespec_dict(
 
 def treespec_namedtuple(
     namedtuple: NamedTuple[PyTreeSpec],  # type: ignore[type-arg]
+    /,
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
@@ -2971,6 +3020,7 @@ def treespec_namedtuple(
 
 def treespec_ordereddict(
     mapping: Mapping[Any, PyTreeSpec] | Iterable[tuple[Any, PyTreeSpec]] = (),
+    /,
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
@@ -3019,6 +3069,7 @@ def treespec_ordereddict(
 def treespec_defaultdict(
     default_factory: Callable[[], Any] | None = None,
     mapping: Mapping[Any, PyTreeSpec] | Iterable[tuple[Any, PyTreeSpec]] = (),
+    /,
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
@@ -3070,6 +3121,7 @@ def treespec_defaultdict(
 
 def treespec_deque(
     iterable: Iterable[PyTreeSpec] = (),
+    /,
     maxlen: int | None = None,
     *,
     none_is_leaf: bool = False,
@@ -3118,6 +3170,7 @@ def treespec_deque(
 
 def treespec_structseq(
     structseq: StructSequence[PyTreeSpec],
+    /,
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
@@ -3150,6 +3203,7 @@ def treespec_structseq(
 
 def treespec_from_collection(
     collection: Collection[PyTreeSpec],
+    /,
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
@@ -3202,6 +3256,7 @@ STANDARD_DICT_TYPES: frozenset[type] = frozenset({dict, OrderedDict, defaultdict
 def prefix_errors(  # noqa: C901
     prefix_tree: PyTree[T],
     full_tree: PyTree[S],
+    /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,

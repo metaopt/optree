@@ -56,6 +56,8 @@ Point(x=2.0, y=6.0, z=3.0, norm=7.0)
 True
 """
 
+# pylint: disable=too-many-arguments
+
 from __future__ import annotations
 
 import contextlib
@@ -83,7 +85,7 @@ _TypeT = TypeVar('_TypeT', bound=type)
 
 
 @overload  # type: ignore[no-redef]
-def field(  # pylint: disable=too-many-arguments
+def field(
     *,
     default: _T,
     init: bool = True,
@@ -97,7 +99,7 @@ def field(  # pylint: disable=too-many-arguments
 
 
 @overload
-def field(  # pylint: disable=too-many-arguments
+def field(
     *,
     default_factory: Callable[[], _T],
     init: bool = True,
@@ -111,7 +113,7 @@ def field(  # pylint: disable=too-many-arguments
 
 
 @overload
-def field(  # pylint: disable=too-many-arguments
+def field(
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
@@ -123,7 +125,7 @@ def field(  # pylint: disable=too-many-arguments
 ) -> Any: ...
 
 
-def field(  # noqa: D417 # pylint: disable=function-redefined,too-many-arguments
+def field(  # noqa: D417 # pylint: disable=function-redefined
     *,
     default: Any = dataclasses.MISSING,
     default_factory: Any = dataclasses.MISSING,
@@ -190,7 +192,7 @@ def field(  # noqa: D417 # pylint: disable=function-redefined,too-many-arguments
 
 
 @overload  # type: ignore[no-redef]
-def dataclass(  # pylint: disable=too-many-arguments
+def dataclass(
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
@@ -207,8 +209,9 @@ def dataclass(  # pylint: disable=too-many-arguments
 
 
 @overload
-def dataclass(  # pylint: disable=too-many-arguments
+def dataclass(
     cls: _TypeT,
+    /,
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
@@ -225,8 +228,9 @@ def dataclass(  # pylint: disable=too-many-arguments
 
 
 @dataclass_transform(field_specifiers=(field,))
-def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-arguments,too-many-locals,too-many-branches
+def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-locals,too-many-branches
     cls: _TypeT | None = None,
+    /,
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
@@ -344,7 +348,7 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-
     )
 
 
-# pylint: disable-next=function-redefined,too-many-arguments,too-many-locals,too-many-branches
+# pylint: disable-next=function-redefined,too-many-locals,too-many-branches
 def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
     cls_name: str,
     # pylint: disable-next=redefined-outer-name
