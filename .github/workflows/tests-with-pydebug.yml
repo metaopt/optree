@@ -43,7 +43,6 @@ jobs:
       matrix:
         runner: [ubuntu-latest, macos-latest, windows-latest]
         python-version:
-          - "3.7"
           - "3.8"
           - "3.9"
           - "3.10"
@@ -52,8 +51,6 @@ jobs:
           - "3.13"
         python-abiflags: ["d", "td"]
         exclude:
-          - python-version: "3.7"
-            python-abiflags: "td"
           - python-version: "3.8"
             python-abiflags: "td"
           - python-version: "3.9"

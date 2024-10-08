@@ -2228,12 +2228,8 @@ def tree_max(
     """
     leaves = tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     if default is __MISSING:
-        if key is None:  # special handling for Python 3.7
-            return max(leaves)  # type: ignore[type-var]
-        return max(leaves, key=key)
-    if key is None:  # special handling for Python 3.7
-        return max(leaves, default=default)  # type: ignore[type-var]
-    return max(leaves, default=default, key=key)
+        return max(leaves, key=key)  # type: ignore[type-var,arg-type]
+    return max(leaves, default=default, key=key)  # type: ignore[type-var,arg-type]
 
 
 @overload
@@ -2321,12 +2317,8 @@ def tree_min(
     """
     leaves = tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     if default is __MISSING:
-        if key is None:  # special handling for Python 3.7
-            return min(leaves)  # type: ignore[type-var]
-        return min(leaves, key=key)
-    if key is None:  # special handling for Python 3.7
-        return min(leaves, default=default)  # type: ignore[type-var]
-    return min(leaves, default=default, key=key)
+        return min(leaves, key=key)  # type: ignore[type-var,arg-type]
+    return min(leaves, default=default, key=key)  # type: ignore[type-var,arg-type]
 
 
 def tree_all(
