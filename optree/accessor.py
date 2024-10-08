@@ -76,7 +76,7 @@ class PyTreeEntry:
         if self.kind == PyTreeKind.NONE:
             raise ValueError('Cannot create a path entry for None.')
 
-    def __call__(self, obj: Any) -> Any:
+    def __call__(self, obj: Any, /) -> Any:
         """Get the child object."""
         try:
             return obj[self.entry]  # should be overridden
@@ -85,7 +85,7 @@ class PyTreeEntry:
                 f'{self.__class__!r} cannot access through {obj!r} via entry {self.entry!r}',
             ) from ex
 
-    def __add__(self, other: object) -> PyTreeAccessor:
+    def __add__(self, other: object, /) -> PyTreeAccessor:
         """Join the path entry with another path entry or accessor."""
         if isinstance(other, PyTreeEntry):
             return PyTreeAccessor((self, other))
@@ -93,7 +93,7 @@ class PyTreeEntry:
             return PyTreeAccessor((self, *other))
         return NotImplemented
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object, /) -> bool:
         """Check if the path entries are equal."""
         return isinstance(other, PyTreeEntry) and (
             (
@@ -196,7 +196,7 @@ class GetItemEntry(PyTreeEntry):
 
     __slots__: ClassVar[tuple[()]] = ()
 
-    def __call__(self, obj: Any) -> Any:
+    def __call__(self, obj: Any, /) -> Any:
         """Get the child object."""
         return obj[self.entry]
 
@@ -217,7 +217,7 @@ class GetAttrEntry(PyTreeEntry):
         """Get the attribute name."""
         return self.entry
 
-    def __call__(self, obj: Any) -> Any:
+    def __call__(self, obj: Any, /) -> Any:
         """Get the child object."""
         return getattr(obj, self.name)
 
@@ -245,7 +245,7 @@ class SequenceEntry(GetItemEntry, Generic[_T_co]):
         """Get the index."""
         return self.entry
 
-    def __call__(self, obj: Sequence[_T_co]) -> _T_co:
+    def __call__(self, obj: Sequence[_T_co], /) -> _T_co:
         """Get the child object."""
         return obj[self.index]
 
@@ -267,7 +267,7 @@ class MappingEntry(GetItemEntry, Generic[_KT_co, _VT_co]):
         """Get the key."""
         return self.entry
 
-    def __call__(self, obj: Mapping[_KT_co, _VT_co]) -> _VT_co:
+    def __call__(self, obj: Mapping[_KT_co, _VT_co], /) -> _VT_co:
         """Get the child object."""
         return obj[self.key]
 
@@ -383,27 +383,27 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
             raise TypeError(f'Expected a path of PyTreeEntry, got {path!r}.')
         return super().__new__(cls, path)
 
-    def __call__(self, obj: Any) -> Any:
+    def __call__(self, obj: Any, /) -> Any:
         """Get the child object."""
         for entry in self:
             obj = entry(obj)
         return obj
 
     @overload  # type: ignore[override]
-    def __getitem__(self, index: int) -> PyTreeEntry:  # noqa: D105,RUF100
+    def __getitem__(self, index: int, /) -> PyTreeEntry:  # noqa: D105,RUF100
         ...
 
     @overload
-    def __getitem__(self, index: slice) -> PyTreeAccessor:  # noqa: D105,RUF100
+    def __getitem__(self, index: slice, /) -> PyTreeAccessor:  # noqa: D105,RUF100
         ...
 
-    def __getitem__(self, index: int | slice) -> PyTreeEntry | PyTreeAccessor:
+    def __getitem__(self, index: int | slice, /) -> PyTreeEntry | PyTreeAccessor:
         """Get the child path entry or an accessor for a subpath."""
         if isinstance(index, slice):
             return PyTreeAccessor(super().__getitem__(index))
         return super().__getitem__(index)
 
-    def __add__(self, other: object) -> PyTreeAccessor:
+    def __add__(self, other: object, /) -> PyTreeAccessor:
         """Join the accessor with another path entry or accessor."""
         if isinstance(other, PyTreeEntry):
             return PyTreeAccessor((*self, other))
@@ -411,15 +411,15 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
             return PyTreeAccessor((*self, *other))
         return NotImplemented
 
-    def __mul__(self, value: int) -> PyTreeAccessor:  # type: ignore[override]
+    def __mul__(self, value: int, /) -> PyTreeAccessor:  # type: ignore[override]
         """Repeat the accessor."""
         return PyTreeAccessor(super().__mul__(value))
 
-    def __rmul__(self, value: int) -> PyTreeAccessor:  # type: ignore[override]
+    def __rmul__(self, value: int, /) -> PyTreeAccessor:  # type: ignore[override]
         """Repeat the accessor."""
         return PyTreeAccessor(super().__rmul__(value))
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object, /) -> bool:
         """Check if the accessors are equal."""
         return isinstance(other, PyTreeAccessor) and super().__eq__(other)
 

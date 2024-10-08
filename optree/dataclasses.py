@@ -155,6 +155,7 @@ _TypeT = TypeVar('_TypeT', bound=type)
 @dataclass_transform(field_specifiers=(field,))
 def dataclass(  # pylint: disable=too-many-arguments
     cls: None,
+    /,
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
@@ -175,6 +176,7 @@ def dataclass(  # pylint: disable=too-many-arguments
 @dataclass_transform(field_specifiers=(field,))
 def dataclass(  # pylint: disable=too-many-arguments
     cls: _TypeT,
+    /,
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
@@ -193,6 +195,7 @@ def dataclass(  # pylint: disable=too-many-arguments
 @dataclass_transform(field_specifiers=(field,))
 def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-arguments,too-many-locals,too-many-branches
     cls: _TypeT | None = None,
+    /,
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
