@@ -51,18 +51,7 @@ def test_same_signature():
             for name, param in field_parameters.items()
         ][: len(field_original_parameters)],
     ) == OrderedDict(
-        (
-            name,
-            (
-                param.name,
-                (
-                    param.kind
-                    if param.kind != inspect.Parameter.POSITIONAL_ONLY
-                    else inspect.Parameter.POSITIONAL_OR_KEYWORD
-                ),
-                param.default,
-            ),
-        )
+        (name, (param.name, param.kind, param.default))
         for name, param in field_original_parameters.items()
     )
 
@@ -79,18 +68,7 @@ def test_same_signature():
             for name, param in dataclass_parameters.items()
         ][: len(dataclass_original_parameters)],
     ) == OrderedDict(
-        (
-            name,
-            (
-                param.name,
-                (
-                    param.kind
-                    if param.kind != inspect.Parameter.POSITIONAL_ONLY
-                    else inspect.Parameter.POSITIONAL_OR_KEYWORD
-                ),
-                param.default,
-            ),
-        )
+        (name, (param.name, param.kind, param.default))
         for name, param in dataclass_original_parameters.items()
     )
 
@@ -116,18 +94,7 @@ def test_same_signature():
             for name, param in make_dataclass_parameters.items()
         ][: len(make_dataclass_original_parameters)],
     ) == OrderedDict(
-        (
-            name,
-            (
-                param.name,
-                (
-                    param.kind
-                    if param.kind != inspect.Parameter.POSITIONAL_ONLY
-                    else inspect.Parameter.POSITIONAL_OR_KEYWORD
-                ),
-                param.default,
-            ),
-        )
+        (name, (param.name, param.kind, param.default))
         for name, param in make_dataclass_original_parameters.items()
     )
 
