@@ -27,6 +27,7 @@ from typing import (
     DefaultDict,
     Deque,
     Dict,
+    Final,
     ForwardRef,
     Generic,
     ItemsView,
@@ -36,20 +37,19 @@ from typing import (
     List,
     NoReturn,
     Optional,
+    OrderedDict,
+    Protocol,
     Sequence,
     Tuple,
     TypeVar,
     Union,
     ValuesView,
+    runtime_checkable,
 )
-from typing_extensions import Final  # Python 3.8+
 from typing_extensions import NamedTuple  # Generic NamedTuple: Python 3.11+
-from typing_extensions import OrderedDict  # Generic OrderedDict: Python 3.7.2+
 from typing_extensions import ParamSpec  # Python 3.10+
-from typing_extensions import Protocol  # Python 3.8+
 from typing_extensions import Self  # Python 3.11+
 from typing_extensions import TypeAlias  # Python 3.10+
-from typing_extensions import runtime_checkable  # Python 3.8+
 
 from optree import _C
 from optree._C import PyTreeKind, PyTreeSpec
@@ -156,7 +156,7 @@ _UnionType = type(Union[int, str])
 
 
 def _tp_cache(func: Callable[P, T]) -> Callable[P, T]:
-    cached = functools.lru_cache()(func)
+    cached = functools.lru_cache(func)
 
     @functools.wraps(func)
     def inner(*args: P.args, **kwargs: P.kwargs) -> T:

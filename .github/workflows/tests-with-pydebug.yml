@@ -36,11 +36,15 @@ jobs:
     strategy:
       matrix:
         runner: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
         python-abiflags: ["d", "td"]
         exclude:
-          - python-version: "3.7"
-            python-abiflags: "td"
           - python-version: "3.8"
             python-abiflags: "td"
           - python-version: "3.9"
