@@ -17,12 +17,11 @@
 
 import builtins
 import enum
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Collection, Iterable, Iterator
 from typing import Any
 from typing_extensions import Self
 
 from optree.typing import (
-    CustomTreeNode,
     FlattenFunc,
     MetaData,
     PyTree,
@@ -63,7 +62,7 @@ def make_none(
     namespace: str = '',  # unused
 ) -> PyTreeSpec: ...
 def make_from_collection(
-    collection: CustomTreeNode[PyTreeSpec],
+    collection: Collection[PyTreeSpec],
     node_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec: ...
@@ -149,14 +148,14 @@ class PyTreeIter(Iterator[T]):
     def __next__(self) -> T: ...
 
 def register_node(
-    cls: type[CustomTreeNode[T]],
-    flatten_func: FlattenFunc,
-    unflatten_func: UnflattenFunc,
+    cls: type[Collection[T]],
+    flatten_func: FlattenFunc[T],
+    unflatten_func: UnflattenFunc[T],
     path_entry_type: type[PyTreeEntry],
     namespace: str = '',
 ) -> None: ...
 def unregister_node(
-    cls: type[CustomTreeNode[T]],
+    cls: type,
     namespace: str = '',
 ) -> None: ...
 def is_dict_insertion_ordered(

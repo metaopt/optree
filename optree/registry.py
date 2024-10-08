@@ -30,15 +30,18 @@ from typing import (
     Any,
     Callable,
     ClassVar,
+    Collection,
     Generator,
+    Generic,
     Iterable,
     NamedTuple,
     Sequence,
     Type,
+    TypeVar,
     overload,
 )
-from typing_extensions import TypeAlias  # Python 3.10+
 from typing_extensions import deprecated  # Python 3.13+
+from typing_extensions import ParamSpec, TypeAlias  # Python 3.10+
 
 from optree import _C
 from optree.accessor import (
@@ -54,7 +57,6 @@ from optree.typing import (
     VT,
     CustomTreeNode,
     FlattenFunc,
-    PyTree,
     T,
     UnflattenFunc,
     is_namedtuple_class,
@@ -80,12 +82,12 @@ SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}  # Python 3.10+
 
 
 @dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, **SLOTS)
-class PyTreeNodeRegistryEntry:
+class PyTreeNodeRegistryEntry(Generic[T]):
     """A dataclass that stores the information of a pytree node type."""
 
-    type: builtins.type
-    flatten_func: FlattenFunc
-    unflatten_func: UnflattenFunc
+    type: builtins.type[Collection[T]]
+    flatten_func: FlattenFunc[T]
+    unflatten_func: UnflattenFunc[T]
 
     if sys.version_info >= (3, 10):
         _: dataclasses.KW_ONLY  # Python 3.10+
@@ -110,17 +112,79 @@ __REGISTRY_LOCK: Lock = Lock()
 del GlobalNamespace
 
 
-CustomTreeNodeT: TypeAlias = Type[CustomTreeNode[T]]
+if TYPE_CHECKING:
+    _P = ParamSpec('_P')
+    _T = TypeVar('_T')
+    _GetP = ParamSpec('_GetP')
+    _GetT = TypeVar('_GetT')
+
+    class _CallableWithGet(Generic[_P, _T, _GetP, _GetT]):
+        def __call__(self, *args: _P.args, **kwargs: _P.kwargs) -> _T:
+            raise NotImplementedError
+
+        def get(self, *args: _GetP.args, **kwargs: _GetP.kwargs) -> _GetT:
+            raise NotImplementedError
 
 
+def _add_get(
+    get: Callable[_GetP, _GetT],
+) -> Callable[
+    [Callable[_P, _T]],
+    _CallableWithGet[_P, _T, _GetP, _GetT],
+]:
+    def decorator(func: Callable[_P, _T]) -> _CallableWithGet[_P, _T, _GetP, _GetT]:
+        func.get = get  # type: ignore[attr-defined]
+        return func  # type: ignore[return-value]
+
+    return decorator
+
+
+def _pytree_node_registry_get(
+    cls: type,
+    *,
+    namespace: str = '',
+) -> PyTreeNodeRegistryEntry | None:
+    handler: PyTreeNodeRegistryEntry | None = None
+    if namespace is not __GLOBAL_NAMESPACE and namespace != '':
+        handler = _NODETYPE_REGISTRY.get((namespace, cls))
+        if handler is not None:
+            return handler
+
+    if _C.is_dict_insertion_ordered(namespace):
+        if cls is dict:
+            return PyTreeNodeRegistryEntry(
+                dict,
+                _dict_insertion_ordered_flatten,  # type: ignore[arg-type]
+                _dict_insertion_ordered_unflatten,  # type: ignore[arg-type]
+                path_entry_type=MappingEntry,
+            )
+        if cls is defaultdict:
+            return PyTreeNodeRegistryEntry(
+                defaultdict,
+                _defaultdict_insertion_ordered_flatten,  # type: ignore[arg-type]
+                _defaultdict_insertion_ordered_unflatten,  # type: ignore[arg-type]
+                path_entry_type=MappingEntry,
+            )
+
+    handler = _NODETYPE_REGISTRY.get(cls)
+    if handler is not None:
+        return handler
+    if is_structseq_class(cls):
+        return _NODETYPE_REGISTRY.get(structseq)
+    if is_namedtuple_class(cls):
+        return _NODETYPE_REGISTRY.get(namedtuple)  # type: ignore[call-overload] # noqa: PYI024
+    return None
+
+
+@_add_get(_pytree_node_registry_get)
 def register_pytree_node(
-    cls: CustomTreeNodeT,
-    flatten_func: FlattenFunc,
-    unflatten_func: UnflattenFunc,
+    cls: type[Collection[T]],
+    flatten_func: FlattenFunc[T],
+    unflatten_func: UnflattenFunc[T],
     *,
     path_entry_type: type[PyTreeEntry] = AutoEntry,
     namespace: str,
-) -> CustomTreeNodeT:
+) -> type[Collection[T]]:
     """Extend the set of types that are considered internal nodes in pytrees.
 
     See also :func:`register_pytree_node_class` and :func:`unregister_pytree_node`.
@@ -272,30 +336,36 @@ def register_pytree_node(
     return cls
 
 
+del _pytree_node_registry_get
+
+
+CustomTreeNodeType: TypeAlias = Type[CustomTreeNode[T]]
+
+
 @overload
 def register_pytree_node_class(
     cls: str | None = None,
     *,
     path_entry_type: type[PyTreeEntry] | None = None,
     namespace: str | None = None,
-) -> Callable[[CustomTreeNodeT], CustomTreeNodeT]: ...
+) -> Callable[[CustomTreeNodeType], CustomTreeNodeType]: ...
 
 
 @overload
 def register_pytree_node_class(
-    cls: CustomTreeNodeT,
+    cls: CustomTreeNodeType,
     *,
     path_entry_type: type[PyTreeEntry] | None,
     namespace: str,
-) -> CustomTreeNodeT: ...
+) -> CustomTreeNodeType: ...
 
 
 def register_pytree_node_class(  # noqa: C901
-    cls: CustomTreeNodeT | str | None = None,
+    cls: CustomTreeNodeType | str | None = None,
     *,
     path_entry_type: type[PyTreeEntry] | None = None,
     namespace: str | None = None,
-) -> CustomTreeNodeT | Callable[[CustomTreeNodeT], CustomTreeNodeT]:
+) -> CustomTreeNodeType | Callable[[CustomTreeNodeType], CustomTreeNodeType]:
     """Extend the set of types that are considered internal nodes in pytrees.
 
     See also :func:`register_pytree_node` and :func:`unregister_pytree_node`.
@@ -397,11 +467,7 @@ def register_pytree_node_class(  # noqa: C901
     return cls
 
 
-def unregister_pytree_node(
-    cls: type[CustomTreeNode[T]],
-    *,
-    namespace: str,
-) -> PyTreeNodeRegistryEntry:
+def unregister_pytree_node(cls: type, *, namespace: str) -> PyTreeNodeRegistryEntry:
     """Remove a type from the pytree node registry.
 
     See also :func:`register_pytree_node` and :func:`register_pytree_node_class`.
@@ -452,6 +518,53 @@ def unregister_pytree_node(
     with __REGISTRY_LOCK:
         _C.unregister_node(cls, namespace)
         return _NODETYPE_REGISTRY.pop(registration_key)
+
+
+@contextlib.contextmanager
+def dict_insertion_ordered(mode: bool, *, namespace: str) -> Generator[None]:
+    """Context manager to temporarily set the dictionary sorting mode.
+
+    This context manager is used to temporarily set the dictionary sorting mode for a specific
+    namespace. The dictionary sorting mode is used to determine whether the keys of a dictionary
+    should be sorted or keeping the insertion order when flattening a pytree.
+
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> tree_flatten(tree)  # doctest: +IGNORE_WHITESPACE
+    (
+        [1, 2, 3, 4, 5],
+        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
+    )
+    >>> with dict_insertion_ordered(True, namespace='some-namespace'):  # doctest: +IGNORE_WHITESPACE
+    ...     tree_flatten(tree, namespace='some-namespace')
+    (
+        [2, 3, 4, 1, 5],
+        PyTreeSpec({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}, namespace='some-namespace')
+    )
+
+    .. warning::
+        The dictionary sorting mode is a global setting and is **not thread-safe**. It is
+        recommended to use this context manager in a single-threaded environment.
+
+    Args:
+        mode (bool): The dictionary sorting mode to set.
+        namespace (str): The namespace to set the dictionary sorting mode for.
+    """
+    if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
+        raise TypeError(f'The namespace must be a string, got {namespace!r}.')
+    if namespace == '':
+        raise ValueError('The namespace cannot be an empty string.')
+    if namespace is __GLOBAL_NAMESPACE:
+        namespace = ''
+
+    with __REGISTRY_LOCK:
+        prev = _C.is_dict_insertion_ordered(namespace, inherit_global_namespace=False)
+        _C.set_dict_insertion_ordered(bool(mode), namespace)
+
+    try:
+        yield
+    finally:
+        with __REGISTRY_LOCK:
+            _C.set_dict_insertion_ordered(prev, namespace)
 
 
 def _sorted_items(items: Iterable[tuple[KT, VT]]) -> list[tuple[KT, VT]]:
@@ -585,94 +698,6 @@ _NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {
 # pylint: enable=all
 
 
-def _pytree_node_registry_get(
-    cls: type,
-    *,
-    namespace: str = '',
-) -> PyTreeNodeRegistryEntry | None:
-    handler: PyTreeNodeRegistryEntry | None = None
-    if namespace is not __GLOBAL_NAMESPACE and namespace != '':
-        handler = _NODETYPE_REGISTRY.get((namespace, cls))
-        if handler is not None:
-            return handler
-
-    if _C.is_dict_insertion_ordered(namespace):
-        if cls is dict:
-            return PyTreeNodeRegistryEntry(
-                dict,
-                _dict_insertion_ordered_flatten,  # type: ignore[arg-type]
-                _dict_insertion_ordered_unflatten,  # type: ignore[arg-type]
-                path_entry_type=MappingEntry,
-            )
-        if cls is defaultdict:
-            return PyTreeNodeRegistryEntry(
-                defaultdict,
-                _defaultdict_insertion_ordered_flatten,  # type: ignore[arg-type]
-                _defaultdict_insertion_ordered_unflatten,  # type: ignore[arg-type]
-                path_entry_type=MappingEntry,
-            )
-
-    handler = _NODETYPE_REGISTRY.get(cls)
-    if handler is not None:
-        return handler
-    if is_structseq_class(cls):
-        return _NODETYPE_REGISTRY.get(structseq)
-    if is_namedtuple_class(cls):
-        return _NODETYPE_REGISTRY.get(namedtuple)  # type: ignore[call-overload] # noqa: PYI024
-    return None
-
-
-register_pytree_node.get = _pytree_node_registry_get  # type: ignore[attr-defined]
-del _pytree_node_registry_get
-
-
-@contextlib.contextmanager
-def dict_insertion_ordered(mode: bool, *, namespace: str) -> Generator[None]:
-    """Context manager to temporarily set the dictionary sorting mode.
-
-    This context manager is used to temporarily set the dictionary sorting mode for a specific
-    namespace. The dictionary sorting mode is used to determine whether the keys of a dictionary
-    should be sorted or keeping the insertion order when flattening a pytree.
-
-    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
-    >>> tree_flatten(tree)  # doctest: +IGNORE_WHITESPACE
-    (
-        [1, 2, 3, 4, 5],
-        PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
-    )
-    >>> with dict_insertion_ordered(True, namespace='some-namespace'):  # doctest: +IGNORE_WHITESPACE
-    ...     tree_flatten(tree, namespace='some-namespace')
-    (
-        [2, 3, 4, 1, 5],
-        PyTreeSpec({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}, namespace='some-namespace')
-    )
-
-    .. warning::
-        The dictionary sorting mode is a global setting and is **not thread-safe**. It is
-        recommended to use this context manager in a single-threaded environment.
-
-    Args:
-        mode (bool): The dictionary sorting mode to set.
-        namespace (str): The namespace to set the dictionary sorting mode for.
-    """
-    if namespace is not __GLOBAL_NAMESPACE and not isinstance(namespace, str):
-        raise TypeError(f'The namespace must be a string, got {namespace!r}.')
-    if namespace == '':
-        raise ValueError('The namespace cannot be an empty string.')
-    if namespace is __GLOBAL_NAMESPACE:
-        namespace = ''
-
-    with __REGISTRY_LOCK:
-        prev = _C.is_dict_insertion_ordered(namespace, inherit_global_namespace=False)
-        _C.set_dict_insertion_ordered(bool(mode), namespace)
-
-    try:
-        yield
-    finally:
-        with __REGISTRY_LOCK:
-            _C.set_dict_insertion_ordered(prev, namespace)
-
-
 ####################################################################################################
 
 with warnings.catch_warnings():
@@ -767,18 +792,19 @@ with warnings.catch_warnings():
             """Pretty name of the key path entry."""
             return f'[<flat index {self.key}>]'
 
-    KeyPathHandler = Callable[[PyTree], Sequence[KeyPathEntry]]
-    _KEYPATH_REGISTRY: dict[type[CustomTreeNode], KeyPathHandler] = {}
+    KeyPathHandler = Callable[[Collection[T]], Sequence[KeyPathEntry]]
+    _KEYPATH_REGISTRY: dict[type[Collection], KeyPathHandler] = {}
 
     @deprecated(
         'The key path API is deprecated and will be removed in a future version. '
         'Please use the accessor API instead.',
         category=FutureWarning,
     )
+    @_add_get(_KEYPATH_REGISTRY.get)
     def register_keypaths(
-        cls: type[CustomTreeNode[T]],
-        handler: KeyPathHandler,
-    ) -> KeyPathHandler:
+        cls: type[Collection[T]],
+        handler: KeyPathHandler[T],
+    ) -> KeyPathHandler[T]:
         """Register a key path handler for a custom pytree node type."""
         if not inspect.isclass(cls):
             raise TypeError(f'Expected a class, got {cls!r}.')
@@ -788,11 +814,11 @@ with warnings.catch_warnings():
         _KEYPATH_REGISTRY[cls] = handler
         return handler
 
-    register_keypaths(tuple, lambda tup: list(map(GetitemKeyPathEntry, range(len(tup)))))  # type: ignore[arg-type]
-    register_keypaths(list, lambda lst: list(map(GetitemKeyPathEntry, range(len(lst)))))  # type: ignore[arg-type]
+    register_keypaths(tuple, lambda tup: list(map(GetitemKeyPathEntry, range(len(tup)))))
+    register_keypaths(list, lambda lst: list(map(GetitemKeyPathEntry, range(len(lst)))))
     register_keypaths(dict, lambda dct: list(map(GetitemKeyPathEntry, _sorted_keys(dct))))  # type: ignore[arg-type]
-    register_keypaths(OrderedDict, lambda odct: list(map(GetitemKeyPathEntry, odct)))  # type: ignore[arg-type,call-overload]
+    register_keypaths(OrderedDict, lambda odct: list(map(GetitemKeyPathEntry, odct)))
     register_keypaths(defaultdict, lambda ddct: list(map(GetitemKeyPathEntry, _sorted_keys(ddct))))  # type: ignore[arg-type]
-    register_keypaths(deque, lambda dq: list(map(GetitemKeyPathEntry, range(len(dq)))))  # type: ignore[arg-type]
+    register_keypaths(deque, lambda dq: list(map(GetitemKeyPathEntry, range(len(dq)))))
 
-    register_keypaths.get = _KEYPATH_REGISTRY.get  # type: ignore[attr-defined]
+del _add_get

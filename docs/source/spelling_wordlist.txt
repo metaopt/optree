@@ -93,3 +93,4 @@ redef
 hypot
 init
 ns
+metaclass
