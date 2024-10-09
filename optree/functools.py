@@ -42,13 +42,13 @@ class _HashablePartialShim:
     args: tuple[Any, ...]
     keywords: dict[str, Any]
 
-    def __init__(self, partial_func: functools.partial) -> None:
+    def __init__(self, partial_func: functools.partial, /) -> None:
         self.partial_func: functools.partial = partial_func
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         return self.partial_func(*args, **kwargs)
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object, /) -> bool:
         if isinstance(other, _HashablePartialShim):
             return self.partial_func == other.partial_func
         return self.partial_func == other
@@ -118,7 +118,7 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
 
     TREE_PATH_ENTRY_TYPE: ClassVar[type[PyTreeEntry]] = GetAttrEntry
 
-    def __new__(cls, func: Callable[..., Any], *args: T, **keywords: T) -> Self:
+    def __new__(cls, func: Callable[..., Any], /, *args: T, **keywords: T) -> Self:
         """Create a new :class:`partial` instance."""
         # In Python 3.10+, if func is itself a functools.partial instance, functools.partial.__new__
         # would merge the arguments of this partial instance with the arguments of the func. We box
