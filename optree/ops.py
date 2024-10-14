@@ -23,7 +23,7 @@ import functools
 import itertools
 import textwrap
 from collections import OrderedDict, defaultdict, deque
-from typing import Any, Callable, ClassVar, Collection, Iterable, Mapping, overload
+from typing import Any, Callable, ClassVar, Collection, Generic, Iterable, Mapping, overload
 
 from optree import _C
 from optree.accessor import PyTreeAccessor, PyTreeEntry
@@ -2425,18 +2425,29 @@ def tree_any(
     )
 
 
+class FlattenOneLevelOutput(NamedTuple, Generic[T]):
+    """The output of :func:`tree_flatten_one_level`."""
+
+    children: list[PyTree[T]]
+    """A list of one-level children of the pytree node."""
+
+    metadata: MetaData
+    """The metadata used to reconstruct the pytree node."""
+
+    entries: tuple[Any, ...]
+    """A tuple of path entries to the children."""
+
+    unflatten_func: Callable[[MetaData, list[PyTree[T]]], PyTree[T]]
+    """A function that can be used to unflatten the metadata and children back to the pytree node."""
+
+
 def tree_flatten_one_level(
     tree: PyTree[T],
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> tuple[
-    list[PyTree[T]],
-    MetaData,
-    tuple[Any, ...],
-    Callable[[MetaData, list[PyTree[T]]], PyTree[T]],
-]:
+) -> FlattenOneLevelOutput[T]:
     """Flatten the pytree one level, returning a 4-tuple of children, metadata, path entries, and an unflatten function.
 
     See also :func:`tree_flatten`, :func:`tree_flatten_with_path`.
@@ -2497,7 +2508,12 @@ def tree_flatten_one_level(
             f'PyTree custom flatten function for type {node_type} returned inconsistent '
             f'number of children ({len(children)}) and number of entries ({len(entries)}).',
         )
-    return children, metadata, entries, handler.unflatten_func  # type: ignore[return-value]
+    return FlattenOneLevelOutput(
+        children=children,
+        metadata=metadata,
+        entries=entries,
+        unflatten_func=handler.unflatten_func,  # type: ignore[arg-type]
+    )
 
 
 def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
@@ -3220,25 +3236,25 @@ def _prefix_error(
     # Or they may disagree if their roots have different numbers of children (note that because both
     # prefix_tree and full_tree have the same type at this point, and because prefix_tree is not a
     # leaf, each can be flattened once):
-    prefix_tree_children, prefix_tree_metadata, _, __ = tree_flatten_one_level(
+    prefix_tree_children, prefix_tree_metadata, *_ = tree_flatten_one_level(
         prefix_tree,
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
-    full_tree_children, full_tree_metadata, _, __ = tree_flatten_one_level(
+    full_tree_children, full_tree_metadata, *_ = tree_flatten_one_level(
         full_tree,
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
     # Special handling for dictionary types
     if both_standard_dict:
-        prefix_tree_keys = (
-            prefix_tree_metadata
+        prefix_tree_keys: list[Any] = (
+            prefix_tree_metadata  # type: ignore[assignment]
             if prefix_tree_type is not defaultdict  # type: ignore[comparison-overlap]
             else prefix_tree_metadata[1]  # type: ignore[index]
         )
-        full_tree_keys = (
-            full_tree_metadata
+        full_tree_keys: list[Any] = (
+            full_tree_metadata  # type: ignore[assignment]
             if full_tree_type is not defaultdict  # type: ignore[comparison-overlap]
             else full_tree_metadata[1]  # type: ignore[index]
         )
