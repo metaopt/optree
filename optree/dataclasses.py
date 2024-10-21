@@ -64,8 +64,7 @@ import inspect
 import sys
 import types
 from dataclasses import *  # noqa: F401,F403,RUF100 # pylint: disable=wildcard-import,unused-wildcard-import
-from typing import Any, Callable, Iterable, TypeVar, overload
-from typing_extensions import Literal  # Python 3.8+
+from typing import Any, Callable, Iterable, Literal, TypeVar, overload
 from typing_extensions import dataclass_transform  # Python 3.11+
 
 from optree.accessor import DataclassEntry
@@ -175,6 +174,7 @@ def dataclass(  # pylint: disable=too-many-arguments
 @dataclass_transform(field_specifiers=(field,))
 def dataclass(  # pylint: disable=too-many-arguments
     cls: _TypeT,
+    /,
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
@@ -193,6 +193,7 @@ def dataclass(  # pylint: disable=too-many-arguments
 @dataclass_transform(field_specifiers=(field,))
 def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-arguments,too-many-locals,too-many-branches
     cls: _TypeT | None = None,
+    /,
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin

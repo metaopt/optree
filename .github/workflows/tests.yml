@@ -38,13 +38,14 @@ jobs:
       matrix:
         runner: [ubuntu-latest, windows-latest, macos-latest]
         python-version:
-          ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "pypy-3.9", "pypy-3.10"]
-        include:
-          - runner: macos-13
-            python-version: "3.7"
-        exclude:
-          - runner: macos-latest
-            python-version: "3.7"  # Python 3.7 does not support macOS ARM64
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "pypy-3.9"
+          - "pypy-3.10"
       fail-fast: false
     timeout-minutes: 90
     steps:
@@ -61,11 +62,6 @@ jobs:
       - name: Upgrade pip
         run: |
           python -m pip install --upgrade pip setuptools wheel
-
-      - name: Set `SETUPTOOLS_ENABLE_FEATURES`
-        if: ${{ matrix.python-version == '3.7' && runner.os == 'Windows' }}
-        run: |
-          Write-Output 'SETUPTOOLS_ENABLE_FEATURES=legacy-editable' | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Install test dependencies
         shell: bash
