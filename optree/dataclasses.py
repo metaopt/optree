@@ -86,8 +86,8 @@ _U = TypeVar('_U')
 _TypeT = TypeVar('_TypeT', bound=type)
 
 
-@overload
-def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-many-arguments
+@overload  # type: ignore[no-redef]
+def field(  # pylint: disable=too-many-arguments
     *,
     default: _T,
     init: bool = True,
@@ -101,7 +101,7 @@ def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-ma
 
 
 @overload
-def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-many-arguments
+def field(  # pylint: disable=too-many-arguments
     *,
     default_factory: Callable[[], _T],
     init: bool = True,
@@ -115,7 +115,7 @@ def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-ma
 
 
 @overload
-def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-many-arguments
+def field(  # pylint: disable=too-many-arguments
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
@@ -127,7 +127,7 @@ def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-ma
 ) -> Any: ...
 
 
-def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-many-arguments
+def field(  # pylint: disable=function-redefined,too-many-arguments
     *,
     default: Any = dataclasses.MISSING,
     default_factory: Any = dataclasses.MISSING,

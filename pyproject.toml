@@ -173,6 +173,7 @@ typecheck.generated-members = ["numpy.*", "torch.*"]
 
 [tool.pydocstyle]
 convention = "google"
+add-ignore = ["D103"]
 
 [tool.doc8]
 max-line-length = 500
