@@ -94,10 +94,11 @@ def field(  # pylint: disable=too-many-arguments
     repr: bool = True,  # pylint: disable=redefined-builtin
     hash: bool | None = None,  # pylint: disable=redefined-builtin
     compare: bool = True,
-    metadata: dict[str, Any] | None = None,
+    metadata: dict[Any, Any] | None = None,
     kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
     pytree_node: bool | None = None,
-) -> _T: ...
+) -> _T:
+    """Field factory for :func:`dataclass`."""
 
 
 @overload
@@ -108,7 +109,7 @@ def field(  # pylint: disable=too-many-arguments
     repr: bool = True,  # pylint: disable=redefined-builtin
     hash: bool | None = None,  # pylint: disable=redefined-builtin
     compare: bool = True,
-    metadata: dict[str, Any] | None = None,
+    metadata: dict[Any, Any] | None = None,
     kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
     pytree_node: bool | None = None,
 ) -> _T: ...
@@ -121,7 +122,7 @@ def field(  # pylint: disable=too-many-arguments
     repr: bool = True,  # pylint: disable=redefined-builtin
     hash: bool | None = None,  # pylint: disable=redefined-builtin
     compare: bool = True,
-    metadata: dict[str, Any] | None = None,
+    metadata: dict[Any, Any] | None = None,
     kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
     pytree_node: bool | None = None,
 ) -> Any: ...
@@ -135,7 +136,7 @@ def field(  # pylint: disable=function-redefined,too-many-arguments
     repr: bool = True,  # pylint: disable=redefined-builtin
     hash: bool | None = None,  # pylint: disable=redefined-builtin
     compare: bool = True,
-    metadata: dict[str, Any] | None = None,
+    metadata: dict[Any, Any] | None = None,
     kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
     pytree_node: bool | None = None,
 ) -> Any:
