@@ -153,7 +153,6 @@ _TypeT = TypeVar('_TypeT', bound=type)
 
 
 @overload  # type: ignore[no-redef]
-@dataclass_transform(field_specifiers=(field,))
 def dataclass(  # pylint: disable=too-many-arguments
     *,
     init: bool = True,
@@ -172,7 +171,6 @@ def dataclass(  # pylint: disable=too-many-arguments
 
 
 @overload
-@dataclass_transform(field_specifiers=(field,))
 def dataclass(  # pylint: disable=too-many-arguments
     cls: _TypeT,
     *,
