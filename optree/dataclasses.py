@@ -81,7 +81,54 @@ _FIELDS = '__optree_dataclass_fields__'
 _PYTREE_NODE_DEFAULT: bool = True
 
 
-def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-many-arguments
+_T = TypeVar('_T')
+_U = TypeVar('_U')
+_TypeT = TypeVar('_TypeT', bound=type)
+
+
+@overload  # type: ignore[no-redef]
+def field(  # pylint: disable=too-many-arguments
+    *,
+    default: _T,
+    init: bool = True,
+    repr: bool = True,  # pylint: disable=redefined-builtin
+    hash: bool | None = None,  # pylint: disable=redefined-builtin
+    compare: bool = True,
+    metadata: dict[Any, Any] | None = None,
+    kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
+    pytree_node: bool | None = None,
+) -> _T:
+    """Field factory for :func:`dataclass`."""
+
+
+@overload
+def field(  # pylint: disable=too-many-arguments
+    *,
+    default_factory: Callable[[], _T],
+    init: bool = True,
+    repr: bool = True,  # pylint: disable=redefined-builtin
+    hash: bool | None = None,  # pylint: disable=redefined-builtin
+    compare: bool = True,
+    metadata: dict[Any, Any] | None = None,
+    kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
+    pytree_node: bool | None = None,
+) -> _T: ...
+
+
+@overload
+def field(  # pylint: disable=too-many-arguments
+    *,
+    init: bool = True,
+    repr: bool = True,  # pylint: disable=redefined-builtin
+    hash: bool | None = None,  # pylint: disable=redefined-builtin
+    compare: bool = True,
+    metadata: dict[Any, Any] | None = None,
+    kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
+    pytree_node: bool | None = None,
+) -> Any: ...
+
+
+def field(  # pylint: disable=function-redefined,too-many-arguments
     *,
     default: Any = dataclasses.MISSING,
     default_factory: Any = dataclasses.MISSING,
@@ -89,10 +136,10 @@ def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-ma
     repr: bool = True,  # pylint: disable=redefined-builtin
     hash: bool | None = None,  # pylint: disable=redefined-builtin
     compare: bool = True,
-    metadata: dict[str, Any] | None = None,
+    metadata: dict[Any, Any] | None = None,
     kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
     pytree_node: bool | None = None,
-) -> dataclasses.Field:
+) -> Any:
     """Field factory for :func:`dataclass`.
 
     This factory function is used to define the fields in a dataclass. It is similar to the field
@@ -147,13 +194,7 @@ def field(  # type: ignore[no-redef] # pylint: disable=function-redefined,too-ma
     return dataclasses.field(**kwargs)  # pylint: disable=invalid-field-call
 
 
-_T = TypeVar('_T')
-_U = TypeVar('_U')
-_TypeT = TypeVar('_TypeT', bound=type)
-
-
 @overload  # type: ignore[no-redef]
-@dataclass_transform(field_specifiers=(field,))
 def dataclass(  # pylint: disable=too-many-arguments
     *,
     init: bool = True,
@@ -172,7 +213,6 @@ def dataclass(  # pylint: disable=too-many-arguments
 
 
 @overload
-@dataclass_transform(field_specifiers=(field,))
 def dataclass(  # pylint: disable=too-many-arguments
     cls: _TypeT,
     *,
