@@ -21,6 +21,8 @@ import optree
 
 
 def test_imports():
+    assert dir(optree.integration) == ['SUBMODULES', 'jax', 'numpy', 'torch']
+
     with pytest.raises(AttributeError):
         optree.integration.abc  # noqa: B018
 

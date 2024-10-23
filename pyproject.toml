@@ -262,6 +262,7 @@ typing-modules = ["optree.typing"]
     "E402",    # module-import-not-at-top-of-file
 ]
 "docs/source/conf.py" = [
+    "ANN",     # flake8-annotations
     "INP001",  # flake8-no-pep420
 ]
 

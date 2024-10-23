@@ -1,8 +1,8 @@
 Integration with Third-Party Libraries
 ======================================
 
-Integration for JAX
--------------------
+Integration for `JAX <https://github.com/jax-ml/jax>`_
+------------------------------------------------------
 
 .. currentmodule:: optree.integration.jax
 
@@ -14,8 +14,8 @@ Integration for JAX
 
 ------
 
-Integration for NumPy
----------------------
+Integration for `NumPy <https://github.com/numpy/numpy>`_
+---------------------------------------------------------
 
 .. currentmodule:: optree.integration.numpy
 
@@ -27,8 +27,8 @@ Integration for NumPy
 
 ------
 
-Integration for PyTorch
------------------------
+Integration for `PyTorch <https://github.com/pytorch/pytorch>`_
+---------------------------------------------------------------
 
 .. currentmodule:: optree.integration.torch
 
