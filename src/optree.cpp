@@ -22,7 +22,6 @@ limitations under the License.
 #include <optional>    // std::optional, std::nullopt
 #include <string>      // std::string
 
-#include <pybind11/cast.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
@@ -170,6 +169,12 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::arg("obj"),
              py::pos_only());
 
+#if PYBIND11_VERSION_HEX >= 0x020E00F0  // pybind11 2.14.0
+#define def_method_pos_only(...) def(__VA_ARGS__ __VA_OPT__(, ) py::pos_only())
+#else
+#define def_method_pos_only(...) def(__VA_ARGS__)
+#endif
+
     auto PyTreeKindTypeObject =
         py::enum_<PyTreeKind>(mod, "PyTreeKind", "The kind of a pytree node.", py::module_local())
             .value("CUSTOM", PyTreeKind::Custom, "A custom type.")
@@ -240,23 +245,29 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::pos_only(),
              py::arg("f_node") = std::nullopt,
              py::arg("f_leaf") = std::nullopt)
-        .def("paths", &PyTreeSpec::Paths, "Return a list of paths to the leaves of the treespec.")
-        .def("accessors",
-             &PyTreeSpec::Accessors,
-             "Return a list of accessors to the leaves in the treespec.")
-        .def("entries", &PyTreeSpec::Entries, "Return a list of one-level entries to the children.")
+        .def_method_pos_only("paths",
+                             &PyTreeSpec::Paths,
+                             "Return a list of paths to the leaves of the treespec.")
+        .def_method_pos_only("accessors",
+                             &PyTreeSpec::Accessors,
+                             "Return a list of accessors to the leaves in the treespec.")
+        .def_method_pos_only("entries",
+                             &PyTreeSpec::Entries,
+                             "Return a list of one-level entries to the children.")
         .def("entry",
              &PyTreeSpec::Entry,
              "Return the entry at the given index.",
              py::arg("index"),
              py::pos_only())
-        .def("children", &PyTreeSpec::Children, "Return a list of treespecs for the children.")
+        .def_method_pos_only("children",
+                             &PyTreeSpec::Children,
+                             "Return a list of treespecs for the children.")
         .def("child",
              &PyTreeSpec::Child,
              "Return the treespec for the child at the given index.",
              py::arg("index"),
              py::pos_only())
-        .def(
+        .def_method_pos_only(
             "one_level",
             [](const PyTreeSpec& t) -> std::optional<std::unique_ptr<PyTreeSpec>> {
                 if (t.IsLeaf()) [[unlikely]] {
@@ -298,9 +309,9 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::pos_only(),
              py::kw_only(),
              py::arg("strict") = true)
-        .def("is_one_level",
-             &PyTreeSpec::IsOneLevel,
-             "Test whether the treespec represents a one-level tree.")
+        .def_method_pos_only("is_one_level",
+                             &PyTreeSpec::IsOneLevel,
+                             "Test whether the treespec represents a one-level tree.")
         .def("is_prefix",
              &PyTreeSpec::IsPrefix,
              "Test whether this treespec is a prefix of the given treespec.",
@@ -351,9 +362,11 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::is_operator(),
              py::arg("other"),
              py::pos_only())
-        .def("__repr__", &PyTreeSpec::ToString, "Return a string representation of the treespec.")
-        .def("__hash__", &PyTreeSpec::HashValue, "Return the hash of the treespec.")
-        .def("__len__", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
+        .def_method_pos_only("__repr__",
+                             &PyTreeSpec::ToString,
+                             "Return a string representation of the treespec.")
+        .def_method_pos_only("__hash__", &PyTreeSpec::HashValue, "Return the hash of the treespec.")
+        .def_method_pos_only("__len__", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
         .def(py::pickle([](const PyTreeSpec& t) -> py::object { return t.ToPickleable(); },
                         [](const py::object& o) -> std::unique_ptr<PyTreeSpec> {
                             return PyTreeSpec::FromPickleable(o);
@@ -386,8 +399,10 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::arg("leaf_predicate") = std::nullopt,
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
-        .def("__iter__", &PyTreeIter::Iter, "Return the iterator object itself.")
-        .def("__next__", &PyTreeIter::Next, "Return the next leaf in the pytree.");
+        .def_method_pos_only("__iter__", &PyTreeIter::Iter, "Return the iterator object itself.")
+        .def_method_pos_only("__next__", &PyTreeIter::Next, "Return the next leaf in the pytree.");
+
+#undef def_method_pos_only
 
 #ifdef Py_TPFLAGS_IMMUTABLETYPE
     PyTreeKind_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
