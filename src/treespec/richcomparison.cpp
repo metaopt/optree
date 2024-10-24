@@ -19,12 +19,7 @@ limitations under the License.
 #include <unordered_map>  // std::unordered_map
 #include <vector>         // std::vector
 
-#include "include/exceptions.h"
-#include "include/pytypes.h"
-#include "include/registry.h"
-#include "include/stdutils.h"
-#include "include/synchronization.h"
-#include "include/treespec.h"
+#include "optree/optree.h"
 
 namespace optree {
 

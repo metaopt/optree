@@ -15,8 +15,7 @@ limitations under the License.
 ================================================================================
 */
 
-#include "include/synchronization.h"
-#include "include/treespec.h"
+#include "optree/optree.h"
 
 namespace optree {
 

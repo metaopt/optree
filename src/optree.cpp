@@ -15,6 +15,8 @@ limitations under the License.
 ================================================================================
 */
 
+#include "optree/optree.h"
+
 #include <functional>  // std::{not_,}equal_to, std::less{,_equal}, std::greater{,_equal}
 #include <memory>      // std::unique_ptr
 #include <optional>    // std::optional, std::nullopt
@@ -22,12 +24,6 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-
-#include "include/exceptions.h"
-#include "include/pymacros.h"
-#include "include/pytypes.h"
-#include "include/registry.h"
-#include "include/treespec.h"
 
 namespace optree {
 

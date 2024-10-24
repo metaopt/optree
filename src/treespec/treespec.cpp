@@ -15,8 +15,6 @@ limitations under the License.
 ================================================================================
 */
 
-#include "include/treespec.h"
-
 #include <algorithm>  // std::copy, std::reverse
 #include <iterator>   // std::back_inserter
 #include <memory>     // std::unique_ptr, std::make_unique
@@ -26,12 +24,7 @@ limitations under the License.
 #include <utility>    // std::move
 #include <vector>     // std::vector
 
-#include "include/exceptions.h"
-#include "include/hashing.h"
-#include "include/pytypes.h"
-#include "include/registry.h"
-#include "include/stdutils.h"
-#include "include/synchronization.h"
+#include "optree/optree.h"
 
 namespace optree {
 
