@@ -28,6 +28,10 @@ if TYPE_CHECKING:
 SUBMODULES: frozenset[str] = frozenset({'jax', 'numpy', 'torch'})
 
 
+def __dir__() -> list[str]:
+    return [*sorted(SUBMODULES), 'SUBMODULES']
+
+
 def __getattr__(name: str) -> ModuleType:
     if name in SUBMODULES:
         import importlib  # pylint: disable=import-outside-toplevel

@@ -178,7 +178,7 @@ class PyTree(Generic[T]):  # pragma: no cover
     typing.Union[torch.Tensor,
                  typing.Tuple[ForwardRef('PyTree[torch.Tensor]'), ...],
                  typing.List[ForwardRef('PyTree[torch.Tensor]')],
-                 typing.Dict[collections.abc.Hashable, ForwardRef('PyTree[torch.Tensor]')],
+                 typing.Dict[typing.Any, ForwardRef('PyTree[torch.Tensor]')],
                  typing.Deque[ForwardRef('PyTree[torch.Tensor]')],
                  optree.typing.CustomTreeNode[ForwardRef('PyTree[torch.Tensor]')]]
     """
@@ -232,11 +232,24 @@ class PyTree(Generic[T]):  # pragma: no cover
             param,  # type: ignore[valid-type]
             Tuple[recurse_ref, ...],  # type: ignore[valid-type] # Tuple, NamedTuple, PyStructSequence
             List[recurse_ref],  # type: ignore[valid-type]
-            Dict[Hashable, recurse_ref],  # type: ignore[valid-type] # Dict, OrderedDict, DefaultDict
+            Dict[Any, recurse_ref],  # type: ignore[valid-type] # Dict, OrderedDict, DefaultDict
             Deque[recurse_ref],  # type: ignore[valid-type]
             CustomTreeNode[recurse_ref],  # type: ignore[valid-type]
         ]
         pytree_alias.__pytree_args__ = item  # type: ignore[attr-defined]
+
+        # pylint: disable-next=no-member
+        original_copy_with = pytree_alias.copy_with  # type: ignore[attr-defined]
+        original_num_params = len(pytree_alias.__args__)  # type: ignore[attr-defined]
+
+        def copy_with(params: tuple) -> TypeAlias:
+            if not isinstance(params, tuple) or len(params) != original_num_params:
+                return original_copy_with(params)
+            if params[0] is param:
+                return pytree_alias
+            return PyTree[params[0]]  # type: ignore[misc,valid-type]
+
+        object.__setattr__(pytree_alias, 'copy_with', copy_with)
         return pytree_alias
 
     def __new__(cls) -> NoReturn:  # pylint: disable=arguments-differ
@@ -302,7 +315,7 @@ class PyTreeTypeVar:  # pragma: no cover
     typing.Union[torch.Tensor,
                  typing.Tuple[ForwardRef('TensorTree'), ...],
                  typing.List[ForwardRef('TensorTree')],
-                 typing.Dict[collections.abc.Hashable, ForwardRef('TensorTree')],
+                 typing.Dict[typing.Any, ForwardRef('TensorTree')],
                  typing.Deque[ForwardRef('TensorTree')],
                  optree.typing.CustomTreeNode[ForwardRef('TensorTree')]]
     """
