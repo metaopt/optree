@@ -26,8 +26,8 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
-#include "include/hashing.h"
-#include "include/synchronization.h"
+#include "optree/hashing.h"
+#include "optree/synchronization.h"
 
 namespace optree {
 

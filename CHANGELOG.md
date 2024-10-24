@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--
+- Move include directory `include/{ => optree}/*.h` by [@XuehaiPan](https://github.com/XuehaiPan) in [#167](https://github.com/metaopt/optree/pull/167).
 
 ### Fixed
 

@@ -15,8 +15,6 @@ limitations under the License.
 ================================================================================
 */
 
-#include "include/registry.h"
-
 #include <memory>       // std::make_shared
 #include <sstream>      // std::ostringstream
 #include <string>       // std::string
@@ -25,9 +23,7 @@ limitations under the License.
 
 #include <Python.h>
 
-#include "include/exceptions.h"
-#include "include/pytypes.h"
-#include "include/synchronization.h"
+#include "optree/optree.h"
 
 namespace optree {
 

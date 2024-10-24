@@ -19,12 +19,7 @@ limitations under the License.
 #include <sstream>    // std::ostringstream
 #include <stdexcept>  // std::runtime_error
 
-#include "include/exceptions.h"
-#include "include/pytypes.h"
-#include "include/registry.h"
-#include "include/stdutils.h"
-#include "include/synchronization.h"
-#include "include/treespec.h"
+#include "optree/optree.h"
 
 namespace optree {
 
@@ -179,6 +174,8 @@ py::object PyTreeIter::Next() {
 py::object PyTreeSpec::Walk(const py::function& f_node,
                             const std::optional<py::function>& f_leaf,
                             const py::iterable& leaves) const {
+    PYTREESPEC_SANITY_CHECK(*this);
+
     const scoped_critical_section cs{leaves};
     auto agenda = reserved_vector<py::object>(4);
     auto it = leaves.begin();

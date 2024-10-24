@@ -19,17 +19,15 @@ limitations under the License.
 #include <unordered_map>  // std::unordered_map
 #include <vector>         // std::vector
 
-#include "include/exceptions.h"
-#include "include/pytypes.h"
-#include "include/registry.h"
-#include "include/stdutils.h"
-#include "include/synchronization.h"
-#include "include/treespec.h"
+#include "optree/optree.h"
 
 namespace optree {
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 bool PyTreeSpec::IsPrefix(const PyTreeSpec &other, const bool &strict) const {
+    PYTREESPEC_SANITY_CHECK(*this);
+    PYTREESPEC_SANITY_CHECK(other);
+
     if (m_none_is_leaf != other.m_none_is_leaf) [[unlikely]] {
         return false;
     }
@@ -166,12 +164,18 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec &other, const bool &strict) const {
 }
 
 bool PyTreeSpec::EqualTo(const PyTreeSpec &other) const {
+    PYTREESPEC_SANITY_CHECK(*this);
+    PYTREESPEC_SANITY_CHECK(other);
+
     if (m_traversal.size() != other.m_traversal.size() || m_none_is_leaf != other.m_none_is_leaf)
         [[likely]] {
         return false;
     }
     if (!m_namespace.empty() && !other.m_namespace.empty() && m_namespace != other.m_namespace)
         [[likely]] {
+        return false;
+    }
+    if (GetNumNodes() != other.GetNumNodes() || GetNumLeaves() != other.GetNumLeaves()) [[likely]] {
         return false;
     }
 

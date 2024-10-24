@@ -15,8 +15,7 @@ limitations under the License.
 ================================================================================
 */
 
-#include "include/synchronization.h"
-#include "include/treespec.h"
+#include "optree/optree.h"
 
 namespace optree {
 
@@ -31,6 +30,7 @@ namespace optree {
         return 0;
     }
     auto& self = thread_safe_cast<PyTreeSpec&>(py::handle{self_base});
+    PYTREESPEC_SANITY_CHECK(self);
     for (const auto& node : self.m_traversal) {
         Py_VISIT(node.node_data.ptr());
         Py_VISIT(node.node_entries.ptr());

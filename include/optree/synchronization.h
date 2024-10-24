@@ -23,7 +23,7 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
-#include "include/pymacros.h"  // Py_ALWAYS_INLINE, Py_IsConstant
+#include "optree/pymacros.h"  // Py_ALWAYS_INLINE, Py_IsConstant
 
 namespace py = pybind11;
 

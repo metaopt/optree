@@ -4,7 +4,7 @@ InheritParentConfig: true
 FormatStyle: file
 UseColor: true
 WarningsAsErrors: '*'
-HeaderFilterRegex: '^include/.*$'
+HeaderFilterRegex: 'optree/.*$'
 
 Checks: |
   bugprone-*,
@@ -25,4 +25,4 @@ Checks: |
   -readability-identifier-length,
 
 CheckOptions:
-  misc-include-cleaner.IgnoreHeaders: 'python.*/.*;pybind11/.*;include/.*'
+  misc-include-cleaner.IgnoreHeaders: 'python.*/.*;pybind11/.*;optree/.*'

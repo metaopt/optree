@@ -15,17 +15,11 @@ limitations under the License.
 ================================================================================
 */
 
-#include "include/hashing.h"
-
 #include <exception>      // std::rethrow_exception, std::current_exception
 #include <thread>         // std::this_thread::get_id
 #include <unordered_set>  // std::unordered_set
 
-#include "include/exceptions.h"
-#include "include/pytypes.h"
-#include "include/registry.h"
-#include "include/synchronization.h"
-#include "include/treespec.h"
+#include "optree/optree.h"
 
 namespace optree {
 
@@ -96,6 +90,8 @@ ssize_t PyTreeSpec::HashValueImpl() const {
 }
 
 ssize_t PyTreeSpec::HashValue() const {
+    PYTREESPEC_SANITY_CHECK(*this);
+
     static std::unordered_set<ThreadedIdentity> running{};
     static read_write_mutex mutex{};
 
