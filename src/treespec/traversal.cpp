@@ -174,6 +174,8 @@ py::object PyTreeIter::Next() {
 py::object PyTreeSpec::Walk(const py::function& f_node,
                             const std::optional<py::function>& f_leaf,
                             const py::iterable& leaves) const {
+    PYTREESPEC_SANITY_CHECK(*this);
+
     const scoped_critical_section cs{leaves};
     auto agenda = reserved_vector<py::object>(4);
     auto it = leaves.begin();

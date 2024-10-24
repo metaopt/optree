@@ -264,6 +264,7 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
         treespec->m_namespace = registry_namespace;
     }
     treespec->m_traversal.shrink_to_fit();
+    PYTREESPEC_SANITY_CHECK(*treespec);
     return std::make_pair(std::move(leaves), std::move(treespec));
 }
 
@@ -553,17 +554,19 @@ PyTreeSpec::FlattenWithPath(const py::object& tree,
         treespec->m_namespace = registry_namespace;
     }
     treespec->m_traversal.shrink_to_fit();
+    PYTREESPEC_SANITY_CHECK(*treespec);
     return std::make_tuple(std::move(paths), std::move(leaves), std::move(treespec));
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 py::list PyTreeSpec::FlattenUpTo(const py::object& full_tree) const {
-    const ssize_t num_leaves = GetNumLeaves();
+    PYTREESPEC_SANITY_CHECK(*this);
 
     auto agenda = reserved_vector<py::object>(4);
     agenda.emplace_back(py::reinterpret_borrow<py::object>(full_tree));
 
     auto it = m_traversal.crbegin();
+    const ssize_t num_leaves = GetNumLeaves();
     py::list leaves{num_leaves};
     ssize_t leaf = num_leaves - 1;
     while (!agenda.empty()) {

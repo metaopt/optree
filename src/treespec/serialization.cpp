@@ -255,6 +255,8 @@ std::string PyTreeSpec::ToStringImpl() const {
 }
 
 std::string PyTreeSpec::ToString() const {
+    PYTREESPEC_SANITY_CHECK(*this);
+
     static std::unordered_set<ThreadedIdentity> running{};
     static read_write_mutex mutex{};
 
@@ -287,6 +289,8 @@ std::string PyTreeSpec::ToString() const {
 }
 
 py::object PyTreeSpec::ToPickleable() const {
+    PYTREESPEC_SANITY_CHECK(*this);
+
     const py::tuple node_states{GetNumNodes()};
     ssize_t i = 0;
     for (const auto& node : m_traversal) {
@@ -410,6 +414,7 @@ py::object PyTreeSpec::ToPickleable() const {
         node.num_nodes = thread_safe_cast<ssize_t>(t[6]);
     }
     out->m_traversal.shrink_to_fit();
+    PYTREESPEC_SANITY_CHECK(*out);
     return out;
 }
 // NOLINTEND[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]

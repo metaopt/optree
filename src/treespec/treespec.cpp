@@ -395,6 +395,9 @@ namespace optree {
 }
 
 std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec& other) const {
+    PYTREESPEC_SANITY_CHECK(*this);
+    PYTREESPEC_SANITY_CHECK(other);
+
     if (m_none_is_leaf != other.m_none_is_leaf) [[unlikely]] {
         throw py::value_error("PyTreeSpecs must have the same none_is_leaf value.");
     }
@@ -439,10 +442,14 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec
               treespec->GetNumLeaves(),
               "PyTreeSpec::BroadcastToCommonSuffix() mismatched number of leaves.");
     treespec->m_traversal.shrink_to_fit();
+    PYTREESPEC_SANITY_CHECK(*treespec);
     return treespec;
 }
 
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
+    PYTREESPEC_SANITY_CHECK(*this);
+    PYTREESPEC_SANITY_CHECK(inner_treespec);
+
     if (m_none_is_leaf != inner_treespec.m_none_is_leaf) [[unlikely]] {
         throw py::value_error("PyTreeSpecs must have the same none_is_leaf value.");
     }
@@ -488,6 +495,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec
               (num_outer_nodes - num_outer_leaves) + (num_outer_leaves * num_inner_nodes),
               "Number of composed tree nodes mismatch.");
     treespec->m_traversal.shrink_to_fit();
+    PYTREESPEC_SANITY_CHECK(*treespec);
     return treespec;
 }
 
@@ -561,6 +569,8 @@ ssize_t PyTreeSpec::PathsImpl(Span& paths,  // NOLINT[misc-no-recursion]
 }
 
 std::vector<py::tuple> PyTreeSpec::Paths() const {
+    PYTREESPEC_SANITY_CHECK(*this);
+
     const ssize_t num_leaves = GetNumLeaves();
     auto paths = reserved_vector<py::tuple>(num_leaves);
     if (num_leaves == 0) [[unlikely]] {
@@ -668,6 +678,8 @@ ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,  // NOLINT[misc-no-recursion]
 }
 
 std::vector<py::object> PyTreeSpec::Accessors() const {
+    PYTREESPEC_SANITY_CHECK(*this);
+
     const ssize_t num_leaves = GetNumLeaves();
     auto accessors = reserved_vector<py::object>(num_leaves);
     if (num_leaves == 0) [[unlikely]] {
@@ -686,7 +698,8 @@ std::vector<py::object> PyTreeSpec::Accessors() const {
 }
 
 py::list PyTreeSpec::Entries() const {
-    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    PYTREESPEC_SANITY_CHECK(*this);
+
     const Node& root = m_traversal.back();
     if (root.node_entries) [[unlikely]] {
         return py::list{root.node_entries};
@@ -726,7 +739,8 @@ py::list PyTreeSpec::Entries() const {
 }
 
 py::object PyTreeSpec::Entry(ssize_t index) const {
-    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    PYTREESPEC_SANITY_CHECK(*this);
+
     const Node& root = m_traversal.back();
     if (index < -root.arity || index >= root.arity) [[unlikely]] {
         throw py::index_error("PyTreeSpec::Entry() index out of range.");
@@ -766,7 +780,8 @@ py::object PyTreeSpec::Entry(ssize_t index) const {
 }
 
 std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
-    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    PYTREESPEC_SANITY_CHECK(*this);
+
     const Node& root = m_traversal.back();
     auto children = reserved_vector<std::unique_ptr<PyTreeSpec>>(root.arity);
     children.resize(root.arity);
@@ -781,6 +796,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
                   m_traversal.cbegin() + pos,
                   std::back_inserter(children[i]->m_traversal));
         children[i]->m_traversal.shrink_to_fit();
+        PYTREESPEC_SANITY_CHECK(*children[i]);
         pos -= node.num_nodes;
     }
     EXPECT_EQ(pos, 0, "`pos != 0` at end of PyTreeSpec::Children().");
@@ -788,7 +804,8 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
 }
 
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
-    EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+    PYTREESPEC_SANITY_CHECK(*this);
+
     const Node& root = m_traversal.back();
     if (index < -root.arity || index >= root.arity) [[unlikely]] {
         throw py::index_error("PyTreeSpec::Child() index out of range.");
@@ -813,13 +830,15 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
               m_traversal.cbegin() + pos,
               std::back_inserter(child->m_traversal));
     child->m_traversal.shrink_to_fit();
+    PYTREESPEC_SANITY_CHECK(*child);
     return child;
 }
 
 py::object PyTreeSpec::GetType(const std::optional<Node>& node) const {
     if (!node.has_value()) [[likely]] {
-        EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+        PYTREESPEC_SANITY_CHECK(*this);
     }
+
     const Node& n = node.value_or(m_traversal.back());
     switch (n.kind) {
         case PyTreeKind::Custom:

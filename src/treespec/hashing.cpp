@@ -90,6 +90,8 @@ ssize_t PyTreeSpec::HashValueImpl() const {
 }
 
 ssize_t PyTreeSpec::HashValue() const {
+    PYTREESPEC_SANITY_CHECK(*this);
+
     static std::unordered_set<ThreadedIdentity> running{};
     static read_write_mutex mutex{};
 

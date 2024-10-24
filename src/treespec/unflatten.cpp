@@ -77,6 +77,8 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
 }
 
 py::object PyTreeSpec::Unflatten(const py::iterable& leaves) const {
+    PYTREESPEC_SANITY_CHECK(*this);
+
     const scoped_critical_section cs{leaves};
     return UnflattenImpl(leaves);
 }

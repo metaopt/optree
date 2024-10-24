@@ -18,6 +18,7 @@ limitations under the License.
 #pragma once
 
 #include <cstddef>    // std::size_t
+#include <optional>   // std::optional, std::nullopt
 #include <sstream>    // std::ostringstream
 #include <stdexcept>  // std::logic_error
 #include <string>     // std::string
@@ -37,14 +38,20 @@ namespace optree {
 
 class InternalError : public std::logic_error {
 public:
-    explicit InternalError(const std::string& msg) noexcept(noexcept(std::logic_error{msg}))
-        : std::logic_error{msg} {}
-    explicit InternalError(const std::string& msg,
+    explicit InternalError(const std::string& message) noexcept(noexcept(std::logic_error{message}))
+        : std::logic_error{message} {}
+    explicit InternalError(const std::string& message,
                            const std::string& file,
-                           const std::size_t& lineno) noexcept(noexcept(std::logic_error{msg}))
-        : InternalError([&msg, &file, &lineno]() -> std::string {
+                           const std::size_t& lineno,
+                           const std::optional<std::string> function =
+                               std::nullopt) noexcept(noexcept(std::logic_error{message}))
+        : InternalError([&message, &file, &lineno, &function]() -> std::string {
               std::ostringstream oss{};
-              oss << msg << " (at file " << file << ":" << lineno << ")\n\n"
+              oss << message << " (";
+              if (function.has_value()) [[likely]] {
+                  oss << "function `" << *function << "` ";
+              }
+              oss << "at file " << file << ":" << lineno << ")\n\n"
                   << "Please file a bug report at https://github.com/metaopt/optree/issues.";
               return oss.str();
           }()) {}
@@ -52,8 +59,13 @@ public:
 
 }  // namespace optree
 
-#define INTERNAL_ERROR1_(message) throw optree::InternalError((message), FILE_RELPATH, __LINE__)
+#ifndef __GNUC__
+#define __PRETTY_FUNCTION__ std::nullopt  // NOLINT[bugprone-reserved-identifier]
+#endif
+
 #define INTERNAL_ERROR0_() INTERNAL_ERROR1_("Unreachable code.")
+#define INTERNAL_ERROR1_(message)                                                                  \
+    throw optree::InternalError((message), FILE_RELPATH, __LINE__, __PRETTY_FUNCTION__)
 #define INTERNAL_ERROR(...)                                                                        \
     VA_FUNC2_(__0 __VA_OPT__(, ) __VA_ARGS__, INTERNAL_ERROR1_, INTERNAL_ERROR0_)(__VA_ARGS__)
 
