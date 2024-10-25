@@ -345,14 +345,19 @@ class DataclassEntry(GetAttrEntry):
 
     @property
     def fields(self) -> tuple[str, ...]:
-        """Get the field names."""
+        """Get all field names."""
         return tuple(f.name for f in dataclasses.fields(self.type))
+
+    @property
+    def init_fields(self) -> tuple[str, ...]:
+        """Get the init field names."""
+        return tuple(f.name for f in dataclasses.fields(self.type) if f.init)
 
     @property
     def field(self) -> str:
         """Get the field name."""
         if isinstance(self.entry, int):
-            return self.fields[self.entry]
+            return self.init_fields[self.entry]
         return self.entry
 
     @property
