@@ -344,7 +344,7 @@ class DataclassEntry(GetAttrEntry):
     entry: str | int  # type: ignore[assignment]
 
     @property
-    def fields(self) -> tuple[str, ...]:
+    def fields(self) -> tuple[str, ...]:  # pragma: no cover
         """Get all field names."""
         return tuple(f.name for f in dataclasses.fields(self.type))
 

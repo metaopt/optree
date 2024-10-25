@@ -63,6 +63,25 @@ def parametrize(**argvalues):
     return pytest.mark.parametrize(arguments, argvalues, ids=ids)
 
 
+MISSING = object()
+
+
+def assert_equal_type_and_value(actual, expected=MISSING, *, expected_type=None):
+    if expected_type is None:
+        assert expected is not MISSING
+        expected_type = type(expected)
+    assert type(actual) is expected_type
+
+    if expected is MISSING:
+        return
+
+    assert actual == expected
+    if isinstance(expected, optree.PyTreeAccessor):
+        assert hash(actual) == hash(expected)
+        for i, j in zip(actual, expected):
+            assert_equal_type_and_value(i, j)
+
+
 def is_tuple(tup):
     return isinstance(tup, tuple)
 

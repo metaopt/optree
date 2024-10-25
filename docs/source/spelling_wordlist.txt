@@ -94,3 +94,6 @@ hypot
 init
 ns
 metaclass
+cpu
+classmethod
+unregister

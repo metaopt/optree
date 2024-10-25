@@ -40,8 +40,8 @@ from typing import (
     TypeVar,
     overload,
 )
+from typing_extensions import TypeAlias  # Python 3.10+
 from typing_extensions import deprecated  # Python 3.13+
-from typing_extensions import ParamSpec, TypeAlias  # Python 3.10+
 
 from optree import _C
 from optree.accessor import (
@@ -53,12 +53,9 @@ from optree.accessor import (
     StructSequenceEntry,
 )
 from optree.typing import (
-    KT,
-    VT,
     CustomTreeNode,
-    FlattenFunc,
+    PyTreeKind,
     T,
-    UnflattenFunc,
     is_namedtuple_class,
     is_structseq_class,
     structseq,
@@ -68,6 +65,8 @@ from optree.utils import safe_zip, total_order_sorted, unzip2
 
 if TYPE_CHECKING:
     import builtins
+
+    from optree.typing import KT, VT, FlattenFunc, UnflattenFunc
 
 
 __all__ = [
@@ -93,6 +92,7 @@ class PyTreeNodeRegistryEntry(Generic[T]):
         _: dataclasses.KW_ONLY  # Python 3.10+
 
     path_entry_type: builtins.type[PyTreeEntry] = AutoEntry
+    kind: PyTreeKind = PyTreeKind.CUSTOM
     namespace: str = ''
 
 
@@ -113,6 +113,8 @@ del GlobalNamespace
 
 
 if TYPE_CHECKING:
+    from typing_extensions import ParamSpec  # Python 3.10+
+
     _P = ParamSpec('_P')
     _T = TypeVar('_T')
     _GetP = ParamSpec('_GetP')
@@ -122,6 +124,7 @@ if TYPE_CHECKING:
         def __call__(self, *args: _P.args, **kwargs: _P.kwargs) -> _T:
             raise NotImplementedError
 
+        # pylint: disable-next=missing-function-docstring
         def get(self, *args: _GetP.args, **kwargs: _GetP.kwargs) -> _GetT:
             raise NotImplementedError
 
@@ -139,7 +142,7 @@ def _add_get(
     return decorator
 
 
-def _pytree_node_registry_get(
+def _pytree_node_registry_get(  # pylint: disable=too-many-return-statements
     cls: type,
     *,
     namespace: str = '',
@@ -152,19 +155,9 @@ def _pytree_node_registry_get(
 
     if _C.is_dict_insertion_ordered(namespace):
         if cls is dict:
-            return PyTreeNodeRegistryEntry(
-                dict,
-                _dict_insertion_ordered_flatten,  # type: ignore[arg-type]
-                _dict_insertion_ordered_unflatten,  # type: ignore[arg-type]
-                path_entry_type=MappingEntry,
-            )
+            return _DICT_INSERTION_ORDERED_REGISTRY_ENTRY
         if cls is defaultdict:
-            return PyTreeNodeRegistryEntry(
-                defaultdict,
-                _defaultdict_insertion_ordered_flatten,  # type: ignore[arg-type]
-                _defaultdict_insertion_ordered_unflatten,  # type: ignore[arg-type]
-                path_entry_type=MappingEntry,
-            )
+            return _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY
 
     handler = _NODETYPE_REGISTRY.get(cls)
     if handler is not None:
@@ -301,7 +294,7 @@ def register_pytree_node(
                 namespace='tensor2flatparam'
             )
         )
-    """
+    """  # pylint: disable=line-too-long
     if not inspect.isclass(cls):
         raise TypeError(f'Expected a class, got {cls!r}.')
     if not (inspect.isclass(path_entry_type) and issubclass(path_entry_type, PyTreeEntry)):
@@ -571,7 +564,7 @@ def _sorted_items(items: Iterable[tuple[KT, VT]]) -> list[tuple[KT, VT]]:
     return total_order_sorted(items, key=itemgetter(0))
 
 
-def _none_flatten(none: None) -> tuple[tuple[()], None]:
+def _none_flatten(_: None) -> tuple[tuple[()], None]:
     return (), None
 
 
@@ -579,7 +572,6 @@ def _none_unflatten(_: None, children: Iterable[Any]) -> None:
     sentinel = object()
     if next(iter(children), sentinel) is not sentinel:
         raise ValueError('Expected no children.')
-    return None  # noqa: RET501
 
 
 def _tuple_flatten(tup: tuple[T, ...]) -> tuple[tuple[T, ...], None]:
@@ -683,19 +675,87 @@ def _structseq_unflatten(cls: type[structseq[T]], children: Iterable[T]) -> stru
     return cls(children)
 
 
-# pylint: disable=all
 _NODETYPE_REGISTRY: dict[type | tuple[str, type], PyTreeNodeRegistryEntry] = {
-    type(None): PyTreeNodeRegistryEntry(type(None), _none_flatten, _none_unflatten, path_entry_type=PyTreeEntry),  # type: ignore[arg-type]
-    tuple: PyTreeNodeRegistryEntry(tuple, _tuple_flatten, _tuple_unflatten, path_entry_type=SequenceEntry),  # type: ignore[arg-type]
-    list: PyTreeNodeRegistryEntry(list, _list_flatten, _list_unflatten, path_entry_type=SequenceEntry),  # type: ignore[arg-type]
-    dict: PyTreeNodeRegistryEntry(dict, _dict_flatten, _dict_unflatten, path_entry_type=MappingEntry),  # type: ignore[arg-type]
-    namedtuple: PyTreeNodeRegistryEntry(namedtuple, _namedtuple_flatten, _namedtuple_unflatten, path_entry_type=NamedTupleEntry),  # type: ignore[arg-type,dict-item] # noqa: PYI024
-    OrderedDict: PyTreeNodeRegistryEntry(OrderedDict, _ordereddict_flatten, _ordereddict_unflatten, path_entry_type=MappingEntry),  # type: ignore[arg-type]
-    defaultdict: PyTreeNodeRegistryEntry(defaultdict, _defaultdict_flatten, _defaultdict_unflatten, path_entry_type=MappingEntry),  # type: ignore[arg-type]
-    deque: PyTreeNodeRegistryEntry(deque, _deque_flatten, _deque_unflatten, path_entry_type=SequenceEntry),  # type: ignore[arg-type]
-    structseq: PyTreeNodeRegistryEntry(structseq, _structseq_flatten, _structseq_unflatten, path_entry_type=StructSequenceEntry),  # type: ignore[arg-type]
-}  # fmt: skip
-# pylint: enable=all
+    type(None): PyTreeNodeRegistryEntry(
+        type(None),  # type: ignore[arg-type]
+        _none_flatten,  # type: ignore[arg-type]
+        _none_unflatten,  # type: ignore[arg-type]
+        path_entry_type=PyTreeEntry,
+        kind=PyTreeKind.NONE,
+    ),
+    tuple: PyTreeNodeRegistryEntry(
+        tuple,
+        _tuple_flatten,  # type: ignore[arg-type]
+        _tuple_unflatten,  # type: ignore[arg-type]
+        path_entry_type=SequenceEntry,
+        kind=PyTreeKind.TUPLE,
+    ),
+    list: PyTreeNodeRegistryEntry(
+        list,
+        _list_flatten,  # type: ignore[arg-type]
+        _list_unflatten,  # type: ignore[arg-type]
+        path_entry_type=SequenceEntry,
+        kind=PyTreeKind.LIST,
+    ),
+    dict: PyTreeNodeRegistryEntry(
+        dict,
+        _dict_flatten,  # type: ignore[arg-type]
+        _dict_unflatten,  # type: ignore[arg-type]
+        path_entry_type=MappingEntry,
+        kind=PyTreeKind.DICT,
+    ),
+    namedtuple: PyTreeNodeRegistryEntry(  # type: ignore[dict-item] # noqa: PYI024
+        namedtuple,  # type: ignore[arg-type] # noqa: PYI024
+        _namedtuple_flatten,  # type: ignore[arg-type]
+        _namedtuple_unflatten,  # type: ignore[arg-type]
+        path_entry_type=NamedTupleEntry,
+        kind=PyTreeKind.NAMEDTUPLE,
+    ),
+    OrderedDict: PyTreeNodeRegistryEntry(
+        OrderedDict,
+        _ordereddict_flatten,  # type: ignore[arg-type]
+        _ordereddict_unflatten,  # type: ignore[arg-type]
+        path_entry_type=MappingEntry,
+        kind=PyTreeKind.ORDEREDDICT,
+    ),
+    defaultdict: PyTreeNodeRegistryEntry(
+        defaultdict,
+        _defaultdict_flatten,  # type: ignore[arg-type]
+        _defaultdict_unflatten,  # type: ignore[arg-type]
+        path_entry_type=MappingEntry,
+        kind=PyTreeKind.DEFAULTDICT,
+    ),
+    deque: PyTreeNodeRegistryEntry(
+        deque,
+        _deque_flatten,  # type: ignore[arg-type]
+        _deque_unflatten,  # type: ignore[arg-type]
+        path_entry_type=SequenceEntry,
+        kind=PyTreeKind.DEQUE,
+    ),
+    structseq: PyTreeNodeRegistryEntry(
+        structseq,
+        _structseq_flatten,  # type: ignore[arg-type]
+        _structseq_unflatten,  # type: ignore[arg-type]
+        path_entry_type=StructSequenceEntry,
+        kind=PyTreeKind.STRUCTSEQUENCE,
+    ),
+}
+
+
+_DICT_INSERTION_ORDERED_REGISTRY_ENTRY = PyTreeNodeRegistryEntry(
+    dict,
+    _dict_insertion_ordered_flatten,  # type: ignore[arg-type]
+    _dict_insertion_ordered_unflatten,  # type: ignore[arg-type]
+    path_entry_type=MappingEntry,
+    kind=PyTreeKind.DICT,
+)
+_DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY = PyTreeNodeRegistryEntry(
+    defaultdict,
+    _defaultdict_insertion_ordered_flatten,  # type: ignore[arg-type]
+    _defaultdict_insertion_ordered_unflatten,  # type: ignore[arg-type]
+    path_entry_type=MappingEntry,
+    kind=PyTreeKind.DEFAULTDICT,
+)
 
 
 ####################################################################################################
@@ -715,7 +775,7 @@ with warnings.catch_warnings():
         'Please use the accessor API instead.',
         category=FutureWarning,
     )
-    class KeyPathEntry(NamedTuple):
+    class KeyPathEntry(NamedTuple):  # pylint: disable=missing-class-docstring
         key: Any
 
         def __add__(self, other: object) -> KeyPath:
@@ -737,7 +797,7 @@ with warnings.catch_warnings():
         'Please use the accessor API instead.',
         category=FutureWarning,
     )
-    class KeyPath(NamedTuple):
+    class KeyPath(NamedTuple):  # pylint: disable=missing-class-docstring
         keys: tuple[KeyPathEntry, ...] = ()
 
         def __add__(self, other: object) -> KeyPath:
@@ -814,11 +874,29 @@ with warnings.catch_warnings():
         _KEYPATH_REGISTRY[cls] = handler
         return handler
 
-    register_keypaths(tuple, lambda tup: list(map(GetitemKeyPathEntry, range(len(tup)))))
-    register_keypaths(list, lambda lst: list(map(GetitemKeyPathEntry, range(len(lst)))))
-    register_keypaths(dict, lambda dct: list(map(GetitemKeyPathEntry, _sorted_keys(dct))))  # type: ignore[arg-type]
-    register_keypaths(OrderedDict, lambda odct: list(map(GetitemKeyPathEntry, odct)))
-    register_keypaths(defaultdict, lambda ddct: list(map(GetitemKeyPathEntry, _sorted_keys(ddct))))  # type: ignore[arg-type]
-    register_keypaths(deque, lambda dq: list(map(GetitemKeyPathEntry, range(len(dq)))))
+    register_keypaths(
+        tuple,
+        lambda tup: list(map(GetitemKeyPathEntry, range(len(tup)))),
+    )
+    register_keypaths(
+        list,
+        lambda lst: list(map(GetitemKeyPathEntry, range(len(lst)))),
+    )
+    register_keypaths(
+        dict,
+        lambda dct: list(map(GetitemKeyPathEntry, _sorted_keys(dct))),  # type: ignore[arg-type]
+    )
+    register_keypaths(
+        OrderedDict,
+        lambda odct: list(map(GetitemKeyPathEntry, odct)),
+    )
+    register_keypaths(
+        defaultdict,
+        lambda ddct: list(map(GetitemKeyPathEntry, _sorted_keys(ddct))),  # type: ignore[arg-type]
+    )
+    register_keypaths(
+        deque,
+        lambda dq: list(map(GetitemKeyPathEntry, range(len(dq)))),
+    )
 
 del _add_get

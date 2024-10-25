@@ -449,7 +449,7 @@ class StructSequenceMeta(type):
 # This is an internal CPython type that is like, but subtly different from a NamedTuple.
 # `structseq` classes are unsubclassable, so are all decorated with `@final`.
 # pylint: disable-next=invalid-name,missing-class-docstring
-class structseq(Tuple[_T_co], metaclass=StructSequenceMeta):  # type: ignore[misc] # noqa: N801
+class structseq(Tuple[_T_co, ...], metaclass=StructSequenceMeta):  # type: ignore[misc] # noqa: N801
     """A generic type stub for CPython's ``PyStructSequence`` type."""
 
     n_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name

@@ -68,9 +68,6 @@ from typing import Any, Callable, Iterable, TypeVar, overload
 from typing_extensions import Literal  # Python 3.8+
 from typing_extensions import dataclass_transform  # Python 3.11+
 
-from optree.accessor import DataclassEntry
-from optree.registry import register_pytree_node
-
 
 # Redefine `field`, `dataclasses`, and `make_dataclasses`.
 # The remaining APIs are re-exported from the original package.
@@ -337,6 +334,9 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
         kwargs = dict(zip(children_field_names, children))
         kwargs.update(metadata)
         return cls(**kwargs)
+
+    from optree.accessor import DataclassEntry  # pylint: disable=import-outside-toplevel
+    from optree.registry import register_pytree_node  # pylint: disable=import-outside-toplevel
 
     return register_pytree_node(  # type: ignore[return-value]
         cls,

@@ -17,14 +17,18 @@
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable, ClassVar
+from typing import TYPE_CHECKING, Any, Callable, ClassVar
 from typing_extensions import Self  # Python 3.11+
 from typing_extensions import deprecated  # Python 3.13+
 
 from optree import registry
-from optree.accessor import GetAttrEntry, PyTreeEntry
+from optree.accessor import GetAttrEntry
 from optree.ops import tree_reduce as reduce
 from optree.typing import CustomTreeNode, T
+
+
+if TYPE_CHECKING:
+    from optree.accessor import PyTreeEntry
 
 
 __all__ = [

@@ -121,7 +121,7 @@ OpTree out-of-box supports the following Python container types in the registry:
 
 which are considered non-leaf nodes in the tree.
 Python objects that the type is not registered will be treated as leaf nodes.
-The registration lookup uses the `is` operator to determine whether the type is matched.
+The registry lookup uses the `is` operator to determine whether the type is matched.
 So subclasses will need to explicitly register in the registry, otherwise, an object of that type will be considered a leaf.
 The [`NoneType`](https://docs.python.org/3/library/constants.html#None) is a special case discussed in section [`None` is non-leaf Node vs. `None` is Leaf](#none-is-non-leaf-node-vs-none-is-leaf).
 
@@ -289,7 +289,7 @@ There are several key attributes of the pytree type registry:
 
 3. **Users cannot modify the behavior of already registered built-in types** listed in [Built-in PyTree Node Types](#built-in-pytree-node-types), such as key order sorting for `dict` and `collections.defaultdict`.
 
-4. **Inherited subclasses are not implicitly registered.** The registration lookup uses `type(obj) is registered_type` rather than `isinstance(obj, registered_type)`. Users need to register the subclasses explicitly. To register all subclasses, it is easy to implement with [`metaclass`](https://docs.python.org/3/reference/datamodel.html#metaclasses) or [`__init_subclass__`](https://docs.python.org/3/reference/datamodel.html#customizing-class-creation), for example:
+4. **Inherited subclasses are not implicitly registered.** The registry lookup uses `type(obj) is registered_type` rather than `isinstance(obj, registered_type)`. Users need to register the subclasses explicitly. To register all subclasses, it is easy to implement with [`metaclass`](https://docs.python.org/3/reference/datamodel.html#metaclasses) or [`__init_subclass__`](https://docs.python.org/3/reference/datamodel.html#customizing-class-creation), for example:
 
     ```python
     from collections import UserDict
