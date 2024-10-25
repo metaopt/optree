@@ -18,11 +18,7 @@ limitations under the License.
 #include <sstream>  // std::ostringstream
 #include <utility>  // std::move
 
-#include "include/exceptions.h"
-#include "include/registry.h"
-#include "include/stdutils.h"
-#include "include/synchronization.h"
-#include "include/treespec.h"
+#include "optree/optree.h"
 
 namespace optree {
 
@@ -81,6 +77,8 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
 }
 
 py::object PyTreeSpec::Unflatten(const py::iterable& leaves) const {
+    PYTREESPEC_SANITY_CHECK(*this);
+
     const scoped_critical_section cs{leaves};
     return UnflattenImpl(leaves);
 }

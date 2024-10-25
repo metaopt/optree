@@ -29,10 +29,10 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
-#include "include/exceptions.h"
-#include "include/hashing.h"
-#include "include/registry.h"
-#include "include/synchronization.h"
+#include "optree/exceptions.h"
+#include "optree/hashing.h"
+#include "optree/registry.h"
+#include "optree/synchronization.h"
 
 namespace optree {
 
@@ -73,6 +73,14 @@ bool AllLeavesImpl(const py::iterable &iterable,
                    const std::string &registry_namespace);
 
 py::module_ GetCxxModule(const std::optional<py::module_> &module = std::nullopt);
+
+#define PYTREESPEC_SANITY_CHECK(treespec)                                                          \
+    {                                                                                              \
+        EXPECT_FALSE((treespec).m_traversal.empty(), "The tree node traversal is empty.");         \
+        EXPECT_EQ((treespec).m_traversal.back().num_nodes,                                         \
+                  py::ssize_t_cast((treespec).m_traversal.size()),                                 \
+                  "The number of nodes does not match the traversal size.");                       \
+    }
 
 // A PyTreeSpec describes the tree structure of a PyTree. A PyTree is a tree of Python values, where
 // the interior nodes are tuples, lists, dictionaries, or user-defined containers, and the leaves
@@ -148,17 +156,17 @@ public:
     [[nodiscard]] std::unique_ptr<PyTreeSpec> Child(ssize_t index) const;
 
     [[nodiscard]] inline Py_ALWAYS_INLINE ssize_t GetNumLeaves() const {
-        EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+        PYTREESPEC_SANITY_CHECK(*this);
         return m_traversal.back().num_leaves;
     }
 
     [[nodiscard]] inline Py_ALWAYS_INLINE ssize_t GetNumNodes() const {
-        EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+        PYTREESPEC_SANITY_CHECK(*this);
         return py::ssize_t_cast(m_traversal.size());
     }
 
     [[nodiscard]] inline Py_ALWAYS_INLINE ssize_t GetNumChildren() const {
-        EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+        PYTREESPEC_SANITY_CHECK(*this);
         return m_traversal.back().arity;
     }
 
@@ -169,7 +177,7 @@ public:
     [[nodiscard]] py::object GetType(const std::optional<Node> &node = std::nullopt) const;
 
     [[nodiscard]] inline Py_ALWAYS_INLINE PyTreeKind GetPyTreeKind() const {
-        EXPECT_FALSE(m_traversal.empty(), "The tree node traversal is empty.");
+        PYTREESPEC_SANITY_CHECK(*this);
         return m_traversal.back().kind;
     }
 

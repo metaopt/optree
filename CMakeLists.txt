@@ -214,5 +214,5 @@ else()
     find_package(pybind11 "${pybind11_MINIMUM_VERSION}" CONFIG REQUIRED)
 endif()
 
-include_directories("${CMAKE_SOURCE_DIR}")
+include_directories("${CMAKE_SOURCE_DIR}/include")
 add_subdirectory(src)

@@ -24,12 +24,7 @@ limitations under the License.
 #include <utility>    // std::move
 #include <vector>     // std::vector
 
-#include "include/exceptions.h"
-#include "include/pytypes.h"
-#include "include/registry.h"
-#include "include/stdutils.h"
-#include "include/synchronization.h"
-#include "include/treespec.h"
+#include "optree/optree.h"
 
 namespace optree {
 
@@ -44,6 +39,7 @@ namespace optree {
     });
     out->m_none_is_leaf = none_is_leaf;
     out->m_traversal.shrink_to_fit();
+    PYTREESPEC_SANITY_CHECK(*out);
     return out;
 }
 
@@ -61,6 +57,7 @@ namespace optree {
     });
     out->m_none_is_leaf = none_is_leaf;
     out->m_traversal.shrink_to_fit();
+    PYTREESPEC_SANITY_CHECK(*out);
     return out;
 }
 
@@ -90,6 +87,7 @@ template <bool NoneIsLeaf>
 
         std::string common_registry_namespace{};
         for (const PyTreeSpec& treespec : treespecs) {
+            PYTREESPEC_SANITY_CHECK(treespec);
             if (treespec.m_none_is_leaf != NoneIsLeaf) [[unlikely]] {
                 throw py::value_error(NoneIsLeaf
                                           ? "Expected treespec(s) with `node_is_leaf=True`."
@@ -274,6 +272,7 @@ template <bool NoneIsLeaf>
     out->m_none_is_leaf = NoneIsLeaf;
     out->m_namespace = registry_namespace;
     out->m_traversal.shrink_to_fit();
+    PYTREESPEC_SANITY_CHECK(*out);
     return out;
 }
 

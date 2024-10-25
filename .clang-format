@@ -28,7 +28,7 @@ IncludeCategories:
     CaseSensitive: true
   - Regex: '^<[[:alnum:]_/]+(\.h)?>$'
     Priority: 1
-  - Regex: '^"include/'
+  - Regex: '^"optree/'
     Priority: 4
     CaseSensitive: true
   - Regex: ".*"
