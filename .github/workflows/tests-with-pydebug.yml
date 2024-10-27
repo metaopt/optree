@@ -29,6 +29,7 @@ concurrency:
 env:
   OPTREE_CXX_WERROR: "ON"
   PYTHON: "python"  # to be updated
+  PYTHON_TAG: "py3"  # to be updated
   PYTHON_VERSION: "3"  # to be updated
   PYENV_ROOT: "~/.pyenv"  # to be updated
   COLUMNS: "128"
@@ -77,6 +78,7 @@ jobs:
         run: |
           export PYENV_ROOT="${HOME}/.pyenv"
           export PATH="${PYENV_ROOT}/bin:${PYENV_ROOT}/shims:${PATH}"
+          export PATH="${PWD}/venv/bin:${PATH}"
           git clone https://github.com/pyenv/pyenv.git "${PYENV_ROOT}"
           echo "PYENV_ROOT=${PYENV_ROOT}" >> "${GITHUB_ENV}"
           echo "PATH=${PATH}" >> "${GITHUB_ENV}"
@@ -88,6 +90,7 @@ jobs:
         run: |
           $Env:PYENV_ROOT = "$Env:USERPROFILE\.pyenv"
           $Env:PATH = "$Env:PYENV_ROOT\pyenv-win\bin;$Env:PYENV_ROOT\pyenv-win\shims;$Env:PATH"
+          $Env:PATH = "$(Get-Location)\venv\Scripts;$Env:PATH"
           git clone https://github.com/pyenv-win/pyenv-win.git "$Env:PYENV_ROOT"
           Write-Output "PYENV_ROOT=$Env:PYENV_ROOT" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
           Write-Output "PATH=$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
@@ -137,19 +140,61 @@ jobs:
             fi
           fi
           pyenv install ${{ env.PYTHON_VERSION }} "${PYENV_INSTALL_ARGS[@]}"
+
+          set -x
+          pyenv versions
           pyenv global "$(pyenv versions | grep -F '${{ env.PYTHON_VERSION }}' | tr -d ' ')"
           pyenv rehash
 
       - name: Set up Environment
+        shell: bash
         run: |
           ${{ env.PYTHON }} --version
           ${{ env.PYTHON }} -c 'from pprint import pprint; import sysconfig; pprint(sysconfig.get_config_vars())'
           ${{ env.PYTHON }} -m pip install --upgrade pip setuptools wheel
+
+          PYTHON_TAG="$(
+            echo 'import sys; print(
+              "{0.name[0]}p{1.major}{1.minor}{2}".format(
+                sys.implementation,
+                sys.version_info,
+                getattr(sys, "abiflags", ""),
+              ).lower(),
+            )' | ${{ env.PYTHON }} -
+          )"
+          echo "PYTHON_TAG=${PYTHON_TAG}" | tee -a "${GITHUB_ENV}"
 
       - name: Install OpTree
         run: |
           ${{ env.PYTHON }} -m pip install -vv --editable '.[test]'
 
       - name: Test with pytest
+        shell: bash
         run: |
-          make test PYTESTOPTS="--exitfirst"
+          PYTESTOPTS=(
+            "--exitfirst"
+            "--cov-report=xml:coverage-${{ env.PYTHON_TAG }}.xml"
+            "--junit-xml=junit-${{ env.PYTHON_TAG }}.xml"
+          )
+          make test PYTESTOPTS="${PYTESTOPTS[*]}"
+
+      - name: List generated files
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          find . -type f -name '*.py[co]' -delete
+          find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
+          if [[ -n "$(git status --ignored --porcelain | grep -vE '/$')" ]]; then
+            ls -alh $(git status --ignored --porcelain | grep -vE '/$' | cut -d ' ' -f2)
+          fi
+
+      - name: Upload JUnit results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: tests/junit-${{ env.PYTHON_TAG }}.xml
+          flags: junit-${{ env.PYTHON_TAG }}
+          name: junit-umbrella
+          verbose: true
+          fail_ci_if_error: false

@@ -30,6 +30,7 @@ env:
   OPTREE_CXX_WERROR: "ON"
   FULL_TEST_PYTHON_VERSIONS: "3.10;3.11"
   PYTHON: "python"  # to be updated
+  PYTHON_TAG: "py3"  # to be updated
   COLUMNS: "128"
 
 jobs:
@@ -69,8 +70,22 @@ jobs:
           allow-prereleases: true
 
       - name: Set up Environment
+        shell: bash
         run: |
+          ${{ env.PYTHON }} --version
+          ${{ env.PYTHON }} -c 'from pprint import pprint; import sysconfig; pprint(sysconfig.get_config_vars())'
           ${{ env.PYTHON }} -m pip install --upgrade pip setuptools wheel
+
+          PYTHON_TAG="$(
+            echo 'import sys; print(
+              "{0.name[0]}p{1.major}{1.minor}{2}".format(
+                sys.implementation,
+                sys.version_info,
+                getattr(sys, "abiflags", ""),
+              ).lower(),
+            )' | ${{ env.PYTHON }} -
+          )"
+          echo "PYTHON_TAG=${PYTHON_TAG}" | tee -a "${GITHUB_ENV}"
 
       - name: Install test dependencies
         shell: bash
@@ -95,15 +110,33 @@ jobs:
         run: |
           PYTESTOPTS=(
             "--exitfirst"
-            "--cov-report=xml:coverage-${{ matrix.python-version }}-${{ runner.os }}.xml"
+            "--cov-report=xml:coverage-${{ env.PYTHON_TAG }}.xml"
+            "--junit-xml=junit-${{ env.PYTHON_TAG }}.xml"
           )
           make test PYTESTOPTS="${PYTESTOPTS[*]}"
+
+      - name: List generated files
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          find . -type f -name '*.py[co]' -delete
+          find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
+          if [[ -n "$(git status --ignored --porcelain | grep -vE '/$')" ]]; then
+            ls -alh $(git status --ignored --porcelain | grep -vE '/$' | cut -d ' ' -f2)
+          fi
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.python-version }}-${{ runner.os }}
           path: tests/coverage-*.xml
+          if-no-files-found: error
+
+      - name: Upload JUnit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.python-version }}-${{ runner.os }}
+          path: tests/junit-*.xml
           if-no-files-found: error
 
   upload-coverage:
@@ -129,5 +162,30 @@ jobs:
           directory: coverage
           flags: unittests
           name: codecov-umbrella
+          verbose: true
+          fail_ci_if_error: false
+
+  upload-junit:
+    name: Upload JUnit results to Codecov
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 15
+    steps:
+      - name: Download JUnit artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: junit-*
+          path: junit
+          merge-multiple: true
+
+      - name: List JUnit artifacts
+        run: ls -lh junit/*
+
+      - name: Upload JUnit results to Codecov
+        uses: codecov/test-results-action@v1
+        with:
+          directory: junit
+          flags: unittests
+          name: junit-umbrella
           verbose: true
           fail_ci_if_error: false
