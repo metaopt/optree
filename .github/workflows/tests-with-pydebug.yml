@@ -35,7 +35,7 @@ env:
 
 jobs:
   test:
-    name: Test for Python ${{ matrix.python-version }}${{ matrix.python-abiflags }} on ${{ matrix.runner }}
+    name: Test for CPython ${{ matrix.python-version }}${{ matrix.python-abiflags }} on ${{ matrix.runner }}
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:

@@ -91,15 +91,43 @@ jobs:
           ${{ env.PYTHON }} -m pip install -vv --editable '.[test]'
 
       - name: Test with pytest
+        shell: bash
         run: |
-          make test PYTESTOPTS="--exitfirst"
+          PYTESTOPTS=(
+            "--exitfirst"
+            "--cov-report=xml:coverage-${{ matrix.python-version }}-${{ runner.os }}.xml"
+          )
+          make test PYTESTOPTS="${PYTESTOPTS[*]}"
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}-${{ runner.os }}
+          path: tests/coverage-*.xml
+          if-no-files-found: error
+
+  upload-coverage:
+    name: Upload coverage to Codecov
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 15
+    steps:
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: coverage
+          merge-multiple: true
+
+      - name: List coverage artifacts
+        run: ls -lh coverage/*
 
       - name: Upload coverage to Codecov
-        if: runner.os == 'Linux'
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./tests/coverage.xml
+          directory: coverage
           flags: unittests
           name: codecov-umbrella
+          verbose: true
           fail_ci_if_error: false
