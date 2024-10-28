@@ -94,7 +94,17 @@ jobs:
           )"
           echo "PYTHON_TAG=${PYTHON_TAG}" | tee -a "${GITHUB_ENV}"
 
-          if [[ "${{ runner.os }}" == 'Windows' ]]; then
+          if [[ "${{ runner.os }}" == 'Linux' ]]; then
+            sudo sysctl -w kernel.core_pattern="core.${PYTHON_TAG}.%P"
+            sudo sysctl -w kernel.core_uses_pid=0
+            sudo sysctl -w fs.suid_dumpable=1
+            sysctl kernel.core_pattern kernel.core_uses_pid fs.suid_dumpable
+          elif [[ "${{ runner.os }}" == 'macOS' ]]; then
+            sudo sysctl -w kern.corefile="core.${PYTHON_TAG}.%P"
+            sudo sysctl -w kern.coredump=1
+            sudo sysctl -w kern.sugid_coredump=1
+            sysctl kern.corefile kern.coredump kern.sugid_coredump
+          elif [[ "${{ runner.os }}" == 'Windows' ]]; then
             echo "CMAKE_BUILD_TYPE=Release" | tee -a "${GITHUB_ENV}"
           fi
 
@@ -119,6 +129,9 @@ jobs:
       - name: Test with pytest
         shell: bash
         run: |
+          set -x
+          ulimit -c unlimited
+          ulimit -a
           PYTESTOPTS=(
             "--exitfirst"
             "--cov-report=xml:coverage-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml"
@@ -136,6 +149,27 @@ jobs:
             ls -alh $(git status --ignored --porcelain | grep -vE '/$' | cut -d ' ' -f2)
           fi
 
+      - name: Collect backtraces from coredumps (if any)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          if [[ -n "$(find . -iname "core.*.[1-9]*")" ]]; then
+            if [[ "${{ runner.os }}" == 'Linux' ]]; then
+              (
+                export DEBIAN_FRONTEND=noninteractive
+                sudo apt-get update -qq && sudo apt-get install -yqq gdb
+              )
+              echo "Found core dumps:"
+              ls -alh $(find . -iname "core.*.[1-9]*")
+              echo "Collecting backtraces:"
+              find . -iname "core.*.[1-9]*" -exec bash -xc "
+                echo '::group::backtrace from: {}';
+                gdb ${{ env.PYTHON }} '{}' -ex 'backtrace' -ex 'quit';
+                echo '::endgroup::';
+              " ';'
+            fi
+          fi
+
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
@@ -149,6 +183,14 @@ jobs:
           name: junit-${{ matrix.python-version }}-${{ runner.os }}
           path: tests/junit-*.xml
           if-no-files-found: error
+
+      - name: Upload core dump file
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coredump-${{ env.PYTHON_TAG }}-${{ runner.os }}
+          path: tests/core.*
+          if-no-files-found: ignore
 
   upload-coverage:
     name: Upload coverage to Codecov

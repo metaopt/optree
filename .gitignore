@@ -11,6 +11,10 @@ __pycache__/
 # C extensions
 *.so
 
+# Core dump files
+core.[1-9]*
+core.*.[1-9]*
+
 # Distribution / packaging
 .Python
 build/
