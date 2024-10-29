@@ -24,26 +24,7 @@ from typing import Any, NamedTuple
 import pytest
 
 import optree
-from helpers import TREE_ACCESSORS, SysFloatInfoType, parametrize
-
-
-MISSING = object()
-
-
-def assert_equal_type_and_value(actual, expected=MISSING, *, expected_type=None):
-    if expected_type is None:
-        assert expected is not MISSING
-        expected_type = type(expected)
-    assert type(actual) is expected_type
-
-    if expected is MISSING:
-        return
-
-    assert actual == expected
-    if isinstance(expected, optree.PyTreeAccessor):
-        assert hash(actual) == hash(expected)
-        for i, j in zip(actual, expected):
-            assert_equal_type_and_value(i, j)
+from helpers import TREE_ACCESSORS, SysFloatInfoType, assert_equal_type_and_value, parametrize
 
 
 def test_pytree_accessor_new():

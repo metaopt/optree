@@ -23,23 +23,29 @@ import functools
 import itertools
 import textwrap
 from collections import OrderedDict, defaultdict, deque
-from typing import Any, Callable, ClassVar, Collection, Generic, Iterable, Mapping, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Collection,
+    Generic,
+    Iterable,
+    Mapping,
+    overload,
+)
 
 from optree import _C
-from optree.accessor import PyTreeAccessor, PyTreeEntry
-from optree.registry import register_pytree_node
-from optree.typing import (
-    MetaData,
-    NamedTuple,
-    PyTree,
-    PyTreeSpec,
-    S,
-    T,
-    U,
-    is_namedtuple_instance,
-    is_structseq_instance,
-)
-from optree.typing import structseq as PyStructSequence  # noqa: N812
+from optree.accessor import PyTreeAccessor
+from optree.typing import NamedTuple, T, is_namedtuple_instance, is_structseq_instance
+
+
+if TYPE_CHECKING:
+    import builtins
+
+    from optree.accessor import PyTreeEntry
+    from optree.typing import MetaData, PyTree, PyTreeKind, PyTreeSpec, S, U
+    from optree.typing import structseq as StructSequence  # noqa: N812
 
 
 __all__ = [
@@ -2441,13 +2447,27 @@ class FlattenOneLevelOutput(NamedTuple, Generic[T]):
     """A function that can be used to unflatten the metadata and children back to the pytree node."""
 
 
+# Subclass the namedtuple class to allow assigning new attributes.
+class FlattenOneLevelOutputEx(FlattenOneLevelOutput[T]):
+    """The output of :func:`tree_flatten_one_level`."""
+
+    type: builtins.type[Collection[T]]
+    """The type of the pytree node."""
+
+    path_entry_type: builtins.type[PyTreeEntry]
+    """The type of the path entry for the pytree node."""
+
+    kind: PyTreeKind
+    """The kind of the pytree node."""
+
+
 def tree_flatten_one_level(
     tree: PyTree[T],
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> FlattenOneLevelOutput[T]:
+) -> FlattenOneLevelOutputEx[T]:
     """Flatten the pytree one level, returning a 4-tuple of children, metadata, path entries, and an unflatten function.
 
     See also :func:`tree_flatten`, :func:`tree_flatten_with_path`.
@@ -2487,6 +2507,8 @@ def tree_flatten_one_level(
     if (tree is None and none_is_leaf) or (is_leaf is not None and is_leaf(tree)):  # type: ignore[unreachable,arg-type]
         raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
 
+    from optree.registry import register_pytree_node  # pylint: disable=import-outside-toplevel
+
     handler = register_pytree_node.get(node_type, namespace=namespace)
     if handler is None:
         raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
@@ -2508,12 +2530,17 @@ def tree_flatten_one_level(
             f'PyTree custom flatten function for type {node_type} returned inconsistent '
             f'number of children ({len(children)}) and number of entries ({len(entries)}).',
         )
-    return FlattenOneLevelOutput(
+
+    output = FlattenOneLevelOutputEx(
         children=children,
         metadata=metadata,
         entries=entries,
         unflatten_func=handler.unflatten_func,  # type: ignore[arg-type]
     )
+    output.type = node_type  # type: ignore[assignment]
+    output.path_entry_type = handler.path_entry_type
+    output.kind = handler.kind
+    return output
 
 
 def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
@@ -3095,7 +3122,7 @@ def treespec_deque(
 
 
 def treespec_structseq(
-    structseq: PyStructSequence[PyTreeSpec],
+    structseq: StructSequence[PyTreeSpec],
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
@@ -3174,7 +3201,10 @@ def treespec_from_collection(
     return _C.make_from_collection(collection, none_is_leaf, namespace)
 
 
-def prefix_errors(
+STANDARD_DICT_TYPES: frozenset[type] = frozenset({dict, OrderedDict, defaultdict})
+
+
+def prefix_errors(  # noqa: C901
     prefix_tree: PyTree[T],
     full_tree: PyTree[S],
     is_leaf: Callable[[T], bool] | None = None,
@@ -3183,206 +3213,175 @@ def prefix_errors(
     namespace: str = '',
 ) -> list[Callable[[str], ValueError]]:
     """Return a list of errors that would be raised by :func:`broadcast_prefix`."""
-    return list(
-        _prefix_error(
-            PyTreeAccessor(),
-            prefix_tree,
-            full_tree,
+
+    def helper(  # pylint: disable=too-many-locals
+        accessor: PyTreeAccessor,
+        prefix_subtree: PyTree[T],
+        full_subtree: PyTree[S],
+    ) -> Iterable[Callable[[str], ValueError]]:
+        # A leaf is a valid prefix of any tree
+        if tree_is_leaf(
+            prefix_subtree,
             is_leaf=is_leaf,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
-        ),
-    )
+        ):
+            return
 
-
-STANDARD_DICT_TYPES: frozenset[type] = frozenset({dict, OrderedDict, defaultdict})
-
-
-# pylint: disable-next=too-many-locals
-def _prefix_error(
-    accessor: PyTreeAccessor,
-    prefix_tree: PyTree[T],
-    full_tree: PyTree[S],
-    is_leaf: Callable[[T], bool] | None = None,
-    *,
-    none_is_leaf: bool = False,
-    namespace: str = '',
-) -> Iterable[Callable[[str], ValueError]]:
-    # A leaf is a valid prefix of any tree
-    if tree_is_leaf(prefix_tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace):
-        return
-
-    # The subtrees may disagree because their roots are of different types:
-    prefix_tree_type = type(prefix_tree)
-    full_tree_type = type(full_tree)
-    both_standard_dict = (
-        prefix_tree_type in STANDARD_DICT_TYPES and full_tree_type in STANDARD_DICT_TYPES
-    )
-    both_deque = prefix_tree_type is deque and full_tree_type is deque  # type: ignore[comparison-overlap]
-    if prefix_tree_type is not full_tree_type and (
-        # Special handling for dictionary types
-        not both_standard_dict
-    ):
-        yield lambda name: ValueError(
-            f'pytree structure error: different types at key path\n'
-            f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
-            f'At that key path, the prefix pytree {name} has a subtree of type\n'
-            f'    {type(prefix_tree)}\n'
-            f'but at the same key path the full pytree has a subtree of different type\n'
-            f'    {type(full_tree)}.',
+        # The subtrees may disagree because their roots are of different types:
+        prefix_tree_type = type(prefix_subtree)
+        full_tree_type = type(full_subtree)
+        both_standard_dict = (
+            prefix_tree_type in STANDARD_DICT_TYPES and full_tree_type in STANDARD_DICT_TYPES
         )
-        return  # don't look for more errors in this subtree
-
-    # Or they may disagree if their roots have different numbers of children (note that because both
-    # prefix_tree and full_tree have the same type at this point, and because prefix_tree is not a
-    # leaf, each can be flattened once):
-    prefix_tree_children, prefix_tree_metadata, *_ = tree_flatten_one_level(
-        prefix_tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    full_tree_children, full_tree_metadata, *_ = tree_flatten_one_level(
-        full_tree,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    # Special handling for dictionary types
-    if both_standard_dict:
-        prefix_tree_keys: list[Any] = (
-            prefix_tree_metadata  # type: ignore[assignment]
-            if prefix_tree_type is not defaultdict  # type: ignore[comparison-overlap]
-            else prefix_tree_metadata[1]  # type: ignore[index]
-        )
-        full_tree_keys: list[Any] = (
-            full_tree_metadata  # type: ignore[assignment]
-            if full_tree_type is not defaultdict  # type: ignore[comparison-overlap]
-            else full_tree_metadata[1]  # type: ignore[index]
-        )
-        prefix_tree_keys_set = set(prefix_tree_keys)
-        full_tree_keys_set = set(full_tree_keys)
-        if prefix_tree_keys_set != full_tree_keys_set:
-            missing_keys = sorted(prefix_tree_keys_set.difference(full_tree_keys_set))
-            extra_keys = sorted(full_tree_keys_set.difference(prefix_tree_keys_set))
-            key_difference = ''
-            if missing_keys:
-                key_difference += f'\nmissing key(s):\n    {missing_keys}'
-            if extra_keys:
-                key_difference += f'\nextra key(s):\n    {extra_keys}'
+        both_deque = prefix_tree_type is deque and full_tree_type is deque  # type: ignore[comparison-overlap]
+        if (
+            prefix_tree_type is not full_tree_type
+            and not both_standard_dict  # special handling for dictionary types
+        ):
             yield lambda name: ValueError(
-                f'pytree structure error: different pytree keys at key path\n'
+                f'pytree structure error: different types at key path\n'
                 f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
                 f'At that key path, the prefix pytree {name} has a subtree of type\n'
-                f'    {prefix_tree_type}\n'
-                f'with {len(prefix_tree_keys)} key(s)\n'
-                f'    {prefix_tree_keys}\n'
-                f'but at the same key path the full pytree has a subtree of type\n'
-                f'    {full_tree_type}\n'
-                f'but with {len(full_tree_keys)} key(s)\n'
-                f'    {full_tree_keys}{key_difference}',
+                f'    {type(prefix_subtree)}\n'
+                f'but at the same key path the full pytree has a subtree of different type\n'
+                f'    {type(full_subtree)}.',
             )
             return  # don't look for more errors in this subtree
 
-        # If the keys agree, we should ensure that the children are in the same order:
-        full_tree_children = [full_tree[k] for k in prefix_tree_keys]  # type: ignore[misc]
-
-    if len(prefix_tree_children) != len(full_tree_children):
-        yield lambda name: ValueError(
-            f'pytree structure error: different numbers of pytree children at key path\n'
-            f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
-            f'At that key path, the prefix pytree {name} has a subtree of type\n'
-            f'    {prefix_tree_type}\n'
-            f'with {len(prefix_tree_children)} children, '
-            f'but at the same key path the full pytree has a subtree of the same '
-            f'type but with {len(full_tree_children)} children.',
-        )
-        return  # don't look for more errors in this subtree
-
-    # Or they may disagree if their roots have different pytree metadata:
-    if (
-        prefix_tree_metadata != full_tree_metadata
-        and (not both_deque)  # ignore maxlen mismatch for deque
-        and (
-            # Special handling for dictionary types already done in the keys check above
-            not both_standard_dict
-        )
-    ):
-        prefix_tree_metadata_repr = repr(prefix_tree_metadata)
-        full_tree_metadata_repr = repr(full_tree_metadata)
-        metadata_diff = textwrap.indent(
-            '\n'.join(
-                difflib.ndiff(
-                    prefix_tree_metadata_repr.splitlines(),
-                    full_tree_metadata_repr.splitlines(),
-                ),
-            ),
-            prefix='    ',
-        )
-        yield lambda name: ValueError(
-            f'pytree structure error: different pytree metadata at key path\n'
-            f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
-            f'At that key path, the prefix pytree {name} has a subtree of type\n'
-            f'    {prefix_tree_type}\n'
-            f'with metadata\n'
-            f'    {prefix_tree_metadata_repr}\n'
-            f'but at the same key path the full pytree has a subtree of the same '
-            f'type but with metadata\n'
-            f'    {full_tree_metadata_repr}\n'
-            f'so the diff in the metadata at these pytree nodes is\n'
-            f'{metadata_diff}',
-        )
-        return  # don't look for more errors in this subtree
-
-    # If the root types and numbers of children agree, there must be an error in a subtree,
-    # so recurse:
-    entries = _child_entries(
-        prefix_tree,
-        is_leaf=is_leaf,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    entries_ = _child_entries(
-        full_tree,
-        is_leaf=is_leaf,  # type: ignore[arg-type]
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
-    assert entries == entries_ or (
-        # Special handling for dictionary types already done in the keys check above
-        both_standard_dict
-    ), f'equal pytree nodes gave different keys: {entries} and {entries_}'
-    # pylint: disable-next=invalid-name
-    for e, t1, t2 in zip(entries, prefix_tree_children, full_tree_children):
-        yield from _prefix_error(
-            accessor + e,
-            t1,
-            t2,
-            is_leaf=is_leaf,
+        # Or they may disagree if their roots have different numbers of children (note that because both
+        # prefix_tree and full_tree have the same type at this point, and because prefix_tree is not a
+        # leaf, each can be flattened once):
+        prefix_tree_one_level_output = (
+            prefix_tree_children,
+            prefix_tree_metadata,
+            prefix_tree_entries,
+            _,
+        ) = tree_flatten_one_level(
+            prefix_subtree,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
+        full_tree_one_level_output = (
+            full_tree_children,
+            full_tree_metadata,
+            full_tree_entries,
+            _,
+        ) = tree_flatten_one_level(
+            full_subtree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        # Special handling for dictionary types
+        if both_standard_dict:
+            prefix_tree_keys: list[Any] = (
+                prefix_tree_metadata  # type: ignore[assignment]
+                if prefix_tree_type is not defaultdict  # type: ignore[comparison-overlap]
+                else prefix_tree_metadata[1]  # type: ignore[index]
+            )
+            full_tree_keys: list[Any] = (
+                full_tree_metadata  # type: ignore[assignment]
+                if full_tree_type is not defaultdict  # type: ignore[comparison-overlap]
+                else full_tree_metadata[1]  # type: ignore[index]
+            )
+            prefix_tree_keys_set = set(prefix_tree_keys)
+            full_tree_keys_set = set(full_tree_keys)
+            if prefix_tree_keys_set != full_tree_keys_set:
+                missing_keys = sorted(prefix_tree_keys_set.difference(full_tree_keys_set))
+                extra_keys = sorted(full_tree_keys_set.difference(prefix_tree_keys_set))
+                key_difference = ''
+                if missing_keys:
+                    key_difference += f'\nmissing key(s):\n    {missing_keys}'
+                if extra_keys:
+                    key_difference += f'\nextra key(s):\n    {extra_keys}'
+                yield lambda name: ValueError(
+                    f'pytree structure error: different pytree keys at key path\n'
+                    f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
+                    f'At that key path, the prefix pytree {name} has a subtree of type\n'
+                    f'    {prefix_tree_type}\n'
+                    f'with {len(prefix_tree_keys)} key(s)\n'
+                    f'    {prefix_tree_keys}\n'
+                    f'but at the same key path the full pytree has a subtree of type\n'
+                    f'    {full_tree_type}\n'
+                    f'but with {len(full_tree_keys)} key(s)\n'
+                    f'    {full_tree_keys}{key_difference}',
+                )
+                return  # don't look for more errors in this subtree
 
+            # If the keys agree, we should ensure that the children are in the same order:
+            full_tree_children = [full_subtree[k] for k in prefix_tree_keys]  # type: ignore[misc]
 
-def _child_entries(
-    tree: PyTree[T],
-    is_leaf: Callable[[T], bool] | None = None,
-    *,
-    none_is_leaf: bool = False,
-    namespace: str = '',
-) -> list[PyTreeEntry]:
-    assert not tree_is_leaf(
-        tree,
-        is_leaf=is_leaf,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    ), 'tree must be a non-leaf node'
+        if len(prefix_tree_children) != len(full_tree_children):
+            yield lambda name: ValueError(
+                f'pytree structure error: different numbers of pytree children at key path\n'
+                f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
+                f'At that key path, the prefix pytree {name} has a subtree of type\n'
+                f'    {prefix_tree_type}\n'
+                f'with {len(prefix_tree_children)} children, '
+                f'but at the same key path the full pytree has a subtree of the same '
+                f'type but with {len(full_tree_children)} children.',
+            )
+            return  # don't look for more errors in this subtree
 
-    counter = itertools.count()
-    one_level_accessors = tree_accessors(
-        tree,
-        is_leaf=lambda x: next(counter) > 0 or (is_leaf is not None and is_leaf(x)),
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
-    )
+        # Or they may disagree if their roots have different pytree metadata:
+        if (
+            prefix_tree_metadata != full_tree_metadata
+            and (not both_deque)  # ignore maxlen mismatch for deque
+            and (
+                # Special handling for dictionary types already done in the keys check above
+                not both_standard_dict
+            )
+        ):
+            prefix_tree_metadata_repr = repr(prefix_tree_metadata)
+            full_tree_metadata_repr = repr(full_tree_metadata)
+            metadata_diff = textwrap.indent(
+                '\n'.join(
+                    difflib.ndiff(
+                        prefix_tree_metadata_repr.splitlines(),
+                        full_tree_metadata_repr.splitlines(),
+                    ),
+                ),
+                prefix='    ',
+            )
+            yield lambda name: ValueError(
+                f'pytree structure error: different pytree metadata at key path\n'
+                f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
+                f'At that key path, the prefix pytree {name} has a subtree of type\n'
+                f'    {prefix_tree_type}\n'
+                f'with metadata\n'
+                f'    {prefix_tree_metadata_repr}\n'
+                f'but at the same key path the full pytree has a subtree of the same '
+                f'type but with metadata\n'
+                f'    {full_tree_metadata_repr}\n'
+                f'so the diff in the metadata at these pytree nodes is\n'
+                f'{metadata_diff}',
+            )
+            return  # don't look for more errors in this subtree
 
-    assert all(len(a) == 1 for a in one_level_accessors)
-    return [a[0] for a in one_level_accessors]
+        # If the root types and numbers of children agree, there must be an error in a subtree,
+        # so recurse:
+        entries = [
+            prefix_tree_one_level_output.path_entry_type(
+                e,
+                prefix_tree_type,
+                prefix_tree_one_level_output.kind,
+            )
+            for e in prefix_tree_entries
+        ]
+        entries_ = [
+            full_tree_one_level_output.path_entry_type(
+                e,
+                full_tree_type,
+                full_tree_one_level_output.kind,
+            )
+            for e in full_tree_entries
+        ]
+        assert (
+            both_standard_dict  # special handling for dictionary types already done in the keys check above
+            or entries == entries_
+        ), f'equal pytree nodes gave different keys: {entries} and {entries_}'
+        # pylint: disable-next=invalid-name
+        for e, t1, t2 in zip(entries, prefix_tree_children, full_tree_children):
+            yield from helper(accessor + e, t1, t2)
+
+    return list(helper(PyTreeAccessor(), prefix_tree, full_tree))

@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import abc
 import functools
 import platform
 import types
@@ -332,14 +333,23 @@ class PyTreeTypeVar:  # pragma: no cover
         raise TypeError('Cannot subclass special typing classes.')
 
 
-FlattenFunc: TypeAlias = Callable[
-    [Collection[T]],
-    Union[
-        Tuple[Children[T], MetaData],
-        Tuple[Children[T], MetaData, Optional[Iterable[Any]]],
-    ],
-]
-UnflattenFunc: TypeAlias = Callable[[MetaData, Children[T]], Collection[T]]
+class FlattenFunc(Protocol[T]):  # pylint: disable=too-few-public-methods
+    """The type stub class for flatten functions."""
+
+    @abc.abstractmethod
+    def __call__(
+        self,
+        container: Collection[T],
+    ) -> tuple[Children[T], MetaData] | tuple[Children[T], MetaData, Iterable[Any] | None]:
+        """Flatten the container into children and metadata."""
+
+
+class UnflattenFunc(Protocol[T]):  # pylint: disable=too-few-public-methods
+    """The type stub class for unflatten functions."""
+
+    @abc.abstractmethod
+    def __call__(self, metadata: MetaData, children: Children[T]) -> Collection[T]:
+        """Unflatten the children and metadata back into the container."""
 
 
 def _override_with_(cxx_implementation: F) -> Callable[[F], F]:
@@ -449,7 +459,7 @@ class StructSequenceMeta(type):
 # This is an internal CPython type that is like, but subtly different from a NamedTuple.
 # `structseq` classes are unsubclassable, so are all decorated with `@final`.
 # pylint: disable-next=invalid-name,missing-class-docstring
-class structseq(Tuple[_T_co], metaclass=StructSequenceMeta):  # type: ignore[misc] # noqa: N801
+class structseq(Tuple[_T_co, ...], metaclass=StructSequenceMeta):  # type: ignore[misc] # noqa: N801
     """A generic type stub for CPython's ``PyStructSequence`` type."""
 
     n_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name

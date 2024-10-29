@@ -80,6 +80,9 @@ jobs:
       - name: Determine Python version
         shell: bash
         run: |
+          if [[ "${{ runner.os }}" == 'Windows' ]]; then
+            pyenv update
+          fi
           pyenv install --list
           if [[ "${{ matrix.python-abiflags }}" == *t* ]]; then
             PYTHON_VERSION="$(
@@ -111,6 +114,7 @@ jobs:
               PYENV_INSTALL_ARGS+=("--debug")
             fi
           else
+            pyenv update
             if [[ "${{ matrix.python-abiflags }}" == *d* ]]; then
               PYENV_INSTALL_ARGS+=("--dev")
             fi

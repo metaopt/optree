@@ -40,6 +40,7 @@ from helpers import (
     FlatCache,
     MyAnotherDict,
     always,
+    assert_equal_type_and_value,
     is_list,
     is_none,
     is_tuple,
@@ -3152,10 +3153,10 @@ def test_tree_flatten_one_level(  # noqa: C901
     ):
         actual_leaves = []
         actual_paths = []
-        actual_typed_paths = []
+        actual_accessors = []
 
         path_stack = []
-        typed_path_stack = []
+        accessor_stack = []
 
         def flatten(node):  # noqa: C901
             counter = itertools.count()
@@ -3181,14 +3182,21 @@ def test_tree_flatten_one_level(  # noqa: C901
                     )
                 actual_leaves.append(node)
                 actual_paths.append(tuple(path_stack))
-                actual_typed_paths.append(tuple(typed_path_stack))
+                actual_accessors.append(optree.PyTreeAccessor(accessor_stack))
             else:
-                children, metadata, entries, unflatten_func = optree.tree_flatten_one_level(
+                output = (
+                    children,
+                    metadata,
+                    entries,
+                    unflatten_func,
+                ) = optree.tree_flatten_one_level(
                     node,
                     none_is_leaf=none_is_leaf,
                     namespace=namespace,
                 )
                 assert children == expected_children
+                assert output.type == one_level_treespec.type
+                assert output.kind == one_level_treespec.kind
                 if node_type in {type(None), tuple, list}:
                     assert metadata is None
                     if node_type is tuple:
@@ -3240,14 +3248,14 @@ def test_tree_flatten_one_level(  # noqa: C901
 
                 for child, entry in zip(children, entries):
                     path_stack.append(entry)
-                    typed_path_stack.append((entry, node_type, node_kind))
+                    accessor_stack.append(output.path_entry_type(entry, node_type, node_kind))
                     flatten(child)
                     path_stack.pop()
-                    typed_path_stack.pop()
+                    accessor_stack.pop()
 
         flatten(tree)
         assert len(path_stack) == 0
-        assert len(typed_path_stack) == 0
+        assert len(accessor_stack) == 0
         assert actual_leaves == optree.tree_leaves(
             tree,
             none_is_leaf=none_is_leaf,
@@ -3258,11 +3266,11 @@ def test_tree_flatten_one_level(  # noqa: C901
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
-        assert actual_typed_paths == [
-            tuple((e.entry, e.type, e.kind) for e in accessor)
-            for accessor in optree.tree_accessors(
+        assert_equal_type_and_value(
+            actual_accessors,
+            optree.tree_accessors(
                 tree,
                 none_is_leaf=none_is_leaf,
                 namespace=namespace,
-            )
-        ]
+            ),
+        )
