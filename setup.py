@@ -36,7 +36,7 @@ class cmake_build_ext(build_ext):  # noqa: N801
         build_temp = pathlib.Path(self.build_temp).absolute()
         build_temp.mkdir(parents=True, exist_ok=True)
 
-        config = 'Debug' if self.debug else 'Release'
+        config = os.getenv('CMAKE_BUILD_TYPE', '') or ('Debug' if self.debug else 'Release')
         cmake_args = [
             f'-DCMAKE_BUILD_TYPE={config}',
             f'-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{config.upper()}={ext_path.parent}',

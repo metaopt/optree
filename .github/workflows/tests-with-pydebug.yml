@@ -27,6 +27,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
+  CMAKE_BUILD_TYPE: "Debug"
   OPTREE_CXX_WERROR: "ON"
   PYTHON: "python"  # to be updated
   PYTHON_TAG: "py3"  # to be updated
@@ -110,6 +111,7 @@ jobs:
               pyenv install --list | tr -d ' ' | grep -E "^${{ matrix.python-version }}" |
                 grep -vF '-' | grep -E '[0-9]t$' | sort -rV | head -n 1
             )"
+            echo "PYTHON_GIL=0" >> "${GITHUB_ENV}"
           elif ! PYTHON_VERSION="$(pyenv latest --known "${{ matrix.python-version }}")"; then
             PYTHON_VERSION="$(
               pyenv install --list | tr -d ' ' | grep -E "^${{ matrix.python-version }}" |
@@ -149,20 +151,29 @@ jobs:
       - name: Set up Environment
         shell: bash
         run: |
-          ${{ env.PYTHON }} --version
-          ${{ env.PYTHON }} -c 'from pprint import pprint; import sysconfig; pprint(sysconfig.get_config_vars())'
-          ${{ env.PYTHON }} -m pip install --upgrade pip setuptools wheel
+          set -x
 
-          PYTHON_TAG="$(
+          ${{ env.PYTHON }} --version
+          echo "::group::Upgrade pip"
+          ${{ env.PYTHON }} -m pip install --upgrade pip setuptools wheel rich
+          echo "::endgroup::"
+          echo "::group::Python sysconfig"
+          ${{ env.PYTHON }} -c 'import rich, sysconfig; rich.print(sysconfig.get_config_vars())'
+          echo "::endgroup::"
+
+          export PYTHON_TAG="$(
             echo 'import sys; print(
-              "{0.name[0]}p{1.major}{1.minor}{2}".format(
+              "{0.name[0]}p{1.major}{1.minor}".format(
                 sys.implementation,
                 sys.version_info,
-                getattr(sys, "abiflags", ""),
               ).lower(),
             )' | ${{ env.PYTHON }} -
-          )"
+          )${{ matrix.python-abiflags }}"
           echo "PYTHON_TAG=${PYTHON_TAG}" | tee -a "${GITHUB_ENV}"
+
+          if [[ "${{ runner.os }}" == 'Windows' ]]; then
+            echo "CMAKE_BUILD_TYPE=Release" | tee -a "${GITHUB_ENV}"
+          fi
 
       - name: Install OpTree
         run: |

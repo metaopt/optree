@@ -31,6 +31,7 @@ endif()
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 if(NOT DEFINED CMAKE_CXX_STANDARD AND NOT "$ENV{CMAKE_CXX_STANDARD}" STREQUAL "")
     set(CMAKE_CXX_STANDARD "$ENV{CMAKE_CXX_STANDARD}")
@@ -75,6 +76,10 @@ if(MSVC)
         " /wd5045"  # compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
         " /wd5262"  # use [[fallthrough]] when a break statement is intentionally omitted between cases
         " /wd5264"  # 'const' variable is not used
+    )
+    string(
+        APPEND CMAKE_CXX_FLAGS_DEBUG
+        " /wd4702"  # unreachable code
     )
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " /Zi")
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " /O2 /Ob2")
