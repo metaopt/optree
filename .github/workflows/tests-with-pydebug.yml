@@ -64,9 +64,6 @@ jobs:
             python-abiflags: "td"
           - python-version: "3.12"
             python-abiflags: "td"
-          - runner: windows-latest  # pyenv-win does not support Python 3.13t yet
-            python-version: "3.13"
-            python-abiflags: "td"
       fail-fast: false
     timeout-minutes: 120
     steps:
@@ -107,11 +104,14 @@ jobs:
           echo "::endgroup::"
 
           if [[ "${{ matrix.python-abiflags }}" == *t* ]]; then
+            echo "PYTHON_GIL=0" >> "${GITHUB_ENV}"
+          fi
+
+          if [[ "${{ runner.os }}" != 'Windows' && "${{ matrix.python-abiflags }}" == *t* ]]; then
             PYTHON_VERSION="$(
               pyenv install --list | tr -d ' ' | grep -E "^${{ matrix.python-version }}" |
                 grep -vF '-' | grep -E '[0-9]t$' | sort -rV | head -n 1
             )"
-            echo "PYTHON_GIL=0" >> "${GITHUB_ENV}"
           elif ! PYTHON_VERSION="$(pyenv latest --known "${{ matrix.python-version }}")"; then
             PYTHON_VERSION="$(
               pyenv install --list | tr -d ' ' | grep -E "^${{ matrix.python-version }}" |
@@ -121,15 +121,17 @@ jobs:
           echo "PYTHON_VERSION=${PYTHON_VERSION}" | tee -a "${GITHUB_ENV}"
 
       - uses: actions/cache@v4
-        id: python-cache
+        id: pyenv-cache
         with:
           path: ${{ env.PYENV_ROOT }}
-          key: ${{ runner.os }}-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ env.PYTHON_VERSION }}
+          key: ${{ runner.os }}-pyenv-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ env.PYTHON_VERSION }}
 
       - name: Set up Python
-        if: steps.python-cache.outputs.cache-hit != 'true'
+        if: steps.pyenv-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
+          set -x
+
           PYENV_INSTALL_ARGS=()
           if [[ "${{ runner.os }}" != 'Windows' ]]; then
             if [[ "${{ matrix.python-abiflags }}" == *d* ]]; then
@@ -137,13 +139,47 @@ jobs:
             fi
           else
             pyenv update
-            if [[ "${{ matrix.python-abiflags }}" == *d* ]]; then
-              PYENV_INSTALL_ARGS+=("--dev")
-            fi
           fi
           pyenv install ${{ env.PYTHON_VERSION }} "${PYENV_INSTALL_ARGS[@]}"
 
-          set -x
+          if [[ "${{ runner.os }}" == 'Windows' ]]; then
+            INSTALL_ARGS=(
+              "SimpleInstall=1"
+              "InstallAllUsers=0"
+              "Include_dev=1"
+              "Include_lib=1"
+              "Include_exe=1"
+              "Include_pip=1"
+              "Include_tools=1"
+              "Include_launcher=0"
+              "Include_test=0"
+            )
+            if [[ "${{ matrix.python-abiflags }}" == *d* ]]; then
+              INSTALL_ARGS+=(
+                "Include_debug=1"
+                "Include_symbols=1"
+              )
+            fi
+            if [[ "${{ matrix.python-abiflags }}" == *t* ]]; then
+              INSTALL_ARGS+=(
+                "Include_freethreaded=1"
+              )
+            fi
+            INSTALL_ARGS+=(
+              'TargetDir="${{ env.PYENV_ROOT }}\pyenv-win\versions\${{ env.PYTHON_VERSION }}"'
+            )
+            INSTALLER='${{ env.PYENV_ROOT }}\pyenv-win\install_cache\'"$(
+              cd '${{ env.PYENV_ROOT }}\pyenv-win\install_cache' &&
+              find . -name "*-${{ env.PYTHON_VERSION }}-*.exe" |
+                head -n 1 | cut -c3-
+            )"
+            pyenv uninstall ${{ env.PYTHON_VERSION }}
+            pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \
+              "${INSTALLER} /quiet /uninstall 2>&1 | Out-Default"
+            pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \
+              "${INSTALLER} /quiet ${INSTALL_ARGS[*]} 2>&1 | Out-Default"
+          fi
+
           pyenv versions
           pyenv global "$(pyenv versions | grep -F '${{ env.PYTHON_VERSION }}' | tr -d ' ')"
           pyenv rehash
@@ -153,12 +189,28 @@ jobs:
         run: |
           set -x
 
-          ${{ env.PYTHON }} --version
+          echo "::group::pyenv shims"
+          pyenv shims
+          echo "::endgroup::"
+
+          if [[ "${{ runner.os }}" == 'Windows' ]]; then
+            if [[ "${{ matrix.python-abiflags }}" == *t* ]]; then
+              PYTHON="${PYTHON}${{ matrix.python-version }}t"
+            fi
+            if [[ "${{ matrix.python-abiflags }}" == *d* ]]; then
+              PYTHON="${PYTHON}_d"
+            fi
+            export PYTHON="${PYTHON}"
+            echo "PYTHON=${PYTHON}" | tee -a "${GITHUB_ENV}"
+          fi
+
+          "${PYTHON}" -m venv venv  # PATH is already updated in step setup-pyenv
+          "${PYTHON}" --version
           echo "::group::Upgrade pip"
-          ${{ env.PYTHON }} -m pip install --upgrade pip setuptools wheel rich
+          "${PYTHON}" -m pip install --upgrade pip setuptools wheel rich
           echo "::endgroup::"
           echo "::group::Python sysconfig"
-          ${{ env.PYTHON }} -c 'import rich, sysconfig; rich.print(sysconfig.get_config_vars())'
+          "${PYTHON}" -c 'import rich, sysconfig; rich.print(sysconfig.get_config_vars())'
           echo "::endgroup::"
 
           export PYTHON_TAG="$(
@@ -167,7 +219,7 @@ jobs:
                 sys.implementation,
                 sys.version_info,
               ).lower(),
-            )' | ${{ env.PYTHON }} -
+            )' | "${PYTHON}" -
           )${{ matrix.python-abiflags }}"
           echo "PYTHON_TAG=${PYTHON_TAG}" | tee -a "${GITHUB_ENV}"
 
@@ -181,8 +233,6 @@ jobs:
             sudo sysctl -w kern.coredump=1
             sudo sysctl -w kern.sugid_coredump=1
             sysctl kern.corefile kern.coredump kern.sugid_coredump
-          elif [[ "${{ runner.os }}" == 'Windows' ]]; then
-            echo "CMAKE_BUILD_TYPE=Release" | tee -a "${GITHUB_ENV}"
           fi
 
       - name: Install OpTree
