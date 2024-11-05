@@ -21,7 +21,7 @@ default: install
 
 .PHONY: install
 install:
-	$(PYTHON) -m pip install -vvv .
+	$(PYTHON) -m pip install -vv .
 
 .PHONY: install-editable install-e
 install-editable install-e:
@@ -29,7 +29,7 @@ install-editable install-e:
 	$(PYTHON) -m pip install --upgrade setuptools wheel
 	$(PYTHON) -m pip install --upgrade pybind11 cmake
 	OPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" CMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
-		$(PYTHON) -m pip install -vvv --no-build-isolation --editable .
+		$(PYTHON) -m pip install -vv --no-build-isolation --editable .
 
 .PHONY: uninstall
 uninstall:
@@ -265,7 +265,7 @@ format: py-format-install ruff-install clang-format-install addlicense-install
 
 .PHONY: clean-py
 clean-py:
-	find . -type f -name  '*.py[co]' -delete
+	find . -type f -name '*.py[co]' -delete
 	find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
 	find . -depth -type d -name ".ruff_cache" -exec rm -r "{}" +
 	find . -depth -type d -name ".mypy_cache" -exec rm -r "{}" +

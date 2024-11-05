@@ -29,6 +29,8 @@ concurrency:
 env:
   OPTREE_CXX_WERROR: "ON"
   FULL_TEST_PYTHON_VERSIONS: "3.10;3.11"
+  PYTHON: "python"  # to be updated
+  COLUMNS: "128"
 
 jobs:
   test:
@@ -38,7 +40,15 @@ jobs:
       matrix:
         runner: [ubuntu-latest, windows-latest, macos-latest]
         python-version:
-          ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "pypy-3.9", "pypy-3.10"]
+          - "3.7"
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "pypy-3.9"
+          - "pypy-3.10"
         include:
           - runner: macos-13
             python-version: "3.7"
@@ -58,32 +68,27 @@ jobs:
           update-environment: true
           allow-prereleases: true
 
-      - name: Upgrade pip
+      - name: Set up Environment
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-
-      - name: Set `SETUPTOOLS_ENABLE_FEATURES`
-        if: ${{ matrix.python-version == '3.7' && runner.os == 'Windows' }}
-        run: |
-          Write-Output 'SETUPTOOLS_ENABLE_FEATURES=legacy-editable' | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          ${{ env.PYTHON }} -m pip install --upgrade pip setuptools wheel
 
       - name: Install test dependencies
         shell: bash
         run: |
           if [[ ";${FULL_TEST_PYTHON_VERSIONS};" == *";${{ matrix.python-version }};"* ]]; then
-            python -m pip install -r tests/requirements.txt
+            ${{ env.PYTHON }} -m pip install -r tests/requirements.txt
           fi
 
       - name: Test installable with C++17
         if: runner.os != 'Windows'
         run: |
-          OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 python -m pip install -vvv --editable .
-          python -X dev -W 'always' -W 'error' -c 'import optree'
-          python -m pip uninstall -y optree
+          OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 ${{ env.PYTHON }} -m pip install -vv --editable .
+          ${{ env.PYTHON }} -X dev -W 'always' -W 'error' -c 'import optree'
+          ${{ env.PYTHON }} -m pip uninstall -y optree
 
       - name: Install OpTree
         run: |
-          python -m pip install -vvv --editable '.[test]'
+          ${{ env.PYTHON }} -m pip install -vv --editable '.[test]'
 
       - name: Test with pytest
         run: |

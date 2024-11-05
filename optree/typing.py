@@ -187,7 +187,12 @@ class PyTree(Generic[T]):  # pragma: no cover
     @_tp_cache
     def __class_getitem__(  # noqa: C901
         cls,
-        item: T | tuple[T] | tuple[T, str | None],
+        item: (
+            type[T]
+            | TypeAlias
+            | tuple[type[T] | TypeAlias]
+            | tuple[type[T] | TypeAlias, str | None]
+        ),
     ) -> TypeAlias:
         """Instantiate a PyTree type with the given type."""
         if not isinstance(item, tuple):
@@ -322,7 +327,7 @@ class PyTreeTypeVar:  # pragma: no cover
     """
 
     @_tp_cache
-    def __new__(cls, name: str, param: type) -> TypeAlias:
+    def __new__(cls, name: str, param: type | TypeAlias) -> TypeAlias:
         """Instantiate a PyTree type variable with the given name and parameter."""
         if not isinstance(name, str):
             raise TypeError(f'{cls.__name__} only supports a string of type name, got {name!r}.')
