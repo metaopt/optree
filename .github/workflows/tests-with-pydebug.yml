@@ -28,6 +28,10 @@ concurrency:
 
 env:
   OPTREE_CXX_WERROR: "ON"
+  PYTHON: "python"  # to be updated
+  PYTHON_VERSION: "3"  # to be updated
+  PYENV_ROOT: "~/.pyenv"  # to be updated
+  COLUMNS: "128"
 
 jobs:
   test:
@@ -36,7 +40,14 @@ jobs:
     strategy:
       matrix:
         runner: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version:
+          - "3.7"
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
         python-abiflags: ["d", "td"]
         exclude:
           - python-version: "3.7"
@@ -55,27 +66,31 @@ jobs:
             python-version: "3.13"
             python-abiflags: "td"
       fail-fast: false
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up pyenv
+        id: setup-pyenv-unix
         if: runner.os != 'Windows'
         run: |
           export PYENV_ROOT="${HOME}/.pyenv"
+          export PATH="${PYENV_ROOT}/bin:${PYENV_ROOT}/shims:${PATH}"
           git clone https://github.com/pyenv/pyenv.git "${PYENV_ROOT}"
           echo "PYENV_ROOT=${PYENV_ROOT}" >> "${GITHUB_ENV}"
-          echo "PATH=${PYENV_ROOT}/bin:${PYENV_ROOT}/shims:${PATH}" >> "${GITHUB_ENV}"
+          echo "PATH=${PATH}" >> "${GITHUB_ENV}"
 
       - name: Set up pyenv
+        id: setup-pyenv-windows
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $Env:PYENV_ROOT = "$Env:USERPROFILE\.pyenv"
+          $Env:PATH = "$Env:PYENV_ROOT\pyenv-win\bin;$Env:PYENV_ROOT\pyenv-win\shims;$Env:PATH"
           git clone https://github.com/pyenv-win/pyenv-win.git "$Env:PYENV_ROOT"
           Write-Output "PYENV_ROOT=$Env:PYENV_ROOT" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Output "PATH=$Env:PYENV_ROOT\pyenv-win\bin;$Env:PYENV_ROOT\pyenv-win\shims;$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Output "PATH=$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Determine Python version
         shell: bash
@@ -83,7 +98,10 @@ jobs:
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
             pyenv update
           fi
+          echo "::group::pyenv install --list"
           pyenv install --list
+          echo "::endgroup::"
+
           if [[ "${{ matrix.python-abiflags }}" == *t* ]]; then
             PYTHON_VERSION="$(
               pyenv install --list | tr -d ' ' | grep -E "^${{ matrix.python-version }}" |
@@ -95,8 +113,7 @@ jobs:
                 grep -vF '-' | grep -E '[0-9]$' | sort -rV | head -n 1
             )"
           fi
-          echo "Using Python version: ${PYTHON_VERSION}"
-          echo "PYTHON_VERSION=${PYTHON_VERSION}" >> "${GITHUB_ENV}"
+          echo "PYTHON_VERSION=${PYTHON_VERSION}" | tee -a "${GITHUB_ENV}"
 
       - uses: actions/cache@v4
         id: python-cache
@@ -120,17 +137,18 @@ jobs:
             fi
           fi
           pyenv install ${{ env.PYTHON_VERSION }} "${PYENV_INSTALL_ARGS[@]}"
-          pyenv global ${{ env.PYTHON_VERSION }}
+          pyenv global "$(pyenv versions | grep -F '${{ env.PYTHON_VERSION }}' | tr -d ' ')"
+          pyenv rehash
 
-      - name: Upgrade pip
+      - name: Set up Environment
         run: |
-          python --version
-          python -c 'from pprint import pprint; import sysconfig; pprint(sysconfig.get_config_vars())'
-          python -m pip install --upgrade pip setuptools wheel
+          ${{ env.PYTHON }} --version
+          ${{ env.PYTHON }} -c 'from pprint import pprint; import sysconfig; pprint(sysconfig.get_config_vars())'
+          ${{ env.PYTHON }} -m pip install --upgrade pip setuptools wheel
 
       - name: Install OpTree
         run: |
-          python -m pip install -vvv --editable '.[test]'
+          ${{ env.PYTHON }} -m pip install -vv --editable '.[test]'
 
       - name: Test with pytest
         run: |

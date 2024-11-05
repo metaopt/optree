@@ -36,6 +36,9 @@ concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  PYTHON_TAG: "py3"  # to be updated
+
 jobs:
   build-sdist:
     name: Build sdist
@@ -88,17 +91,25 @@ jobs:
       matrix:
         runner: [ubuntu-latest, windows-latest, macos-latest]
         python-version:
-          ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.13t", "pypy-3.9", "pypy-3.10"]
-        archs: [
-            # Generic
-            "auto",
-            # Linux
-            "aarch64",
-            "ppc64le",
-            "s390x",
-            # Windows
-            "ARM64",
-          ]
+          - "3.7"
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.13t"
+          - "pypy-3.9"
+          - "pypy-3.10"
+        archs:
+          # Generic
+          - "auto"
+          # Linux
+          - "aarch64"
+          - "ppc64le"
+          - "s390x"
+          # Windows
+          - "ARM64"
         include:
           - runner: macos-13
             python-version: "3.7"
@@ -169,7 +180,7 @@ jobs:
           update-environment: true
           allow-prereleases: true
 
-      - name: Upgrade pip
+      - name: Set up Environment
         run: |
           python -m pip install --upgrade pip setuptools wheel pybind11
 
@@ -186,13 +197,12 @@ jobs:
         shell: bash
         run: |
           PYTHON_TAG="$(
-            python -c \
-              "import sys; print(
-                '{0.name[0]}p{1.major}{1.minor}'.format(
-                  sys.implementation,
-                  sys.version_info,
-                ).lower(),
-              )"
+            echo 'import sys; print(
+              "{0.name[0]}p{1.major}{1.minor}".format(
+                sys.implementation,
+                sys.version_info,
+              ).lower(),
+            )' | python -
           )"
           if [[ "${{ matrix.python-version }}" == *"t" ]]; then
             PYTHON_TAG="${PYTHON_TAG}t"

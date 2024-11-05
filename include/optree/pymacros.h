@@ -23,6 +23,10 @@ limitations under the License.
 
 namespace py = pybind11;
 
+#if PY_VERSION_HEX < 0x03070000  // Python 3.7
+#error "Python 3.7 or newer is required."
+#endif
+
 #ifndef Py_ALWAYS_INLINE
 #define Py_ALWAYS_INLINE
 #endif
