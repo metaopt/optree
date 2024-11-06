@@ -64,6 +64,16 @@ jobs:
             python-abiflags: "td"
           - python-version: "3.12"
             python-abiflags: "td"
+          # venv does not support build with both `t` and `d` flags on Windows
+          - runner: windows-latest
+            python-version: "3.13"
+            python-abiflags: "td"
+        include:
+          # venv does not support build with both `t` and `d` flags on Windows
+          # test with `t` flag only
+          - runner: windows-latest
+            python-version: "3.13"
+            python-abiflags: "t"
       fail-fast: false
     timeout-minutes: 120
     steps:
@@ -233,6 +243,10 @@ jobs:
             sudo sysctl -w kern.coredump=1
             sudo sysctl -w kern.sugid_coredump=1
             sysctl kern.corefile kern.coredump kern.sugid_coredump
+          elif [[ "${{ runner.os }}" == 'Windows' ]]; then
+            if [[ "${{ matrix.python-abiflags }}" != *d* ]]; then
+              echo "CMAKE_BUILD_TYPE=Release" | tee -a "${GITHUB_ENV}"
+            fi
           fi
 
       - name: Install OpTree
