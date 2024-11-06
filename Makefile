@@ -270,8 +270,8 @@ clean-py:
 	find . -depth -type d -name ".ruff_cache" -exec rm -r "{}" +
 	find . -depth -type d -name ".mypy_cache" -exec rm -r "{}" +
 	find . -depth -type d -name ".pytest_cache" -exec rm -r "{}" +
-	rm -f tests/.coverage tests/.coverage.*
-	rm -f tests/coverage.xml
+	rm -f tests/.coverage tests/.coverage.* tests/coverage.xml tests/coverage-*.xml tests/coverage.*.xml
+	rm -f tests/.junit tests/.junit.* tests/junit.xml tests/junit-*.xml tests/junit.*.xml
 
 .PHONY: clean-build
 clean-build:

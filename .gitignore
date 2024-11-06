@@ -52,11 +52,18 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+coverage-*.xml
+coverage.*.xml
 *.cover
 *.py,cover
 .hypothesis/
 .pytest_cache/
 cover/
+.junit
+.junit.*
+junit.xml
+junit-*.xml
+junit.*.xml
 
 # Translations
 *.mo
