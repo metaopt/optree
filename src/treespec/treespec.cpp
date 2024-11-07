@@ -34,6 +34,8 @@ namespace optree {
                                            const py::object children[],
                                            const size_t& num_children) {
     EXPECT_EQ(py::ssize_t_cast(num_children), node.arity, "Node arity did not match.");
+    EXPECT_TRUE(children != nullptr || num_children == 0, "Node children is null.");
+
     switch (node.kind) {
         case PyTreeKind::Leaf:
             INTERNAL_ERROR("PyTreeSpec::MakeNode() not implemented for leaves.");
