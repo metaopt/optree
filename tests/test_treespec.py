@@ -18,9 +18,11 @@
 import contextlib
 import itertools
 import pickle
+import platform
 import re
 import subprocess
 import sys
+import sysconfig
 import textwrap
 import weakref
 from collections import OrderedDict, UserList, defaultdict, deque
@@ -455,40 +457,54 @@ class Foo:
 
 
 def test_treespec_pickle_missing_registration():
+    if (
+        sys.version_info[:2] == (3, 11)
+        and platform.system() == 'Windows'
+        and sysconfig.get_config_vars().get('EXT_SUFFIX', '').startswith('_d')
+    ):
+        pytest.skip('Python 3.11 on Windows has a bug during PyStructSequence type deallocation.')
+
     optree.register_pytree_node(
         Foo,
         lambda foo: ((foo.x, foo.y), None),
-        lambda _, children: Foo(children[0], children[1]),
+        lambda _, children: Foo(*children),
         namespace='foo',
     )
 
     treespec = optree.tree_structure(Foo(0, 1), namespace='foo')
     serialized = pickle.dumps(treespec)
 
-    error = subprocess.check_output(
-        [
-            sys.executable,
-            '-c',
-            textwrap.dedent(
-                f"""
-                import pickle
-                import sys
+    try:
+        output = subprocess.run(
+            [
+                sys.executable,
+                '-c',
+                textwrap.dedent(
+                    f"""
+                    import pickle
+                    import sys
 
-                try:
-                    treespec = pickle.loads({serialized!r})
-                except Exception as ex:
-                    print(ex)
-                else:
-                    sys.exit(1)
-                """,
-            ).strip(),
-        ],
-        stderr=subprocess.STDOUT,
-        text=True,
-    ).strip()
+                    try:
+                        treespec = pickle.loads({serialized!r})
+                    except Exception as ex:
+                        print(ex)
+                    else:
+                        print('No exception was raised.', file=sys.stderr)
+                        sys.exit(1)
+                    """,
+                ).strip(),
+            ],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+        message = output.stdout.strip()
+    except subprocess.CalledProcessError as ex:
+        raise RuntimeError(ex.stderr) from ex
+
     assert re.match(
         r"^Unknown custom type in pickled PyTreeSpec: <class '.*'> in namespace 'foo'\.$",
-        string=error,
+        string=message,
     )
 
     optree.unregister_pytree_node(Foo, namespace='foo')
