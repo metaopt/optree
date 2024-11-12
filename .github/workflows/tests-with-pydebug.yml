@@ -41,7 +41,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        runner: [ubuntu-latest, windows-latest, macos-latest]
+        runner: [ubuntu-latest, macos-latest, windows-latest]
         python-version:
           - "3.7"
           - "3.8"
@@ -64,9 +64,16 @@ jobs:
             python-abiflags: "td"
           - python-version: "3.12"
             python-abiflags: "td"
-          - runner: windows-latest  # pyenv-win does not support Python 3.13t yet
+          # venv does not support build with both `t` and `d` flags on Windows
+          - runner: windows-latest
             python-version: "3.13"
             python-abiflags: "td"
+        include:
+          # venv does not support build with both `t` and `d` flags on Windows
+          # test with `t` flag only
+          - runner: windows-latest
+            python-version: "3.13"
+            python-abiflags: "t"
       fail-fast: false
     timeout-minutes: 120
     steps:
@@ -107,11 +114,14 @@ jobs:
           echo "::endgroup::"
 
           if [[ "${{ matrix.python-abiflags }}" == *t* ]]; then
+            echo "PYTHON_GIL=0" >> "${GITHUB_ENV}"
+          fi
+
+          if [[ "${{ runner.os }}" != 'Windows' && "${{ matrix.python-abiflags }}" == *t* ]]; then
             PYTHON_VERSION="$(
               pyenv install --list | tr -d ' ' | grep -E "^${{ matrix.python-version }}" |
                 grep -vF '-' | grep -E '[0-9]t$' | sort -rV | head -n 1
             )"
-            echo "PYTHON_GIL=0" >> "${GITHUB_ENV}"
           elif ! PYTHON_VERSION="$(pyenv latest --known "${{ matrix.python-version }}")"; then
             PYTHON_VERSION="$(
               pyenv install --list | tr -d ' ' | grep -E "^${{ matrix.python-version }}" |
@@ -121,15 +131,17 @@ jobs:
           echo "PYTHON_VERSION=${PYTHON_VERSION}" | tee -a "${GITHUB_ENV}"
 
       - uses: actions/cache@v4
-        id: python-cache
+        id: pyenv-cache
         with:
           path: ${{ env.PYENV_ROOT }}
-          key: ${{ runner.os }}-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ env.PYTHON_VERSION }}
+          key: ${{ runner.os }}-pyenv-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ env.PYTHON_VERSION }}
 
       - name: Set up Python
-        if: steps.python-cache.outputs.cache-hit != 'true'
+        if: steps.pyenv-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
+          set -x
+
           PYENV_INSTALL_ARGS=()
           if [[ "${{ runner.os }}" != 'Windows' ]]; then
             if [[ "${{ matrix.python-abiflags }}" == *d* ]]; then
@@ -137,13 +149,47 @@ jobs:
             fi
           else
             pyenv update
-            if [[ "${{ matrix.python-abiflags }}" == *d* ]]; then
-              PYENV_INSTALL_ARGS+=("--dev")
-            fi
           fi
           pyenv install ${{ env.PYTHON_VERSION }} "${PYENV_INSTALL_ARGS[@]}"
 
-          set -x
+          if [[ "${{ runner.os }}" == 'Windows' ]]; then
+            INSTALL_ARGS=(
+              "SimpleInstall=1"
+              "InstallAllUsers=0"
+              "Include_dev=1"
+              "Include_lib=1"
+              "Include_exe=1"
+              "Include_pip=1"
+              "Include_tools=1"
+              "Include_launcher=0"
+              "Include_test=0"
+            )
+            if [[ "${{ matrix.python-abiflags }}" == *d* ]]; then
+              INSTALL_ARGS+=(
+                "Include_debug=1"
+                "Include_symbols=1"
+              )
+            fi
+            if [[ "${{ matrix.python-abiflags }}" == *t* ]]; then
+              INSTALL_ARGS+=(
+                "Include_freethreaded=1"
+              )
+            fi
+            INSTALL_ARGS+=(
+              'TargetDir="${{ env.PYENV_ROOT }}\pyenv-win\versions\${{ env.PYTHON_VERSION }}"'
+            )
+            INSTALLER='${{ env.PYENV_ROOT }}\pyenv-win\install_cache\'"$(
+              cd '${{ env.PYENV_ROOT }}\pyenv-win\install_cache' &&
+              find . -name "*-${{ env.PYTHON_VERSION }}-*.exe" |
+                head -n 1 | cut -c3-
+            )"
+            pyenv uninstall ${{ env.PYTHON_VERSION }}
+            pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \
+              "${INSTALLER} /quiet /uninstall 2>&1 | Out-Default"
+            pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \
+              "${INSTALLER} /quiet ${INSTALL_ARGS[*]} 2>&1 | Out-Default"
+          fi
+
           pyenv versions
           pyenv global "$(pyenv versions | grep -F '${{ env.PYTHON_VERSION }}' | tr -d ' ')"
           pyenv rehash
@@ -153,12 +199,39 @@ jobs:
         run: |
           set -x
 
-          ${{ env.PYTHON }} --version
+          echo "::group::pyenv shims"
+          pyenv shims
+          echo "::endgroup::"
+
+          PYTHON_EXE="${{ env.PYTHON }}"
+          if [[ "${{ runner.os }}" == 'Windows' ]]; then
+            if [[ "${{ matrix.python-abiflags }}" == *t* ]]; then
+              PYTHON_EXE="${PYTHON_EXE}${{ matrix.python-version }}t"
+            fi
+            if [[ "${{ matrix.python-abiflags }}" == *d* ]]; then
+              PYTHON_EXE="${PYTHON_EXE}_d"
+              export PYTHON="${PYTHON}_d"
+              echo "PYTHON=${PYTHON}" | tee -a "${GITHUB_ENV}"
+            else
+              echo "CMAKE_BUILD_TYPE=Release" | tee -a "${GITHUB_ENV}"
+            fi
+          fi
+
+          "${PYTHON_EXE}" -m venv venv  # PATH is already updated in step setup-pyenv
+          echo "::group::Python executables"
+          if [[ "${{ runner.os }}" != 'Windows' ]]; then
+            ls -alh venv/bin
+          else
+            ls -alh venv/Scripts
+          fi
+          echo "::endgroup::"
+
+          "${PYTHON}" --version
           echo "::group::Upgrade pip"
-          ${{ env.PYTHON }} -m pip install --upgrade pip setuptools wheel rich
+          "${PYTHON}" -m pip install --upgrade pip setuptools wheel rich
           echo "::endgroup::"
           echo "::group::Python sysconfig"
-          ${{ env.PYTHON }} -c 'import rich, sysconfig; rich.print(sysconfig.get_config_vars())'
+          "${PYTHON}" -c 'import rich, sysconfig; rich.print(sysconfig.get_config_vars())'
           echo "::endgroup::"
 
           export PYTHON_TAG="$(
@@ -167,13 +240,44 @@ jobs:
                 sys.implementation,
                 sys.version_info,
               ).lower(),
-            )' | ${{ env.PYTHON }} -
+            )' | "${PYTHON}" -
           )${{ matrix.python-abiflags }}"
           echo "PYTHON_TAG=${PYTHON_TAG}" | tee -a "${GITHUB_ENV}"
 
-          if [[ "${{ runner.os }}" == 'Windows' ]]; then
-            echo "CMAKE_BUILD_TYPE=Release" | tee -a "${GITHUB_ENV}"
-          fi
+      - name: Enable core dump generation (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo sysctl -w kernel.core_pattern="core.${PYTHON_TAG}.%P"
+          sudo sysctl -w kernel.core_uses_pid=0
+          sudo sysctl -w fs.suid_dumpable=1
+          sysctl kernel.core_pattern kernel.core_uses_pid fs.suid_dumpable
+
+      - name: Enable core dump generation (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          sudo sysctl -w kern.corefile="core.${PYTHON_TAG}.%P"
+          sudo sysctl -w kern.coredump=1
+          sudo sysctl -w kern.sugid_coredump=1
+          sysctl kern.corefile kern.coredump kern.sugid_coredump
+
+      - name: Enable core dump generation (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $pwd = Get-Location
+          $Env:_NT_SOURCE_PATH = "$pwd;${{ env.PYENV_ROOT }}\pyenv-win\versions\${{ env.PYTHON_VERSION }}"
+          $Env:_NT_SYMBOL_PATH = "cache*$pwd\.symcache;$Env:_NT_SOURCE_PATH;srv*https://msdl.microsoft.com/download/symbols"
+          Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Directory | Sort-Object -Property Name
+          $WindowsKitsDir = "C:\Program Files (x86)\Windows Kits\10"
+          $DebuggersDir = "$WindowsKitsDir\Debuggers\x64"
+          Get-ChildItem -Path $DebuggersDir
+          $Env:PATH = "$DebuggersDir;$Env:PATH"
+          $PYTEST = 'cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q" ${{ env.PYTHON }} -X dev -m pytest'
+          Write-Output "_NT_SOURCE_PATH=$Env:_NT_SOURCE_PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Output "_NT_SYMBOL_PATH=$Env:_NT_SYMBOL_PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Output "PATH=$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Output "PYTEST=$PYTEST" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+
+          cdb -version
 
       - name: Install OpTree
         run: |
@@ -182,12 +286,18 @@ jobs:
       - name: Test with pytest
         shell: bash
         run: |
+          set -x
+          ulimit -c unlimited
+          ulimit -a
           PYTESTOPTS=(
             "--exitfirst"
             "--cov-report=xml:coverage-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml"
             "--junit-xml=junit-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml"
           )
           make test PYTESTOPTS="${PYTESTOPTS[*]}"
+          if [[ -n "$(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp")" ]]; then
+            exit 1
+          fi
 
       - name: List generated files
         if: ${{ !cancelled() }}
@@ -197,6 +307,45 @@ jobs:
           find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
           if [[ -n "$(git status --ignored --porcelain | grep -vE '/$')" ]]; then
             ls -alh $(git status --ignored --porcelain | grep -vE '/$' | cut -d ' ' -f2)
+          fi
+
+      - name: Collect backtraces from coredumps (if any)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          if [[ -n "$(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp")" ]]; then
+            echo "Found core dumps:"
+            ls -alh $(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp")
+            BACKTRACE_COMMAND=""
+            if [[ "${{ runner.os }}" == 'Linux' ]]; then
+              echo "::group::Install GDB"
+              (
+                export DEBIAN_FRONTEND=noninteractive
+                sudo apt-get update -qq && sudo apt-get install -yqq gdb
+              )
+              echo "::endgroup::"
+              BACKTRACE_COMMAND="gdb --exec ${{ env.PYTHON }} --core '{}' -ex 'bt' -ex 'q'"
+            elif [[ "${{ runner.os }}" == 'macOS' ]]; then
+              echo "::group::Install LLDB"
+              brew install llvm --quiet
+              echo "::endgroup::"
+              BACKTRACE_COMMAND="lldb --file ${{ env.PYTHON }} --core '{}' -o 'bt' -o 'q'"
+            elif [[ "${{ runner.os }}" == 'Windows' ]]; then
+              BACKTRACE_COMMAND="cdb -z '{}' -c \"!py; !analyze -vv; .ecxr; kP; q\""
+            fi
+            if [[ -n "${BACKTRACE_COMMAND}" ]]; then
+              echo "Collecting backtraces:"
+              find . -iname "core.*.[1-9]*" -exec bash -xc "
+                echo '::group::backtrace from: {}';
+                ${BACKTRACE_COMMAND};
+                echo '::endgroup::';
+              " ';'
+              find . -iname "core_*.dmp" -exec bash -xc "
+                echo '::group::backtrace from: {}';
+                ${BACKTRACE_COMMAND};
+                echo '::endgroup::';
+              " ';'
+            fi
           fi
 
       - name: Upload JUnit results to Codecov
@@ -209,3 +358,13 @@ jobs:
           name: junit-umbrella
           verbose: true
           fail_ci_if_error: false
+
+      - name: Upload core dump file
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coredump-${{ env.PYTHON_TAG }}-${{ runner.os }}
+          path: |
+            tests/core.*
+            tests/core_*.dmp
+          if-no-files-found: ignore

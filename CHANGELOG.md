@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Upload coverage / JUnit results in CI workflows by [@XuehaiPan](https://github.com/XuehaiPan) in [#170](https://github.com/metaopt/optree/pull/170).
+- Upload coverage / JUnit results / core dumps in CI workflows by [@XuehaiPan](https://github.com/XuehaiPan) in [#170](https://github.com/metaopt/optree/pull/170) and [#172](https://github.com/metaopt/optree/pull/172).
 - Add more info to `tree_flatten_one_level` by [@XuehaiPan](https://github.com/XuehaiPan) in [#168](https://github.com/metaopt/optree/pull/168).
 - Improve typing support for generic `PyTree[T]` and registry lookup / register functions by [@XuehaiPan](https://github.com/XuehaiPan) in [#160](https://github.com/metaopt/optree/pull/160) and [#166](https://github.com/metaopt/optree/pull/166).
 

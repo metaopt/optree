@@ -12,6 +12,7 @@ GOPATH         ?= $(HOME)/go
 GOBIN          ?= $(GOPATH)/bin
 PATH           := $(PATH):$(GOBIN)
 PYTHON         ?= $(shell command -v python3 || command -v python)
+PYTEST         ?= $(PYTHON) -X dev -m pytest
 PYTESTOPTS     ?=
 CMAKE_CXX_STANDARD ?= 20
 OPTREE_CXX_WERROR  ?= ON
@@ -139,10 +140,10 @@ addlicense-install: go-install
 
 .PHONY: pytest test
 pytest test: pytest-install
-	$(PYTHON) -m pytest --version
+	$(PYTEST) --version
 	cd tests && $(PYTHON) -X dev -W 'always' -W 'error' -c 'import $(PROJECT_PATH)' && \
 	$(PYTHON) -X dev -W 'always' -W 'error' -c 'import $(PROJECT_PATH)._C; print(f"GLIBCXX_USE_CXX11_ABI={$(PROJECT_PATH)._C.GLIBCXX_USE_CXX11_ABI}")' && \
-	$(PYTHON) -X dev -m pytest --verbose --color=yes --durations=10 --showlocals \
+	$(PYTEST) --verbose --color=yes --durations=10 --showlocals \
 		--cov="$(PROJECT_PATH)" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
 		$(PYTESTOPTS) .
 
