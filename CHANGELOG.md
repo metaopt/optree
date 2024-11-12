@@ -13,6 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+-
+
+### Changed
+
+-
+
+### Fixed
+
+-
+
+### Removed
+
+-
+
+------
+
+## [0.13.1] - 2024-11-12
+
+### Added
+
 - Upload coverage / JUnit results / core dumps in CI workflows by [@XuehaiPan](https://github.com/XuehaiPan) in [#170](https://github.com/metaopt/optree/pull/170) and [#172](https://github.com/metaopt/optree/pull/172).
 - Add more info to `tree_flatten_one_level` by [@XuehaiPan](https://github.com/XuehaiPan) in [#168](https://github.com/metaopt/optree/pull/168).
 - Improve typing support for generic `PyTree[T]` and registry lookup / register functions by [@XuehaiPan](https://github.com/XuehaiPan) in [#160](https://github.com/metaopt/optree/pull/160) and [#166](https://github.com/metaopt/optree/pull/166).
@@ -24,10 +44,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Improve typing support for `optree.dataclasses.dataclass` and `optree.dataclasses.field` by [@manulari](https://github.com/manulari) in [#165](https://github.com/metaopt/optree/pull/165).
-
-### Removed
-
--
 
 ------
 
@@ -345,7 +361,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.13.1...HEAD
+[0.13.1]: https://github.com/metaopt/optree/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/metaopt/optree/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/metaopt/optree/compare/v0.11.0...v0.12.1
 [0.12.0]: https://github.com/metaopt/optree/compare/v0.11.0...v0.12.0
