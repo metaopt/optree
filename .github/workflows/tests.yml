@@ -78,7 +78,7 @@ jobs:
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
             echo "CMAKE_BUILD_TYPE=Release" | tee -a "${GITHUB_ENV}"
           fi
-          ${{ env.PYTHON }} --version
+          ${{ env.PYTHON }} -VV
           echo "::group::Upgrade pip"
           ${{ env.PYTHON }} -m pip install --upgrade pip setuptools wheel rich
           echo "::endgroup::"

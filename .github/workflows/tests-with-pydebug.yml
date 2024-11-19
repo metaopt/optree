@@ -226,7 +226,7 @@ jobs:
           fi
           echo "::endgroup::"
 
-          "${PYTHON}" --version
+          "${PYTHON}" -VV
           echo "::group::Upgrade pip"
           "${PYTHON}" -m pip install --upgrade pip setuptools wheel rich
           echo "::endgroup::"
@@ -324,12 +324,12 @@ jobs:
                 sudo apt-get update -qq && sudo apt-get install -yqq gdb
               )
               echo "::endgroup::"
-              BACKTRACE_COMMAND="gdb --exec ${{ env.PYTHON }} --core '{}' -ex 'bt' -ex 'q'"
+              BACKTRACE_COMMAND="gdb --exec ${{ env.PYTHON }} --core '{}' -ex 'bt -full' -ex 'q'"
             elif [[ "${{ runner.os }}" == 'macOS' ]]; then
               echo "::group::Install LLDB"
               brew install llvm --quiet
               echo "::endgroup::"
-              BACKTRACE_COMMAND="lldb --file ${{ env.PYTHON }} --core '{}' -o 'bt' -o 'q'"
+              BACKTRACE_COMMAND="lldb --file ${{ env.PYTHON }} --core '{}' -o 'bt all' -o 'q'"
             elif [[ "${{ runner.os }}" == 'Windows' ]]; then
               BACKTRACE_COMMAND="cdb -z '{}' -c \"!py; !analyze -vv; .ecxr; kP; q\""
             fi
