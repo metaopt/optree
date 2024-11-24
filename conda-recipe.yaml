@@ -77,10 +77,9 @@ dependencies:
   - conda-forge::flake8-simplify
   - conda-forge::ruff
   - conda-forge::doc8
-  - conda-forge::pydocstyle
   - conda-forge::xdoctest
-  - conda-forge::clang-format >= 14
-  - conda-forge::clang-tools >= 14  # clang-tidy
+  - conda-forge::clang-format
+  - conda-forge::clang-tools  # clang-tidy
   - conda-forge::cpplint
   - conda-forge::pre-commit
   - conda-forge::identify

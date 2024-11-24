@@ -94,8 +94,7 @@ def field(  # pylint: disable=too-many-arguments
     metadata: dict[Any, Any] | None = None,
     kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
     pytree_node: bool | None = None,
-) -> _T:
-    """Field factory for :func:`dataclass`."""
+) -> _T: ...
 
 
 @overload
@@ -125,7 +124,7 @@ def field(  # pylint: disable=too-many-arguments
 ) -> Any: ...
 
 
-def field(  # pylint: disable=function-redefined,too-many-arguments
+def field(  # noqa: D417 # pylint: disable=function-redefined,too-many-arguments
     *,
     default: Any = dataclasses.MISSING,
     default_factory: Any = dataclasses.MISSING,
@@ -205,8 +204,7 @@ def dataclass(  # pylint: disable=too-many-arguments
     slots: bool = False,  # Python 3.10+
     weakref_slot: bool = False,  # Python 3.11+
     namespace: str,
-) -> Callable[[_TypeT], _TypeT]:
-    """Dataclass decorator with PyTree integration."""
+) -> Callable[[_TypeT], _TypeT]: ...
 
 
 @overload
@@ -228,7 +226,7 @@ def dataclass(  # pylint: disable=too-many-arguments
 
 
 @dataclass_transform(field_specifiers=(field,))
-def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-arguments,too-many-locals,too-many-branches
+def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-arguments,too-many-locals,too-many-branches
     cls: _TypeT | None = None,
     *,
     init: bool = True,
@@ -348,7 +346,7 @@ def dataclass(  # noqa: C901 # pylint: disable=function-redefined,too-many-argum
 
 
 # pylint: disable-next=function-redefined,too-many-arguments,too-many-locals,too-many-branches
-def make_dataclass(  # type: ignore[no-redef] # noqa: C901
+def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
     cls_name: str,
     # pylint: disable-next=redefined-outer-name
     fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],

@@ -88,7 +88,6 @@ pre-commit-install:
 
 .PHONY: docs-install
 docs-install:
-	$(call check_pip_install_extra,pydocstyle,pydocstyle[toml])
 	$(call check_pip_install_extra,doc8,"doc8<1.0.0a0")  # unpin this when we drop support for Python 3.7
 	if ! $(PYTHON) -c "import sys; exit(sys.version_info < (3, 8))"; then \
 		$(PYTHON) -m pip uninstall --yes importlib-metadata; \
@@ -234,8 +233,8 @@ addlicense: addlicense-install
 
 .PHONY: docstyle
 docstyle: docs-install
-	make -C docs clean
-	$(PYTHON) -m pydocstyle $(PROJECT_PATH) && doc8 docs && make -C docs html SPHINXOPTS="-W"
+	make -C docs clean || true
+	$(PYTHON) -m doc8 docs && make -C docs html SPHINXOPTS="-W"
 
 .PHONY: docs
 docs: docs-install
@@ -243,12 +242,12 @@ docs: docs-install
 
 .PHONY: spelling
 spelling: docs-install
-	make -C docs clean
+	make -C docs clean || true
 	make -C docs spelling SPHINXOPTS="-W"
 
 .PHONY: clean-docs
 clean-docs:
-	make -C docs clean
+	make -C docs clean || true
 
 # Utility functions
 

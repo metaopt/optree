@@ -305,7 +305,7 @@ jobs:
         run: |
           find . -type f -name '*.py[co]' -delete
           find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
-          if [[ -n "$(git status --ignored --porcelain | grep -vE '/$')" ]]; then
+          if git status --ignored --porcelain | grep -qvE '/$'; then
             ls -alh $(git status --ignored --porcelain | grep -vE '/$' | cut -d ' ' -f2)
           fi
 

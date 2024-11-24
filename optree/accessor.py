@@ -395,12 +395,10 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
         return obj
 
     @overload  # type: ignore[override]
-    def __getitem__(self, index: int) -> PyTreeEntry:  # noqa: D105,RUF100
-        ...
+    def __getitem__(self, index: int) -> PyTreeEntry: ...
 
     @overload
-    def __getitem__(self, index: slice) -> PyTreeAccessor:  # noqa: D105,RUF100
-        ...
+    def __getitem__(self, index: slice) -> PyTreeAccessor: ...
 
     def __getitem__(self, index: int | slice) -> PyTreeEntry | PyTreeAccessor:
         """Get the child path entry or an accessor for a subpath."""

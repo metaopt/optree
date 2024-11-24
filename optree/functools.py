@@ -40,7 +40,7 @@ __all__ = [
 class _HashablePartialShim:
     """Object that delegates :meth:`__call__`, :meth:`__eq__`, and :meth:`__hash__` to another object."""
 
-    __slots__: ClassVar[tuple[str, ...]] = ('partial_func', 'func', 'args', 'keywords')
+    __slots__: ClassVar[tuple[str, ...]] = ('args', 'func', 'keywords', 'partial_func')
 
     func: Callable[..., Any]
     args: tuple[Any, ...]

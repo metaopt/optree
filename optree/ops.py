@@ -2920,6 +2920,7 @@ def treespec_dict(
             pytree. (default: :data:`False`)
         namespace (str, optional): The registry namespace used for custom pytree node types.
             (default: :const:`''`, i.e., the global namespace)
+        **kwargs (PyTreeSpec, optional): Additional child treespecs to add to the mapping.
 
     Returns:
         A treespec representing a dict node with the given children.
@@ -3011,6 +3012,7 @@ def treespec_ordereddict(
             pytree. (default: :data:`False`)
         namespace (str, optional): The registry namespace used for custom pytree node types.
             (default: :const:`''`, i.e., the global namespace)
+        **kwargs (PyTreeSpec, optional): Additional child treespecs to add to the mapping.
 
     Returns:
         A treespec representing an OrderedDict node with the given children.
@@ -3062,6 +3064,7 @@ def treespec_defaultdict(
             pytree. (default: :data:`False`)
         namespace (str, optional): The registry namespace used for custom pytree node types.
             (default: :const:`''`, i.e., the global namespace)
+        **kwargs (PyTreeSpec, optional): Additional child treespecs to add to the mapping.
 
     Returns:
         A treespec representing a defaultdict node with the given children.
