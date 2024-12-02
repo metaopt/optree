@@ -639,7 +639,7 @@ def tree_is_leaf(
             (default: :const:`''`, i.e., the global namespace)
 
     Returns:
-        A boolean indicating if all elements in the input iterable are leaves.
+        A boolean indicating if the given object is a leaf node.
     """
     return _C.is_leaf(tree, is_leaf, none_is_leaf, namespace)  # type: ignore[arg-type]
 
