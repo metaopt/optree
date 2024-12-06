@@ -94,6 +94,7 @@ __all__ = [
     'treespec_entry',
     'treespec_children',
     'treespec_child',
+    'treespec_transform',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',
     'treespec_is_prefix',
@@ -2584,6 +2585,30 @@ def treespec_child(treespec: PyTreeSpec, index: int) -> PyTreeSpec:
     See also :func:`treespec_children`, :func:`treespec_entries`, and :meth:`PyTreeSpec.child`.
     """
     return treespec.child(index)
+
+
+def treespec_transform(
+    treespec: PyTreeSpec,
+    f_node: Callable[[PyTreeSpec], PyTreeSpec] | None = None,
+    f_leaf: Callable[[PyTreeSpec], PyTreeSpec] | None = None,
+) -> PyTreeSpec:
+    """Transform a treespec by applying functions to its nodes and leaves.
+
+    See also :func:`treespec_children`, :func:`treespec_is_leaf`, and :meth:`PyTreeSpec.transform`.
+
+    >>> treespec = tree_structure({'a': (0, [1, 2]), 'b': 3, 'c': (4, None)})
+    >>> treespec
+    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
+    >>> treespec_transform(treespec, lambda spec: treespec_dict(zip(spec.entries(), spec.children())))
+    PyTreeSpec({'a': {0: *, 1: {0: *, 1: *}}, 'b': *, 'c': {0: *, 1: {}}})
+    >>> treespec_transform(treespec, lambda spec: treespec_tuple(spec.children()))
+    PyTreeSpec(((*, (*, *)), *, (*, ())))
+    >>> treespec_transform(treespec, lambda spec: treespec_list(spec.children()) if spec.type is tuple else spec)
+    PyTreeSpec({'a': [*, [*, *]], 'b': *, 'c': [*, None]})
+    >>> treespec_transform(treespec, None, lambda spec: tree_structure((1, [2])))
+    PyTreeSpec({'a': ((*, [*]), [(*, [*]), (*, [*])]), 'b': (*, [*]), 'c': ((*, [*]), None)})
+    """
+    return treespec.transform(f_node, f_leaf)
 
 
 def treespec_is_leaf(treespec: PyTreeSpec, *, strict: bool = True) -> bool:

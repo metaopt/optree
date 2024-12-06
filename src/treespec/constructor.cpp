@@ -72,9 +72,9 @@ template <bool NoneIsLeaf>
     Node node;
     node.kind = PyTreeTypeRegistry::GetKind<NoneIsLeaf>(handle, node.custom, registry_namespace);
 
-    const auto verify_children = [&handle, &node](const std::vector<py::object>& children,
-                                                  std::vector<PyTreeSpec>& treespecs,
-                                                  std::string& register_namespace) -> void {
+    const auto verify_children = [&handle, &node, &registry_namespace](
+                                     const std::vector<py::object>& children,
+                                     std::vector<PyTreeSpec>& treespecs) -> void {
         for (const py::object& child : children) {
             if (!py::isinstance<PyTreeSpec>(child)) [[unlikely]] {
                 std::ostringstream oss{};
@@ -106,16 +106,16 @@ template <bool NoneIsLeaf>
             }
         }
         if (!common_registry_namespace.empty()) [[likely]] {
-            if (register_namespace.empty()) [[likely]] {
-                register_namespace = common_registry_namespace;
-            } else if (register_namespace != common_registry_namespace) [[unlikely]] {
+            if (registry_namespace.empty()) [[likely]] {
+                registry_namespace = common_registry_namespace;
+            } else if (registry_namespace != common_registry_namespace) [[unlikely]] {
                 std::ostringstream oss{};
-                oss << "Expected treespec(s) with namespace " << PyRepr(register_namespace)
+                oss << "Expected treespec(s) with namespace " << PyRepr(registry_namespace)
                     << ", got " << PyRepr(common_registry_namespace) << ".";
                 throw py::value_error(oss.str());
             }
         } else if (node.kind != PyTreeKind::Custom) [[likely]] {
-            register_namespace = "";
+            registry_namespace = "";
         }
     };
 
@@ -143,7 +143,7 @@ template <bool NoneIsLeaf>
             for (ssize_t i = 0; i < node.arity; ++i) {
                 children.emplace_back(TupleGetItem(handle, i));
             }
-            verify_children(children, treespecs, registry_namespace);
+            verify_children(children, treespecs);
             break;
         }
 
@@ -155,7 +155,7 @@ template <bool NoneIsLeaf>
                     children.emplace_back(ListGetItem(handle, i));
                 }
             }
-            verify_children(children, treespecs, registry_namespace);
+            verify_children(children, treespecs);
             break;
         }
 
@@ -178,7 +178,7 @@ template <bool NoneIsLeaf>
                     children.emplace_back(DictGetItem(dict, key));
                 }
             }
-            verify_children(children, treespecs, registry_namespace);
+            verify_children(children, treespecs);
             if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
                 const scoped_critical_section cs{handle};
                 node.node_data = py::make_tuple(py::getattr(handle, Py_Get_ID(default_factory)),
@@ -197,7 +197,7 @@ template <bool NoneIsLeaf>
             for (ssize_t i = 0; i < node.arity; ++i) {
                 children.emplace_back(TupleGetItem(tuple, i));
             }
-            verify_children(children, treespecs, registry_namespace);
+            verify_children(children, treespecs);
             break;
         }
 
@@ -209,7 +209,7 @@ template <bool NoneIsLeaf>
             for (ssize_t i = 0; i < node.arity; ++i) {
                 children.emplace_back(ListGetItem(list, i));
             }
-            verify_children(children, treespecs, registry_namespace);
+            verify_children(children, treespecs);
             break;
         }
 
@@ -235,7 +235,7 @@ template <bool NoneIsLeaf>
                     children.emplace_back(py::reinterpret_borrow<py::object>(child));
                 }
             }
-            verify_children(children, treespecs, registry_namespace);
+            verify_children(children, treespecs);
             if (num_out == 3) [[likely]] {
                 const py::object node_entries = TupleGetItem(out, 2);
                 if (!node_entries.is_none()) [[likely]] {

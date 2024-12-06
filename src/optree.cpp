@@ -200,6 +200,12 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              &PyTreeSpec::BroadcastToCommonSuffix,
              "Broadcast to the common suffix of this treespec and other treespec.",
              py::arg("other"))
+        .def("transform",
+             &PyTreeSpec::Transform,
+             "Transform the pytree structure by applying ``f_node(nodespec)`` at nodes and "
+             "``f_leaf(leafspec)`` at leaves.",
+             py::arg("f_node") = std::nullopt,
+             py::arg("f_leaf") = std::nullopt)
         .def("compose",
              &PyTreeSpec::Compose,
              "Compose two treespecs. Constructs the inner treespec as a subtree at each leaf node.",
