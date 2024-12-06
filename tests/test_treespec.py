@@ -591,24 +591,36 @@ def test_treespec_compose_children(
             namespace=namespace,
         )
         composed_treespec = treespec.compose(inner_treespec)
+        transformed_treespec = treespec.transform(None, lambda _: inner_treespec)
         expected_leaves = treespec.num_leaves * inner_treespec.num_leaves
         assert composed_treespec.num_leaves == treespec.num_leaves * inner_treespec.num_leaves
+        assert transformed_treespec.num_leaves == expected_leaves
         expected_nodes = (treespec.num_nodes - treespec.num_leaves) + (
             inner_treespec.num_nodes * treespec.num_leaves
         )
         assert composed_treespec.num_nodes == expected_nodes
+        assert transformed_treespec.num_nodes == expected_nodes
         leaves = list(range(expected_leaves))
         composed = optree.tree_unflatten(composed_treespec, leaves)
-        assert leaves == optree.tree_leaves(
-            composed,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
+        transformed = optree.tree_unflatten(transformed_treespec, leaves)
+        assert composed == transformed
 
         if 'FlatCache' in str(treespec):
             return
 
+        assert (leaves, composed_treespec) == optree.tree_flatten(
+            composed,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        assert (leaves, transformed_treespec) == optree.tree_flatten(
+            transformed,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+
         assert composed_treespec == expected_treespec
+        assert transformed_treespec == expected_treespec
 
         stack = [(composed_treespec.children(), expected_treespec.children())]
         while stack:
@@ -616,12 +628,6 @@ def test_treespec_compose_children(
             for composed_child, expected_child in zip(composed_children, expected_children):
                 assert composed_child == expected_child
                 stack.append((composed_child.children(), expected_child.children()))
-
-        assert composed_treespec == optree.tree_structure(
-            composed,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
 
         if treespec == expected_treespec:
             assert not (treespec != expected_treespec)
@@ -915,6 +921,65 @@ def test_treespec_child(
         assert expected_children == [
             optree.treespec_child(treespec, i) for i in range(len(expected_children))
         ]
+
+
+def test_treespec_transform():
+    treespec = optree.tree_structure(((1, 2, 3), (4,)))
+    assert optree.treespec_transform(treespec) == treespec
+    assert optree.treespec_transform(treespec) is not treespec
+    assert optree.treespec_transform(
+        treespec,
+        None,
+        lambda _: optree.tree_structure((1, [2])),
+    ) == optree.tree_structure((((0, [1]), (2, [3]), (4, [5])), ((6, [7]),)))
+    assert optree.treespec_transform(
+        treespec,
+        lambda spec: optree.treespec_list(spec.children()),
+    ) == optree.tree_structure([[1, 2, 3], [4]])
+    assert optree.treespec_transform(
+        treespec,
+        lambda spec: optree.treespec_dict(zip('abcd', spec.children())),
+    ) == optree.tree_structure({'a': {'a': 0, 'b': 1, 'c': 2}, 'b': {'a': 3}})
+    assert optree.treespec_transform(
+        treespec,
+        lambda spec: optree.treespec_dict(zip('abcd', spec.children())),
+        lambda spec: optree.tree_structure([0, None, 1]),
+    ) == optree.tree_structure(
+        {'a': {'a': [0, None, 1], 'b': [2, None, 3], 'c': [4, None, 5]}, 'b': {'a': [6, None, 7]}},
+    )
+
+    with pytest.raises(
+        TypeError,
+        match=re.escape('Expected the PyTreeSpec transform function returns a PyTreeSpec'),
+    ):
+        optree.treespec_transform(treespec, lambda _: None)
+    with pytest.raises(
+        TypeError,
+        match=re.escape('Expected the PyTreeSpec transform function returns a PyTreeSpec'),
+    ):
+        optree.treespec_transform(treespec, None, lambda _: None)
+    with pytest.raises(
+        ValueError,
+        match=(
+            r'Expected the PyTreeSpec transform function returns a PyTreeSpec '
+            r'with the same value of `none_is_leaf=\w+` as the input'
+        ),
+    ):
+        optree.treespec_transform(
+            treespec,
+            lambda spec: optree.treespec_list(
+                [optree.treespec_leaf(none_is_leaf=True)] * spec.num_children,
+                none_is_leaf=True,
+            ),
+        )
+    with pytest.raises(
+        ValueError,
+        match=(
+            r'Expected the PyTreeSpec transform function returns a PyTreeSpec '
+            r'with the same number of arity as the input'
+        ),
+    ):
+        optree.treespec_transform(treespec, lambda _: optree.tree_structure([0, 1]))
 
 
 @parametrize(
