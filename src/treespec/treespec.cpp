@@ -584,7 +584,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
               treespec->GetNumNodes(),
               "Number of transformed tree nodes mismatch.");
     treespec->m_none_is_leaf = m_none_is_leaf;
-    treespec->m_namespace = m_namespace;
+    treespec->m_namespace = common_registry_namespace;
     treespec->m_traversal.shrink_to_fit();
     PYTREESPEC_SANITY_CHECK(*treespec);
     return treespec;
