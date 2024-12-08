@@ -14,8 +14,7 @@ flake8-docstrings
 flake8-pyi
 flake8-simplify
 ruff
-doc8; python_version >= "3.8"
-doc8 < 1.0.0a0; python_version < "3.8"
+doc8
 pyenchant
 xdoctest
 cpplint

@@ -46,21 +46,21 @@ class _HashablePartialShim:
     args: tuple[Any, ...]
     keywords: dict[str, Any]
 
-    def __init__(self, partial_func: functools.partial) -> None:
+    def __init__(self, partial_func: functools.partial, /) -> None:
         self.partial_func: functools.partial = partial_func
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+    def __call__(self, /, *args: Any, **kwargs: Any) -> Any:
         return self.partial_func(*args, **kwargs)
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object, /) -> bool:
         if isinstance(other, _HashablePartialShim):
             return self.partial_func == other.partial_func
         return self.partial_func == other
 
-    def __hash__(self) -> int:
+    def __hash__(self, /) -> int:
         return hash(self.partial_func)
 
-    def __repr__(self) -> str:
+    def __repr__(self, /) -> str:
         return repr(self.partial_func)
 
 
@@ -122,7 +122,7 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
 
     TREE_PATH_ENTRY_TYPE: ClassVar[type[PyTreeEntry]] = GetAttrEntry
 
-    def __new__(cls, func: Callable[..., Any], *args: T, **keywords: T) -> Self:
+    def __new__(cls, func: Callable[..., Any], /, *args: T, **keywords: T) -> Self:
         """Create a new :class:`partial` instance."""
         # In Python 3.10+, if func is itself a functools.partial instance, functools.partial.__new__
         # would merge the arguments of this partial instance with the arguments of the func. We box
@@ -140,14 +140,14 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
 
         return super().__new__(cls, func, *args, **keywords)
 
-    def __repr__(self) -> str:
+    def __repr__(self, /) -> str:
         """Return a string representation of the :class:`partial` instance."""
         args = [repr(self.func)]
         args.extend(repr(x) for x in self.args)
         args.extend(f'{k}={v!r}' for (k, v) in self.keywords.items())
         return f'{self.__class__.__module__}.{self.__class__.__qualname__}({", ".join(args)})'
 
-    def tree_flatten(self) -> tuple[  # type: ignore[override]
+    def tree_flatten(self, /) -> tuple[  # type: ignore[override]
         tuple[tuple[T, ...], dict[str, T]],
         Callable[..., Any],
         tuple[str, str],
@@ -158,6 +158,7 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
     @classmethod
     def tree_unflatten(  # type: ignore[override]
         cls,
+        /,
         metadata: Callable[..., Any],
         children: tuple[tuple[T, ...], dict[str, T]],
     ) -> Self:

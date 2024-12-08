@@ -103,7 +103,7 @@ del SLOTS
 class GlobalNamespace:  # pragma: no cover
     __slots__: ClassVar[tuple[()]] = ()
 
-    def __repr__(self) -> str:
+    def __repr__(self, /) -> str:
         return '<GLOBAL NAMESPACE>'
 
 
@@ -121,21 +121,22 @@ if TYPE_CHECKING:
     _GetT = TypeVar('_GetT')
 
     class _CallableWithGet(Generic[_P, _T, _GetP, _GetT]):
-        def __call__(self, *args: _P.args, **kwargs: _P.kwargs) -> _T:
+        def __call__(self, /, *args: _P.args, **kwargs: _P.kwargs) -> _T:
             raise NotImplementedError
 
         # pylint: disable-next=missing-function-docstring
-        def get(self, *args: _GetP.args, **kwargs: _GetP.kwargs) -> _GetT:
+        def get(self, /, *args: _GetP.args, **kwargs: _GetP.kwargs) -> _GetT:
             raise NotImplementedError
 
 
 def _add_get(
     get: Callable[_GetP, _GetT],
+    /,
 ) -> Callable[
     [Callable[_P, _T]],
     _CallableWithGet[_P, _T, _GetP, _GetT],
 ]:
-    def decorator(func: Callable[_P, _T]) -> _CallableWithGet[_P, _T, _GetP, _GetT]:
+    def decorator(func: Callable[_P, _T], /) -> _CallableWithGet[_P, _T, _GetP, _GetT]:
         func.get = get  # type: ignore[attr-defined]
         return func  # type: ignore[return-value]
 
@@ -144,6 +145,7 @@ def _add_get(
 
 def _pytree_node_registry_get(  # pylint: disable=too-many-return-statements
     cls: type,
+    /,
     *,
     namespace: str = '',
 ) -> PyTreeNodeRegistryEntry | None:
@@ -171,6 +173,7 @@ def _pytree_node_registry_get(  # pylint: disable=too-many-return-statements
 @_add_get(_pytree_node_registry_get)
 def register_pytree_node(
     cls: type[Collection[T]],
+    /,
     flatten_func: FlattenFunc[T],
     unflatten_func: UnflattenFunc[T],
     *,
@@ -337,6 +340,7 @@ CustomTreeNodeType: TypeAlias = Type[CustomTreeNode[T]]
 @overload
 def register_pytree_node_class(
     cls: str | None = None,
+    /,
     *,
     path_entry_type: type[PyTreeEntry] | None = None,
     namespace: str | None = None,
@@ -346,6 +350,7 @@ def register_pytree_node_class(
 @overload
 def register_pytree_node_class(
     cls: CustomTreeNodeType,
+    /,
     *,
     path_entry_type: type[PyTreeEntry] | None,
     namespace: str,
@@ -354,6 +359,7 @@ def register_pytree_node_class(
 
 def register_pytree_node_class(  # noqa: C901
     cls: CustomTreeNodeType | str | None = None,
+    /,
     *,
     path_entry_type: type[PyTreeEntry] | None = None,
     namespace: str | None = None,
@@ -459,7 +465,7 @@ def register_pytree_node_class(  # noqa: C901
     return cls
 
 
-def unregister_pytree_node(cls: type, *, namespace: str) -> PyTreeNodeRegistryEntry:
+def unregister_pytree_node(cls: type, /, *, namespace: str) -> PyTreeNodeRegistryEntry:
     """Remove a type from the pytree node registry.
 
     See also :func:`register_pytree_node` and :func:`register_pytree_node_class`.
@@ -513,7 +519,7 @@ def unregister_pytree_node(cls: type, *, namespace: str) -> PyTreeNodeRegistryEn
 
 
 @contextlib.contextmanager
-def dict_insertion_ordered(mode: bool, *, namespace: str) -> Generator[None]:
+def dict_insertion_ordered(mode: bool, /, *, namespace: str) -> Generator[None]:
     """Context manager to temporarily set the dictionary sorting mode.
 
     This context manager is used to temporarily set the dictionary sorting mode for a specific
@@ -559,70 +565,76 @@ def dict_insertion_ordered(mode: bool, *, namespace: str) -> Generator[None]:
             _C.set_dict_insertion_ordered(prev, namespace)
 
 
-def _sorted_items(items: Iterable[tuple[KT, VT]]) -> list[tuple[KT, VT]]:
+def _sorted_items(items: Iterable[tuple[KT, VT]], /) -> list[tuple[KT, VT]]:
     return total_order_sorted(items, key=itemgetter(0))
 
 
-def _none_flatten(_: None) -> tuple[tuple[()], None]:
+def _none_flatten(_: None, /) -> tuple[tuple[()], None]:
     return (), None
 
 
-def _none_unflatten(_: None, children: Iterable[Any]) -> None:
+def _none_unflatten(_: None, /, children: Iterable[Any]) -> None:
     sentinel = object()
     if next(iter(children), sentinel) is not sentinel:
         raise ValueError('Expected no children.')
 
 
-def _tuple_flatten(tup: tuple[T, ...]) -> tuple[tuple[T, ...], None]:
+def _tuple_flatten(tup: tuple[T, ...], /) -> tuple[tuple[T, ...], None]:
     return tup, None
 
 
-def _tuple_unflatten(_: None, children: Iterable[T]) -> tuple[T, ...]:
+def _tuple_unflatten(_: None, children: Iterable[T], /) -> tuple[T, ...]:
     return tuple(children)
 
 
-def _list_flatten(lst: list[T]) -> tuple[list[T], None]:
+def _list_flatten(lst: list[T], /) -> tuple[list[T], None]:
     return lst, None
 
 
-def _list_unflatten(_: None, children: Iterable[T]) -> list[T]:
+def _list_unflatten(_: None, children: Iterable[T], /) -> list[T]:
     return list(children)
 
 
-def _dict_flatten(dct: dict[KT, VT]) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
+def _dict_flatten(dct: dict[KT, VT], /) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
     keys, values = unzip2(_sorted_items(dct.items()))
     return values, list(keys), keys
 
 
-def _dict_unflatten(keys: list[KT], values: Iterable[VT]) -> dict[KT, VT]:
+def _dict_unflatten(keys: list[KT], values: Iterable[VT], /) -> dict[KT, VT]:
     return dict(safe_zip(keys, values))
 
 
-def _dict_insertion_ordered_flatten(
-    dct: dict[KT, VT],
-) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
+def _dict_insertion_ordered_flatten(dct: dict[KT, VT], /) -> tuple[
+    tuple[VT, ...],
+    list[KT],
+    tuple[KT, ...],
+]:
     keys, values = unzip2(dct.items())
     return values, list(keys), keys
 
 
-def _dict_insertion_ordered_unflatten(keys: list[KT], values: Iterable[VT]) -> dict[KT, VT]:
+def _dict_insertion_ordered_unflatten(keys: list[KT], values: Iterable[VT], /) -> dict[KT, VT]:
     return dict(safe_zip(keys, values))
 
 
-def _ordereddict_flatten(
-    dct: OrderedDict[KT, VT],
-) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
+def _ordereddict_flatten(dct: OrderedDict[KT, VT], /) -> tuple[
+    tuple[VT, ...],
+    list[KT],
+    tuple[KT, ...],
+]:
     keys, values = unzip2(dct.items())
     return values, list(keys), keys
 
 
-def _ordereddict_unflatten(keys: list[KT], values: Iterable[VT]) -> OrderedDict[KT, VT]:
+def _ordereddict_unflatten(keys: list[KT], values: Iterable[VT], /) -> OrderedDict[KT, VT]:
     return OrderedDict(safe_zip(keys, values))
 
 
-def _defaultdict_flatten(
-    dct: defaultdict[KT, VT],
-) -> tuple[tuple[VT, ...], tuple[Callable[[], VT] | None, list[KT]], tuple[KT, ...]]:
+def _defaultdict_flatten(dct: defaultdict[KT, VT], /) -> tuple[
+    tuple[VT, ...],
+    tuple[Callable[[], VT] | None, list[KT]],
+    tuple[KT, ...],
+]:
     values, keys, entries = _dict_flatten(dct)
     return values, (dct.default_factory, keys), entries
 
@@ -630,14 +642,17 @@ def _defaultdict_flatten(
 def _defaultdict_unflatten(
     metadata: tuple[Callable[[], VT], list[KT]],
     values: Iterable[VT],
+    /,
 ) -> defaultdict[KT, VT]:
     default_factory, keys = metadata
     return defaultdict(default_factory, _dict_unflatten(keys, values))
 
 
-def _defaultdict_insertion_ordered_flatten(
-    dct: defaultdict[KT, VT],
-) -> tuple[tuple[VT, ...], tuple[Callable[[], VT] | None, list[KT]], tuple[KT, ...]]:
+def _defaultdict_insertion_ordered_flatten(dct: defaultdict[KT, VT], /) -> tuple[
+    tuple[VT, ...],
+    tuple[Callable[[], VT] | None, list[KT]],
+    tuple[KT, ...],
+]:
     values, keys, entries = _dict_insertion_ordered_flatten(dct)
     return values, (dct.default_factory, keys), entries
 
@@ -645,32 +660,34 @@ def _defaultdict_insertion_ordered_flatten(
 def _defaultdict_insertion_ordered_unflatten(
     metadata: tuple[Callable[[], VT], list[KT]],
     values: Iterable[VT],
+    /,
 ) -> defaultdict[KT, VT]:
     default_factory, keys = metadata
     return defaultdict(default_factory, _dict_insertion_ordered_unflatten(keys, values))
 
 
-def _deque_flatten(deq: deque[T]) -> tuple[deque[T], int | None]:
+def _deque_flatten(deq: deque[T], /) -> tuple[deque[T], int | None]:
     return deq, deq.maxlen
 
 
-def _deque_unflatten(maxlen: int | None, children: Iterable[T]) -> deque[T]:
+def _deque_unflatten(maxlen: int | None, children: Iterable[T], /) -> deque[T]:
     return deque(children, maxlen=maxlen)
 
 
-def _namedtuple_flatten(tup: NamedTuple[T]) -> tuple[tuple[T, ...], type[NamedTuple[T]]]:  # type: ignore[type-arg]
+def _namedtuple_flatten(tup: NamedTuple[T], /) -> tuple[tuple[T, ...], type[NamedTuple[T]]]:  # type: ignore[type-arg]
     return tup, type(tup)
 
 
-def _namedtuple_unflatten(cls: type[NamedTuple[T]], children: Iterable[T]) -> NamedTuple[T]:  # type: ignore[type-arg]
+# pylint: disable-next=line-too-long
+def _namedtuple_unflatten(cls: type[NamedTuple[T]], children: Iterable[T], /) -> NamedTuple[T]:  # type: ignore[type-arg]
     return cls(*children)  # type: ignore[call-overload]
 
 
-def _structseq_flatten(seq: structseq[T]) -> tuple[tuple[T, ...], type[structseq[T]]]:
+def _structseq_flatten(seq: structseq[T], /) -> tuple[tuple[T, ...], type[structseq[T]]]:
     return seq, type(seq)
 
 
-def _structseq_unflatten(cls: type[structseq[T]], children: Iterable[T]) -> structseq[T]:
+def _structseq_unflatten(cls: type[structseq[T]], children: Iterable[T], /) -> structseq[T]:
     return cls(children)
 
 
@@ -766,7 +783,7 @@ with warnings.catch_warnings():
         'The function `_sorted_keys` is deprecated and will be removed in a future version.',
         category=FutureWarning,
     )
-    def _sorted_keys(dct: dict[KT, VT]) -> list[KT]:
+    def _sorted_keys(dct: dict[KT, VT], /) -> list[KT]:
         return total_order_sorted(dct)
 
     @deprecated(
@@ -777,17 +794,17 @@ with warnings.catch_warnings():
     class KeyPathEntry(NamedTuple):  # pylint: disable=missing-class-docstring
         key: Any
 
-        def __add__(self, other: object) -> KeyPath:
+        def __add__(self, other: object, /) -> KeyPath:
             if isinstance(other, KeyPathEntry):
                 return KeyPath((self, other))
             if isinstance(other, KeyPath):
                 return KeyPath((self, *other.keys))
             return NotImplemented
 
-        def __eq__(self, other: object) -> bool:
+        def __eq__(self, other: object, /) -> bool:
             return isinstance(other, self.__class__) and self.key == other.key
 
-        def pprint(self) -> str:
+        def pprint(self, /) -> str:
             """Pretty name of the key path entry."""
             raise NotImplementedError
 
@@ -799,17 +816,17 @@ with warnings.catch_warnings():
     class KeyPath(NamedTuple):  # pylint: disable=missing-class-docstring
         keys: tuple[KeyPathEntry, ...] = ()
 
-        def __add__(self, other: object) -> KeyPath:
+        def __add__(self, other: object, /) -> KeyPath:
             if isinstance(other, KeyPathEntry):
                 return KeyPath((*self.keys, other))
             if isinstance(other, KeyPath):
                 return KeyPath(self.keys + other.keys)
             return NotImplemented
 
-        def __eq__(self, other: object) -> bool:
+        def __eq__(self, other: object, /) -> bool:
             return isinstance(other, KeyPath) and self.keys == other.keys
 
-        def pprint(self) -> str:
+        def pprint(self, /) -> str:
             """Pretty name of the key path."""
             if not self.keys:
                 return ' tree root'
@@ -823,7 +840,7 @@ with warnings.catch_warnings():
     class GetitemKeyPathEntry(KeyPathEntry):
         """The key path entry class for sequences and dictionaries."""
 
-        def pprint(self) -> str:
+        def pprint(self, /) -> str:
             """Pretty name of the key path entry."""
             return f'[{self.key!r}]'
 
@@ -835,7 +852,7 @@ with warnings.catch_warnings():
     class AttributeKeyPathEntry(KeyPathEntry):
         """The key path entry class for namedtuples."""
 
-        def pprint(self) -> str:
+        def pprint(self, /) -> str:
             """Pretty name of the key path entry."""
             return f'.{self.key}'
 
@@ -847,7 +864,7 @@ with warnings.catch_warnings():
     class FlattenedKeyPathEntry(KeyPathEntry):  # fallback
         """The fallback key path entry class."""
 
-        def pprint(self) -> str:
+        def pprint(self, /) -> str:
             """Pretty name of the key path entry."""
             return f'[<flat index {self.key}>]'
 
@@ -862,6 +879,7 @@ with warnings.catch_warnings():
     @_add_get(_KEYPATH_REGISTRY.get)
     def register_keypaths(
         cls: type[Collection[T]],
+        /,
         handler: KeyPathHandler[T],
     ) -> KeyPathHandler[T]:
         """Register a key path handler for a custom pytree node type."""
