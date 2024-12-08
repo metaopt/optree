@@ -61,16 +61,6 @@ jobs:
             python-abiflags: "td"
           - python-version: "3.12"
             python-abiflags: "td"
-          # venv does not support build with both `t` and `d` flags on Windows
-          - runner: windows-latest
-            python-version: "3.13"
-            python-abiflags: "td"
-        include:
-          # venv does not support build with both `t` and `d` flags on Windows
-          # test with `t` flag only
-          - runner: windows-latest
-            python-version: "3.13"
-            python-abiflags: "t"
       fail-fast: false
     timeout-minutes: 120
     steps:
