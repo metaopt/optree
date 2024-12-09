@@ -116,7 +116,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         .def("make_from_collection",
              &PyTreeSpec::MakeFromCollection,
              "Make a treespec from a collection of child treespecs.",
-             py::arg("tuple"),
+             py::arg("collection"),
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
         .def("is_namedtuple",
@@ -251,16 +251,19 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         .def("is_leaf",
              &PyTreeSpec::IsLeaf,
              "Test whether the current node is a leaf.",
+             py::kw_only(),
              py::arg("strict") = true)
         .def("is_prefix",
              &PyTreeSpec::IsPrefix,
              "Test whether this treespec is a prefix of the given treespec.",
              py::arg("other"),
+             py::kw_only(),
              py::arg("strict") = false)
         .def("is_suffix",
              &PyTreeSpec::IsSuffix,
              "Test whether this treespec is a suffix of the given treespec.",
              py::arg("other"),
+             py::kw_only(),
              py::arg("strict") = false)
         .def("__eq__",
              std::equal_to<PyTreeSpec>(),

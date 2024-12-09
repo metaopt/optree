@@ -2228,12 +2228,8 @@ def tree_max(
     """
     leaves = tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     if default is __MISSING:
-        if key is None:  # special handling for Python 3.7
-            return max(leaves)  # type: ignore[type-var]
-        return max(leaves, key=key)
-    if key is None:  # special handling for Python 3.7
-        return max(leaves, default=default)  # type: ignore[type-var]
-    return max(leaves, default=default, key=key)
+        return max(leaves, key=key)  # type: ignore[type-var,arg-type]
+    return max(leaves, default=default, key=key)  # type: ignore[type-var,arg-type]
 
 
 @overload
@@ -2321,12 +2317,8 @@ def tree_min(
     """
     leaves = tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
     if default is __MISSING:
-        if key is None:  # special handling for Python 3.7
-            return min(leaves)  # type: ignore[type-var]
-        return min(leaves, key=key)
-    if key is None:  # special handling for Python 3.7
-        return min(leaves, default=default)  # type: ignore[type-var]
-    return min(leaves, default=default, key=key)
+        return min(leaves, key=key)  # type: ignore[type-var,arg-type]
+    return min(leaves, default=default, key=key)  # type: ignore[type-var,arg-type]
 
 
 def tree_all(
@@ -2594,7 +2586,7 @@ def treespec_child(treespec: PyTreeSpec, index: int) -> PyTreeSpec:
     return treespec.child(index)
 
 
-def treespec_is_leaf(treespec: PyTreeSpec, strict: bool = True) -> bool:
+def treespec_is_leaf(treespec: PyTreeSpec, *, strict: bool = True) -> bool:
     """Return whether the treespec is a leaf that has no children.
 
     See also :func:`treespec_is_strict_leaf` and :meth:`PyTreeSpec.is_leaf`.
@@ -2674,6 +2666,7 @@ def treespec_is_strict_leaf(treespec: PyTreeSpec) -> bool:
 def treespec_is_prefix(
     treespec: PyTreeSpec,
     other_treespec: PyTreeSpec,
+    *,
     strict: bool = False,
 ) -> bool:
     """Return whether ``treespec`` is a prefix of ``other_treespec``.
@@ -2686,6 +2679,7 @@ def treespec_is_prefix(
 def treespec_is_suffix(
     treespec: PyTreeSpec,
     other_treespec: PyTreeSpec,
+    *,
     strict: bool = False,
 ) -> bool:
     """Return whether ``treespec`` is a suffix of ``other_treespec``.
@@ -2801,7 +2795,7 @@ def treespec_tuple(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a tuple treespec from a list of child treespecs.
+    """Make a tuple treespec from an iterable of child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -2846,7 +2840,7 @@ def treespec_list(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a list treespec from a list of child treespecs.
+    """Make a list treespec from an iterable of child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 

@@ -598,9 +598,11 @@ def _dict_unflatten(keys: list[KT], values: Iterable[VT]) -> dict[KT, VT]:
     return dict(safe_zip(keys, values))
 
 
-def _dict_insertion_ordered_flatten(
-    dct: dict[KT, VT],
-) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
+def _dict_insertion_ordered_flatten(dct: dict[KT, VT]) -> tuple[
+    tuple[VT, ...],
+    list[KT],
+    tuple[KT, ...],
+]:
     keys, values = unzip2(dct.items())
     return values, list(keys), keys
 
@@ -609,9 +611,11 @@ def _dict_insertion_ordered_unflatten(keys: list[KT], values: Iterable[VT]) -> d
     return dict(safe_zip(keys, values))
 
 
-def _ordereddict_flatten(
-    dct: OrderedDict[KT, VT],
-) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
+def _ordereddict_flatten(dct: OrderedDict[KT, VT]) -> tuple[
+    tuple[VT, ...],
+    list[KT],
+    tuple[KT, ...],
+]:
     keys, values = unzip2(dct.items())
     return values, list(keys), keys
 
@@ -620,9 +624,11 @@ def _ordereddict_unflatten(keys: list[KT], values: Iterable[VT]) -> OrderedDict[
     return OrderedDict(safe_zip(keys, values))
 
 
-def _defaultdict_flatten(
-    dct: defaultdict[KT, VT],
-) -> tuple[tuple[VT, ...], tuple[Callable[[], VT] | None, list[KT]], tuple[KT, ...]]:
+def _defaultdict_flatten(dct: defaultdict[KT, VT]) -> tuple[
+    tuple[VT, ...],
+    tuple[Callable[[], VT] | None, list[KT]],
+    tuple[KT, ...],
+]:
     values, keys, entries = _dict_flatten(dct)
     return values, (dct.default_factory, keys), entries
 
@@ -635,9 +641,11 @@ def _defaultdict_unflatten(
     return defaultdict(default_factory, _dict_unflatten(keys, values))
 
 
-def _defaultdict_insertion_ordered_flatten(
-    dct: defaultdict[KT, VT],
-) -> tuple[tuple[VT, ...], tuple[Callable[[], VT] | None, list[KT]], tuple[KT, ...]]:
+def _defaultdict_insertion_ordered_flatten(dct: defaultdict[KT, VT]) -> tuple[
+    tuple[VT, ...],
+    tuple[Callable[[], VT] | None, list[KT]],
+    tuple[KT, ...],
+]:
     values, keys, entries = _dict_insertion_ordered_flatten(dct)
     return values, (dct.default_factory, keys), entries
 

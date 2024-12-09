@@ -61,20 +61,20 @@ def total_order_sorted(
 
 @overload
 def safe_zip(
-    __iter1: Iterable[T],
+    __iter1: Iterable[T],  # noqa: PYI063
 ) -> zip[tuple[T]]: ...
 
 
 @overload
 def safe_zip(
-    __iter1: Iterable[T],
+    __iter1: Iterable[T],  # noqa: PYI063
     __iter2: Iterable[S],
 ) -> zip[tuple[T, S]]: ...
 
 
 @overload
 def safe_zip(
-    __iter1: Iterable[T],
+    __iter1: Iterable[T],  # noqa: PYI063
     __iter2: Iterable[S],
     __iter3: Iterable[U],
 ) -> zip[tuple[T, S, U]]: ...
@@ -82,7 +82,7 @@ def safe_zip(
 
 @overload
 def safe_zip(
-    __iter1: Iterable[Any],
+    __iter1: Iterable[Any],  # noqa: PYI063
     __iter2: Iterable[Any],
     __iter3: Iterable[Any],
     __iter4: Iterable[Any],

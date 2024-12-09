@@ -88,11 +88,7 @@ pre-commit-install:
 
 .PHONY: docs-install
 docs-install:
-	$(call check_pip_install_extra,doc8,"doc8<1.0.0a0")  # unpin this when we drop support for Python 3.7
-	if ! $(PYTHON) -c "import sys; exit(sys.version_info < (3, 8))"; then \
-		$(PYTHON) -m pip uninstall --yes importlib-metadata; \
-		$(call check_pip_install_extra,importlib-metadata,"importlib-metadata<5.0.0a0"); \
-	fi
+	$(call check_pip_install,doc8)
 	$(call check_pip_install,sphinx)
 	$(call check_pip_install,sphinx-rtd-theme)
 	$(call check_pip_install,sphinx-autoapi)
