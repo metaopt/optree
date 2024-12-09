@@ -211,7 +211,6 @@ def dataclass(
 @overload
 def dataclass(
     cls: _TypeT,
-    /,
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
@@ -230,7 +229,6 @@ def dataclass(
 @dataclass_transform(field_specifiers=(field,))
 def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-locals,too-many-branches
     cls: _TypeT | None = None,
-    /,
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin

@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Mark some arguments as positional-only by [@XuehaiPan](https://github.com/XuehaiPan) in [#161](https://github.com/metaopt/optree/pull/161).
+-
 
 ### Fixed
 

@@ -56,7 +56,6 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             "Register a Python type. Extends the set of types that are considered internal nodes "
             "in pytrees.",
             py::arg("cls"),
-            py::pos_only(),
             py::arg("flatten_func"),
             py::arg("unflatten_func"),
             py::arg("path_entry_type"),
@@ -65,7 +64,6 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              &PyTreeTypeRegistry::Unregister,
              "Unregister a Python type.",
              py::arg("cls"),
-             py::pos_only(),
              py::arg("namespace") = "")
         .def("is_dict_insertion_ordered",
              &PyTreeSpec::IsDictInsertionOrdered,
@@ -76,13 +74,11 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              &PyTreeSpec::SetDictInsertionOrdered,
              "Set whether need to preserve the dict insertion order during flattening.",
              py::arg("mode"),
-             py::pos_only(),
              py::arg("namespace") = "")
         .def("flatten",
              &PyTreeSpec::Flatten,
              "Flattens a pytree.",
              py::arg("tree"),
-             py::pos_only(),
              py::arg("leaf_predicate") = std::nullopt,
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
@@ -90,7 +86,6 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              &PyTreeSpec::FlattenWithPath,
              "Flatten a pytree and additionally record the paths.",
              py::arg("tree"),
-             py::pos_only(),
              py::arg("leaf_predicate") = std::nullopt,
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
@@ -98,7 +93,6 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              &IsLeaf,
              "Test whether the given object is a leaf node.",
              py::arg("obj"),
-             py::pos_only(),
              py::arg("leaf_predicate") = std::nullopt,
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
@@ -106,7 +100,6 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              &AllLeaves,
              "Test whether all elements in the given iterable are all leaves.",
              py::arg("iterable"),
-             py::pos_only(),
              py::arg("leaf_predicate") = std::nullopt,
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
@@ -124,56 +117,41 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              &PyTreeSpec::MakeFromCollection,
              "Make a treespec from a collection of child treespecs.",
              py::arg("collection"),
-             py::pos_only(),
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
         .def("is_namedtuple",
              &IsNamedTuple,
              "Return whether the object is an instance of namedtuple or a subclass of namedtuple.",
-             py::arg("obj"),
-             py::pos_only())
+             py::arg("obj"))
         .def("is_namedtuple_instance",
              &IsNamedTupleInstance,
              "Return whether the object is an instance of namedtuple.",
-             py::arg("obj"),
-             py::pos_only())
+             py::arg("obj"))
         .def("is_namedtuple_class",
              &IsNamedTupleClass,
              "Return whether the class is a subclass of namedtuple.",
-             py::arg("cls"),
-             py::pos_only())
+             py::arg("cls"))
         .def("namedtuple_fields",
              &NamedTupleGetFields,
              "Return the field names of a namedtuple.",
-             py::arg("obj"),
-             py::pos_only())
+             py::arg("obj"))
         .def("is_structseq",
              &IsStructSequence,
              "Return whether the object is an instance of PyStructSequence or a class of "
              "PyStructSequence.",
-             py::arg("obj"),
-             py::pos_only())
+             py::arg("obj"))
         .def("is_structseq_instance",
              &IsStructSequenceInstance,
              "Return whether the object is an instance of PyStructSequence.",
-             py::arg("obj"),
-             py::pos_only())
+             py::arg("obj"))
         .def("is_structseq_class",
              &IsStructSequenceClass,
              "Return whether the object is a class of PyStructSequence.",
-             py::arg("cls"),
-             py::pos_only())
+             py::arg("cls"))
         .def("structseq_fields",
              &StructSequenceGetFields,
              "Return the field names of a PyStructSequence.",
-             py::arg("obj"),
-             py::pos_only());
-
-#if PYBIND11_VERSION_HEX >= 0x020E00F0  // pybind11 2.14.0
-#define def_method_pos_only(...) def(__VA_ARGS__ __VA_OPT__(, ) py::pos_only())
-#else
-#define def_method_pos_only(...) def(__VA_ARGS__)
-#endif
+             py::arg("obj"));
 
     auto PyTreeKindTypeObject =
         py::enum_<PyTreeKind>(mod, "PyTreeKind", "The kind of a pytree node.", py::module_local())
@@ -212,54 +190,38 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         .def("unflatten",
              &PyTreeSpec::Unflatten,
              "Reconstruct a pytree from the leaves.",
-             py::arg("leaves"),
-             py::pos_only())
+             py::arg("leaves"))
         .def("flatten_up_to",
              &PyTreeSpec::FlattenUpTo,
              "Flatten the subtrees in ``full_tree`` up to the structure of this treespec "
              "and return a list of subtrees.",
-             py::arg("full_tree"),
-             py::pos_only())
+             py::arg("full_tree"))
         .def("broadcast_to_common_suffix",
              &PyTreeSpec::BroadcastToCommonSuffix,
              "Broadcast to the common suffix of this treespec and other treespec.",
-             py::arg("other"),
-             py::pos_only())
+             py::arg("other"))
         .def("compose",
              &PyTreeSpec::Compose,
              "Compose two treespecs. Constructs the inner treespec as a subtree at each leaf node.",
-             py::arg("inner_treespec"),
-             py::pos_only())
+             py::arg("inner_treespec"))
         .def("walk",
              &PyTreeSpec::Walk,
              "Walk over the pytree structure, calling ``f_node(children, node_data)`` at nodes, "
              "and ``f_leaf(leaf)`` at leaves.",
-             py::pos_only(),
              py::arg("f_node"),
              py::arg("f_leaf"),
              py::arg("leaves"))
-        .def_method_pos_only("paths",
-                             &PyTreeSpec::Paths,
-                             "Return a list of paths to the leaves of the treespec.")
-        .def_method_pos_only("accessors",
-                             &PyTreeSpec::Accessors,
-                             "Return a list of accessors to the leaves in the treespec.")
-        .def_method_pos_only("entries",
-                             &PyTreeSpec::Entries,
-                             "Return a list of one-level entries to the children.")
-        .def("entry",
-             &PyTreeSpec::Entry,
-             "Return the entry at the given index.",
-             py::arg("index"),
-             py::pos_only())
-        .def_method_pos_only("children",
-                             &PyTreeSpec::Children,
-                             "Return a list of treespecs for the children.")
+        .def("paths", &PyTreeSpec::Paths, "Return a list of paths to the leaves of the treespec.")
+        .def("accessors",
+             &PyTreeSpec::Accessors,
+             "Return a list of accessors to the leaves in the treespec.")
+        .def("entries", &PyTreeSpec::Entries, "Return a list of one-level entries to the children.")
+        .def("entry", &PyTreeSpec::Entry, "Return the entry at the given index.", py::arg("index"))
+        .def("children", &PyTreeSpec::Children, "Return a list of treespecs for the children.")
         .def("child",
              &PyTreeSpec::Child,
              "Return the treespec for the child at the given index.",
-             py::arg("index"),
-             py::pos_only())
+             py::arg("index"))
         .def_property_readonly("num_leaves",
                                &PyTreeSpec::GetNumLeaves,
                                "Number of leaves in the tree.")
@@ -289,71 +251,59 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         .def("is_leaf",
              &PyTreeSpec::IsLeaf,
              "Test whether the current node is a leaf.",
-             py::pos_only(),
              py::kw_only(),
              py::arg("strict") = true)
         .def("is_prefix",
              &PyTreeSpec::IsPrefix,
              "Test whether this treespec is a prefix of the given treespec.",
              py::arg("other"),
-             py::pos_only(),
              py::kw_only(),
              py::arg("strict") = false)
         .def("is_suffix",
              &PyTreeSpec::IsSuffix,
              "Test whether this treespec is a suffix of the given treespec.",
              py::arg("other"),
-             py::pos_only(),
              py::kw_only(),
              py::arg("strict") = false)
         .def("__eq__",
              std::equal_to<PyTreeSpec>(),
              "Test for equality to another object.",
              py::is_operator(),
-             py::arg("other"),
-             py::pos_only())
+             py::arg("other"))
         .def("__ne__",
              std::not_equal_to<PyTreeSpec>(),
              "Test for inequality to another object.",
              py::is_operator(),
-             py::arg("other"),
-             py::pos_only())
+             py::arg("other"))
         .def("__lt__",
              std::less<PyTreeSpec>(),
              "Test for this treespec is a strict prefix of another object.",
              py::is_operator(),
-             py::arg("other"),
-             py::pos_only())
+             py::arg("other"))
         .def("__le__",
              std::less_equal<PyTreeSpec>(),
              "Test for this treespec is a prefix of another object.",
              py::is_operator(),
-             py::arg("other"),
-             py::pos_only())
+             py::arg("other"))
         .def("__gt__",
              std::greater<PyTreeSpec>(),
              "Test for this treespec is a strict suffix of another object.",
              py::is_operator(),
-             py::arg("other"),
-             py::pos_only())
+             py::arg("other"))
         .def("__ge__",
              std::greater_equal<PyTreeSpec>(),
              "Test for this treespec is a suffix of another object.",
              py::is_operator(),
-             py::arg("other"),
-             py::pos_only())
-        .def_method_pos_only("__repr__",
-                             &PyTreeSpec::ToString,
-                             "Return a string representation of the treespec.")
-        .def_method_pos_only("__hash__", &PyTreeSpec::HashValue, "Return the hash of the treespec.")
-        .def_method_pos_only("__len__", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
+             py::arg("other"))
+        .def("__repr__", &PyTreeSpec::ToString, "Return a string representation of the treespec.")
+        .def("__hash__", &PyTreeSpec::HashValue, "Return the hash of the treespec.")
+        .def("__len__", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
         .def(py::pickle([](const PyTreeSpec& t) -> py::object { return t.ToPickleable(); },
                         [](const py::object& o) -> std::unique_ptr<PyTreeSpec> {
                             return PyTreeSpec::FromPickleable(o);
                         }),
              "Serialization support for PyTreeSpec.",
-             py::arg("state"),
-             py::pos_only());
+             py::arg("state"));
 
     auto PyTreeIterTypeObject = py::class_<PyTreeIter>(
         mod,
@@ -375,14 +325,11 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         .def(py::init<py::object, std::optional<py::function>, bool, std::string>(),
              "Create a new iterator over the leaves of a pytree.",
              py::arg("tree"),
-             py::pos_only(),
              py::arg("leaf_predicate") = std::nullopt,
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
-        .def_method_pos_only("__iter__", &PyTreeIter::Iter, "Return the iterator object itself.")
-        .def_method_pos_only("__next__", &PyTreeIter::Next, "Return the next leaf in the pytree.");
-
-#undef def_method_pos_only
+        .def("__iter__", &PyTreeIter::Iter, "Return the iterator object itself.")
+        .def("__next__", &PyTreeIter::Next, "Return the next leaf in the pytree.");
 
 #ifdef Py_TPFLAGS_IMMUTABLETYPE
     PyTreeKind_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
