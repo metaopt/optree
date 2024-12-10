@@ -138,10 +138,10 @@ public:
     [[nodiscard]] std::unique_ptr<PyTreeSpec> Compose(const PyTreeSpec &inner_treespec) const;
 
     // Map a function over a PyTree structure, applying f_leaf to each leaf, and
-    // f_node(children, node_data) to each container node.
-    [[nodiscard]] py::object Walk(const py::function &f_node,
-                                  const std::optional<py::function> &f_leaf,
-                                  const py::iterable &leaves) const;
+    // f_node(node_type, node_data, children) to each container node.
+    [[nodiscard]] py::object Walk(const py::iterable &leaves,
+                                  const std::optional<py::function> &f_node = std::nullopt,
+                                  const std::optional<py::function> &f_leaf = std::nullopt) const;
 
     // Return paths to all leaves in the PyTreeSpec.
     [[nodiscard]] std::vector<py::tuple> Paths() const;

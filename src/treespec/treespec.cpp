@@ -979,7 +979,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
 }
 
 py::object PyTreeSpec::GetType(const std::optional<Node>& node) const {
-    if (!node.has_value()) [[likely]] {
+    if (!node) [[likely]] {
         PYTREESPEC_SANITY_CHECK(*this);
     }
 

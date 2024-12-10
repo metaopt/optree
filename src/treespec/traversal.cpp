@@ -18,6 +18,7 @@ limitations under the License.
 #include <optional>   // std::optional
 #include <sstream>    // std::ostringstream
 #include <stdexcept>  // std::runtime_error
+#include <utility>    // std::move
 
 #include "optree/optree.h"
 
@@ -171,9 +172,10 @@ py::object PyTreeIter::Next() {
     }
 }
 
-py::object PyTreeSpec::Walk(const py::function& f_node,
-                            const std::optional<py::function>& f_leaf,
-                            const py::iterable& leaves) const {
+// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+py::object PyTreeSpec::Walk(const py::iterable& leaves,
+                            const std::optional<py::function>& f_node,
+                            const std::optional<py::function>& f_leaf) const {
     PYTREESPEC_SANITY_CHECK(*this);
 
     const scoped_critical_section cs{leaves};
@@ -203,18 +205,34 @@ py::object PyTreeSpec::Walk(const py::function& f_node,
             case PyTreeKind::Deque:
             case PyTreeKind::StructSequence:
             case PyTreeKind::Custom: {
-                EXPECT_GE(py::ssize_t_cast(agenda.size()),
-                          node.arity,
-                          "Too few elements for custom type.");
-                const py::tuple tuple{node.arity};
-                for (ssize_t i = node.arity - 1; i >= 0; --i) {
-                    TupleSetItem(tuple, i, agenda.back());
-                    agenda.pop_back();
+                const ssize_t size = py::ssize_t_cast(agenda.size());
+                EXPECT_GE(size, node.arity, "Too few elements for custom type.");
+
+                if (f_node) [[likely]] {
+                    const py::tuple children{node.arity};
+                    for (ssize_t i = node.arity - 1; i >= 0; --i) {
+                        TupleSetItem(children, i, agenda.back());
+                        agenda.pop_back();
+                    }
+
+                    const py::object& node_type = GetType(node);
+                    {
+                        const scoped_critical_section cs2{node_type};
+                        agenda.emplace_back(EVALUATE_WITH_LOCK_HELD2(
+                            (*f_node)(node_type,
+                                      (node.node_data ? node.node_data : py::none()),
+                                      children),
+                            node.node_data,
+                            *f_node));
+                    }
+                } else [[unlikely]] {
+                    py::object out =
+                        MakeNode(node,
+                                 (node.arity > 0 ? &agenda[size - node.arity] : nullptr),
+                                 node.arity);
+                    agenda.resize(size - node.arity);
+                    agenda.emplace_back(std::move(out));
                 }
-                agenda.emplace_back(EVALUATE_WITH_LOCK_HELD2(
-                    f_node(tuple, (node.node_data ? node.node_data : py::none())),
-                    node.node_data,
-                    f_node));
                 break;
             }
 
