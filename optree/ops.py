@@ -2596,14 +2596,39 @@ def treespec_transform(
 
     See also :func:`treespec_children`, :func:`treespec_is_leaf`, and :meth:`PyTreeSpec.transform`.
 
-    >>> treespec = tree_structure({'a': (0, [1, 2]), 'b': 3, 'c': (4, None)})
+    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
     >>> treespec
     PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
     >>> treespec_transform(treespec, lambda spec: treespec_dict(zip(spec.entries(), spec.children())))
     PyTreeSpec({'a': {0: *, 1: {0: *, 1: *}}, 'b': *, 'c': {0: *, 1: {}}})
+    >>> treespec_transform(
+    ...     treespec,
+    ...     lambda spec: (
+    ...         treespec_ordereddict(zip(spec.entries(), spec.children()))
+    ...         if spec.type is dict
+    ...         else spec
+    ...     ),
+    ... )
+    PyTreeSpec(OrderedDict({'a': (*, [*, *]), 'b': *, 'c': (*, None)}))
+    >>> treespec_transform(
+    ...     treespec,
+    ...     lambda spec: (
+    ...         treespec_ordereddict(tree_unflatten(spec, spec.children()))
+    ...         if spec.type is dict
+    ...         else spec
+    ...     ),
+    ... )
+    PyTreeSpec(OrderedDict({'b': (*, [*, *]), 'a': *, 'c': (*, None)}))
     >>> treespec_transform(treespec, lambda spec: treespec_tuple(spec.children()))
     PyTreeSpec(((*, (*, *)), *, (*, ())))
-    >>> treespec_transform(treespec, lambda spec: treespec_list(spec.children()) if spec.type is tuple else spec)
+    >>> treespec_transform(
+    ...     treespec,
+    ...     lambda spec: (
+    ...         treespec_list(spec.children())
+    ...         if spec.type is tuple
+    ...         else spec
+    ...     ),
+    ... )
     PyTreeSpec({'a': [*, [*, *]], 'b': *, 'c': [*, None]})
     >>> treespec_transform(treespec, None, lambda spec: tree_structure((1, [2])))
     PyTreeSpec({'a': ((*, [*]), [(*, [*]), (*, [*])]), 'b': (*, [*]), 'c': ((*, [*]), None)})

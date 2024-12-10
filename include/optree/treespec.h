@@ -131,8 +131,8 @@ public:
     // Transform a PyTreeSpec by applying `f_node(nodespec)` to nodes and `f_leaf(leafspec)` to
     // leaves.
     [[nodiscard]] std::unique_ptr<PyTreeSpec> Transform(
-        const std::optional<py::function> &f_node,
-        const std::optional<py::function> &f_leaf) const;
+        const std::optional<py::function> &f_node = std::nullopt,
+        const std::optional<py::function> &f_leaf = std::nullopt) const;
 
     // Compose two PyTreeSpecs, replacing the leaves of this tree with copies of `inner`.
     [[nodiscard]] std::unique_ptr<PyTreeSpec> Compose(const PyTreeSpec &inner_treespec) const;
