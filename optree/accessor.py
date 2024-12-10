@@ -24,13 +24,13 @@ from typing import (
     ClassVar,
     Generic,
     Iterable,
+    Literal,
     Mapping,
     Sequence,
     Tuple,
     TypeVar,
     overload,
 )
-from typing_extensions import Literal  # Python 3.8+
 from typing_extensions import Self  # Python 3.11+
 
 from optree import _C
