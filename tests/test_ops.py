@@ -247,34 +247,46 @@ def test_walk():
     #                   X
     #
 
+    def unflatten_node(node_type, node_data, children):
+        return optree.register_pytree_node.get(node_type).unflatten_func(node_data, children)
+
     def get_functions():
-        nodes_visited = []
+        node_types_visited = []
         node_data_visited = []
+        nodes_visited = []
         leaves_visited = []
 
-        def f_node(node, node_data):
-            nodes_visited.append(node)
+        def f_node(node_type, node_data, node):
+            node_types_visited.append(node_type)
             node_data_visited.append(node_data)
+            nodes_visited.append(node)
             return copy.deepcopy(nodes_visited), None
 
         def f_leaf(leaf):
             leaves_visited.append(leaf)
             return copy.deepcopy(leaves_visited)
 
-        return f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited
+        return f_node, f_leaf, leaves_visited, nodes_visited, node_data_visited, node_types_visited
 
     leaves, treespec = optree.tree_flatten(tree)
 
-    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    f_node, f_leaf, *_ = get_functions()
     with pytest.raises(ValueError, match='Too few leaves for PyTreeSpec.'):
-        treespec.walk(f_node, f_leaf, leaves[:-1])
+        treespec.walk(leaves[:-1], f_node, f_leaf)
 
-    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    f_node, f_leaf, *_ = get_functions()
     with pytest.raises(ValueError, match='Too many leaves for PyTreeSpec.'):
-        treespec.walk(f_node, f_leaf, (*leaves, 0))
+        treespec.walk((*leaves, 0), f_node, f_leaf)
 
-    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
-    output = treespec.walk(f_node, f_leaf, leaves)
+    (
+        f_node,
+        f_leaf,
+        leaves_visited,
+        nodes_visited,
+        node_data_visited,
+        node_types_visited,
+    ) = get_functions()
+    output = treespec.walk(leaves, f_node, f_leaf)
     assert leaves_visited == [1, 2, 3, 4]
     assert nodes_visited == [
         (),
@@ -282,6 +294,7 @@ def test_walk():
         ([1], [1, 2], ([(), ([1, 2, 3], ([()], None), [1, 2, 3, 4])], None)),
     ]
     assert node_data_visited == [None, ['e', 'f', 'g'], ['a', 'b', 'c']]
+    assert node_types_visited == [type(None), dict, dict]
     assert output == (
         [
             (),
@@ -291,30 +304,50 @@ def test_walk():
         None,
     )
 
+    assert treespec.walk(leaves) == tree
+    assert treespec.walk(leaves, unflatten_node, None) == tree
+    assert treespec.walk(leaves, None, lambda x: x + 1) == optree.tree_map(lambda x: x + 1, tree)
+
     leaves, treespec = optree.tree_flatten(tree, none_is_leaf=True)
 
-    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    f_node, f_leaf, *_ = get_functions()
     with pytest.raises(ValueError, match='Too few leaves for PyTreeSpec.'):
-        treespec.walk(f_node, f_leaf, leaves[:-1])
+        treespec.walk(leaves[:-1], f_node, f_leaf)
 
-    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
+    f_node, f_leaf, *_ = get_functions()
     with pytest.raises(ValueError, match='Too many leaves for PyTreeSpec.'):
-        treespec.walk(f_node, f_leaf, (*leaves, 0))
+        treespec.walk((*leaves, 0), f_node, f_leaf)
 
-    f_node, f_leaf, nodes_visited, node_data_visited, leaves_visited = get_functions()
-    output = treespec.walk(f_node, f_leaf, leaves)
+    (
+        f_node,
+        f_leaf,
+        leaves_visited,
+        nodes_visited,
+        node_data_visited,
+        node_types_visited,
+    ) = get_functions()
+    output = treespec.walk(leaves, f_node, f_leaf)
     assert leaves_visited == [1, 2, 3, None, 4]
     assert nodes_visited == [
         ([1, 2, 3], [1, 2, 3, None], [1, 2, 3, None, 4]),
         ([1], [1, 2], ([([1, 2, 3], [1, 2, 3, None], [1, 2, 3, None, 4])], None)),
     ]
     assert node_data_visited == [['e', 'f', 'g'], ['a', 'b', 'c']]
+    assert node_types_visited == [dict, dict]
     assert output == (
         [
             ([1, 2, 3], [1, 2, 3, None], [1, 2, 3, None, 4]),
             ([1], [1, 2], ([([1, 2, 3], [1, 2, 3, None], [1, 2, 3, None, 4])], None)),
         ],
         None,
+    )
+
+    assert treespec.walk(leaves) == tree
+    assert treespec.walk(leaves, unflatten_node, None) == tree
+    assert treespec.walk(leaves, None, lambda x: (x,)) == optree.tree_map(
+        lambda x: (x,),
+        tree,
+        none_is_leaf=True,
     )
 
 

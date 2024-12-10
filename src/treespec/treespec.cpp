@@ -20,6 +20,7 @@ limitations under the License.
 #include <memory>     // std::unique_ptr, std::make_unique
 #include <optional>   // std::optional
 #include <sstream>    // std::ostringstream
+#include <string>     // std::string
 #include <tuple>      // std::tuple
 #include <utility>    // std::move
 #include <vector>     // std::vector
@@ -448,6 +449,147 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec
     return treespec;
 }
 
+// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::function>& f_node,
+                                                  const std::optional<py::function>& f_leaf) const {
+    PYTREESPEC_SANITY_CHECK(*this);
+
+    if (!f_node && !f_leaf) [[unlikely]] {
+        return std::make_unique<PyTreeSpec>(*this);
+    }
+
+    const auto create_nodespec = [this](const Node& node) -> std::unique_ptr<PyTreeSpec> {
+        auto nodespec = std::make_unique<PyTreeSpec>();
+        for (ssize_t i = 0; i < node.arity; ++i) {
+            nodespec->m_traversal.emplace_back(Node{
+                .kind = PyTreeKind::Leaf,
+                .arity = 0,
+                .num_leaves = 1,
+                .num_nodes = 1,
+            });
+        }
+        auto& root = nodespec->m_traversal.emplace_back(node);
+        root.num_leaves = (node.kind == PyTreeKind::Leaf ? 1 : node.arity);
+        root.num_nodes = node.arity + 1;
+        nodespec->m_none_is_leaf = m_none_is_leaf;
+        nodespec->m_namespace = m_namespace;
+        nodespec->m_traversal.shrink_to_fit();
+        PYTREESPEC_SANITY_CHECK(*nodespec);
+        return nodespec;
+    };
+
+    const auto transform =
+        [&create_nodespec, &f_node, &f_leaf](const Node& node) -> std::unique_ptr<PyTreeSpec> {
+        auto nodespec = create_nodespec(node);
+
+        const auto& func = (node.kind == PyTreeKind::Leaf ? f_leaf : f_node);
+        if (!func) [[likely]] {
+            return nodespec;
+        }
+
+        const py::object out = EVALUATE_WITH_LOCK_HELD((*func)(std::move(nodespec)), *func);
+        if (!py::isinstance<PyTreeSpec>(out)) [[unlikely]] {
+            std::ostringstream oss{};
+            oss << "Expected the PyTreeSpec transform function returns a PyTreeSpec, got "
+                << PyRepr(out) << " (input: " << create_nodespec(node)->ToString() << ").";
+            throw py::type_error(oss.str());
+        }
+        return std::make_unique<PyTreeSpec>(thread_safe_cast<PyTreeSpec&>(out));
+    };
+
+    auto treespec = std::make_unique<PyTreeSpec>();
+    std::string common_registry_namespace = m_namespace;
+    ssize_t num_extra_leaves = 0;
+    ssize_t num_extra_nodes = 0;
+    auto pending_num_leaves_nodes = reserved_vector<std::pair<ssize_t, ssize_t>>(4);
+    for (const Node& node : m_traversal) {
+        auto transformed = transform(node);
+        if (transformed->m_none_is_leaf != m_none_is_leaf) [[unlikely]] {
+            std::ostringstream oss{};
+            oss << "Expected the PyTreeSpec transform function returns "
+                   "a PyTreeSpec with the same value of "
+                << (m_none_is_leaf ? "`none_is_leaf=True`" : "`none_is_leaf=False`")
+                << " as the input, got " << transformed->ToString()
+                << " (input: " << create_nodespec(node)->ToString() << ").";
+            throw py::value_error(oss.str());
+        }
+        if (!transformed->m_namespace.empty()) [[unlikely]] {
+            if (common_registry_namespace.empty()) [[likely]] {
+                common_registry_namespace = transformed->m_namespace;
+            } else if (transformed->m_namespace != common_registry_namespace) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << "Expected the PyTreeSpec transform function returns "
+                       "a PyTreeSpec with namespace "
+                    << PyRepr(common_registry_namespace) << ", got "
+                    << PyRepr(transformed->m_namespace) << ".";
+                throw py::value_error(oss.str());
+            }
+        }
+        if (node.kind != PyTreeKind::Leaf) [[likely]] {
+            if (transformed->GetNumLeaves() != node.arity) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << "Expected the PyTreeSpec transform function returns "
+                       "a PyTreeSpec with the same number of arity as the input ("
+                    << node.arity << "), got " << transformed->ToString()
+                    << " (input: " << create_nodespec(node)->ToString() << ").";
+                throw py::value_error(oss.str());
+            }
+            if (transformed->GetNumNodes() != node.arity + 1) [[unlikely]] {
+                std::ostringstream oss{};
+                oss << "Expected the PyTreeSpec transform function returns an one-level PyTreeSpec "
+                       "as the input, got "
+                    << transformed->ToString() << " (input: " << create_nodespec(node)->ToString()
+                    << ").";
+                throw py::value_error(oss.str());
+            }
+            auto& subroot = treespec->m_traversal.emplace_back(transformed->m_traversal.back());
+            EXPECT_GE(py::ssize_t_cast(pending_num_leaves_nodes.size()),
+                      node.arity,
+                      "PyTreeSpec::Transform() walked off start of array.");
+            subroot.num_leaves = 0;
+            subroot.num_nodes = 1;
+            for (ssize_t i = 0; i < node.arity; ++i) {
+                const auto& [num_leaves, num_nodes] = pending_num_leaves_nodes.back();
+                pending_num_leaves_nodes.pop_back();
+                subroot.num_leaves += num_leaves;
+                subroot.num_nodes += num_nodes;
+            }
+            pending_num_leaves_nodes.emplace_back(subroot.num_leaves, subroot.num_nodes);
+        } else [[unlikely]] {
+            std::copy(transformed->m_traversal.cbegin(),
+                      transformed->m_traversal.cend(),
+                      std::back_inserter(treespec->m_traversal));
+            const ssize_t num_leaves = transformed->GetNumLeaves();
+            const ssize_t num_nodes = transformed->GetNumNodes();
+            num_extra_leaves += num_leaves - 1;
+            num_extra_nodes += num_nodes - 1;
+            pending_num_leaves_nodes.emplace_back(num_leaves, num_nodes);
+        }
+    }
+    EXPECT_EQ(pending_num_leaves_nodes.size(),
+              1,
+              "PyTreeSpec::Transform() did not yield a singleton.");
+
+    const auto& root = treespec->m_traversal.back();
+    EXPECT_EQ(root.num_leaves,
+              GetNumLeaves() + num_extra_leaves,
+              "Number of transformed tree leaves mismatch.");
+    EXPECT_EQ(root.num_nodes,
+              GetNumNodes() + num_extra_nodes,
+              "Number of transformed tree nodes mismatch.");
+    EXPECT_EQ(root.num_leaves,
+              treespec->GetNumLeaves(),
+              "Number of transformed tree leaves mismatch.");
+    EXPECT_EQ(root.num_nodes,
+              treespec->GetNumNodes(),
+              "Number of transformed tree nodes mismatch.");
+    treespec->m_none_is_leaf = m_none_is_leaf;
+    treespec->m_namespace = common_registry_namespace;
+    treespec->m_traversal.shrink_to_fit();
+    PYTREESPEC_SANITY_CHECK(*treespec);
+    return treespec;
+}
+
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
     PYTREESPEC_SANITY_CHECK(*this);
     PYTREESPEC_SANITY_CHECK(inner_treespec);
@@ -837,7 +979,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
 }
 
 py::object PyTreeSpec::GetType(const std::optional<Node>& node) const {
-    if (!node.has_value()) [[likely]] {
+    if (!node) [[likely]] {
         PYTREESPEC_SANITY_CHECK(*this);
     }
 

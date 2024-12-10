@@ -48,7 +48,7 @@ public:
         : InternalError([&message, &file, &lineno, &function]() -> std::string {
               std::ostringstream oss{};
               oss << message << " (";
-              if (function.has_value()) [[likely]] {
+              if (function) [[likely]] {
                   oss << "function `" << *function << "` ";
               }
               oss << "at file " << file << ":" << lineno << ")\n\n"

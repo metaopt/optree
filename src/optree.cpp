@@ -31,7 +31,7 @@ py::module_ GetCxxModule(const std::optional<py::module_>& module) {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::module_> storage;
     return storage
         .call_once_and_store_result([&module]() -> py::module_ {
-            EXPECT_TRUE(module.has_value(), "The module must be provided.");
+            EXPECT_TRUE(module, "The module must be provided.");
             return *module;
         })
         .get_stored();
@@ -200,17 +200,23 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              &PyTreeSpec::BroadcastToCommonSuffix,
              "Broadcast to the common suffix of this treespec and other treespec.",
              py::arg("other"))
+        .def("transform",
+             &PyTreeSpec::Transform,
+             "Transform the pytree structure by applying ``f_node(nodespec)`` at nodes and "
+             "``f_leaf(leafspec)`` at leaves.",
+             py::arg("f_node") = std::nullopt,
+             py::arg("f_leaf") = std::nullopt)
         .def("compose",
              &PyTreeSpec::Compose,
              "Compose two treespecs. Constructs the inner treespec as a subtree at each leaf node.",
              py::arg("inner_treespec"))
         .def("walk",
              &PyTreeSpec::Walk,
-             "Walk over the pytree structure, calling ``f_node(children, node_data)`` at nodes, "
-             "and ``f_leaf(leaf)`` at leaves.",
-             py::arg("f_node"),
-             py::arg("f_leaf"),
-             py::arg("leaves"))
+             "Walk over the pytree structure, calling ``f_node(node_type, node_data, children)`` "
+             "at nodes, and ``f_leaf(leaf)`` at leaves.",
+             py::arg("leaves"),
+             py::arg("f_node") = std::nullopt,
+             py::arg("f_leaf") = std::nullopt)
         .def("paths", &PyTreeSpec::Paths, "Return a list of paths to the leaves of the treespec.")
         .def("accessors",
              &PyTreeSpec::Accessors,
