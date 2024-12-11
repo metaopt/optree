@@ -123,6 +123,7 @@ PyTreeSpec Functions
     treespec_entry
     treespec_children
     treespec_child
+    treespec_transform
     treespec_is_leaf
     treespec_is_strict_leaf
     treespec_is_prefix
@@ -145,6 +146,7 @@ PyTreeSpec Functions
 .. autofunction:: treespec_entry
 .. autofunction:: treespec_children
 .. autofunction:: treespec_child
+.. autofunction:: treespec_transform
 .. autofunction:: treespec_is_leaf
 .. autofunction:: treespec_is_strict_leaf
 .. autofunction:: treespec_is_prefix

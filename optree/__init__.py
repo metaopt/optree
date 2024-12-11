@@ -90,6 +90,7 @@ from optree.ops import (
     treespec_ordereddict,
     treespec_paths,
     treespec_structseq,
+    treespec_transform,
     treespec_tuple,
 )
 from optree.registry import (
@@ -170,6 +171,7 @@ __all__ = [
     'treespec_entry',
     'treespec_children',
     'treespec_child',
+    'treespec_transform',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',
     'treespec_is_prefix',
