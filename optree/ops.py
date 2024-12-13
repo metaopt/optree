@@ -94,6 +94,7 @@ __all__ = [
     'treespec_entry',
     'treespec_children',
     'treespec_child',
+    'treespec_one_level',
     'treespec_transform',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',
@@ -2540,6 +2541,12 @@ def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
     """Return a list of paths to the leaves of a treespec.
 
     See also :func:`tree_flatten_with_path`, :func:`tree_paths`, and :meth:`PyTreeSpec.paths`.
+
+    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
+    >>> treespec
+    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
+    >>> treespec_paths(treespec)
+    [('a', 0), ('a', 1, 0), ('a', 1, 1), ('b',), ('c', 0)]
     """
     return treespec.paths()
 
@@ -2574,6 +2581,12 @@ def treespec_entries(treespec: PyTreeSpec) -> list[Any]:
 
     See also :func:`treespec_entry`, :func:`treespec_paths`, :func:`treespec_children`,
     and :meth:`PyTreeSpec.entries`.
+
+    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
+    >>> treespec
+    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
+    >>> treespec_entries(treespec)
+    ['a', 'b', 'c']
     """
     return treespec.entries()
 
@@ -2590,7 +2603,13 @@ def treespec_children(treespec: PyTreeSpec) -> list[PyTreeSpec]:
     """Return a list of treespecs for the children of a treespec.
 
     See also :func:`treespec_child`, :func:`treespec_paths`, :func:`treespec_entries`,
-    and :meth:`PyTreeSpec.children`.
+    :func:`treespec_one_level`, and :meth:`PyTreeSpec.children`.
+
+    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
+    >>> treespec
+    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
+    >>> treespec_children(treespec)
+    [PyTreeSpec((*, [*, *])), PyTreeSpec(*), PyTreeSpec((*, None))]
     """
     return treespec.children()
 
@@ -2601,6 +2620,20 @@ def treespec_child(treespec: PyTreeSpec, index: int) -> PyTreeSpec:
     See also :func:`treespec_children`, :func:`treespec_entries`, and :meth:`PyTreeSpec.child`.
     """
     return treespec.child(index)
+
+
+def treespec_one_level(treespec: PyTreeSpec) -> PyTreeSpec | None:
+    """Return the one-level tree structure of the treespec or :data:`None` if the treespec is a leaf.
+
+    See also :func:`treespec_children` and :meth:`PyTreeSpec.one_level`.
+
+    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
+    >>> treespec
+    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
+    >>> treespec_one_level(treespec)
+    PyTreeSpec({'a': *, 'b': *, 'c': *})
+    """
+    return treespec.one_level()
 
 
 def treespec_transform(
