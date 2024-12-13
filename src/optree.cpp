@@ -228,6 +228,16 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              &PyTreeSpec::Child,
              "Return the treespec for the child at the given index.",
              py::arg("index"))
+        .def(
+            "one_level",
+            [](const PyTreeSpec& t) -> std::optional<std::unique_ptr<PyTreeSpec>> {
+                if (t.IsLeaf()) [[unlikely]] {
+                    return std::nullopt;
+                }
+                return t.GetOneLevel();
+            },
+            "Return the one-level structure of the root node. Return None if the root node "
+            "represents a leaf.")
         .def_property_readonly("num_leaves",
                                &PyTreeSpec::GetNumLeaves,
                                "Number of leaves in the tree.")
@@ -237,7 +247,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
                                "Note that a leaf is also a node but has no children.")
         .def_property_readonly("num_children",
                                &PyTreeSpec::GetNumChildren,
-                               "Number of children in the current node. "
+                               "Number of children of the root node. "
                                "Note that a leaf is also a node but has no children.")
         .def_property_readonly(
             "none_is_leaf",
@@ -252,13 +262,16 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         .def_property_readonly(
             "type",
             [](const PyTreeSpec& t) -> py::object { return t.GetType(); },
-            "The type of the current node. Return None if the current node is a leaf.")
-        .def_property_readonly("kind", &PyTreeSpec::GetPyTreeKind, "The kind of the current node.")
+            "The type of the root node. Return None if the root node is a leaf.")
+        .def_property_readonly("kind", &PyTreeSpec::GetPyTreeKind, "The kind of the root node.")
         .def("is_leaf",
              &PyTreeSpec::IsLeaf,
-             "Test whether the current node is a leaf.",
+             "Test whether the treespec represents a leaf.",
              py::kw_only(),
              py::arg("strict") = true)
+        .def("is_one_level",
+             &PyTreeSpec::IsOneLevel,
+             "Test whether the treespec represents a one-level tree.")
         .def("is_prefix",
              &PyTreeSpec::IsPrefix,
              "Test whether this treespec is a prefix of the given treespec.",

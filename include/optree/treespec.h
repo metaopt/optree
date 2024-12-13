@@ -161,6 +161,10 @@ public:
     // Return the child at the given index of the PyTreeSpec.
     [[nodiscard]] std::unique_ptr<PyTreeSpec> Child(ssize_t index) const;
 
+    // Return the one-level structure of the PyTreeSpec.
+    [[nodiscard]] std::unique_ptr<PyTreeSpec> GetOneLevel(
+        const std::optional<Node> &node = std::nullopt) const;
+
     [[nodiscard]] inline Py_ALWAYS_INLINE ssize_t GetNumLeaves() const {
         PYTREESPEC_SANITY_CHECK(*this);
         return m_traversal.back().num_leaves;
@@ -193,6 +197,11 @@ public:
             return GetNumNodes() == 1 && GetNumLeaves() == 1;
         }
         return GetNumNodes() == 1;
+    }
+
+    // Test whether this PyTreeSpec represents a one-level tree.
+    [[nodiscard]] inline Py_ALWAYS_INLINE bool IsOneLevel() const {
+        return GetNumNodes() == GetNumChildren() + 1 && GetNumLeaves() == GetNumChildren();
     }
 
     // Return true if this PyTreeSpec is a prefix of `other`.

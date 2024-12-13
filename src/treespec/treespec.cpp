@@ -458,29 +458,9 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
         return std::make_unique<PyTreeSpec>(*this);
     }
 
-    const auto create_nodespec = [this](const Node& node) -> std::unique_ptr<PyTreeSpec> {
-        auto nodespec = std::make_unique<PyTreeSpec>();
-        for (ssize_t i = 0; i < node.arity; ++i) {
-            nodespec->m_traversal.emplace_back(Node{
-                .kind = PyTreeKind::Leaf,
-                .arity = 0,
-                .num_leaves = 1,
-                .num_nodes = 1,
-            });
-        }
-        auto& root = nodespec->m_traversal.emplace_back(node);
-        root.num_leaves = (node.kind == PyTreeKind::Leaf ? 1 : node.arity);
-        root.num_nodes = node.arity + 1;
-        nodespec->m_none_is_leaf = m_none_is_leaf;
-        nodespec->m_namespace = m_namespace;
-        nodespec->m_traversal.shrink_to_fit();
-        PYTREESPEC_SANITY_CHECK(*nodespec);
-        return nodespec;
-    };
-
     const auto transform =
-        [&create_nodespec, &f_node, &f_leaf](const Node& node) -> std::unique_ptr<PyTreeSpec> {
-        auto nodespec = create_nodespec(node);
+        [this, &f_node, &f_leaf](const Node& node) -> std::unique_ptr<PyTreeSpec> {
+        auto nodespec = GetOneLevel(node);
 
         const auto& func = (node.kind == PyTreeKind::Leaf ? f_leaf : f_node);
         if (!func) [[likely]] {
@@ -491,7 +471,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
         if (!py::isinstance<PyTreeSpec>(out)) [[unlikely]] {
             std::ostringstream oss{};
             oss << "Expected the PyTreeSpec transform function returns a PyTreeSpec, got "
-                << PyRepr(out) << " (input: " << create_nodespec(node)->ToString() << ").";
+                << PyRepr(out) << " (input: " << GetOneLevel(node)->ToString() << ").";
             throw py::type_error(oss.str());
         }
         return std::make_unique<PyTreeSpec>(thread_safe_cast<PyTreeSpec&>(out));
@@ -510,7 +490,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
                    "a PyTreeSpec with the same value of "
                 << (m_none_is_leaf ? "`none_is_leaf=True`" : "`none_is_leaf=False`")
                 << " as the input, got " << transformed->ToString()
-                << " (input: " << create_nodespec(node)->ToString() << ").";
+                << " (input: " << GetOneLevel(node)->ToString() << ").";
             throw py::value_error(oss.str());
         }
         if (!transformed->m_namespace.empty()) [[unlikely]] {
@@ -531,14 +511,14 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
                 oss << "Expected the PyTreeSpec transform function returns "
                        "a PyTreeSpec with the same number of arity as the input ("
                     << node.arity << "), got " << transformed->ToString()
-                    << " (input: " << create_nodespec(node)->ToString() << ").";
+                    << " (input: " << GetOneLevel(node)->ToString() << ").";
                 throw py::value_error(oss.str());
             }
             if (transformed->GetNumNodes() != node.arity + 1) [[unlikely]] {
                 std::ostringstream oss{};
                 oss << "Expected the PyTreeSpec transform function returns an one-level PyTreeSpec "
                        "as the input, got "
-                    << transformed->ToString() << " (input: " << create_nodespec(node)->ToString()
+                    << transformed->ToString() << " (input: " << GetOneLevel(node)->ToString()
                     << ").";
                 throw py::value_error(oss.str());
             }
@@ -1010,6 +990,31 @@ py::object PyTreeSpec::GetType(const std::optional<Node>& node) const {
         default:
             INTERNAL_ERROR();
     }
+}
+
+std::unique_ptr<PyTreeSpec> PyTreeSpec::GetOneLevel(const std::optional<Node>& node) const {
+    if (!node) [[likely]] {
+        PYTREESPEC_SANITY_CHECK(*this);
+    }
+
+    const Node& n = node.value_or(m_traversal.back());
+    auto out = std::make_unique<PyTreeSpec>();
+    for (ssize_t i = 0; i < n.arity; ++i) {
+        out->m_traversal.emplace_back(Node{
+            .kind = PyTreeKind::Leaf,
+            .arity = 0,
+            .num_leaves = 1,
+            .num_nodes = 1,
+        });
+    }
+    auto& root = out->m_traversal.emplace_back(n);
+    root.num_leaves = (n.kind == PyTreeKind::Leaf ? 1 : n.arity);
+    root.num_nodes = n.arity + 1;
+    out->m_none_is_leaf = m_none_is_leaf;
+    out->m_namespace = m_namespace;
+    out->m_traversal.shrink_to_fit();
+    PYTREESPEC_SANITY_CHECK(*out);
+    return out;
 }
 
 }  // namespace optree
