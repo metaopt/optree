@@ -952,7 +952,7 @@ def test_treespec_one_level(
             num_children = treespec.num_children
             assert not treespec.is_leaf()
             assert not one_level.is_leaf()
-            assert one_level.one_level() == one_level
+            assert optree.treespec_one_level(one_level) == one_level
             assert one_level.num_nodes == num_children + 1
             assert one_level.num_leaves == num_children
             assert one_level.num_children == num_children
@@ -1179,6 +1179,38 @@ def test_treespec_is_leaf():
     assert optree.tree_structure(None, none_is_leaf=True).is_leaf(strict=False)
     assert optree.tree_structure(()).is_leaf(strict=False)
     assert optree.tree_structure([]).is_leaf(strict=False)
+
+
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
+)
+def test_treespec_is_one_level(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        if treespec.type is None:
+            assert treespec.is_leaf()
+            assert optree.treespec_one_level(treespec) is None
+            assert not optree.treespec_is_one_level(treespec)
+        else:
+            one_level = optree.treespec_one_level(treespec)
+            assert not treespec.is_leaf()
+            assert not one_level.is_leaf()
+            assert optree.treespec_one_level(one_level) == one_level
+            assert optree.treespec_is_one_level(one_level)
+            assert optree.treespec_is_one_level(treespec) == (treespec == one_level)
 
 
 @parametrize(

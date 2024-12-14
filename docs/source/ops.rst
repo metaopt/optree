@@ -127,6 +127,7 @@ PyTreeSpec Functions
     treespec_transform
     treespec_is_leaf
     treespec_is_strict_leaf
+    treespec_is_one_level
     treespec_is_prefix
     treespec_is_suffix
     treespec_leaf
@@ -151,6 +152,7 @@ PyTreeSpec Functions
 .. autofunction:: treespec_transform
 .. autofunction:: treespec_is_leaf
 .. autofunction:: treespec_is_strict_leaf
+.. autofunction:: treespec_is_one_level
 .. autofunction:: treespec_is_prefix
 .. autofunction:: treespec_is_suffix
 .. autofunction:: treespec_leaf

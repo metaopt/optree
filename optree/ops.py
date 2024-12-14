@@ -98,6 +98,7 @@ __all__ = [
     'treespec_transform',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',
+    'treespec_is_one_level',
     'treespec_is_prefix',
     'treespec_is_suffix',
     'treespec_leaf',
@@ -2625,7 +2626,7 @@ def treespec_child(treespec: PyTreeSpec, index: int) -> PyTreeSpec:
 def treespec_one_level(treespec: PyTreeSpec) -> PyTreeSpec | None:
     """Return the one-level tree structure of the treespec or :data:`None` if the treespec is a leaf.
 
-    See also :func:`treespec_children` and :meth:`PyTreeSpec.one_level`.
+    See also :func:`treespec_children`, :func:`treespec_is_one_level`, and :meth:`PyTreeSpec.one_level`.
 
     >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
     >>> treespec
@@ -2760,6 +2761,28 @@ def treespec_is_strict_leaf(treespec: PyTreeSpec) -> bool:
         :data:`True` if the treespec represents a strict leaf, otherwise, :data:`False`.
     """
     return treespec.num_nodes == 1 and treespec.num_leaves == 1
+
+
+def treespec_is_one_level(treespec: PyTreeSpec) -> bool:
+    """Return whether the treespec is a one-level tree structure.
+
+    See also :func:`treespec_is_leaf`, :func:`treespec_one_level`, and :meth:`PyTreeSpec.is_one_level`.
+
+    >>> treespec_is_one_level(tree_structure(1))
+    False
+    >>> treespec_is_one_level(tree_structure((1, 2)))
+    True
+    >>> treespec_is_one_level(tree_structure({'a': 1, 'b': 2, 'c': 3}))
+    True
+    >>> treespec_is_one_level(tree_structure({'a': 1, 'b': (2, 3), 'c': 4}))
+    False
+    >>> treespec_is_one_level(tree_structure(None))
+    True
+    """
+    return (
+        treespec.num_nodes == treespec.num_children + 1
+        and treespec.num_leaves == treespec.num_children
+    )
 
 
 def treespec_is_prefix(
