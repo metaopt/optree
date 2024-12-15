@@ -211,6 +211,7 @@ def dataclass(
 @overload
 def dataclass(
     cls: _TypeT,
+    /,
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
@@ -229,6 +230,7 @@ def dataclass(
 @dataclass_transform(field_specifiers=(field,))
 def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-locals,too-many-branches
     cls: _TypeT | None = None,
+    /,
     *,
     init: bool = True,
     repr: bool = True,  # pylint: disable=redefined-builtin
@@ -318,9 +320,7 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-
     metadata_fields = types.MappingProxyType(metadata_fields)
     setattr(cls, _FIELDS, (children_fields, metadata_fields))
 
-    def flatten_func(
-        obj: _T,
-    ) -> tuple[
+    def flatten_func(obj: _T, /) -> tuple[
         tuple[_U, ...],
         tuple[tuple[str, Any], ...],
         tuple[str, ...],
@@ -329,7 +329,8 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-
         metadata = tuple((name, getattr(obj, name)) for name in metadata_fields)
         return children, metadata, children_field_names
 
-    def unflatten_func(metadata: tuple[tuple[str, Any], ...], children: tuple[_U, ...]) -> _T:  # type: ignore[type-var]
+    # pylint: disable-next=line-too-long
+    def unflatten_func(metadata: tuple[tuple[str, Any], ...], children: tuple[_U, ...], /) -> _T:  # type: ignore[type-var]
         kwargs = dict(zip(children_field_names, children))
         kwargs.update(metadata)
         return cls(**kwargs)
@@ -339,7 +340,7 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-
 
     return register_pytree_node(  # type: ignore[return-value]
         cls,
-        flatten_func,  # type: ignore[arg-type]
+        flatten_func,
         unflatten_func,  # type: ignore[arg-type]
         path_entry_type=DataclassEntry,
         namespace=namespace,

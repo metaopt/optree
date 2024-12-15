@@ -69,14 +69,14 @@ class PyTreeEntry:
     type: builtins.type
     kind: PyTreeKind
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, /) -> None:
         """Post-initialize the path entry."""
         if self.kind == PyTreeKind.LEAF:
             raise ValueError('Cannot create a leaf path entry.')
         if self.kind == PyTreeKind.NONE:
             raise ValueError('Cannot create a path entry for None.')
 
-    def __call__(self, obj: Any) -> Any:
+    def __call__(self, obj: Any, /) -> Any:
         """Get the child object."""
         try:
             return obj[self.entry]  # should be overridden
@@ -85,7 +85,7 @@ class PyTreeEntry:
                 f'{self.__class__!r} cannot access through {obj!r} via entry {self.entry!r}',
             ) from ex
 
-    def __add__(self, other: object) -> PyTreeAccessor:
+    def __add__(self, other: object, /) -> PyTreeAccessor:
         """Join the path entry with another path entry or accessor."""
         if isinstance(other, PyTreeEntry):
             return PyTreeAccessor((self, other))
@@ -93,7 +93,7 @@ class PyTreeEntry:
             return PyTreeAccessor((self, *other))
         return NotImplemented
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object, /) -> bool:
         """Check if the path entries are equal."""
         return isinstance(other, PyTreeEntry) and (
             (
@@ -112,7 +112,7 @@ class PyTreeEntry:
             )
         )
 
-    def __hash__(self) -> int:
+    def __hash__(self, /) -> int:
         """Get the hash of the path entry."""
         return hash(
             (
@@ -124,11 +124,11 @@ class PyTreeEntry:
             ),
         )
 
-    def __repr__(self) -> str:
+    def __repr__(self, /) -> str:
         """Get the representation of the path entry."""
         return f'{self.__class__.__name__}(entry={self.entry!r}, type={self.type!r})'
 
-    def codify(self, node: str = '') -> str:
+    def codify(self, /, node: str = '') -> str:
         """Generate code for accessing the path entry."""
         return f'{node}[<flat index {self.entry!r}>]'  # should be overridden
 
@@ -149,6 +149,7 @@ class AutoEntry(PyTreeEntry):
 
     def __new__(  # type: ignore[misc]
         cls,
+        /,
         entry: Any,
         type: builtins.type,  # pylint: disable=redefined-builtin
         kind: PyTreeKind,
@@ -196,11 +197,11 @@ class GetItemEntry(PyTreeEntry):
 
     __slots__: ClassVar[tuple[()]] = ()
 
-    def __call__(self, obj: Any) -> Any:
+    def __call__(self, obj: Any, /) -> Any:
         """Get the child object."""
         return obj[self.entry]
 
-    def codify(self, node: str = '') -> str:
+    def codify(self, /, node: str = '') -> str:
         """Generate code for accessing the path entry."""
         return f'{node}[{self.entry!r}]'
 
@@ -213,15 +214,15 @@ class GetAttrEntry(PyTreeEntry):
     entry: str
 
     @property
-    def name(self) -> str:
+    def name(self, /) -> str:
         """Get the attribute name."""
         return self.entry
 
-    def __call__(self, obj: Any) -> Any:
+    def __call__(self, obj: Any, /) -> Any:
         """Get the child object."""
         return getattr(obj, self.name)
 
-    def codify(self, node: str = '') -> str:
+    def codify(self, /, node: str = '') -> str:
         """Generate code for accessing the path entry."""
         return f'{node}.{self.name}'
 
@@ -241,15 +242,15 @@ class SequenceEntry(GetItemEntry, Generic[_T_co]):
     type: builtins.type[Sequence[_T_co]]
 
     @property
-    def index(self) -> int:
+    def index(self, /) -> int:
         """Get the index."""
         return self.entry
 
-    def __call__(self, obj: Sequence[_T_co]) -> _T_co:
+    def __call__(self, obj: Sequence[_T_co], /) -> _T_co:
         """Get the child object."""
         return obj[self.index]
 
-    def __repr__(self) -> str:
+    def __repr__(self, /) -> str:
         """Get the representation of the path entry."""
         return f'{self.__class__.__name__}(index={self.index!r}, type={self.type!r})'
 
@@ -263,15 +264,15 @@ class MappingEntry(GetItemEntry, Generic[_KT_co, _VT_co]):
     type: builtins.type[Mapping[_KT_co, _VT_co]]
 
     @property
-    def key(self) -> _KT_co:
+    def key(self, /) -> _KT_co:
         """Get the key."""
         return self.entry
 
-    def __call__(self, obj: Mapping[_KT_co, _VT_co]) -> _VT_co:
+    def __call__(self, obj: Mapping[_KT_co, _VT_co], /) -> _VT_co:
         """Get the child object."""
         return obj[self.key]
 
-    def __repr__(self) -> str:
+    def __repr__(self, /) -> str:
         """Get the representation of the path entry."""
         return f'{self.__class__.__name__}(key={self.key!r}, type={self.type!r})'
 
@@ -286,22 +287,22 @@ class NamedTupleEntry(SequenceEntry[_T]):
     kind: Literal[PyTreeKind.NAMEDTUPLE]
 
     @property
-    def fields(self) -> tuple[str, ...]:
+    def fields(self, /) -> tuple[str, ...]:
         """Get the field names."""
         from optree.typing import namedtuple_fields  # pylint: disable=import-outside-toplevel
 
         return namedtuple_fields(self.type)
 
     @property
-    def field(self) -> str:
+    def field(self, /) -> str:
         """Get the field name."""
         return self.fields[self.entry]
 
-    def __repr__(self) -> str:
+    def __repr__(self, /) -> str:
         """Get the representation of the path entry."""
         return f'{self.__class__.__name__}(field={self.field!r}, type={self.type!r})'
 
-    def codify(self, node: str = '') -> str:
+    def codify(self, /, node: str = '') -> str:
         """Generate code for accessing the path entry."""
         return f'{node}.{self.field}'
 
@@ -316,22 +317,22 @@ class StructSequenceEntry(SequenceEntry[_T]):
     kind: Literal[PyTreeKind.STRUCTSEQUENCE]
 
     @property
-    def fields(self) -> tuple[str, ...]:
+    def fields(self, /) -> tuple[str, ...]:
         """Get the field names."""
         from optree.typing import structseq_fields  # pylint: disable=import-outside-toplevel
 
         return structseq_fields(self.type)
 
     @property
-    def field(self) -> str:
+    def field(self, /) -> str:
         """Get the field name."""
         return self.fields[self.entry]
 
-    def __repr__(self) -> str:
+    def __repr__(self, /) -> str:
         """Get the representation of the path entry."""
         return f'{self.__class__.__name__}(field={self.field!r}, type={self.type!r})'
 
-    def codify(self, node: str = '') -> str:
+    def codify(self, /, node: str = '') -> str:
         """Generate code for accessing the path entry."""
         return f'{node}.{self.field}'
 
@@ -344,28 +345,28 @@ class DataclassEntry(GetAttrEntry):
     entry: str | int  # type: ignore[assignment]
 
     @property
-    def fields(self) -> tuple[str, ...]:  # pragma: no cover
+    def fields(self, /) -> tuple[str, ...]:  # pragma: no cover
         """Get all field names."""
         return tuple(f.name for f in dataclasses.fields(self.type))
 
     @property
-    def init_fields(self) -> tuple[str, ...]:
+    def init_fields(self, /) -> tuple[str, ...]:
         """Get the init field names."""
         return tuple(f.name for f in dataclasses.fields(self.type) if f.init)
 
     @property
-    def field(self) -> str:
+    def field(self, /) -> str:
         """Get the field name."""
         if isinstance(self.entry, int):
             return self.init_fields[self.entry]
         return self.entry
 
     @property
-    def name(self) -> str:
+    def name(self, /) -> str:
         """Get the attribute name."""
         return self.field
 
-    def __repr__(self) -> str:
+    def __repr__(self, /) -> str:
         """Get the representation of the path entry."""
         return f'{self.__class__.__name__}(field={self.field!r}, type={self.type!r})'
 
@@ -376,11 +377,11 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
     __slots__: ClassVar[tuple[()]] = ()
 
     @property
-    def path(self) -> tuple[Any, ...]:
+    def path(self, /) -> tuple[Any, ...]:
         """Get the path of the accessor."""
         return tuple(e.entry for e in self)
 
-    def __new__(cls, path: Iterable[PyTreeEntry] = ()) -> Self:
+    def __new__(cls, /, path: Iterable[PyTreeEntry] = ()) -> Self:
         """Create a new accessor instance."""
         if not isinstance(path, (list, tuple)):
             path = tuple(path)
@@ -388,25 +389,25 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
             raise TypeError(f'Expected a path of PyTreeEntry, got {path!r}.')
         return super().__new__(cls, path)
 
-    def __call__(self, obj: Any) -> Any:
+    def __call__(self, obj: Any, /) -> Any:
         """Get the child object."""
         for entry in self:
             obj = entry(obj)
         return obj
 
     @overload  # type: ignore[override]
-    def __getitem__(self, index: int) -> PyTreeEntry: ...
+    def __getitem__(self, index: int, /) -> PyTreeEntry: ...
 
     @overload
-    def __getitem__(self, index: slice) -> PyTreeAccessor: ...
+    def __getitem__(self, index: slice, /) -> PyTreeAccessor: ...
 
-    def __getitem__(self, index: int | slice) -> PyTreeEntry | PyTreeAccessor:
+    def __getitem__(self, index: int | slice, /) -> PyTreeEntry | PyTreeAccessor:
         """Get the child path entry or an accessor for a subpath."""
         if isinstance(index, slice):
             return PyTreeAccessor(super().__getitem__(index))
         return super().__getitem__(index)
 
-    def __add__(self, other: object) -> PyTreeAccessor:
+    def __add__(self, other: object, /) -> PyTreeAccessor:
         """Join the accessor with another path entry or accessor."""
         if isinstance(other, PyTreeEntry):
             return PyTreeAccessor((*self, other))
@@ -414,27 +415,27 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
             return PyTreeAccessor((*self, *other))
         return NotImplemented
 
-    def __mul__(self, value: int) -> PyTreeAccessor:  # type: ignore[override]
+    def __mul__(self, value: int, /) -> PyTreeAccessor:  # type: ignore[override]
         """Repeat the accessor."""
         return PyTreeAccessor(super().__mul__(value))
 
-    def __rmul__(self, value: int) -> PyTreeAccessor:  # type: ignore[override]
+    def __rmul__(self, value: int, /) -> PyTreeAccessor:  # type: ignore[override]
         """Repeat the accessor."""
         return PyTreeAccessor(super().__rmul__(value))
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object, /) -> bool:
         """Check if the accessors are equal."""
         return isinstance(other, PyTreeAccessor) and super().__eq__(other)
 
-    def __hash__(self) -> int:
+    def __hash__(self, /) -> int:
         """Get the hash of the accessor."""
         return super().__hash__()
 
-    def __repr__(self) -> str:
+    def __repr__(self, /) -> str:
         """Get the representation of the accessor."""
         return f'{self.__class__.__name__}({self.codify()}, {super().__repr__()})'
 
-    def codify(self, root: str = '*') -> str:
+    def codify(self, /, root: str = '*') -> str:
         """Generate code for accessing the path."""
         string = root
         for entry in self:

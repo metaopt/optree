@@ -141,6 +141,7 @@ class CustomTreeNode(Protocol[T]):
 
     def tree_flatten(
         self,
+        /,
     ) -> (
         # Use `range(num_children)` as path entries
         tuple[Children[T], MetaData]
@@ -151,14 +152,14 @@ class CustomTreeNode(Protocol[T]):
         """Flatten the custom pytree node into children and metadata."""
 
     @classmethod
-    def tree_unflatten(cls, metadata: MetaData, children: Children[T]) -> Self:
+    def tree_unflatten(cls, metadata: MetaData, children: Children[T], /) -> Self:
         """Unflatten the children and metadata into the custom pytree node."""
 
 
 _UnionType = type(Union[int, str])
 
 
-def _tp_cache(func: Callable[P, T]) -> Callable[P, T]:
+def _tp_cache(func: Callable[P, T], /) -> Callable[P, T]:
     cached = functools.lru_cache(func)
 
     @functools.wraps(func)
@@ -260,55 +261,55 @@ class PyTree(Generic[T]):  # pragma: no cover
         object.__setattr__(pytree_alias, 'copy_with', copy_with)
         return pytree_alias
 
-    def __new__(cls) -> NoReturn:  # pylint: disable=arguments-differ
+    def __new__(cls, /) -> NoReturn:  # pylint: disable=arguments-differ
         """Prohibit instantiation."""
         raise TypeError('Cannot instantiate special typing classes.')
 
-    def __init_subclass__(cls, *args: Any, **kwargs: Any) -> NoReturn:
+    def __init_subclass__(cls, /, *args: Any, **kwargs: Any) -> NoReturn:
         """Prohibit subclassing."""
         raise TypeError('Cannot subclass special typing classes.')
 
-    def __getitem__(self, key: Any) -> PyTree[T] | T:
+    def __getitem__(self, key: Any, /) -> PyTree[T] | T:
         """Emulate collection-like behavior."""
         raise NotImplementedError
 
-    def __getattr__(self, name: str) -> PyTree[T] | T:
+    def __getattr__(self, name: str, /) -> PyTree[T] | T:
         """Emulate dataclass-like behavior."""
         raise NotImplementedError
 
-    def __contains__(self, key: Any | T) -> bool:
+    def __contains__(self, key: Any | T, /) -> bool:
         """Emulate collection-like behavior."""
         raise NotImplementedError
 
-    def __len__(self) -> int:
+    def __len__(self, /) -> int:
         """Emulate collection-like behavior."""
         raise NotImplementedError
 
-    def __iter__(self) -> Iterator[PyTree[T] | T | Any]:
+    def __iter__(self, /) -> Iterator[PyTree[T] | T | Any]:
         """Emulate collection-like behavior."""
         raise NotImplementedError
 
-    def index(self, key: Any | T) -> int:
+    def index(self, key: Any | T, /) -> int:
         """Emulate sequence-like behavior."""
         raise NotImplementedError
 
-    def count(self, key: Any | T) -> int:
+    def count(self, key: Any | T, /) -> int:
         """Emulate sequence-like behavior."""
         raise NotImplementedError
 
-    def get(self, key: Any, default: T | None = None) -> T | None:
+    def get(self, key: Any, /, default: T | None = None) -> T | None:
         """Emulate mapping-like behavior."""
         raise NotImplementedError
 
-    def keys(self) -> KeysView[Any]:
+    def keys(self, /) -> KeysView[Any]:
         """Emulate mapping-like behavior."""
         raise NotImplementedError
 
-    def values(self) -> ValuesView[PyTree[T] | T]:
+    def values(self, /) -> ValuesView[PyTree[T] | T]:
         """Emulate mapping-like behavior."""
         raise NotImplementedError
 
-    def items(self) -> ItemsView[Any, PyTree[T] | T]:
+    def items(self, /) -> ItemsView[Any, PyTree[T] | T]:
         """Emulate mapping-like behavior."""
         raise NotImplementedError
 
@@ -329,13 +330,13 @@ class PyTreeTypeVar:  # pragma: no cover
     """
 
     @_tp_cache
-    def __new__(cls, name: str, param: type | TypeAlias) -> TypeAlias:
+    def __new__(cls, /, name: str, param: type | TypeAlias) -> TypeAlias:
         """Instantiate a PyTree type variable with the given name and parameter."""
         if not isinstance(name, str):
             raise TypeError(f'{cls.__name__} only supports a string of type name, got {name!r}.')
         return PyTree[param, name]  # type: ignore[misc,valid-type]
 
-    def __init_subclass__(cls, *args: Any, **kwargs: Any) -> NoReturn:
+    def __init_subclass__(cls, /, *args: Any, **kwargs: Any) -> NoReturn:
         """Prohibit subclassing."""
         raise TypeError('Cannot subclass special typing classes.')
 
@@ -347,6 +348,7 @@ class FlattenFunc(Protocol[T]):  # pylint: disable=too-few-public-methods
     def __call__(
         self,
         container: Collection[T],
+        /,
     ) -> tuple[Children[T], MetaData] | tuple[Children[T], MetaData, Iterable[Any] | None]:
         """Flatten the container into children and metadata."""
 
@@ -355,11 +357,11 @@ class UnflattenFunc(Protocol[T]):  # pylint: disable=too-few-public-methods
     """The type stub class for unflatten functions."""
 
     @abc.abstractmethod
-    def __call__(self, metadata: MetaData, children: Children[T]) -> Collection[T]:
+    def __call__(self, metadata: MetaData, children: Children[T], /) -> Collection[T]:
         """Unflatten the children and metadata back into the container."""
 
 
-def _override_with_(cxx_implementation: F) -> Callable[[F], F]:
+def _override_with_(cxx_implementation: F, /) -> Callable[[F], F]:
     """Decorator to override the Python implementation with the C++ implementation.
 
     >>> @_override_with_(any)
@@ -373,7 +375,7 @@ def _override_with_(cxx_implementation: F) -> Callable[[F], F]:
     True
     """
 
-    def wrapper(python_implementation: F) -> F:
+    def wrapper(python_implementation: F, /) -> F:
         @functools.wraps(python_implementation)
         def wrapped(*args: Any, **kwargs: Any) -> Any:
             return cxx_implementation(*args, **kwargs)
@@ -387,20 +389,20 @@ def _override_with_(cxx_implementation: F) -> Callable[[F], F]:
 
 
 @_override_with_(_C.is_namedtuple)
-def is_namedtuple(obj: object | type) -> bool:
+def is_namedtuple(obj: object | type, /) -> bool:
     """Return whether the object is an instance of namedtuple or a subclass of namedtuple."""
     cls = obj if isinstance(obj, type) else type(obj)
     return is_namedtuple_class(cls)
 
 
 @_override_with_(_C.is_namedtuple_instance)
-def is_namedtuple_instance(obj: object) -> bool:
+def is_namedtuple_instance(obj: object, /) -> bool:
     """Return whether the object is an instance of namedtuple."""
     return is_namedtuple_class(type(obj))
 
 
 @_override_with_(_C.is_namedtuple_class)
-def is_namedtuple_class(cls: type) -> bool:
+def is_namedtuple_class(cls: type, /) -> bool:
     """Return whether the class is a subclass of namedtuple."""
     return (
         isinstance(cls, type)
@@ -416,7 +418,7 @@ def is_namedtuple_class(cls: type) -> bool:
 
 
 @_override_with_(_C.namedtuple_fields)
-def namedtuple_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
+def namedtuple_fields(obj: tuple | type[tuple], /) -> tuple[str, ...]:
     """Return the field names of a namedtuple."""
     if isinstance(obj, type):
         cls = obj
@@ -435,7 +437,7 @@ _T_co = TypeVar('_T_co', covariant=True)
 class StructSequenceMeta(type):
     """The metaclass for PyStructSequence stub type."""
 
-    def __subclasscheck__(cls, subclass: type) -> bool:
+    def __subclasscheck__(cls, subclass: type, /) -> bool:
         """Return whether the class is a PyStructSequence type.
 
         >>> import time
@@ -450,7 +452,7 @@ class StructSequenceMeta(type):
         """
         return is_structseq_class(subclass)
 
-    def __instancecheck__(cls, instance: Any) -> bool:
+    def __instancecheck__(cls, instance: Any, /) -> bool:
         """Return whether the object is a PyStructSequence instance.
 
         >>> import sys
@@ -473,12 +475,12 @@ class structseq(Tuple[_T_co, ...], metaclass=StructSequenceMeta):  # type: ignor
     n_sequence_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
     n_unnamed_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
 
-    def __init_subclass__(cls) -> NoReturn:
+    def __init_subclass__(cls, /) -> NoReturn:
         """Prohibit subclassing."""
         raise TypeError("type 'structseq' is not an acceptable base type")
 
     # pylint: disable-next=unused-argument,redefined-builtin
-    def __new__(cls, sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self:
+    def __new__(cls, /, sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self:
         raise NotImplementedError
 
 
@@ -486,14 +488,14 @@ del StructSequenceMeta
 
 
 @_override_with_(_C.is_structseq)
-def is_structseq(obj: object | type) -> bool:
+def is_structseq(obj: object | type, /) -> bool:
     """Return whether the object is an instance of PyStructSequence or a class of PyStructSequence."""
     cls = obj if isinstance(obj, type) else type(obj)
     return is_structseq_class(cls)
 
 
 @_override_with_(_C.is_structseq_instance)
-def is_structseq_instance(obj: object) -> bool:
+def is_structseq_instance(obj: object, /) -> bool:
     """Return whether the object is an instance of PyStructSequence."""
     return is_structseq_class(type(obj))
 
@@ -503,7 +505,7 @@ Py_TPFLAGS_BASETYPE: int = _C.Py_TPFLAGS_BASETYPE  # (1UL << 10)
 
 
 @_override_with_(_C.is_structseq_class)
-def is_structseq_class(cls: type) -> bool:
+def is_structseq_class(cls: type, /) -> bool:
     """Return whether the class is a class of PyStructSequence."""
     if (
         isinstance(cls, type)
@@ -526,7 +528,7 @@ def is_structseq_class(cls: type) -> bool:
 
 
 @_override_with_(_C.structseq_fields)
-def structseq_fields(obj: tuple | type[tuple]) -> tuple[str, ...]:
+def structseq_fields(obj: tuple | type[tuple], /) -> tuple[str, ...]:
     """Return the field names of a PyStructSequence."""
     if isinstance(obj, type):
         cls = obj
