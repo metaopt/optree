@@ -56,7 +56,6 @@ jax = ["jax"]
 numpy = ["numpy"]
 torch = ["torch"]
 lint = [
-    "isort",
     "black",
     "pylint[spelling]",
     "mypy",
@@ -124,16 +123,6 @@ line-length = 100
 skip-string-normalization = true
 target-version = ["py38"]
 
-[tool.isort]
-atomic = true
-profile = "black"
-src_paths = ["optree", "tests"]
-extra_standard_library = ["typing_extensions"]
-indent = 4
-line_length = 100
-lines_after_imports = 2
-multi_line_output = 3
-
 [tool.mypy]
 python_version = "3.8"
 exclude = ["^setup\\.py$", "^tests/.*\\.py$"]
@@ -186,6 +175,7 @@ src = ["optree", "tests"]
 select = [
     "E", "W",  # pycodestyle
     "F",       # pyflakes
+    "I",       # isort
     "C90",     # mccabe
     "N",       # pep8-naming
     "UP",      # pyupgrade
@@ -271,6 +261,12 @@ typing-modules = ["optree.typing"]
     "D",       # pydocstyle
     "ANN",     # flake8-annotations
 ]
+
+[tool.ruff.lint.isort]
+known-first-party = ["optree"]
+known-local-folder = ["optree", "tests"]
+extra-standard-library = ["typing_extensions"]
+lines-after-imports = 2
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

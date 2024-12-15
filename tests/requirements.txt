@@ -3,7 +3,6 @@
 pytest
 pytest-cov
 pytest-xdist
-isort
 black
 pylint[spelling]
 mypy

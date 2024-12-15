@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import functools
 from typing import TYPE_CHECKING, Any, Callable, ClassVar
-from typing_extensions import Self  # Python 3.11+
-from typing_extensions import deprecated  # Python 3.13+
+from typing_extensions import (
+    Self,  # Python 3.11+
+    deprecated,  # Python 3.13+
+)
 
 from optree import registry
 from optree.accessor import GetAttrEntry

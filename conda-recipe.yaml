@@ -65,7 +65,6 @@ dependencies:
   - conda-forge::pytest
   - conda-forge::pytest-cov
   - conda-forge::pytest-xdist
-  - conda-forge::isort
   - conda-forge::black
   - conda-forge::pylint
   - conda-forge::mypy

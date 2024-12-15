@@ -47,10 +47,12 @@ from typing import (
     ValuesView,
     runtime_checkable,
 )
-from typing_extensions import NamedTuple  # Generic NamedTuple: Python 3.11+
-from typing_extensions import ParamSpec  # Python 3.10+
-from typing_extensions import Self  # Python 3.11+
-from typing_extensions import TypeAlias  # Python 3.10+
+from typing_extensions import (
+    NamedTuple,  # Generic NamedTuple: Python 3.11+
+    ParamSpec,  # Python 3.10+
+    Self,  # Python 3.11+
+    TypeAlias,  # Python 3.10+
+)
 
 from optree import _C
 from optree._C import PyTreeKind, PyTreeSpec
