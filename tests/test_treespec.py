@@ -923,6 +923,67 @@ def test_treespec_child(
         ]
 
 
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
+)
+def test_treespec_one_level(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        if treespec.type is None:
+            assert treespec.is_leaf()
+            assert optree.treespec_one_level(treespec) is None
+            assert optree.treespec_children(treespec) == []
+            assert treespec.num_children == 0
+        else:
+            one_level = optree.treespec_one_level(treespec)
+            counter = itertools.count()
+            expected_treespec = optree.tree_structure(
+                tree,
+                is_leaf=lambda x: next(counter) > 0,
+                none_is_leaf=none_is_leaf,
+                namespace=namespace,
+            )
+            num_children = treespec.num_children
+            assert not treespec.is_leaf()
+            assert not one_level.is_leaf()
+            assert not expected_treespec.is_leaf()
+            assert one_level == expected_treespec
+            assert optree.treespec_one_level(one_level) == one_level
+            assert optree.treespec_one_level(expected_treespec) == expected_treespec
+            assert one_level.num_nodes == num_children + 1
+            assert one_level.num_leaves == num_children
+            assert one_level.num_children == num_children
+            assert len(one_level) == num_children
+            assert optree.treespec_entries(one_level) == optree.treespec_entries(treespec)
+            assert all(optree.treespec_child(one_level, i).is_leaf() for i in range(num_children))
+            assert all(child.is_leaf() for child in optree.treespec_children(one_level))
+            assert optree.treespec_is_prefix(one_level, treespec)
+            assert optree.treespec_is_suffix(treespec, one_level)
+            assert (
+                optree.treespec_from_collection(
+                    optree.tree_unflatten(one_level, treespec.children()),
+                    none_is_leaf=none_is_leaf,
+                    namespace=namespace,
+                )
+                == treespec
+            )
+            it = iter(treespec.children())
+            assert optree.treespec_transform(one_level, None, lambda _: next(it)) == treespec
+
+
 def test_treespec_transform():
     treespec = optree.tree_structure(((1, 2, 3), (4,)))
     assert optree.treespec_transform(treespec) == treespec
@@ -1128,6 +1189,50 @@ def test_treespec_is_leaf():
     assert optree.tree_structure(None, none_is_leaf=True).is_leaf(strict=False)
     assert optree.tree_structure(()).is_leaf(strict=False)
     assert optree.tree_structure([]).is_leaf(strict=False)
+
+
+@parametrize(
+    tree=TREES,
+    none_is_leaf=[False, True],
+    namespace=['', 'undefined', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'undefined', 'namespace'],
+)
+def test_treespec_is_one_level(
+    tree,
+    none_is_leaf,
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        treespec = optree.tree_structure(tree, none_is_leaf=none_is_leaf, namespace=namespace)
+        if treespec.type is None:
+            assert treespec.is_leaf()
+            assert optree.treespec_one_level(treespec) is None
+            assert not optree.treespec_is_one_level(treespec)
+        else:
+            one_level = optree.treespec_one_level(treespec)
+            counter = itertools.count()
+            expected_treespec = optree.tree_structure(
+                tree,
+                is_leaf=lambda x: next(counter) > 0,
+                none_is_leaf=none_is_leaf,
+                namespace=namespace,
+            )
+            assert not treespec.is_leaf()
+            assert not one_level.is_leaf()
+            assert not expected_treespec.is_leaf()
+            assert one_level == expected_treespec
+            assert optree.treespec_one_level(one_level) == one_level
+            assert optree.treespec_one_level(expected_treespec) == expected_treespec
+            assert optree.treespec_is_one_level(one_level)
+            assert optree.treespec_is_one_level(expected_treespec)
+            assert optree.treespec_is_one_level(treespec) == (treespec == one_level)
+            assert optree.treespec_is_one_level(treespec) == (treespec == expected_treespec)
 
 
 @parametrize(

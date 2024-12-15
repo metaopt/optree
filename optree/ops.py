@@ -94,9 +94,11 @@ __all__ = [
     'treespec_entry',
     'treespec_children',
     'treespec_child',
+    'treespec_one_level',
     'treespec_transform',
     'treespec_is_leaf',
     'treespec_is_strict_leaf',
+    'treespec_is_one_level',
     'treespec_is_prefix',
     'treespec_is_suffix',
     'treespec_leaf',
@@ -903,31 +905,31 @@ def tree_map_with_accessor(
     {'x': "tree['x'] = 7", 'y': ("tree['y'][0] = 42", "tree['y'][1] = 64")}
     >>> tree_map_with_accessor(lambda a, x: x + len(a), {'x': 7, 'y': (42, 64), 'z': None})
     {'x': 8, 'y': (44, 66), 'z': None}
-    >>> tree_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
+    >>> tree_map_with_accessor(  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
     ...     lambda a, x: a,
     ...     {'x': 7, 'y': (42, 64), 'z': {1.5: None}},
     ... )
     {
-        'x': PyTreeAccessor(*['x'], (MappingEntry(key='x', type=<class 'dict'>),)),
+        'x': PyTreeAccessor(*['x'], ...),
         'y': (
-            PyTreeAccessor(*['y'][0], (MappingEntry(key='y', type=<class 'dict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
-            PyTreeAccessor(*['y'][1], (MappingEntry(key='y', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>)))
+            PyTreeAccessor(*['y'][0], ...),
+            PyTreeAccessor(*['y'][1], ...)
         ),
         'z': {1.5: None}
     }
-    >>> tree_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
+    >>> tree_map_with_accessor(  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
     ...     lambda a, x: a,
     ...     {'x': 7, 'y': (42, 64), 'z': {1.5: None}},
     ...     none_is_leaf=True,
     ... )
     {
-        'x': PyTreeAccessor(*['x'], (MappingEntry(key='x', type=<class 'dict'>),)),
+        'x': PyTreeAccessor(*['x'], ...),
         'y': (
-            PyTreeAccessor(*['y'][0], (MappingEntry(key='y', type=<class 'dict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
-            PyTreeAccessor(*['y'][1], (MappingEntry(key='y', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>)))
+            PyTreeAccessor(*['y'][0], ...),
+            PyTreeAccessor(*['y'][1], ...)
         ),
         'z': {
-            1.5: PyTreeAccessor(*['z'][1.5], (MappingEntry(key='z', type=<class 'dict'>), MappingEntry(key=1.5, type=<class 'dict'>)))
+            1.5: PyTreeAccessor(*['z'][1.5], ...)
         }
     }
 
@@ -954,7 +956,7 @@ def tree_map_with_accessor(
         A new pytree with the same structure as ``tree`` but with the value at each leaf given by
         ``func(a, x, *xs)`` where ``(a, x)`` are the accessor and value at the corresponding leaf in
         ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
-    """  # pylint: disable=line-too-long
+    """
     leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
     flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
     return treespec.unflatten(map(func, treespec.accessors(), *flat_args))
@@ -1322,7 +1324,7 @@ def tree_transpose_map_with_accessor(
             'c': (5, 6)
         }
     }
-    >>> tree_transpose_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
+    >>> tree_transpose_map_with_accessor(  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
     ...     lambda a, x: {'path': a.path, 'accessor': a, 'value': x},
     ...     tree,
     ...     inner_treespec=tree_structure({'path': 0, 'accessor': 0, 'value': 0}),
@@ -1335,16 +1337,16 @@ def tree_transpose_map_with_accessor(
         },
         'accessor': {
             'b': (
-                PyTreeAccessor(*['b'][0], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
+                PyTreeAccessor(*['b'][0], ...),
                 [
-                    PyTreeAccessor(*['b'][1][0], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=0, type=<class 'list'>))),
-                    PyTreeAccessor(*['b'][1][1], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=1, type=<class 'list'>)))
+                    PyTreeAccessor(*['b'][1][0], ...),
+                    PyTreeAccessor(*['b'][1][1], ...)
                 ]
             ),
-            'a': PyTreeAccessor(*['a'], (MappingEntry(key='a', type=<class 'dict'>),)),
+            'a': PyTreeAccessor(*['a'], ...),
             'c': (
-                PyTreeAccessor(*['c'][0], (MappingEntry(key='c', type=<class 'dict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
-                PyTreeAccessor(*['c'][1], (MappingEntry(key='c', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>)))
+                PyTreeAccessor(*['c'][0], ...),
+                PyTreeAccessor(*['c'][1], ...)
             )
         },
         'value': {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
@@ -2540,6 +2542,12 @@ def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
     """Return a list of paths to the leaves of a treespec.
 
     See also :func:`tree_flatten_with_path`, :func:`tree_paths`, and :meth:`PyTreeSpec.paths`.
+
+    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
+    >>> treespec
+    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
+    >>> treespec_paths(treespec)
+    [('a', 0), ('a', 1, 0), ('a', 1, 1), ('b',), ('c', 0)]
     """
     return treespec.paths()
 
@@ -2547,8 +2555,24 @@ def treespec_paths(treespec: PyTreeSpec) -> list[tuple[Any, ...]]:
 def treespec_accessors(treespec: PyTreeSpec) -> list[PyTreeAccessor]:
     """Return a list of accessors to the leaves of a treespec.
 
-    See also :func:`tree_flatten_with_accessor`, :func:`tree_accessors` and
-    :meth:`PyTreeSpec.accessors`.
+    See also :func:`tree_flatten_with_accessor`, :func:`tree_accessors`,
+    and :meth:`PyTreeSpec.accessors`.
+
+    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
+    >>> treespec
+    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
+    >>> treespec_accessors(treespec)  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
+    [
+        PyTreeAccessor(*['a'][0], ...),
+        PyTreeAccessor(*['a'][1][0], ...),
+        PyTreeAccessor(*['a'][1][1], ...),
+        PyTreeAccessor(*['b'], ...),
+        PyTreeAccessor(*['c'][0], ...)
+    ]
+    >>> treespec_accessors(treespec_leaf())
+    [PyTreeAccessor(*, ())]
+    >>> treespec_accessors(treespec_none())
+    []
     """
     return treespec.accessors()
 
@@ -2558,6 +2582,12 @@ def treespec_entries(treespec: PyTreeSpec) -> list[Any]:
 
     See also :func:`treespec_entry`, :func:`treespec_paths`, :func:`treespec_children`,
     and :meth:`PyTreeSpec.entries`.
+
+    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
+    >>> treespec
+    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
+    >>> treespec_entries(treespec)
+    ['a', 'b', 'c']
     """
     return treespec.entries()
 
@@ -2574,7 +2604,13 @@ def treespec_children(treespec: PyTreeSpec) -> list[PyTreeSpec]:
     """Return a list of treespecs for the children of a treespec.
 
     See also :func:`treespec_child`, :func:`treespec_paths`, :func:`treespec_entries`,
-    and :meth:`PyTreeSpec.children`.
+    :func:`treespec_one_level`, and :meth:`PyTreeSpec.children`.
+
+    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
+    >>> treespec
+    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
+    >>> treespec_children(treespec)
+    [PyTreeSpec((*, [*, *])), PyTreeSpec(*), PyTreeSpec((*, None))]
     """
     return treespec.children()
 
@@ -2585,6 +2621,20 @@ def treespec_child(treespec: PyTreeSpec, index: int) -> PyTreeSpec:
     See also :func:`treespec_children`, :func:`treespec_entries`, and :meth:`PyTreeSpec.child`.
     """
     return treespec.child(index)
+
+
+def treespec_one_level(treespec: PyTreeSpec) -> PyTreeSpec | None:
+    """Return the one-level tree structure of the treespec or :data:`None` if the treespec is a leaf.
+
+    See also :func:`treespec_children`, :func:`treespec_is_one_level`, and :meth:`PyTreeSpec.one_level`.
+
+    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
+    >>> treespec
+    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
+    >>> treespec_one_level(treespec)
+    PyTreeSpec({'a': *, 'b': *, 'c': *})
+    """
+    return treespec.one_level()
 
 
 def treespec_transform(
@@ -2711,6 +2761,28 @@ def treespec_is_strict_leaf(treespec: PyTreeSpec) -> bool:
         :data:`True` if the treespec represents a strict leaf, otherwise, :data:`False`.
     """
     return treespec.num_nodes == 1 and treespec.num_leaves == 1
+
+
+def treespec_is_one_level(treespec: PyTreeSpec) -> bool:
+    """Return whether the treespec is a one-level tree structure.
+
+    See also :func:`treespec_is_leaf`, :func:`treespec_one_level`, and :meth:`PyTreeSpec.is_one_level`.
+
+    >>> treespec_is_one_level(tree_structure(1))
+    False
+    >>> treespec_is_one_level(tree_structure((1, 2)))
+    True
+    >>> treespec_is_one_level(tree_structure({'a': 1, 'b': 2, 'c': 3}))
+    True
+    >>> treespec_is_one_level(tree_structure({'a': 1, 'b': (2, 3), 'c': 4}))
+    False
+    >>> treespec_is_one_level(tree_structure(None))
+    True
+    """
+    return (
+        treespec.num_nodes == treespec.num_children + 1
+        and treespec.num_leaves == treespec.num_children
+    )
 
 
 def treespec_is_prefix(
