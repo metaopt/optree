@@ -13,16 +13,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+-
+
+### Changed
+
+-
+
+### Fixed
+
+-
+
+### Removed
+
+-
+
+------
+
+## [0.14.0rc1] - 2024-12-16
+
+### Added
+
 - Add method `PyTreeSpec.one_level` and `PyTreeSpec.is_one_level` by [@XuehaiPan](https://github.com/XuehaiPan) in [#179](https://github.com/metaopt/optree/pull/179).
 - Add method `PyTreeSpec.transform` by [@XuehaiPan](https://github.com/XuehaiPan) in [#177](https://github.com/metaopt/optree/pull/177).
 
 ### Changed
 
 - Mark some arguments as positional-only as of Python 3.8+ by [@XuehaiPan](https://github.com/XuehaiPan) in [#178](https://github.com/metaopt/optree/pull/178).
-
-### Fixed
-
--
 
 ### Removed
 
@@ -362,7 +378,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.14.0rc1...HEAD
+[0.14.0rc1]: https://github.com/metaopt/optree/compare/v0.13.1...v0.14.0rc1
 [0.13.1]: https://github.com/metaopt/optree/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/metaopt/optree/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/metaopt/optree/compare/v0.11.0...v0.12.1
