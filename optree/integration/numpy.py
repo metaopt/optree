@@ -39,6 +39,7 @@ ArrayTree: TypeAlias = PyTreeTypeVar('ArrayTree', np.ndarray)  # type: ignore[va
 
 def tree_ravel(
     tree: ArrayLikeTree,
+    /,
     is_leaf: Callable[[Any], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -122,13 +123,15 @@ def _tree_unravel(
     treespec: PyTreeSpec,
     unravel_flat: Callable[[np.ndarray], list[np.ndarray]],
     flat: np.ndarray,
+    /,
 ) -> ArrayTree:
     return tree_unflatten(treespec, unravel_flat(flat))
 
 
-def _ravel_leaves(
-    leaves: list[np.ndarray],
-) -> tuple[np.ndarray, Callable[[np.ndarray], list[np.ndarray]]]:
+def _ravel_leaves(leaves: list[np.ndarray], /) -> tuple[
+    np.ndarray,
+    Callable[[np.ndarray], list[np.ndarray]],
+]:
     if not leaves:
         return (np.zeros(0), _unravel_empty)
 
@@ -155,7 +158,7 @@ def _ravel_leaves(
     )
 
 
-def _unravel_empty(flat: np.ndarray) -> list[np.ndarray]:
+def _unravel_empty(flat: np.ndarray, /) -> list[np.ndarray]:
     if np.shape(flat) != (0,):
         raise ValueError(
             f'The unravel function expected an array of shape {(0,)}, '
@@ -168,6 +171,7 @@ def _unravel_leaves_single_dtype(
     indices: tuple[int, ...],
     shapes: tuple[tuple[int, ...], ...],
     flat: np.ndarray,
+    /,
 ) -> list[np.ndarray]:
     if np.shape(flat) != (indices[-1],):
         raise ValueError(
@@ -185,6 +189,7 @@ def _unravel_leaves(
     from_dtypes: tuple[np.dtype, ...],
     to_dtype: np.dtype,
     flat: np.ndarray,
+    /,
 ) -> list[np.ndarray]:
     if np.shape(flat) != (indices[-1],):
         raise ValueError(

@@ -36,6 +36,7 @@ TensorTree: TypeAlias = PyTreeTypeVar('TensorTree', torch.Tensor)  # type: ignor
 
 def tree_ravel(
     tree: TensorTree,
+    /,
     is_leaf: Callable[[Any], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -119,13 +120,15 @@ def _tree_unravel(
     treespec: PyTreeSpec,
     unravel_flat: Callable[[torch.Tensor], list[torch.Tensor]],
     flat: torch.Tensor,
+    /,
 ) -> TensorTree:
     return tree_unflatten(treespec, unravel_flat(flat))
 
 
-def _ravel_leaves(
-    leaves: list[torch.Tensor],
-) -> tuple[torch.Tensor, Callable[[torch.Tensor], list[torch.Tensor]]]:
+def _ravel_leaves(leaves: list[torch.Tensor], /) -> tuple[
+    torch.Tensor,
+    Callable[[torch.Tensor], list[torch.Tensor]],
+]:
     if not leaves:
         return (torch.zeros(0), _unravel_empty)
     if not all(torch.is_tensor(leaf) for leaf in leaves):
@@ -155,7 +158,7 @@ def _ravel_leaves(
     )
 
 
-def _unravel_empty(flat: torch.Tensor) -> list[torch.Tensor]:
+def _unravel_empty(flat: torch.Tensor, /) -> list[torch.Tensor]:
     if not torch.is_tensor(flat):
         raise ValueError(f'Expected a tensor to unravel, got {type(flat)!r}.')
     if flat.shape != (0,):
@@ -169,6 +172,7 @@ def _unravel_leaves_single_dtype(
     sizes: tuple[int, ...],
     shapes: tuple[tuple[int, ...], ...],
     flat: torch.Tensor,
+    /,
 ) -> list[torch.Tensor]:
     if not torch.is_tensor(flat):
         raise ValueError(f'Expected a tensor to unravel, got {type(flat)!r}.')
@@ -188,6 +192,7 @@ def _unravel_leaves(
     from_dtypes: tuple[torch.dtype, ...],
     to_dtype: torch.dtype,
     flat: torch.Tensor,
+    /,
 ) -> list[torch.Tensor]:
     if not torch.is_tensor(flat):
         raise ValueError(f'Expected a tensor to unravel, got {type(flat)!r}.')

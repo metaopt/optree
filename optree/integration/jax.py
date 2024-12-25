@@ -35,8 +35,8 @@ from __future__ import annotations
 
 import contextlib
 import itertools
-import operator
 import warnings
+from operator import itemgetter
 from types import FunctionType
 from typing import Any, Callable
 from typing_extensions import TypeAlias  # Python 3.10+
@@ -66,7 +66,7 @@ class HashablePartial:  # pragma: no cover
     args: tuple[Any, ...]
     kwargs: dict[str, Any]
 
-    def __init__(self, func: FunctionType | HashablePartial, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, func: FunctionType | HashablePartial, /, *args: Any, **kwargs: Any) -> None:
         """Construct a :class:`HashablePartial` instance."""
         if not callable(func):
             raise TypeError(f'Expected a callable, got {func!r}.')
@@ -82,23 +82,23 @@ class HashablePartial:  # pragma: no cover
         else:
             raise TypeError(f'Expected a function, got {func!r}.')
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object, /) -> bool:
         return (
             type(other) is HashablePartial  # pylint: disable=unidiomatic-typecheck
-            and self.func.__code__ == other.func.__code__  # type: ignore[attr-defined]
+            and self.func.__code__ == other.func.__code__
             and (self.args, self.kwargs) == (other.args, other.kwargs)
         )
 
-    def __hash__(self) -> int:
+    def __hash__(self, /) -> int:
         return hash(
             (
-                self.func.__code__,  # type: ignore[attr-defined]
+                self.func.__code__,
                 self.args,
-                tuple(total_order_sorted(self.kwargs.items(), key=operator.itemgetter(0))),
+                tuple(total_order_sorted(self.kwargs.items(), key=itemgetter(0))),
             ),
         )
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+    def __call__(self, /, *args: Any, **kwargs: Any) -> Any:
         kwargs = {**self.kwargs, **kwargs}
         return self.func(*self.args, *args, **kwargs)
 
@@ -110,6 +110,7 @@ with contextlib.suppress(ImportError):  # pragma: no cover
 
 def tree_ravel(
     tree: ArrayLikeTree,
+    /,
     is_leaf: Callable[[Any], bool] | None = None,
     *,
     none_is_leaf: bool = False,
@@ -193,13 +194,15 @@ def _tree_unravel(
     treespec: PyTreeSpec,
     unravel_flat: Callable[[Array], list[ArrayLike]],
     flat: Array,
+    /,
 ) -> ArrayTree:
     return tree_unflatten(treespec, unravel_flat(flat))
 
 
-def _ravel_leaves(
-    leaves: list[ArrayLike],
-) -> tuple[Array, Callable[[Array], list[ArrayLike]]]:
+def _ravel_leaves(leaves: list[ArrayLike], /) -> tuple[
+    Array,
+    Callable[[Array], list[ArrayLike]],
+]:
     if not leaves:
         return (jnp.zeros(0), _unravel_empty)
 
@@ -229,7 +232,7 @@ def _ravel_leaves(
     )
 
 
-def _unravel_empty(flat: Array) -> list[ArrayLike]:
+def _unravel_empty(flat: Array, /) -> list[ArrayLike]:
     if jnp.shape(flat) != (0,):
         raise ValueError(
             f'The unravel function expected an array of shape {(0,)}, '
@@ -243,6 +246,7 @@ def _unravel_leaves_single_dtype(
     indices: tuple[int, ...],
     shapes: tuple[tuple[int, ...], ...],
     flat: Array,
+    /,
 ) -> list[Array]:
     if jnp.shape(flat) != (indices[-1],):
         raise ValueError(
@@ -260,6 +264,7 @@ def _unravel_leaves(
     from_dtypes: tuple[jnp.dtype, ...],
     to_dtype: jnp.dtype,
     flat: Array,
+    /,
 ) -> list[Array]:
     if jnp.shape(flat) != (indices[-1],):
         raise ValueError(

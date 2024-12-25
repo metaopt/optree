@@ -15,7 +15,7 @@
 
 # pylint: disable=missing-function-docstring,invalid-name
 
-import operator
+from operator import itemgetter
 
 import pytest
 
@@ -32,7 +32,7 @@ def test_total_order_sorted():
     assert total_order_sorted([1, 5, 4.5, '20', '3']) == [4.5, 1, 5, '20', '3']
     assert total_order_sorted(
         {1: 1, 5: 2, 4.5: 3, '20': 4, '3': 5}.items(),
-        key=operator.itemgetter(0),
+        key=itemgetter(0),
     ) == [(4.5, 3), (1, 1), (5, 2), ('20', 4), ('3', 5)]
 
     class NonSortable:
