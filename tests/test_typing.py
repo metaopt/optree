@@ -88,7 +88,6 @@ def test_is_namedtuple():
             optree.is_namedtuple_instance.__python_implementation__,
         ),
     ):
-
         assert not is_namedtuple_((1, 2))
         assert not is_namedtuple_([1, 2])
         assert not is_namedtuple_(sys.float_info)

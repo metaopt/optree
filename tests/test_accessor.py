@@ -416,7 +416,6 @@ def test_auto_entry_new_dispatch():
 
 
 def test_flattened_entry_call():
-
     @optree.register_pytree_node_class(namespace='namespace')
     class MyObject:
         def __init__(self, x, y, z):

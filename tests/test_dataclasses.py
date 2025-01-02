@@ -628,7 +628,6 @@ def test_make_dataclass_with_duplicate_registrations():
         TypeError,
         match=r'@optree\.dataclasses\.dataclass\(\) cannot be applied to .* more than once\.',
     ):
-
         optree.dataclasses.dataclass(Foo2, namespace='other-error')
 
     Foo = optree.register_pytree_node_class(namespace='other-namespace')(  # noqa: N806

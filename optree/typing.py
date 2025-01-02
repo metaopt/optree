@@ -36,7 +36,6 @@ from typing import (
     Iterator,
     KeysView,
     List,
-    NoReturn,
     Optional,
     OrderedDict,
     Protocol,
@@ -49,6 +48,7 @@ from typing import (
 )
 from typing_extensions import (
     NamedTuple,  # Generic NamedTuple: Python 3.11+
+    Never,  # Python 3.11+
     ParamSpec,  # Python 3.10+
     Self,  # Python 3.11+
     TypeAlias,  # Python 3.10+
@@ -261,11 +261,11 @@ class PyTree(Generic[T]):  # pragma: no cover
         object.__setattr__(pytree_alias, 'copy_with', copy_with)
         return pytree_alias
 
-    def __new__(cls, /) -> NoReturn:  # pylint: disable=arguments-differ
+    def __new__(cls, /) -> Never:  # pylint: disable=arguments-differ
         """Prohibit instantiation."""
         raise TypeError('Cannot instantiate special typing classes.')
 
-    def __init_subclass__(cls, /, *args: Any, **kwargs: Any) -> NoReturn:
+    def __init_subclass__(cls, /, *args: Any, **kwargs: Any) -> Never:
         """Prohibit subclassing."""
         raise TypeError('Cannot subclass special typing classes.')
 
@@ -336,7 +336,7 @@ class PyTreeTypeVar:  # pragma: no cover
             raise TypeError(f'{cls.__name__} only supports a string of type name, got {name!r}.')
         return PyTree[param, name]  # type: ignore[misc,valid-type]
 
-    def __init_subclass__(cls, /, *args: Any, **kwargs: Any) -> NoReturn:
+    def __init_subclass__(cls, /, *args: Any, **kwargs: Any) -> Never:
         """Prohibit subclassing."""
         raise TypeError('Cannot subclass special typing classes.')
 
@@ -361,7 +361,10 @@ class UnflattenFunc(Protocol[T]):  # pylint: disable=too-few-public-methods
         """Unflatten the children and metadata back into the container."""
 
 
-def _override_with_(cxx_implementation: F, /) -> Callable[[F], F]:
+def _override_with_(
+    cxx_implementation: Callable[P, T],
+    /,
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator to override the Python implementation with the C++ implementation.
 
     >>> @_override_with_(any)
@@ -375,15 +378,15 @@ def _override_with_(cxx_implementation: F, /) -> Callable[[F], F]:
     True
     """
 
-    def wrapper(python_implementation: F, /) -> F:
+    def wrapper(python_implementation: Callable[P, T], /) -> Callable[P, T]:
         @functools.wraps(python_implementation)
-        def wrapped(*args: Any, **kwargs: Any) -> Any:
+        def wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
             return cxx_implementation(*args, **kwargs)
 
         wrapped.__cxx_implementation__ = cxx_implementation  # type: ignore[attr-defined]
         wrapped.__python_implementation__ = python_implementation  # type: ignore[attr-defined]
 
-        return wrapped  # type: ignore[return-value]
+        return wrapped
 
     return wrapper
 
@@ -475,7 +478,7 @@ class structseq(Tuple[_T_co, ...], metaclass=StructSequenceMeta):  # type: ignor
     n_sequence_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
     n_unnamed_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
 
-    def __init_subclass__(cls, /) -> NoReturn:
+    def __init_subclass__(cls, /) -> Never:
         """Prohibit subclassing."""
         raise TypeError("type 'structseq' is not an acceptable base type")
 
