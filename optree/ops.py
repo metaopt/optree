@@ -35,7 +35,7 @@ from typing import (
     overload,
 )
 
-from optree import _C
+import optree._C as _C
 from optree.accessor import PyTreeAccessor
 from optree.typing import NamedTuple, T, is_namedtuple_instance, is_structseq_instance
 

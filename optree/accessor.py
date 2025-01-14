@@ -33,7 +33,7 @@ from typing import (
 )
 from typing_extensions import Self  # Python 3.11+
 
-from optree import _C
+import optree._C as _C
 from optree._C import PyTreeKind
 
 

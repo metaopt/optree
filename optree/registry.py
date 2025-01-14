@@ -45,7 +45,7 @@ from typing_extensions import (
     deprecated,  # Python 3.13+
 )
 
-from optree import _C
+import optree._C as _C
 from optree.accessor import (
     AutoEntry,
     MappingEntry,

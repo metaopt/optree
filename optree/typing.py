@@ -54,7 +54,7 @@ from typing_extensions import (
     TypeAlias,  # Python 3.10+
 )
 
-from optree import _C
+import optree._C as _C
 from optree._C import PyTreeKind, PyTreeSpec
 from optree.accessor import (
     AutoEntry,
