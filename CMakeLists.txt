@@ -48,6 +48,10 @@ message(STATUS "Use C++ standard: C++${CMAKE_CXX_STANDARD}")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)  # -fPIC
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)  # -fvisibility=hidden
 
+string(STRIP "${CMAKE_CXX_FLAGS}" CMAKE_CXX_FLAGS)
+string(STRIP "${CMAKE_CXX_FLAGS_DEBUG}" CMAKE_CXX_FLAGS_DEBUG)
+string(STRIP "${CMAKE_CXX_FLAGS_RELEASE}" CMAKE_CXX_FLAGS_RELEASE)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     if(NOT DEFINED _GLIBCXX_USE_CXX11_ABI AND NOT "$ENV{_GLIBCXX_USE_CXX11_ABI}" STREQUAL "")
         set(_GLIBCXX_USE_CXX11_ABI "$ENV{_GLIBCXX_USE_CXX11_ABI}")
@@ -95,12 +99,22 @@ endif()
 
 if(OPTREE_CXX_WERROR)
     message(WARNING "Treats all compiler warnings as errors. Set `OPTREE_CXX_WERROR=OFF` to disable this.")
-
     if(MSVC)
         string(APPEND CMAKE_CXX_FLAGS " /WX")
     else()
         string(APPEND CMAKE_CXX_FLAGS " -Werror -Wno-error=attributes -Wno-error=redundant-move")
     endif()
+endif()
+
+string(STRIP "${CMAKE_CXX_FLAGS}" CMAKE_CXX_FLAGS)
+string(STRIP "${CMAKE_CXX_FLAGS_DEBUG}" CMAKE_CXX_FLAGS_DEBUG)
+string(STRIP "${CMAKE_CXX_FLAGS_RELEASE}" CMAKE_CXX_FLAGS_RELEASE)
+message(STATUS "CXX flags: \"${CMAKE_CXX_FLAGS}\"")
+message(STATUS "CXX flags (Debug): \"${CMAKE_CXX_FLAGS_DEBUG}\"")
+message(STATUS "CXX flags (Release): \"${CMAKE_CXX_FLAGS_RELEASE}\"")
+
+if(MSVC AND NOT "$ENV{VSCMD_ARG_TGT_ARCH}" STREQUAL "")
+    message(STATUS "Use VSCMD_ARG_TGT_ARCH: \"$ENV{VSCMD_ARG_TGT_ARCH}\"")
 endif()
 
 string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_PATH_PREFIX_SIZE)
@@ -164,7 +178,6 @@ system(
 message(STATUS "Use Python version: ${Python_VERSION}")
 message(STATUS "Use Python executable: \"${Python_EXECUTABLE}\"")
 
-unset(Python_INCLUDE_DIR)
 if(NOT DEFINED Python_INCLUDE_DIR)
     message(STATUS "Auto detecting Python include directory...")
     system(
@@ -180,9 +193,27 @@ else()
     include_directories("${Python_INCLUDE_DIR}")
 endif()
 
+if(DEFINED Python_EXTRA_INCLUDE_DIRS)
+    message(STATUS "Use Python_EXTRA_INCLUDE_DIRS: \"${Python_EXTRA_INCLUDE_DIRS}\"")
+    foreach(Python_EXTRA_INCLUDE_DIR IN LISTS Python_EXTRA_INCLUDE_DIRS)
+        include_directories("${Python_EXTRA_INCLUDE_DIR}")
+    endforeach()
+endif()
+if(DEFINED Python_EXTRA_LIBRARY_DIRS)
+    message(STATUS "Use Python_EXTRA_LIBRARY_DIRS: \"${Python_EXTRA_LIBRARY_DIRS}\"")
+    list(PREPEND CMAKE_PREFIX_PATH "${Python_EXTRA_LIBRARY_DIRS}")
+    foreach(Python_EXTRA_LIBRARY_DIR IN LISTS Python_EXTRA_LIBRARY_DIRS)
+        link_directories("${Python_EXTRA_LIBRARY_DIR}")
+    endforeach()
+endif()
+if(DEFINED Python_EXTRA_LIBRARIES)
+    message(STATUS "Use Python_EXTRA_LIBRARIES: \"${Python_EXTRA_LIBRARIES}\"")
+endif()
+
 # Include pybind11
 set(PYBIND11_PYTHON_VERSION "${Python_VERSION}")
 set(PYBIND11_FINDPYTHON ON)
+set(PYBIND11_PYTHONLIBS_OVERWRITE OFF)
 
 if(NOT DEFINED pybind11_DIR)
     message(STATUS "Auto detecting pybind11 CMake directory...")
@@ -218,6 +249,17 @@ else()
     list(PREPEND CMAKE_PREFIX_PATH "${pybind11_DIR}")
     find_package(pybind11 "${pybind11_MINIMUM_VERSION}" CONFIG REQUIRED)
 endif()
+
+set(SETUPTOOLS_EXT_SUFFIX "$ENV{SETUPTOOLS_EXT_SUFFIX}")
+if(SETUPTOOLS_EXT_SUFFIX)
+    message(STATUS "Use SETUPTOOLS_EXT_SUFFIX: \"${SETUPTOOLS_EXT_SUFFIX}\"")
+    if(NOT "${SETUPTOOLS_EXT_SUFFIX}" STREQUAL "${PYTHON_MODULE_EXTENSION}")
+        message(STATUS "Overwrite PYTHON_MODULE_EXTENSION: "
+                       "\"${PYTHON_MODULE_EXTENSION}\" -> \"${SETUPTOOLS_EXT_SUFFIX}\"")
+        set(PYTHON_MODULE_EXTENSION "$ENV{SETUPTOOLS_EXT_SUFFIX}")
+    endif()
+endif()
+message(STATUS "Use PYTHON_MODULE_EXTENSION: \"${PYTHON_MODULE_EXTENSION}\"")
 
 include_directories("${CMAKE_SOURCE_DIR}/include")
 add_subdirectory(src)
