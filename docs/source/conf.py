@@ -200,5 +200,5 @@ def typehints_formatter(annotation, config=None):
 
         from sphinx_autodoc_typehints import format_annotation
 
-        return rf':py:class:`PyTree` \[{format_annotation(param,config=config)}]'
+        return rf':py:class:`PyTree` \[{format_annotation(param, config=config)}]'
     return None

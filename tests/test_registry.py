@@ -29,7 +29,7 @@ from helpers import GLOBAL_NAMESPACE, Py_GIL_DISABLED, gc_collect, skipif_pypy
 def test_register_pytree_node_class_with_no_namespace():
     with pytest.raises(
         ValueError,
-        match='Must specify `namespace` when the first argument is a class.',
+        match=re.escape('Must specify `namespace` when the first argument is a class.'),
     ):
 
         @optree.register_pytree_node_class
@@ -45,7 +45,7 @@ def test_register_pytree_node_class_with_no_namespace():
 def test_register_pytree_node_class_with_duplicate_namespace():
     with pytest.raises(
         ValueError,
-        match='Cannot specify `namespace` when the first argument is a string.',
+        match=re.escape('Cannot specify `namespace` when the first argument is a string.'),
     ):
 
         @optree.register_pytree_node_class('mylist', namespace='mylist')
@@ -133,7 +133,7 @@ def test_register_pytree_node_with_invalid_namespace():
             def tree_unflatten(cls, metadata, children):
                 return cls(children)
 
-    with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
+    with pytest.raises(ValueError, match=re.escape('The namespace cannot be an empty string.')):
 
         @optree.register_pytree_node_class('')
         class MyList2(UserList):
@@ -144,7 +144,7 @@ def test_register_pytree_node_with_invalid_namespace():
             def tree_unflatten(cls, metadata, children):
                 return cls(children)
 
-    with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
+    with pytest.raises(ValueError, match=re.escape('The namespace cannot be an empty string.')):
 
         @optree.register_pytree_node_class(namespace='')
         class MyList3(UserList):
@@ -163,7 +163,7 @@ def test_register_pytree_node_with_invalid_namespace():
             namespace=1,
         )
 
-    with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
+    with pytest.raises(ValueError, match=re.escape('The namespace cannot be an empty string.')):
         optree.register_pytree_node(
             set,
             lambda s: (sorted(s), None, None),
@@ -626,7 +626,7 @@ def test_unregister_pytree_node_with_invalid_namespace():
     with pytest.raises(TypeError, match='The namespace must be a string'):
         optree.unregister_pytree_node(set, namespace=1)
 
-    with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
+    with pytest.raises(ValueError, match=re.escape('The namespace cannot be an empty string.')):
         optree.unregister_pytree_node(set, namespace='')
 
 
@@ -898,7 +898,7 @@ def test_dict_insertion_order_with_invalid_namespace():
     with pytest.raises(TypeError, match='The namespace must be a string'):
         with optree.dict_insertion_ordered(True, namespace=1):
             pass
-    with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
+    with pytest.raises(ValueError, match=re.escape('The namespace cannot be an empty string.')):
         with optree.dict_insertion_ordered(True, namespace=''):
             pass
 

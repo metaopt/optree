@@ -368,7 +368,7 @@ def test_dataclass_with_invalid_namespace():
             x: int
             y: float
 
-    with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
+    with pytest.raises(ValueError, match=re.escape('The namespace cannot be an empty string.')):
 
         @optree.dataclasses.dataclass(namespace='')
         class Foo2:
@@ -684,7 +684,7 @@ def test_make_dataclass_with_invalid_namespace():
     with pytest.raises(TypeError, match='The namespace must be a string'):
         optree.dataclasses.make_dataclass('Foo1', ['x', ('y', int), ('z', float, 0.0)], namespace=1)
 
-    with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
+    with pytest.raises(ValueError, match=re.escape('The namespace cannot be an empty string.')):
         optree.dataclasses.make_dataclass(
             'Foo2',
             ['x', ('y', int), ('z', float, 0.0)],
@@ -717,7 +717,7 @@ def test_make_dataclass_with_invalid_namespace():
             namespace=None,
         )
 
-    with pytest.raises(ValueError, match='The namespace cannot be an empty string.'):
+    with pytest.raises(ValueError, match=re.escape('The namespace cannot be an empty string.')):
         optree.dataclasses.make_dataclass(
             'Foo2',
             ['x', ('y', int), ('z', float, 0.0)],

@@ -399,29 +399,29 @@ class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
     def __getitem__(self, index: int, /) -> PyTreeEntry: ...
 
     @overload
-    def __getitem__(self, index: slice, /) -> PyTreeAccessor: ...
+    def __getitem__(self, index: slice, /) -> Self: ...
 
-    def __getitem__(self, index: int | slice, /) -> PyTreeEntry | PyTreeAccessor:
+    def __getitem__(self, index: int | slice, /) -> PyTreeEntry | Self:
         """Get the child path entry or an accessor for a subpath."""
         if isinstance(index, slice):
-            return PyTreeAccessor(super().__getitem__(index))
+            return self.__class__(super().__getitem__(index))
         return super().__getitem__(index)
 
-    def __add__(self, other: object, /) -> PyTreeAccessor:
+    def __add__(self, other: object, /) -> Self:
         """Join the accessor with another path entry or accessor."""
         if isinstance(other, PyTreeEntry):
-            return PyTreeAccessor((*self, other))
+            return self.__class__((*self, other))
         if isinstance(other, PyTreeAccessor):
-            return PyTreeAccessor((*self, *other))
+            return self.__class__((*self, *other))
         return NotImplemented
 
-    def __mul__(self, value: int, /) -> PyTreeAccessor:  # type: ignore[override]
+    def __mul__(self, value: int, /) -> Self:  # type: ignore[override]
         """Repeat the accessor."""
-        return PyTreeAccessor(super().__mul__(value))
+        return self.__class__(super().__mul__(value))
 
-    def __rmul__(self, value: int, /) -> PyTreeAccessor:  # type: ignore[override]
+    def __rmul__(self, value: int, /) -> Self:  # type: ignore[override]
         """Repeat the accessor."""
-        return PyTreeAccessor(super().__rmul__(value))
+        return self.__class__(super().__rmul__(value))
 
     def __eq__(self, other: object, /) -> bool:
         """Check if the accessors are equal."""

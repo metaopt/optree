@@ -80,22 +80,22 @@ def test_max_depth():
     lst = [lst]
     with pytest.raises(
         RecursionError,
-        match='Maximum recursion depth exceeded during flattening the tree.',
+        match=re.escape('Maximum recursion depth exceeded during flattening the tree.'),
     ):
         list(optree.tree_iter(lst))
     with pytest.raises(
         RecursionError,
-        match='Maximum recursion depth exceeded during flattening the tree.',
+        match=re.escape('Maximum recursion depth exceeded during flattening the tree.'),
     ):
         optree.tree_flatten(lst)
     with pytest.raises(
         RecursionError,
-        match='Maximum recursion depth exceeded during flattening the tree.',
+        match=re.escape('Maximum recursion depth exceeded during flattening the tree.'),
     ):
         optree.tree_flatten_with_path(lst)
     with pytest.raises(
         RecursionError,
-        match='Maximum recursion depth exceeded during flattening the tree.',
+        match=re.escape('Maximum recursion depth exceeded during flattening the tree.'),
     ):
         optree.tree_flatten_with_accessor(lst)
 
@@ -199,9 +199,9 @@ def test_flatten_dict_order():
 def test_tree_unflatten_mismatch_number_of_leaves(tree, none_is_leaf, namespace):
     leaves, treespec = optree.tree_flatten(tree, none_is_leaf=none_is_leaf, namespace=namespace)
     if len(leaves) > 0:
-        with pytest.raises(ValueError, match='Too few leaves for PyTreeSpec.'):
+        with pytest.raises(ValueError, match='Too few leaves for PyTreeSpec'):
             optree.tree_unflatten(treespec, leaves[:-1])
-    with pytest.raises(ValueError, match='Too many leaves for PyTreeSpec.'):
+    with pytest.raises(ValueError, match='Too many leaves for PyTreeSpec'):
         optree.tree_unflatten(treespec, (*leaves, 0))
 
 
@@ -271,11 +271,11 @@ def test_walk():
     leaves, treespec = optree.tree_flatten(tree)
 
     f_node, f_leaf, *_ = get_functions()
-    with pytest.raises(ValueError, match='Too few leaves for PyTreeSpec.'):
+    with pytest.raises(ValueError, match=re.escape('Too few leaves for PyTreeSpec.')):
         treespec.walk(leaves[:-1], f_node, f_leaf)
 
     f_node, f_leaf, *_ = get_functions()
-    with pytest.raises(ValueError, match='Too many leaves for PyTreeSpec.'):
+    with pytest.raises(ValueError, match=re.escape('Too many leaves for PyTreeSpec.')):
         treespec.walk((*leaves, 0), f_node, f_leaf)
 
     (
@@ -311,11 +311,11 @@ def test_walk():
     leaves, treespec = optree.tree_flatten(tree, none_is_leaf=True)
 
     f_node, f_leaf, *_ = get_functions()
-    with pytest.raises(ValueError, match='Too few leaves for PyTreeSpec.'):
+    with pytest.raises(ValueError, match=re.escape('Too few leaves for PyTreeSpec.')):
         treespec.walk(leaves[:-1], f_node, f_leaf)
 
     f_node, f_leaf, *_ = get_functions()
-    with pytest.raises(ValueError, match='Too many leaves for PyTreeSpec.'):
+    with pytest.raises(ValueError, match=re.escape('Too many leaves for PyTreeSpec.')):
         treespec.walk((*leaves, 0), f_node, f_leaf)
 
     (
@@ -2820,7 +2820,7 @@ def test_tree_transpose_mismatch_namespace():
             'b': MyExtraDict({'c': 4, 'd': 5, 'e': 6}),
         },
     )
-    with pytest.raises(ValueError, match='Tree structures must have the same namespace.'):
+    with pytest.raises(ValueError, match='Tree structures must have the same namespace'):
         optree.tree_transpose(outer_treespec, inner_treespec, nested)
 
     optree.register_pytree_node_class(MyExtraDict, namespace='namespace')
@@ -3125,7 +3125,7 @@ def test_tree_max():
     assert optree.tree_max(None, default=0) == 0
     assert optree.tree_max(None, none_is_leaf=True) is None
     assert optree.tree_max(None, default=0, key=operator.neg) == 0
-    with pytest.raises(TypeError, match=".*operand type for unary .+: 'NoneType'"):
+    with pytest.raises(TypeError, match=r".*operand type for unary .+: 'NoneType'"):
         assert optree.tree_max(None, default=0, key=operator.neg, none_is_leaf=True) is None
 
 
@@ -3144,7 +3144,7 @@ def test_tree_min():
     assert optree.tree_min(None, default=0) == 0
     assert optree.tree_min(None, none_is_leaf=True) is None
     assert optree.tree_min(None, default=0, key=operator.neg) == 0
-    with pytest.raises(TypeError, match=".*operand type for unary .+: 'NoneType'"):
+    with pytest.raises(TypeError, match=r".*operand type for unary .+: 'NoneType'"):
         assert optree.tree_min(None, default=0, key=operator.neg, none_is_leaf=True) is None
 
 
