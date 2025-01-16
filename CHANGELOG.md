@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- Fix cross-compiling for ARM64 on x64 Windows by [@XuehaiPan](https://github.com/XuehaiPan) in [#183](https://github.com/metaopt/optree/pull/183).
 
 ### Removed
 

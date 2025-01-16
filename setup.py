@@ -23,7 +23,7 @@ class CMakeExtension(Extension):
 
 
 class cmake_build_ext(build_ext):  # noqa: N801
-    def build_extension(self, ext):
+    def build_extension(self, ext):  # noqa: C901
         if not isinstance(ext, CMakeExtension):
             super().build_extension(ext)
             return
@@ -44,14 +44,31 @@ class cmake_build_ext(build_ext):  # noqa: N801
             f'-DPython_EXECUTABLE={sys.executable}',
             f'-DPython_INCLUDE_DIR={sysconfig.get_path("platinclude")}',
         ]
+        if self.include_dirs:
+            cmake_args.append(f'-DPython_EXTRA_INCLUDE_DIRS={";".join(self.include_dirs)}')
+        if self.library_dirs:
+            cmake_args.append(f'-DPython_EXTRA_LIBRARY_DIRS={";".join(self.library_dirs)}')
+        if self.libraries:
+            cmake_args.append(f'-DPython_EXTRA_LIBRARIES={";".join(self.libraries)}')
 
+        # Cross-compilation support
         if platform.system() == 'Darwin':
-            # Cross-compile support for macOS - respect ARCHFLAGS if set
+            # macOS - respect ARCHFLAGS if set
             archs = re.findall(r'-arch (\S+)', os.getenv('ARCHFLAGS', ''))
             if archs:
                 cmake_args.append(f'-DCMAKE_OSX_ARCHITECTURES={";".join(archs)}')
-        elif platform.system() == 'Windows' and platform.architecture()[0] == '32bit':
-            cmake_args.append('-A=Win32')
+        elif platform.system() == 'Windows':
+            # Windows - set correct CMAKE_GENERATOR_PLATFORM
+            cmake_generator_platform = os.getenv('CMAKE_GENERATOR_PLATFORM', '')
+            if not cmake_generator_platform:
+                cmake_generator_platform = {
+                    'win32': 'Win32',
+                    'win-amd64': 'x64',
+                    'win-arm32': 'ARM',
+                    'win-arm64': 'ARM64',
+                }.get(self.plat_name)
+            if cmake_generator_platform:
+                cmake_args.append(f'-A={cmake_generator_platform}')
 
         pybind11_dir = os.getenv('pybind11_DIR', '')  # noqa: SIM112
         if pybind11_dir:
