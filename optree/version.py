@@ -16,7 +16,7 @@
 
 # pylint: disable=invalid-name
 
-__version__ = '0.13.1'
+__version__ = '0.14.0'
 __license__ = 'Apache License, Version 2.0'
 __author__ = 'OpTree Contributors'
 __release__ = False
