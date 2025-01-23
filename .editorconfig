@@ -17,6 +17,9 @@ src_paths=optree,tests
 [*.{yaml,yml}]
 indent_size = 2
 
+[.clang-{format,tidy}]
+indent_size = 2
+
 [*.md]
 indent_size = 2
 x-soft-wrap-text = true
