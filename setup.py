@@ -1,24 +1,24 @@
 import contextlib
 import os
-import pathlib
 import platform
 import re
 import shutil
 import sys
 import sysconfig
 from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
 
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
 
-HERE = pathlib.Path(__file__).absolute().parent
+HERE = Path(__file__).absolute().parent
 
 
 class CMakeExtension(Extension):
     def __init__(self, name, source_dir='.', target=None, **kwargs):
         super().__init__(name, sources=[], **kwargs)
-        self.source_dir = os.path.abspath(source_dir)
+        self.source_dir = Path(source_dir).absolute()
         self.target = target if target is not None else name.rpartition('.')[-1]
 
 
@@ -32,8 +32,8 @@ class cmake_build_ext(build_ext):  # noqa: N801
         if cmake is None:
             raise RuntimeError('Cannot find CMake executable.')
 
-        ext_path = pathlib.Path(self.get_ext_fullpath(ext.name)).absolute()
-        build_temp = pathlib.Path(self.build_temp).absolute()
+        ext_path = Path(self.get_ext_fullpath(ext.name)).absolute()
+        build_temp = Path(self.build_temp).absolute()
         build_temp.mkdir(parents=True, exist_ok=True)
 
         config = os.getenv('CMAKE_BUILD_TYPE', '') or ('Debug' if self.debug else 'Release')
@@ -54,7 +54,7 @@ class cmake_build_ext(build_ext):  # noqa: N801
         # Cross-compilation support
         if platform.system() == 'Darwin':
             # macOS - respect ARCHFLAGS if set
-            archs = re.findall(r'-arch (\S+)', os.getenv('ARCHFLAGS', ''))
+            archs = re.findall(r'-arch\s+(\S+)', os.getenv('ARCHFLAGS', ''))
             if archs:
                 cmake_args.append(f'-DCMAKE_OSX_ARCHITECTURES={";".join(archs)}')
         elif platform.system() == 'Windows':
@@ -91,19 +91,14 @@ class cmake_build_ext(build_ext):  # noqa: N801
 
         build_args.extend(['--target', ext.target, '--'])
 
-        cwd = os.getcwd()
-        try:
-            os.chdir(build_temp)
-            self.spawn([cmake, ext.source_dir, *cmake_args])
-            if not self.dry_run:
-                self.spawn([cmake, '--build', '.', *build_args])
-        finally:
-            os.chdir(cwd)
+        self.spawn([cmake, '-S', str(ext.source_dir), '-B', str(build_temp), *cmake_args])
+        if not self.dry_run:
+            self.spawn([cmake, '--build', str(build_temp), *build_args])
 
 
 @contextlib.contextmanager
 def vcs_version(name, path):
-    path = pathlib.Path(path).absolute()
+    path = Path(path).absolute()
     assert path.is_file()
     module_spec = spec_from_file_location(name=name, location=path)
     assert module_spec is not None

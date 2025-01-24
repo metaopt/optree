@@ -264,7 +264,6 @@ typing-modules = ["optree.typing"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["optree"]
-known-local-folder = ["optree", "tests"]
 extra-standard-library = ["typing_extensions"]
 lines-after-imports = 2
 
