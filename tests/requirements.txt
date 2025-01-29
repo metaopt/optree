@@ -3,7 +3,7 @@
 pytest
 pytest-cov
 pytest-xdist
-black
+ruff
 pylint[spelling]
 mypy
 flake8
@@ -12,7 +12,6 @@ flake8-comprehensions
 flake8-docstrings
 flake8-pyi
 flake8-simplify
-ruff
 doc8
 pyenchant
 xdoctest

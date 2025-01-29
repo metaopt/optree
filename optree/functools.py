@@ -149,7 +149,10 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
         args.extend(f'{k}={v!r}' for (k, v) in self.keywords.items())
         return f'{self.__class__.__module__}.{self.__class__.__qualname__}({", ".join(args)})'
 
-    def tree_flatten(self, /) -> tuple[  # type: ignore[override]
+    def tree_flatten(  # type: ignore[override]
+        self,
+        /,
+    ) -> tuple[
         tuple[tuple[T, ...], dict[str, T]],
         Callable[..., Any],
         tuple[str, str],

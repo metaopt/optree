@@ -128,7 +128,10 @@ def _tree_unravel(
     return tree_unflatten(treespec, unravel_flat(flat))
 
 
-def _ravel_leaves(leaves: list[np.ndarray], /) -> tuple[
+def _ravel_leaves(
+    leaves: list[np.ndarray],
+    /,
+) -> tuple[
     np.ndarray,
     Callable[[np.ndarray], list[np.ndarray]],
 ]:
@@ -161,8 +164,7 @@ def _ravel_leaves(leaves: list[np.ndarray], /) -> tuple[
 def _unravel_empty(flat: np.ndarray, /) -> list[np.ndarray]:
     if np.shape(flat) != (0,):
         raise ValueError(
-            f'The unravel function expected an array of shape {(0,)}, '
-            f'got shape {np.shape(flat)}.',
+            f'The unravel function expected an array of shape {(0,)}, got shape {np.shape(flat)}.',
         )
     return []
 
@@ -199,8 +201,7 @@ def _unravel_leaves(
     array_dtype = np.result_type(flat)
     if array_dtype != to_dtype:
         raise ValueError(
-            f'The unravel function expected an array of dtype {to_dtype}, '
-            f'got dtype {array_dtype}.',
+            f'The unravel function expected an array of dtype {to_dtype}, got dtype {array_dtype}.',
         )
 
     chunks = np.split(flat, indices[:-1])

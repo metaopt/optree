@@ -56,7 +56,7 @@ jax = ["jax"]
 numpy = ["numpy"]
 torch = ["torch"]
 lint = [
-    "black",
+    "ruff",
     "pylint[spelling]",
     "mypy",
     "flake8",
@@ -65,7 +65,6 @@ lint = [
     "flake8-docstrings",
     "flake8-pyi",
     "flake8-simplify",
-    "ruff",
     "doc8",
     "pydocstyle",
     "pyenchant",
@@ -170,6 +169,11 @@ target-version = "py38"
 line-length = 100
 output-format = "full"
 src = ["optree", "tests"]
+
+[tool.ruff.format]
+quote-style = "single"
+docstring-code-format = false
+skip-magic-trailing-comma = false
 
 [tool.ruff.lint]
 select = [

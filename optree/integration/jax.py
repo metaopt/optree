@@ -199,7 +199,10 @@ def _tree_unravel(
     return tree_unflatten(treespec, unravel_flat(flat))
 
 
-def _ravel_leaves(leaves: list[ArrayLike], /) -> tuple[
+def _ravel_leaves(
+    leaves: list[ArrayLike],
+    /,
+) -> tuple[
     Array,
     Callable[[Array], list[ArrayLike]],
 ]:
@@ -235,8 +238,7 @@ def _ravel_leaves(leaves: list[ArrayLike], /) -> tuple[
 def _unravel_empty(flat: Array, /) -> list[ArrayLike]:
     if jnp.shape(flat) != (0,):
         raise ValueError(
-            f'The unravel function expected an array of shape {(0,)}, '
-            f'got shape {jnp.shape(flat)}.',
+            f'The unravel function expected an array of shape {(0,)}, got shape {jnp.shape(flat)}.',
         )
 
     return []
@@ -274,8 +276,7 @@ def _unravel_leaves(
     array_dtype = dtypes.dtype(flat)
     if array_dtype != to_dtype:
         raise ValueError(
-            f'The unravel function expected an array of dtype {to_dtype}, '
-            f'got dtype {array_dtype}.',
+            f'The unravel function expected an array of dtype {to_dtype}, got dtype {array_dtype}.',
         )
 
     chunks = jnp.split(flat, indices[:-1])

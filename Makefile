@@ -66,7 +66,6 @@ flake8-install:
 
 .PHONY: py-format-install
 py-format-install:
-	$(call check_pip_install,black)
 	$(call check_pip_install,ruff)
 
 .PHONY: ruff-install
@@ -156,9 +155,8 @@ flake8: flake8-install
 
 .PHONY: py-format
 py-format: py-format-install
-	$(PYTHON) -m black --version
 	$(PYTHON) -m ruff --version
-	$(PYTHON) -m black --check $(PYTHON_FILES) && \
+	$(PYTHON) -m ruff format --check $(PYTHON_FILES) && \
 	$(PYTHON) -m ruff check --select=I $(PYTHON_FILES)
 
 .PHONY: ruff
@@ -252,7 +250,7 @@ lint: ruff flake8 py-format mypy pylint doctest clang-format clang-tidy cpplint 
 
 .PHONY: format
 format: py-format-install ruff-install clang-format-install addlicense-install
-	$(PYTHON) -m black $(PYTHON_FILES)
+	$(PYTHON) -m ruff format $(PYTHON_FILES)
 	$(PYTHON) -m ruff check --fix --exit-zero .
 	$(CLANG_FORMAT) -style=file -i $(CXX_FILES)
 	addlicense -c $(COPYRIGHT) -l apache -y 2022-$(shell date +"%Y") \

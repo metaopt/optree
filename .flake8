@@ -21,7 +21,7 @@ per-file-ignores =
     # intentionally import after function declarations
     # F811: redefinition of unused function
     # intentionally shown how the function works
-    optree/typing.py:E402,F811
+    optree/typing.py: E402,F811
     # E301: expected 1 blank line
     # E302: expected 2 blank lines
     # E305: expected 2 blank lines after class or function definition

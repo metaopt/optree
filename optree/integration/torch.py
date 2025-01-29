@@ -125,7 +125,10 @@ def _tree_unravel(
     return tree_unflatten(treespec, unravel_flat(flat))
 
 
-def _ravel_leaves(leaves: list[torch.Tensor], /) -> tuple[
+def _ravel_leaves(
+    leaves: list[torch.Tensor],
+    /,
+) -> tuple[
     torch.Tensor,
     Callable[[torch.Tensor], list[torch.Tensor]],
 ]:

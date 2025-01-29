@@ -320,7 +320,10 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-
     metadata_fields = types.MappingProxyType(metadata_fields)
     setattr(cls, _FIELDS, (children_fields, metadata_fields))
 
-    def flatten_func(obj: _T, /) -> tuple[
+    def flatten_func(
+        obj: _T,
+        /,
+    ) -> tuple[
         tuple[_U, ...],
         tuple[tuple[str, Any], ...],
         tuple[str, ...],

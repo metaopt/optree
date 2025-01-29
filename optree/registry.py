@@ -606,7 +606,10 @@ def _dict_unflatten(keys: list[KT], values: Iterable[VT], /) -> dict[KT, VT]:
     return dict(safe_zip(keys, values))
 
 
-def _dict_insertion_ordered_flatten(dct: dict[KT, VT], /) -> tuple[
+def _dict_insertion_ordered_flatten(
+    dct: dict[KT, VT],
+    /,
+) -> tuple[
     tuple[VT, ...],
     list[KT],
     tuple[KT, ...],
@@ -619,7 +622,10 @@ def _dict_insertion_ordered_unflatten(keys: list[KT], values: Iterable[VT], /) -
     return dict(safe_zip(keys, values))
 
 
-def _ordereddict_flatten(dct: OrderedDict[KT, VT], /) -> tuple[
+def _ordereddict_flatten(
+    dct: OrderedDict[KT, VT],
+    /,
+) -> tuple[
     tuple[VT, ...],
     list[KT],
     tuple[KT, ...],
@@ -632,7 +638,10 @@ def _ordereddict_unflatten(keys: list[KT], values: Iterable[VT], /) -> OrderedDi
     return OrderedDict(safe_zip(keys, values))
 
 
-def _defaultdict_flatten(dct: defaultdict[KT, VT], /) -> tuple[
+def _defaultdict_flatten(
+    dct: defaultdict[KT, VT],
+    /,
+) -> tuple[
     tuple[VT, ...],
     tuple[Callable[[], VT] | None, list[KT]],
     tuple[KT, ...],
@@ -650,7 +659,10 @@ def _defaultdict_unflatten(
     return defaultdict(default_factory, _dict_unflatten(keys, values))
 
 
-def _defaultdict_insertion_ordered_flatten(dct: defaultdict[KT, VT], /) -> tuple[
+def _defaultdict_insertion_ordered_flatten(
+    dct: defaultdict[KT, VT],
+    /,
+) -> tuple[
     tuple[VT, ...],
     tuple[Callable[[], VT] | None, list[KT]],
     tuple[KT, ...],
