@@ -112,6 +112,7 @@ archs = ["native"]
 enable = ["pypy", "cpython-freethreading"]
 skip = "*musllinux*"
 build-frontend = "build"
+environment-pass = ["_GLIBCXX_USE_CXX11_ABI"]
 test-extras = ["test"]
 test-command = '''make -C "{project}" test PYTHON=python PYTESTOPTS="--quiet --exitfirst --no-showlocals"'''
 
