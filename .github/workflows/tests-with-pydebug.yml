@@ -68,7 +68,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up pyenv
+      - name: Set up pyenv (Unix)
         id: setup-pyenv-unix
         if: runner.os != 'Windows'
         run: |
@@ -94,7 +94,7 @@ jobs:
             brew install --only-dependencies python@3
           fi
 
-      - name: Set up pyenv
+      - name: Set up pyenv (Windows)
         id: setup-pyenv-windows
         if: runner.os == 'Windows'
         shell: pwsh

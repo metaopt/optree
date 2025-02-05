@@ -87,10 +87,9 @@ jobs:
     name: Build wheels for Python ${{ matrix.python-version }} on ${{ matrix.runner }} (${{ matrix.archs }})
     if: github.repository == 'metaopt/optree' && (github.event_name != 'push' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ${{ matrix.runner }}
-    needs: [build-sdist]
     strategy:
       matrix:
-        runner: [ubuntu-latest, windows-latest, macos-latest]
+        runner: [ubuntu-22.04, windows-latest, macos-latest]
         python-version:
           - "3.8"
           - "3.9"
@@ -111,16 +110,16 @@ jobs:
           # Windows
           - "ARM64"
         exclude:
-          - runner: ubuntu-latest
+          - runner: ubuntu-22.04
             python-version: "pypy-3.9"
             archs: "ppc64le"
-          - runner: ubuntu-latest
+          - runner: ubuntu-22.04
             python-version: "pypy-3.10"
             archs: "ppc64le"
-          - runner: ubuntu-latest
+          - runner: ubuntu-22.04
             python-version: "pypy-3.9"
             archs: "s390x"
-          - runner: ubuntu-latest
+          - runner: ubuntu-22.04
             python-version: "pypy-3.10"
             archs: "s390x"
           - runner: windows-latest
@@ -134,7 +133,7 @@ jobs:
             archs: "ARM64"
 
           # Exclude archs of other platforms
-          - runner: ubuntu-latest
+          - runner: ubuntu-22.04
             archs: "ARM64"
           - runner: windows-latest
             archs: "aarch64"
