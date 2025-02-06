@@ -151,7 +151,7 @@ pylint: pylint-install
 .PHONY: flake8
 flake8: flake8-install
 	$(PYTHON) -m flake8 --version
-	$(PYTHON) -m flake8 --doctests --count --show-source --statistics
+	$(PYTHON) -m flake8 --doctests --count --show-source --statistics --exclude=.venv
 
 .PHONY: py-format
 py-format: py-format-install

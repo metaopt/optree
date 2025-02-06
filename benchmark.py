@@ -17,7 +17,6 @@
 
 # pylint: disable=missing-module-docstring,missing-class-docstring,missing-function-docstring
 # pylint: disable=invalid-name
-
 from __future__ import annotations
 
 import argparse

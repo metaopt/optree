@@ -34,12 +34,11 @@ from typing import (
 )
 
 import optree._C as _C
-from optree.accessor import PyTreeAccessor
 from optree.typing import NamedTuple, T
 
 
 if TYPE_CHECKING:
-    from optree.accessor import PyTreeEntry
+    from optree.accessor import PyTreeAccessor, PyTreeEntry
     from optree.typing import MetaData, PyTree, PyTreeKind, PyTreeSpec, S, U
 
 
@@ -1152,10 +1151,11 @@ def transpose_map_with_path(
 
     See also :func:`tree.map_with_path`, :func:`tree.transpose_map`, and :func:`tree.transpose`.
 
+    >>> from optree import tree
     >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
     >>> tree.transpose_map_with_path(  # doctest: +IGNORE_WHITESPACE
     ...     lambda p, x: {'depth': len(p), 'value': x},
-    ...     tree,
+    ...     pytree,
     ... )
     {
         'depth': {'b': (2, [3, 3]), 'a': 1, 'c': (2, 2)},
@@ -1163,7 +1163,7 @@ def transpose_map_with_path(
     }
     >>> tree.transpose_map_with_path(  # doctest: +IGNORE_WHITESPACE
     ...     lambda p, x: {'path': p, 'value': x},
-    ...     tree,
+    ...     pytree,
     ...     inner_treespec=tree.structure({'path': 0, 'value': 0}),
     ... )
     {
@@ -1239,10 +1239,11 @@ def transpose_map_with_accessor(
 
     See also :func:`tree.map_with_accessor`, :func:`tree.transpose_map`, and :func:`tree.transpose`.
 
+    >>> from optree import tree
     >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
     >>> tree.transpose_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
     ...     lambda a, x: {'depth': len(a), 'code': a.codify('tree'), 'value': x},
-    ...     tree,
+    ...     pytree,
     ... )
     {
         'depth': {
@@ -1263,7 +1264,7 @@ def transpose_map_with_accessor(
     }
     >>> tree.transpose_map_with_accessor(  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
     ...     lambda a, x: {'path': a.path, 'accessor': a, 'value': x},
-    ...     tree,
+    ...     pytree,
     ...     inner_treespec=tree.structure({'path': 0, 'accessor': 0, 'value': 0}),
     ... )
     {
@@ -1359,6 +1360,7 @@ def broadcast_prefix(
     from ``prefix_tree``. The number of replicas is determined by the corresponding subtree in
     ``full_tree``.
 
+    >>> from optree import tree
     >>> tree.broadcast_prefix(1, [2, 3, 4])
     [1, 1, 1]
     >>> tree.broadcast_prefix([1, 2, 3], [4, 5, 6])
@@ -1441,6 +1443,7 @@ def broadcast_common(
     ``other_tree``. The number of replicas is determined by the corresponding subtree in the suffix
     structure.
 
+    >>> from optree import tree
     >>> tree.broadcast_common(1, [2, 3, 4])
     ([1, 1, 1], [2, 3, 4])
     >>> tree.broadcast_common([1, 2, 3], [4, 5, 6])
@@ -1638,6 +1641,7 @@ def broadcast_map_with_path(
 
     If only one input is provided, this function is the same as :func:`tree.map`:
 
+    >>> from optree import tree
     >>> tree.broadcast_map_with_path(lambda p, x: (len(p), x), {'x': 7, 'y': (42, 64)})
     {'x': (1, 7), 'y': ((2, 42), (2, 64))}
     >>> tree.broadcast_map_with_path(lambda p, x: x + len(p), {'x': 7, 'y': (42, 64), 'z': None})
@@ -1716,6 +1720,7 @@ def broadcast_map_with_accessor(
 
     If only one input is provided, this function is the same as :func:`tree.map`:
 
+    >>> from optree import tree
     >>> tree.broadcast_map_with_accessor(lambda a, x: (len(a), x), {'x': 7, 'y': (42, 64)})
     {'x': (1, 7), 'y': ((2, 42), (2, 64))}
     >>> tree.broadcast_map_with_accessor(lambda a, x: x + len(a), {'x': 7, 'y': (42, 64), 'z': None})
