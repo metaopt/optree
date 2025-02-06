@@ -16,6 +16,7 @@ PYTEST         ?= $(PYTHON) -X dev -m pytest
 PYTESTOPTS     ?=
 CMAKE_CXX_STANDARD ?= 20
 OPTREE_CXX_WERROR  ?= ON
+_GLIBCXX_USE_CXX11_ABI ?= 1
 
 .PHONY: default
 default: install
@@ -29,7 +30,9 @@ install-editable install-e:
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install --upgrade setuptools wheel
 	$(PYTHON) -m pip install --upgrade pybind11 cmake
-	OPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" CMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
+	OPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" \
+		CMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
+		_GLIBCXX_USE_CXX11_ABI="$(_GLIBCXX_USE_CXX11_ABI)" \
 		$(PYTHON) -m pip install -vv --no-build-isolation --editable .
 
 .PHONY: uninstall
@@ -197,7 +200,8 @@ cmake-configure: cmake-install
 		-DCMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
 		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
 		-DPython_EXECUTABLE="$(PYTHON)" \
-		-DOPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)"
+		-DOPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" \
+		-D_GLIBCXX_USE_CXX11_ABI="$(_GLIBCXX_USE_CXX11_ABI)"
 
 .PHONY: cmake cmake-build
 cmake cmake-build: cmake-configure

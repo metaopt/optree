@@ -17,6 +17,7 @@ concurrency:
 
 env:
   OPTREE_CXX_WERROR: "ON"
+  _GLIBCXX_USE_CXX11_ABI: "1"
 
 jobs:
   lint:
