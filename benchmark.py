@@ -32,11 +32,11 @@ import jax
 import pandas as pd
 import torch
 import torch.utils._pytree as torch_utils_pytree
-import tree as dm_tree  # noqa: F401 # pylint: disable=unused-import
 from torch import nn
 from torchvision import models
 
 import optree
+import tree as dm_tree  # noqa: F401 # pylint: disable=unused-import
 
 
 try:
