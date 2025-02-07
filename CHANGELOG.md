@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--
+- Enable CXX11 ABI in C++ extension by [@XuehaiPan](https://github.com/XuehaiPan) in [#184](https://github.com/metaopt/optree/pull/184).
 
 ### Fixed
 
