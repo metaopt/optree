@@ -136,9 +136,14 @@ def vcs_version(name, path):
 
 
 with vcs_version(name='optree.version', path=(HERE / 'optree' / 'version.py')) as version:
+    setup_requires = []
+    if shutil.which('cmake') is None:
+        setup_requires += ['cmake >= 3.18']
+
     setup(
         name='optree',
         version=version.__version__,
         cmdclass={'build_ext': cmake_build_ext},
         ext_modules=[CMakeExtension('optree._C', source_dir=HERE)],
+        setup_requires=setup_requires,
     )
