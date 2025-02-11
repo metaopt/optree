@@ -21,6 +21,13 @@ class CMakeExtension(Extension):
         self.source_dir = Path(source_dir).absolute()
         self.target = target if target is not None else name.rpartition('.')[-1]
 
+    @classmethod
+    def cmake_executable(cls):
+        cmake = os.getenv('CMAKE_EXECUTABLE', '')
+        if not cmake:
+            cmake = shutil.which('cmake')
+        return cmake
+
 
 class cmake_build_ext(build_ext):  # noqa: N801
     def build_extension(self, ext):  # noqa: C901
@@ -28,7 +35,7 @@ class cmake_build_ext(build_ext):  # noqa: N801
             super().build_extension(ext)
             return
 
-        cmake = shutil.which('cmake')
+        cmake = ext.cmake_executable()
         if cmake is None:
             raise RuntimeError('Cannot find CMake executable.')
 
@@ -136,14 +143,10 @@ def vcs_version(name, path):
 
 
 with vcs_version(name='optree.version', path=(HERE / 'optree' / 'version.py')) as version:
-    setup_requires = []
-    if shutil.which('cmake') is None:
-        setup_requires += ['cmake >= 3.18']
-
     setup(
         name='optree',
         version=version.__version__,
         cmdclass={'build_ext': cmake_build_ext},
         ext_modules=[CMakeExtension('optree._C', source_dir=HERE)],
-        setup_requires=setup_requires,
+        setup_requires=(['cmake >= 3.18'] if CMakeExtension.cmake_executable() is None else []),
     )
