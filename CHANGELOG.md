@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
+- Support using system `cmake` executable during setup by [@mgorny](https://github.com/mgorny) in [#188](https://github.com/metaopt/optree/pull/188).
 
 ### Changed
 
