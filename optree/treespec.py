@@ -18,362 +18,62 @@
 
 from __future__ import annotations
 
-import difflib
-import textwrap
-from collections import OrderedDict, defaultdict, deque
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Collection,
-    Iterable,
-    Mapping,
-)
+from typing import TYPE_CHECKING, Any, Callable, Collection, Iterable, Mapping, Tuple
 
 import optree._C as _C
-from optree.accessor import PyTreeAccessor
-from optree.typing import NamedTuple, T, is_namedtuple_instance, is_structseq_instance
+import optree.ops as ops
 
 
 if TYPE_CHECKING:
-    from optree.typing import PyTree, PyTreeSpec, S
+    from optree.typing import NamedTuple, PyTreeSpec
     from optree.typing import structseq as StructSequence  # noqa: N812
 
 
 __all__ = [
-    'treespec_paths',
-    'treespec_accessors',
-    'treespec_entries',
-    'treespec_entry',
-    'treespec_children',
-    'treespec_child',
-    'treespec_one_level',
-    'treespec_transform',
-    'treespec_is_leaf',
-    'treespec_is_strict_leaf',
-    'treespec_is_one_level',
-    'treespec_is_prefix',
-    'treespec_is_suffix',
-    'treespec_leaf',
-    'treespec_none',
-    'treespec_tuple',
-    'treespec_list',
-    'treespec_dict',
-    'treespec_namedtuple',
-    'treespec_ordereddict',
-    'treespec_defaultdict',
-    'treespec_deque',
-    'treespec_structseq',
-    'treespec_from_collection',
+    'leaf',
+    'none',
+    'tuple',
+    'list',
+    'dict',
+    'namedtuple',
+    'ordereddict',
+    'defaultdict',
+    'deque',
+    'structseq',
+    'from_collection',
 ]
 
 
-def treespec_paths(treespec: PyTreeSpec, /) -> list[tuple[Any, ...]]:
-    """Return a list of paths to the leaves of a treespec.
-
-    See also :func:`tree_flatten_with_path`, :func:`tree_paths`, and :meth:`PyTreeSpec.paths`.
-
-    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
-    >>> treespec
-    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
-    >>> treespec_paths(treespec)
-    [('a', 0), ('a', 1, 0), ('a', 1, 1), ('b',), ('c', 0)]
-    """
-    return treespec.paths()
-
-
-def treespec_accessors(treespec: PyTreeSpec, /) -> list[PyTreeAccessor]:
-    """Return a list of accessors to the leaves of a treespec.
-
-    See also :func:`tree_flatten_with_accessor`, :func:`tree_accessors`,
-    and :meth:`PyTreeSpec.accessors`.
-
-    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
-    >>> treespec
-    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
-    >>> treespec_accessors(treespec)  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
-    [
-        PyTreeAccessor(*['a'][0], ...),
-        PyTreeAccessor(*['a'][1][0], ...),
-        PyTreeAccessor(*['a'][1][1], ...),
-        PyTreeAccessor(*['b'], ...),
-        PyTreeAccessor(*['c'][0], ...)
-    ]
-    >>> treespec_accessors(treespec_leaf())
-    [PyTreeAccessor(*, ())]
-    >>> treespec_accessors(treespec_none())
-    []
-    """
-    return treespec.accessors()
-
-
-def treespec_entries(treespec: PyTreeSpec, /) -> list[Any]:
-    """Return a list of one-level entries of a treespec to its children.
-
-    See also :func:`treespec_entry`, :func:`treespec_paths`, :func:`treespec_children`,
-    and :meth:`PyTreeSpec.entries`.
-
-    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
-    >>> treespec
-    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
-    >>> treespec_entries(treespec)
-    ['a', 'b', 'c']
-    """
-    return treespec.entries()
-
-
-def treespec_entry(treespec: PyTreeSpec, index: int, /) -> Any:
-    """Return the entry of a treespec at the given index.
-
-    See also :func:`treespec_entries`, :func:`treespec_children`, and :meth:`PyTreeSpec.entry`.
-    """
-    return treespec.entry(index)
-
-
-def treespec_children(treespec: PyTreeSpec, /) -> list[PyTreeSpec]:
-    """Return a list of treespecs for the children of a treespec.
-
-    See also :func:`treespec_child`, :func:`treespec_paths`, :func:`treespec_entries`,
-    :func:`treespec_one_level`, and :meth:`PyTreeSpec.children`.
-
-    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
-    >>> treespec
-    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
-    >>> treespec_children(treespec)
-    [PyTreeSpec((*, [*, *])), PyTreeSpec(*), PyTreeSpec((*, None))]
-    """
-    return treespec.children()
-
-
-def treespec_child(treespec: PyTreeSpec, index: int, /) -> PyTreeSpec:
-    """Return the treespec of the child of a treespec at the given index.
-
-    See also :func:`treespec_children`, :func:`treespec_entries`, and :meth:`PyTreeSpec.child`.
-    """
-    return treespec.child(index)
-
-
-def treespec_one_level(treespec: PyTreeSpec, /) -> PyTreeSpec | None:
-    """Return the one-level tree structure of the treespec or :data:`None` if the treespec is a leaf.
-
-    See also :func:`treespec_children`, :func:`treespec_is_one_level`, and :meth:`PyTreeSpec.one_level`.
-
-    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
-    >>> treespec
-    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
-    >>> treespec_one_level(treespec)
-    PyTreeSpec({'a': *, 'b': *, 'c': *})
-    """
-    return treespec.one_level()
-
-
-def treespec_transform(
-    treespec: PyTreeSpec,
-    /,
-    f_node: Callable[[PyTreeSpec], PyTreeSpec] | None = None,
-    f_leaf: Callable[[PyTreeSpec], PyTreeSpec] | None = None,
-) -> PyTreeSpec:
-    """Transform a treespec by applying functions to its nodes and leaves.
-
-    See also :func:`treespec_children`, :func:`treespec_is_leaf`, and :meth:`PyTreeSpec.transform`.
-
-    >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
-    >>> treespec
-    PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
-    >>> treespec_transform(treespec, lambda spec: treespec_dict(zip(spec.entries(), spec.children())))
-    PyTreeSpec({'a': {0: *, 1: {0: *, 1: *}}, 'b': *, 'c': {0: *, 1: {}}})
-    >>> treespec_transform(
-    ...     treespec,
-    ...     lambda spec: (
-    ...         treespec_ordereddict(zip(spec.entries(), spec.children()))
-    ...         if spec.type is dict
-    ...         else spec
-    ...     ),
-    ... )
-    PyTreeSpec(OrderedDict({'a': (*, [*, *]), 'b': *, 'c': (*, None)}))
-    >>> treespec_transform(
-    ...     treespec,
-    ...     lambda spec: (
-    ...         treespec_ordereddict(tree_unflatten(spec, spec.children()))
-    ...         if spec.type is dict
-    ...         else spec
-    ...     ),
-    ... )
-    PyTreeSpec(OrderedDict({'b': (*, [*, *]), 'a': *, 'c': (*, None)}))
-    >>> treespec_transform(treespec, lambda spec: treespec_tuple(spec.children()))
-    PyTreeSpec(((*, (*, *)), *, (*, ())))
-    >>> treespec_transform(
-    ...     treespec,
-    ...     lambda spec: (
-    ...         treespec_list(spec.children())
-    ...         if spec.type is tuple
-    ...         else spec
-    ...     ),
-    ... )
-    PyTreeSpec({'a': [*, [*, *]], 'b': *, 'c': [*, None]})
-    >>> treespec_transform(treespec, None, lambda spec: tree_structure((1, [2])))
-    PyTreeSpec({'a': ((*, [*]), [(*, [*]), (*, [*])]), 'b': (*, [*]), 'c': ((*, [*]), None)})
-    """
-    return treespec.transform(f_node, f_leaf)
-
-
-def treespec_is_leaf(treespec: PyTreeSpec, /, *, strict: bool = True) -> bool:
-    """Return whether the treespec is a leaf that has no children.
-
-    See also :func:`treespec_is_strict_leaf` and :meth:`PyTreeSpec.is_leaf`.
-
-    This function is equivalent to ``treespec.is_leaf(strict=strict)``. If ``strict=False``, it will
-    return :data:`True` if and only if the treespec represents a strict leaf. If ``strict=False``,
-    it will return :data:`True` if the treespec represents a strict leaf or :data:`None` or an empty
-    container (e.g., an empty tuple).
-
-    >>> treespec_is_leaf(tree_structure(1))
-    True
-    >>> treespec_is_leaf(tree_structure((1, 2)))
-    False
-    >>> treespec_is_leaf(tree_structure(None))
-    False
-    >>> treespec_is_leaf(tree_structure(None), strict=False)
-    True
-    >>> treespec_is_leaf(tree_structure(None, none_is_leaf=False))
-    False
-    >>> treespec_is_leaf(tree_structure(None, none_is_leaf=True))
-    True
-    >>> treespec_is_leaf(tree_structure(()))
-    False
-    >>> treespec_is_leaf(tree_structure(()), strict=False)
-    True
-    >>> treespec_is_leaf(tree_structure([]))
-    False
-    >>> treespec_is_leaf(tree_structure([]), strict=False)
-    True
-
-    Args:
-        treespec (PyTreeSpec): A treespec.
-        strict (bool, optional): Whether not to treat :data:`None` or an empty
-            container (e.g., an empty tuple) as a leaf. (default: :data:`True`)
-
-    Returns:
-        :data:`True` if the treespec represents a leaf that has no children, otherwise, :data:`False`.
-    """
-    if strict:
-        return treespec.num_nodes == 1 and treespec.num_leaves == 1
-    return treespec.num_nodes == 1
-
-
-def treespec_is_strict_leaf(treespec: PyTreeSpec, /) -> bool:
-    """Return whether the treespec is a strict leaf.
-
-    See also :func:`treespec_is_leaf` and :meth:`PyTreeSpec.is_leaf`.
-
-    This function respects the ``none_is_leaf`` setting in the treespec. It is equivalent to
-    ``treespec.is_leaf(strict=True)``. It will return :data:`True` if and only if the treespec
-    represents a strict leaf.
-
-    >>> treespec_is_strict_leaf(tree_structure(1))
-    True
-    >>> treespec_is_strict_leaf(tree_structure((1, 2)))
-    False
-    >>> treespec_is_strict_leaf(tree_structure(None))
-    False
-    >>> treespec_is_strict_leaf(tree_structure(None, none_is_leaf=False))
-    False
-    >>> treespec_is_strict_leaf(tree_structure(None, none_is_leaf=True))
-    True
-    >>> treespec_is_strict_leaf(tree_structure(()))
-    False
-    >>> treespec_is_strict_leaf(tree_structure([]))
-    False
-
-    Args:
-        treespec (PyTreeSpec): A treespec.
-
-    Returns:
-        :data:`True` if the treespec represents a strict leaf, otherwise, :data:`False`.
-    """
-    return treespec.num_nodes == 1 and treespec.num_leaves == 1
-
-
-def treespec_is_one_level(treespec: PyTreeSpec, /) -> bool:
-    """Return whether the treespec is a one-level tree structure.
-
-    See also :func:`treespec_is_leaf`, :func:`treespec_one_level`, and :meth:`PyTreeSpec.is_one_level`.
-
-    >>> treespec_is_one_level(tree_structure(1))
-    False
-    >>> treespec_is_one_level(tree_structure((1, 2)))
-    True
-    >>> treespec_is_one_level(tree_structure({'a': 1, 'b': 2, 'c': 3}))
-    True
-    >>> treespec_is_one_level(tree_structure({'a': 1, 'b': (2, 3), 'c': 4}))
-    False
-    >>> treespec_is_one_level(tree_structure(None))
-    True
-    """
-    return (
-        treespec.num_nodes == treespec.num_children + 1
-        and treespec.num_leaves == treespec.num_children
-    )
-
-
-def treespec_is_prefix(
-    treespec: PyTreeSpec,
-    other_treespec: PyTreeSpec,
-    /,
-    *,
-    strict: bool = False,
-) -> bool:
-    """Return whether ``treespec`` is a prefix of ``other_treespec``.
-
-    See also :func:`treespec_is_prefix` and :meth:`PyTreeSpec.is_prefix`.
-    """
-    return treespec.is_prefix(other_treespec, strict=strict)
-
-
-def treespec_is_suffix(
-    treespec: PyTreeSpec,
-    other_treespec: PyTreeSpec,
-    /,
-    *,
-    strict: bool = False,
-) -> bool:
-    """Return whether ``treespec`` is a suffix of ``other_treespec``.
-
-    See also :func:`treespec_is_suffix` :meth:`PyTreeSpec.is_suffix`.
-    """
-    return treespec.is_suffix(other_treespec, strict=strict)
-
-
-def treespec_leaf(
+def leaf(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',  # unused
 ) -> PyTreeSpec:
     """Make a treespec representing a leaf node.
 
-    See also :func:`tree_structure`, :func:`treespec_none`, and :func:`treespec_tuple`.
+    See also :func:`pytree.structure`, :func:`treespec.none`, and :func:`treespec.tuple`.
 
-    >>> treespec_leaf()
+    >>> treespec.leaf()
     PyTreeSpec(*)
-    >>> treespec_leaf(none_is_leaf=True)
+    >>> treespec.leaf(none_is_leaf=True)
     PyTreeSpec(*, NoneIsLeaf)
-    >>> treespec_leaf(none_is_leaf=False) == treespec_leaf(none_is_leaf=True)
+    >>> treespec.leaf(none_is_leaf=False) == treespec.leaf(none_is_leaf=True)
     False
-    >>> treespec_leaf() == tree_structure(1)
+    >>> treespec.leaf() == pytree.structure(1)
     True
-    >>> treespec_leaf(none_is_leaf=True) == tree_structure(1, none_is_leaf=True)
+    >>> treespec.leaf(none_is_leaf=True) == pytree.structure(1, none_is_leaf=True)
     True
-    >>> treespec_leaf(none_is_leaf=True) == tree_structure(None, none_is_leaf=True)
+    >>> treespec.leaf(none_is_leaf=True) == pytree.structure(None, none_is_leaf=True)
     True
-    >>> treespec_leaf(none_is_leaf=True) == tree_structure(None, none_is_leaf=False)
+    >>> treespec.leaf(none_is_leaf=True) == pytree.structure(None, none_is_leaf=False)
     False
-    >>> treespec_leaf(none_is_leaf=True) == treespec_none(none_is_leaf=True)
+    >>> treespec.leaf(none_is_leaf=True) == treespec.none(none_is_leaf=True)
     True
-    >>> treespec_leaf(none_is_leaf=True) == treespec_none(none_is_leaf=False)
+    >>> treespec.leaf(none_is_leaf=True) == treespec.none(none_is_leaf=False)
     False
-    >>> treespec_leaf(none_is_leaf=False) == treespec_none(none_is_leaf=True)
+    >>> treespec.leaf(none_is_leaf=False) == treespec.none(none_is_leaf=True)
     False
-    >>> treespec_leaf(none_is_leaf=False) == treespec_none(none_is_leaf=False)
+    >>> treespec.leaf(none_is_leaf=False) == treespec.none(none_is_leaf=False)
     False
 
     Args:
@@ -393,38 +93,38 @@ def treespec_leaf(
     )
 
 
-def treespec_none(
+def none(
     *,
     none_is_leaf: bool = False,
     namespace: str = '',  # unused
 ) -> PyTreeSpec:
     """Make a treespec representing a :data:`None` node.
 
-    See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_tuple`.
+    See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.tuple`.
 
-    >>> treespec_none()
+    >>> treespec.none()
     PyTreeSpec(None)
-    >>> treespec_none(none_is_leaf=True)
+    >>> treespec.none(none_is_leaf=True)
     PyTreeSpec(*, NoneIsLeaf)
-    >>> treespec_none(none_is_leaf=False) == treespec_none(none_is_leaf=True)
+    >>> treespec.none(none_is_leaf=False) == treespec.none(none_is_leaf=True)
     False
-    >>> treespec_none() == tree_structure(None)
+    >>> treespec.none() == pytree.structure(None)
     True
-    >>> treespec_none() == tree_structure(1)
+    >>> treespec.none() == pytree.structure(1)
     False
-    >>> treespec_none(none_is_leaf=True) == tree_structure(1, none_is_leaf=True)
+    >>> treespec.none(none_is_leaf=True) == pytree.structure(1, none_is_leaf=True)
     True
-    >>> treespec_none(none_is_leaf=True) == tree_structure(None, none_is_leaf=True)
+    >>> treespec.none(none_is_leaf=True) == pytree.structure(None, none_is_leaf=True)
     True
-    >>> treespec_none(none_is_leaf=True) == tree_structure(None, none_is_leaf=False)
+    >>> treespec.none(none_is_leaf=True) == pytree.structure(None, none_is_leaf=False)
     False
-    >>> treespec_none(none_is_leaf=True) == treespec_leaf(none_is_leaf=True)
+    >>> treespec.none(none_is_leaf=True) == treespec.leaf(none_is_leaf=True)
     True
-    >>> treespec_none(none_is_leaf=False) == treespec_leaf(none_is_leaf=True)
+    >>> treespec.none(none_is_leaf=False) == treespec.leaf(none_is_leaf=True)
     False
-    >>> treespec_none(none_is_leaf=True) == treespec_leaf(none_is_leaf=False)
+    >>> treespec.none(none_is_leaf=True) == treespec.leaf(none_is_leaf=False)
     False
-    >>> treespec_none(none_is_leaf=False) == treespec_leaf(none_is_leaf=False)
+    >>> treespec.none(none_is_leaf=False) == treespec.leaf(none_is_leaf=False)
     False
 
     Args:
@@ -444,7 +144,7 @@ def treespec_none(
     )
 
 
-def treespec_tuple(
+def tuple(
     iterable: Iterable[PyTreeSpec] = (),
     /,
     *,
@@ -453,19 +153,19 @@ def treespec_tuple(
 ) -> PyTreeSpec:
     """Make a tuple treespec from an iterable of child treespecs.
 
-    See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
+    See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
-    >>> treespec_tuple([treespec_leaf(), treespec_leaf()])
+    >>> treespec.tuple([treespec.leaf(), treespec.leaf()])
     PyTreeSpec((*, *))
-    >>> treespec_tuple([treespec_leaf(), treespec_leaf(), treespec_none()])
+    >>> treespec.tuple([treespec.leaf(), treespec.leaf(), treespec.none()])
     PyTreeSpec((*, *, None))
-    >>> treespec_tuple()
+    >>> treespec.tuple()
     PyTreeSpec(())
-    >>> treespec_tuple([treespec_leaf(), treespec_tuple([treespec_leaf(), treespec_leaf()])])
+    >>> treespec.tuple([treespec.leaf(), treespec.tuple([treespec.leaf(), treespec.leaf()])])
     PyTreeSpec((*, (*, *)))
-    >>> treespec_tuple([treespec_leaf(), tree_structure({'a': 1, 'b': 2})])
+    >>> treespec.tuple([treespec.leaf(), pytree.structure({'a': 1, 'b': 2})])
     PyTreeSpec((*, {'a': *, 'b': *}))
-    >>> treespec_tuple([treespec_leaf(), tree_structure({'a': 1, 'b': 2}, none_is_leaf=True)])
+    >>> treespec.tuple([treespec.leaf(), pytree.structure({'a': 1, 'b': 2}, none_is_leaf=True)])
     Traceback (most recent call last):
         ...
     ValueError: Expected treespec(s) with `node_is_leaf=False`.
@@ -483,14 +183,14 @@ def treespec_tuple(
     Returns:
         A treespec representing a tuple node with the given children.
     """
-    return _C.make_from_collection(
-        tuple(iterable),
-        none_is_leaf,
-        namespace,
+    return ops.treespec_tuple(
+        iterable,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
 
 
-def treespec_list(
+def list(
     iterable: Iterable[PyTreeSpec] = (),
     /,
     *,
@@ -499,19 +199,19 @@ def treespec_list(
 ) -> PyTreeSpec:
     """Make a list treespec from an iterable of child treespecs.
 
-    See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
+    See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
-    >>> treespec_list([treespec_leaf(), treespec_leaf()])
+    >>> treespec.list([treespec.leaf(), treespec.leaf()])
     PyTreeSpec([*, *])
-    >>> treespec_list([treespec_leaf(), treespec_leaf(), treespec_none()])
+    >>> treespec.list([treespec.leaf(), treespec.leaf(), treespec.none()])
     PyTreeSpec([*, *, None])
-    >>> treespec_list()
+    >>> treespec.list()
     PyTreeSpec([])
-    >>> treespec_list([treespec_leaf(), treespec_tuple([treespec_leaf(), treespec_leaf()])])
+    >>> treespec.list([treespec.leaf(), treespec.tuple([treespec.leaf(), treespec.leaf()])])
     PyTreeSpec([*, (*, *)])
-    >>> treespec_list([treespec_leaf(), tree_structure({'a': 1, 'b': 2})])
+    >>> treespec.list([treespec.leaf(), pytree.structure({'a': 1, 'b': 2})])
     PyTreeSpec([*, {'a': *, 'b': *}])
-    >>> treespec_list([treespec_leaf(), tree_structure({'a': 1, 'b': 2}, none_is_leaf=True)])
+    >>> treespec.list([treespec.leaf(), pytree.structure({'a': 1, 'b': 2}, none_is_leaf=True)])
     Traceback (most recent call last):
         ...
     ValueError: Expected treespec(s) with `node_is_leaf=False`.
@@ -529,15 +229,15 @@ def treespec_list(
     Returns:
         A treespec representing a list node with the given children.
     """
-    return _C.make_from_collection(
-        list(iterable),
-        none_is_leaf,
-        namespace,
+    return ops.treespec_list(
+        iterable,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
 
 
-def treespec_dict(
-    mapping: Mapping[Any, PyTreeSpec] | Iterable[tuple[Any, PyTreeSpec]] = (),
+def dict(
+    mapping: Mapping[Any, PyTreeSpec] | Iterable[Tuple[Any, PyTreeSpec]] = (),  # noqa: UP006
     /,
     *,
     none_is_leaf: bool = False,
@@ -546,19 +246,19 @@ def treespec_dict(
 ) -> PyTreeSpec:
     """Make a dict treespec from a dict of child treespecs.
 
-    See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
+    See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
-    >>> treespec_dict({'a': treespec_leaf(), 'b': treespec_leaf()})
+    >>> treespec.dict({'a': treespec.leaf(), 'b': treespec.leaf()})
     PyTreeSpec({'a': *, 'b': *})
-    >>> treespec_dict([('b', treespec_leaf()), ('c', treespec_leaf()), ('a', treespec_none())])
+    >>> treespec.dict([('b', treespec.leaf()), ('c', treespec.leaf()), ('a', treespec.none())])
     PyTreeSpec({'a': None, 'b': *, 'c': *})
-    >>> treespec_dict()
+    >>> treespec.dict()
     PyTreeSpec({})
-    >>> treespec_dict(a=treespec_leaf(), b=treespec_tuple([treespec_leaf(), treespec_leaf()]))
+    >>> treespec.dict(a=treespec.leaf(), b=treespec.tuple([treespec.leaf(), treespec.leaf()]))
     PyTreeSpec({'a': *, 'b': (*, *)})
-    >>> treespec_dict({'a': treespec_leaf(), 'b': tree_structure([1, 2])})
+    >>> treespec.dict({'a': treespec.leaf(), 'b': pytree.structure([1, 2])})
     PyTreeSpec({'a': *, 'b': [*, *]})
-    >>> treespec_dict({'a': treespec_leaf(), 'b': tree_structure([1, 2], none_is_leaf=True)})
+    >>> treespec.dict({'a': treespec.leaf(), 'b': pytree.structure([1, 2], none_is_leaf=True)})
     Traceback (most recent call last):
         ...
     ValueError: Expected treespec(s) with `node_is_leaf=False`.
@@ -577,14 +277,15 @@ def treespec_dict(
     Returns:
         A treespec representing a dict node with the given children.
     """
-    return _C.make_from_collection(
-        dict(mapping, **kwargs),
-        none_is_leaf,
-        namespace,
+    return ops.treespec_dict(
+        mapping,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+        **kwargs,
     )
 
 
-def treespec_namedtuple(
+def namedtuple(
     namedtuple: NamedTuple[PyTreeSpec],  # type: ignore[type-arg]
     /,
     *,
@@ -593,17 +294,17 @@ def treespec_namedtuple(
 ) -> PyTreeSpec:
     """Make a namedtuple treespec from a namedtuple of child treespecs.
 
-    See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
+    See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
     >>> from collections import namedtuple
     >>> Point = namedtuple('Point', ['x', 'y'])
-    >>> treespec_namedtuple(Point(x=treespec_leaf(), y=treespec_leaf()))
+    >>> treespec.namedtuple(Point(x=treespec.leaf(), y=treespec.leaf()))
     PyTreeSpec(Point(x=*, y=*))
-    >>> treespec_namedtuple(Point(x=treespec_leaf(), y=treespec_tuple([treespec_leaf(), treespec_leaf()])))
+    >>> treespec.namedtuple(Point(x=treespec.leaf(), y=treespec.tuple([treespec.leaf(), treespec.leaf()])))
     PyTreeSpec(Point(x=*, y=(*, *)))
-    >>> treespec_namedtuple(Point(x=treespec_leaf(), y=tree_structure([1, 2])))
+    >>> treespec.namedtuple(Point(x=treespec.leaf(), y=pytree.structure([1, 2])))
     PyTreeSpec(Point(x=*, y=[*, *]))
-    >>> treespec_namedtuple(Point(x=treespec_leaf(), y=tree_structure([1, 2], none_is_leaf=True)))
+    >>> treespec.namedtuple(Point(x=treespec.leaf(), y=pytree.structure([1, 2], none_is_leaf=True)))
     Traceback (most recent call last):
         ...
     ValueError: Expected treespec(s) with `node_is_leaf=False`.
@@ -621,17 +322,15 @@ def treespec_namedtuple(
     Returns:
         A treespec representing a dict node with the given children.
     """
-    if not is_namedtuple_instance(namedtuple):
-        raise ValueError(f'Expected a namedtuple of PyTreeSpec(s), got {namedtuple!r}.')
-    return _C.make_from_collection(
+    return ops.treespec_namedtuple(
         namedtuple,
-        none_is_leaf,
-        namespace,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
 
 
-def treespec_ordereddict(
-    mapping: Mapping[Any, PyTreeSpec] | Iterable[tuple[Any, PyTreeSpec]] = (),
+def ordereddict(
+    mapping: Mapping[Any, PyTreeSpec] | Iterable[Tuple[Any, PyTreeSpec]] = (),  # noqa: UP006
     /,
     *,
     none_is_leaf: bool = False,
@@ -640,19 +339,19 @@ def treespec_ordereddict(
 ) -> PyTreeSpec:
     """Make an OrderedDict treespec from an OrderedDict of child treespecs.
 
-    See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
+    See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
-    >>> treespec_ordereddict({'a': treespec_leaf(), 'b': treespec_leaf()})
+    >>> treespec.ordereddict({'a': treespec.leaf(), 'b': treespec.leaf()})
     PyTreeSpec(OrderedDict({'a': *, 'b': *}))
-    >>> treespec_ordereddict([('b', treespec_leaf()), ('c', treespec_leaf()), ('a', treespec_none())])
+    >>> treespec.ordereddict([('b', treespec.leaf()), ('c', treespec.leaf()), ('a', treespec.none())])
     PyTreeSpec(OrderedDict({'b': *, 'c': *, 'a': None}))
-    >>> treespec_ordereddict()
+    >>> treespec.ordereddict()
     PyTreeSpec(OrderedDict())
-    >>> treespec_ordereddict(a=treespec_leaf(), b=treespec_tuple([treespec_leaf(), treespec_leaf()]))
+    >>> treespec.ordereddict(a=treespec.leaf(), b=treespec.tuple([treespec.leaf(), treespec.leaf()]))
     PyTreeSpec(OrderedDict({'a': *, 'b': (*, *)}))
-    >>> treespec_ordereddict({'a': treespec_leaf(), 'b': tree_structure([1, 2])})
+    >>> treespec.ordereddict({'a': treespec.leaf(), 'b': pytree.structure([1, 2])})
     PyTreeSpec(OrderedDict({'a': *, 'b': [*, *]}))
-    >>> treespec_ordereddict({'a': treespec_leaf(), 'b': tree_structure([1, 2], none_is_leaf=True)})
+    >>> treespec.ordereddict({'a': treespec.leaf(), 'b': pytree.structure([1, 2], none_is_leaf=True)})
     Traceback (most recent call last):
         ...
     ValueError: Expected treespec(s) with `node_is_leaf=False`.
@@ -671,16 +370,17 @@ def treespec_ordereddict(
     Returns:
         A treespec representing an OrderedDict node with the given children.
     """
-    return _C.make_from_collection(
-        OrderedDict(mapping, **kwargs),
-        none_is_leaf,
-        namespace,
+    return ops.treespec_ordereddict(
+        mapping,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+        **kwargs,
     )
 
 
-def treespec_defaultdict(
+def defaultdict(
     default_factory: Callable[[], Any] | None = None,
-    mapping: Mapping[Any, PyTreeSpec] | Iterable[tuple[Any, PyTreeSpec]] = (),
+    mapping: Mapping[Any, PyTreeSpec] | Iterable[Tuple[Any, PyTreeSpec]] = (),  # noqa: UP006
     /,
     *,
     none_is_leaf: bool = False,
@@ -689,21 +389,21 @@ def treespec_defaultdict(
 ) -> PyTreeSpec:
     """Make a defaultdict treespec from a defaultdict of child treespecs.
 
-    See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
+    See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
-    >>> treespec_defaultdict(int, {'a': treespec_leaf(), 'b': treespec_leaf()})
+    >>> treespec.defaultdict(int, {'a': treespec.leaf(), 'b': treespec.leaf()})
     PyTreeSpec(defaultdict(<class 'int'>, {'a': *, 'b': *}))
-    >>> treespec_defaultdict(int, [('b', treespec_leaf()), ('c', treespec_leaf()), ('a', treespec_none())])
+    >>> treespec.defaultdict(int, [('b', treespec.leaf()), ('c', treespec.leaf()), ('a', treespec.none())])
     PyTreeSpec(defaultdict(<class 'int'>, {'a': None, 'b': *, 'c': *}))
-    >>> treespec_defaultdict()
+    >>> treespec.defaultdict()
     PyTreeSpec(defaultdict(None, {}))
-    >>> treespec_defaultdict(int)
+    >>> treespec.defaultdict(int)
     PyTreeSpec(defaultdict(<class 'int'>, {}))
-    >>> treespec_defaultdict(int, a=treespec_leaf(), b=treespec_tuple([treespec_leaf(), treespec_leaf()]))
+    >>> treespec.defaultdict(int, a=treespec.leaf(), b=treespec.tuple([treespec.leaf(), treespec.leaf()]))
     PyTreeSpec(defaultdict(<class 'int'>, {'a': *, 'b': (*, *)}))
-    >>> treespec_defaultdict(int, {'a': treespec_leaf(), 'b': tree_structure([1, 2])})
+    >>> treespec.defaultdict(int, {'a': treespec.leaf(), 'b': pytree.structure([1, 2])})
     PyTreeSpec(defaultdict(<class 'int'>, {'a': *, 'b': [*, *]}))
-    >>> treespec_defaultdict(int, {'a': treespec_leaf(), 'b': tree_structure([1, 2], none_is_leaf=True)})
+    >>> treespec.defaultdict(int, {'a': treespec.leaf(), 'b': pytree.structure([1, 2], none_is_leaf=True)})
     Traceback (most recent call last):
         ...
     ValueError: Expected treespec(s) with `node_is_leaf=False`.
@@ -724,14 +424,16 @@ def treespec_defaultdict(
     Returns:
         A treespec representing a defaultdict node with the given children.
     """
-    return _C.make_from_collection(
-        defaultdict(default_factory, mapping, **kwargs),
-        none_is_leaf,
-        namespace,
+    return ops.treespec_defaultdict(
+        default_factory,
+        mapping,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+        **kwargs,
     )
 
 
-def treespec_deque(
+def deque(
     iterable: Iterable[PyTreeSpec] = (),
     /,
     maxlen: int | None = None,
@@ -741,19 +443,19 @@ def treespec_deque(
 ) -> PyTreeSpec:
     """Make a deque treespec from a deque of child treespecs.
 
-    See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
+    See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
-    >>> treespec_deque([treespec_leaf(), treespec_leaf()])
+    >>> treespec.deque([treespec.leaf(), treespec.leaf()])
     PyTreeSpec(deque([*, *]))
-    >>> treespec_deque([treespec_leaf(), treespec_leaf(), treespec_none()], maxlen=5)
+    >>> treespec.deque([treespec.leaf(), treespec.leaf(), treespec.none()], maxlen=5)
     PyTreeSpec(deque([*, *, None], maxlen=5))
-    >>> treespec_deque()
+    >>> treespec.deque()
     PyTreeSpec(deque([]))
-    >>> treespec_deque([treespec_leaf(), treespec_tuple([treespec_leaf(), treespec_leaf()])])
+    >>> treespec.deque([treespec.leaf(), treespec.tuple([treespec.leaf(), treespec.leaf()])])
     PyTreeSpec(deque([*, (*, *)]))
-    >>> treespec_deque([treespec_leaf(), tree_structure({'a': 1, 'b': 2})], maxlen=5)
+    >>> treespec.deque([treespec.leaf(), pytree.structure({'a': 1, 'b': 2})], maxlen=5)
     PyTreeSpec(deque([*, {'a': *, 'b': *}], maxlen=5))
-    >>> treespec_deque([treespec_leaf(), tree_structure({'a': 1, 'b': 2}, none_is_leaf=True)], maxlen=5)
+    >>> treespec.deque([treespec.leaf(), pytree.structure({'a': 1, 'b': 2}, none_is_leaf=True)], maxlen=5)
     Traceback (most recent call last):
         ...
     ValueError: Expected treespec(s) with `node_is_leaf=False`.
@@ -773,14 +475,15 @@ def treespec_deque(
     Returns:
         A treespec representing a deque node with the given children.
     """
-    return _C.make_from_collection(
-        deque(iterable, maxlen=maxlen),
-        none_is_leaf,
-        namespace,
+    return ops.treespec_deque(
+        iterable,
+        maxlen=maxlen,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
 
 
-def treespec_structseq(
+def structseq(
     structseq: StructSequence[PyTreeSpec],
     /,
     *,
@@ -789,7 +492,7 @@ def treespec_structseq(
 ) -> PyTreeSpec:
     """Make a PyStructSequence treespec from a PyStructSequence of child treespecs.
 
-    See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
+    See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
     Args:
         structseq (PyStructSequence of PyTreeSpec): A PyStructSequence of child treespecs. They must
@@ -804,16 +507,14 @@ def treespec_structseq(
     Returns:
         A treespec representing a PyStructSequence node with the given children.
     """
-    if not is_structseq_instance(structseq):
-        raise ValueError(f'Expected a PyStructSequence of PyTreeSpec(s), got {structseq!r}.')
-    return _C.make_from_collection(
+    return ops.treespec_structseq(
         structseq,
-        none_is_leaf,
-        namespace,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
 
 
-def treespec_from_collection(
+def from_collection(
     collection: Collection[PyTreeSpec],
     /,
     *,
@@ -822,25 +523,25 @@ def treespec_from_collection(
 ) -> PyTreeSpec:
     """Make a treespec from a collection of child treespecs.
 
-    See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
+    See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
-    >>> treespec_from_collection(None)
+    >>> treespec.from_collection(None)
     PyTreeSpec(None)
-    >>> treespec_from_collection(None, none_is_leaf=True)
+    >>> treespec.from_collection(None, none_is_leaf=True)
     PyTreeSpec(*, NoneIsLeaf)
-    >>> treespec_from_collection(object())
+    >>> treespec.from_collection(object())
     PyTreeSpec(*)
-    >>> treespec_from_collection([treespec_leaf(), treespec_none()])
+    >>> treespec.from_collection([treespec.leaf(), treespec.none()])
     PyTreeSpec([*, None])
-    >>> treespec_from_collection({'a': treespec_leaf(), 'b': treespec_none()})
+    >>> treespec.from_collection({'a': treespec.leaf(), 'b': treespec.none()})
     PyTreeSpec({'a': *, 'b': None})
-    >>> treespec_from_collection(deque([treespec_leaf(), tree_structure({'a': 1, 'b': 2})], maxlen=5))
+    >>> treespec.from_collection(deque([treespec.leaf(), pytree.structure({'a': 1, 'b': 2})], maxlen=5))
     PyTreeSpec(deque([*, {'a': *, 'b': *}], maxlen=5))
-    >>> treespec_from_collection({'a': treespec_leaf(), 'b': (treespec_leaf(), treespec_none())})
+    >>> treespec.from_collection({'a': treespec.leaf(), 'b': (treespec.leaf(), treespec.none())})
     Traceback (most recent call last):
         ...
     ValueError: Expected a(n) dict of PyTreeSpec(s), got {'a': PyTreeSpec(*), 'b': (PyTreeSpec(*), PyTreeSpec(None))}.
-    >>> treespec_from_collection([treespec_leaf(), tree_structure({'a': 1, 'b': 2}, none_is_leaf=True)])
+    >>> treespec.from_collection([treespec.leaf(), pytree.structure({'a': 1, 'b': 2}, none_is_leaf=True)])
     Traceback (most recent call last):
         ...
     ValueError: Expected treespec(s) with `node_is_leaf=False`.
@@ -860,190 +561,3 @@ def treespec_from_collection(
         A treespec representing the same structure of the collection with the given children.
     """
     return _C.make_from_collection(collection, none_is_leaf, namespace)
-
-
-STANDARD_DICT_TYPES: frozenset[type] = frozenset({dict, OrderedDict, defaultdict})
-
-
-def prefix_errors(  # noqa: C901
-    prefix_tree: PyTree[T],
-    full_tree: PyTree[S],
-    /,
-    is_leaf: Callable[[T], bool] | None = None,
-    *,
-    none_is_leaf: bool = False,
-    namespace: str = '',
-) -> list[Callable[[str], ValueError]]:
-    """Return a list of errors that would be raised by :func:`broadcast_prefix`."""
-
-    def helper(  # pylint: disable=too-many-locals
-        accessor: PyTreeAccessor,
-        prefix_subtree: PyTree[T],
-        full_subtree: PyTree[S],
-    ) -> Iterable[Callable[[str], ValueError]]:
-        # A leaf is a valid prefix of any tree
-        if tree_is_leaf(
-            prefix_subtree,
-            is_leaf=is_leaf,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        ):
-            return
-
-        # The subtrees may disagree because their roots are of different types:
-        prefix_tree_type = type(prefix_subtree)
-        full_tree_type = type(full_subtree)
-        both_standard_dict = (
-            prefix_tree_type in STANDARD_DICT_TYPES and full_tree_type in STANDARD_DICT_TYPES
-        )
-        both_deque = prefix_tree_type is deque and full_tree_type is deque  # type: ignore[comparison-overlap]
-        if (
-            prefix_tree_type is not full_tree_type
-            and not both_standard_dict  # special handling for dictionary types
-        ):
-            yield lambda name: ValueError(
-                f'pytree structure error: different types at key path\n'
-                f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
-                f'At that key path, the prefix pytree {name} has a subtree of type\n'
-                f'    {type(prefix_subtree)}\n'
-                f'but at the same key path the full pytree has a subtree of different type\n'
-                f'    {type(full_subtree)}.',
-            )
-            return  # don't look for more errors in this subtree
-
-        # Or they may disagree if their roots have different numbers of children (note that because both
-        # prefix_tree and full_tree have the same type at this point, and because prefix_tree is not a
-        # leaf, each can be flattened once):
-        prefix_tree_one_level_output = (
-            prefix_tree_children,
-            prefix_tree_metadata,
-            prefix_tree_entries,
-            _,
-        ) = tree_flatten_one_level(
-            prefix_subtree,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-        full_tree_one_level_output = (
-            full_tree_children,
-            full_tree_metadata,
-            full_tree_entries,
-            _,
-        ) = tree_flatten_one_level(
-            full_subtree,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-        # Special handling for dictionary types
-        if both_standard_dict:
-            prefix_tree_keys: list[Any] = (
-                prefix_tree_metadata  # type: ignore[assignment]
-                if prefix_tree_type is not defaultdict  # type: ignore[comparison-overlap]
-                else prefix_tree_metadata[1]  # type: ignore[index]
-            )
-            full_tree_keys: list[Any] = (
-                full_tree_metadata  # type: ignore[assignment]
-                if full_tree_type is not defaultdict  # type: ignore[comparison-overlap]
-                else full_tree_metadata[1]  # type: ignore[index]
-            )
-            prefix_tree_keys_set = set(prefix_tree_keys)
-            full_tree_keys_set = set(full_tree_keys)
-            if prefix_tree_keys_set != full_tree_keys_set:
-                missing_keys = sorted(prefix_tree_keys_set.difference(full_tree_keys_set))
-                extra_keys = sorted(full_tree_keys_set.difference(prefix_tree_keys_set))
-                key_difference = ''
-                if missing_keys:
-                    key_difference += f'\nmissing key(s):\n    {missing_keys}'
-                if extra_keys:
-                    key_difference += f'\nextra key(s):\n    {extra_keys}'
-                yield lambda name: ValueError(
-                    f'pytree structure error: different pytree keys at key path\n'
-                    f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
-                    f'At that key path, the prefix pytree {name} has a subtree of type\n'
-                    f'    {prefix_tree_type}\n'
-                    f'with {len(prefix_tree_keys)} key(s)\n'
-                    f'    {prefix_tree_keys}\n'
-                    f'but at the same key path the full pytree has a subtree of type\n'
-                    f'    {full_tree_type}\n'
-                    f'but with {len(full_tree_keys)} key(s)\n'
-                    f'    {full_tree_keys}{key_difference}',
-                )
-                return  # don't look for more errors in this subtree
-
-            # If the keys agree, we should ensure that the children are in the same order:
-            full_tree_children = [full_subtree[k] for k in prefix_tree_keys]  # type: ignore[misc]
-
-        if len(prefix_tree_children) != len(full_tree_children):
-            yield lambda name: ValueError(
-                f'pytree structure error: different numbers of pytree children at key path\n'
-                f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
-                f'At that key path, the prefix pytree {name} has a subtree of type\n'
-                f'    {prefix_tree_type}\n'
-                f'with {len(prefix_tree_children)} children, '
-                f'but at the same key path the full pytree has a subtree of the same '
-                f'type but with {len(full_tree_children)} children.',
-            )
-            return  # don't look for more errors in this subtree
-
-        # Or they may disagree if their roots have different pytree metadata:
-        if (
-            prefix_tree_metadata != full_tree_metadata
-            and (not both_deque)  # ignore maxlen mismatch for deque
-            and (
-                # Special handling for dictionary types already done in the keys check above
-                not both_standard_dict
-            )
-        ):
-            prefix_tree_metadata_repr = repr(prefix_tree_metadata)
-            full_tree_metadata_repr = repr(full_tree_metadata)
-            metadata_diff = textwrap.indent(
-                '\n'.join(
-                    difflib.ndiff(
-                        prefix_tree_metadata_repr.splitlines(),
-                        full_tree_metadata_repr.splitlines(),
-                    ),
-                ),
-                prefix='    ',
-            )
-            yield lambda name: ValueError(
-                f'pytree structure error: different pytree metadata at key path\n'
-                f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
-                f'At that key path, the prefix pytree {name} has a subtree of type\n'
-                f'    {prefix_tree_type}\n'
-                f'with metadata\n'
-                f'    {prefix_tree_metadata_repr}\n'
-                f'but at the same key path the full pytree has a subtree of the same '
-                f'type but with metadata\n'
-                f'    {full_tree_metadata_repr}\n'
-                f'so the diff in the metadata at these pytree nodes is\n'
-                f'{metadata_diff}',
-            )
-            return  # don't look for more errors in this subtree
-
-        # If the root types and numbers of children agree, there must be an error in a subtree,
-        # so recurse:
-        entries = [
-            prefix_tree_one_level_output.path_entry_type(
-                e,
-                prefix_tree_type,
-                prefix_tree_one_level_output.kind,
-            )
-            for e in prefix_tree_entries
-        ]
-        entries_ = [
-            full_tree_one_level_output.path_entry_type(
-                e,
-                full_tree_type,
-                full_tree_one_level_output.kind,
-            )
-            for e in full_tree_entries
-        ]
-        assert (
-            both_standard_dict  # special handling for dictionary types already done in the keys check above
-            or entries == entries_
-        ), f'equal pytree nodes gave different keys: {entries} and {entries_}'
-        # pylint: disable-next=invalid-name
-        for e, t1, t2 in zip(entries, prefix_tree_children, full_tree_children):
-            yield from helper(accessor + e, t1, t2)  # pyright: ignore[reportArgumentType]
-
-    return list(helper(PyTreeAccessor(), prefix_tree, full_tree))
