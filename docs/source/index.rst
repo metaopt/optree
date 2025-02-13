@@ -11,6 +11,8 @@ OpTree: Optimized PyTree Utilities
 .. toctree::
     :maxdepth: 1
 
+    pytree.rst
+    treespec.rst
     registry.rst
     dataclasses.rst
     functools.rst

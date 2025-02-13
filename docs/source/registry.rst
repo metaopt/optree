@@ -1,5 +1,7 @@
-PyTree Node Registry
-====================
+.. _PyTree Node Registration:
+
+PyTree Node Registration
+========================
 
 .. currentmodule:: optree
 
