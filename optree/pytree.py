@@ -14,7 +14,7 @@
 # ==============================================================================
 """Utilities for working with ``PyTree``.
 
-The :mod:`optree.pytree` namespace contains aliases of utilities from ``optree.tree_``.
+The :mod:`optree.pytree` namespace contains aliases of ``optree.tree_*`` utilities.
 
 >>> import optree.pytree as pt
 ...
