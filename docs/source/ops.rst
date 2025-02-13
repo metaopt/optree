@@ -1,3 +1,5 @@
+.. _Tree Operations:
+
 Tree Operations
 ===============
 
@@ -17,6 +19,8 @@ Constants
 .. autodata:: NONE_IS_LEAF
 
 ------
+
+.. _Tree Manipulation Functions:
 
 Tree Manipulation Functions
 ---------------------------
@@ -91,6 +95,8 @@ Tree Manipulation Functions
 
 ------
 
+.. _Tree Reduce Functions:
+
 Tree Reduce Functions
 ---------------------
 
@@ -112,8 +118,10 @@ Tree Reduce Functions
 
 ------
 
-PyTreeSpec Functions
---------------------
+.. _PyTreeSpec Functions:
+
+:class:`PyTreeSpec` Functions
+-----------------------------
 
 .. autosummary::
 

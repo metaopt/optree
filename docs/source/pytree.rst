@@ -5,8 +5,15 @@ PyTree Operations
 
 .. automodule:: optree.pytree
 
+Tree Operations
+---------------
+
+Check the :ref:`Tree Manipulation Functions` and :ref:`Tree Reduce Functions` sections for more
+detailed documentation.
+
 .. autosummary::
 
+    dict_insertion_ordered
     flatten
     flatten_with_path
     flatten_with_accessor
@@ -40,7 +47,14 @@ PyTree Operations
     all
     any
     flatten_one_level
+
+Node Registration
+-----------------
+
+Check the :ref:`PyTree Node Registration` section for more detailed documentation.
+
+.. autosummary::
+
     register_node
     register_node_class
     unregister_node
-    dict_insertion_ordered
