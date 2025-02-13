@@ -1,7 +1,7 @@
 # Package ######################################################################
 
 [build-system]
-requires = ["setuptools", "cmake >= 3.18", "pybind11 >= 2.12"]
+requires = ["setuptools", "pybind11 >= 2.12"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -112,6 +112,11 @@ archs = ["native"]
 enable = ["pypy", "cpython-freethreading"]
 skip = "*musllinux*"
 build-frontend = "build"
+environment-pass = [
+    "CMAKE_CXX_STANDARD",
+    "OPTREE_CXX_WERROR",
+    "_GLIBCXX_USE_CXX11_ABI",
+]
 test-extras = ["test"]
 test-command = '''make -C "{project}" test PYTHON=python PYTESTOPTS="--quiet --exitfirst --no-showlocals"'''
 

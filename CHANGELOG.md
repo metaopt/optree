@@ -13,11 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Support using system `cmake` executable during setup by [@mgorny](https://github.com/mgorny) in [#188](https://github.com/metaopt/optree/pull/188).
 - Add module `optree.pytree` and `optree.treespec` by [@lqhuang](https://github.com/lqhuang) in [#186](https://github.com/metaopt/optree/pull/186).
 
 ### Changed
 
--
+- Enable CXX11 ABI in C++ extension by [@XuehaiPan](https://github.com/XuehaiPan) in [#184](https://github.com/metaopt/optree/pull/184).
 
 ### Fixed
 

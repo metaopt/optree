@@ -29,6 +29,7 @@ concurrency:
 env:
   CMAKE_BUILD_TYPE: "Debug"
   OPTREE_CXX_WERROR: "ON"
+  _GLIBCXX_USE_CXX11_ABI: "1"
   PYTHON: "python"  # to be updated
   PYTHON_TAG: "py3"  # to be updated
   PYTHON_VERSION: "3"  # to be updated
@@ -67,7 +68,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up pyenv
+      - name: Set up pyenv (Unix)
         id: setup-pyenv-unix
         if: runner.os != 'Windows'
         run: |
@@ -93,7 +94,7 @@ jobs:
             brew install --only-dependencies python@3
           fi
 
-      - name: Set up pyenv
+      - name: Set up pyenv (Windows)
         id: setup-pyenv-windows
         if: runner.os == 'Windows'
         shell: pwsh
