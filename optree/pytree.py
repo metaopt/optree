@@ -38,9 +38,11 @@ from __future__ import annotations
 from optree.ops import tree_accessors as accessors
 from optree.ops import tree_all as all
 from optree.ops import tree_any as any
+from optree.ops import tree_broadcast_common as broadcast_common
 from optree.ops import tree_broadcast_map as broadcast_map
 from optree.ops import tree_broadcast_map_with_accessor as broadcast_map_with_accessor
 from optree.ops import tree_broadcast_map_with_path as broadcast_map_with_path
+from optree.ops import tree_broadcast_prefix as broadcast_prefix
 from optree.ops import tree_flatten as flatten
 from optree.ops import tree_flatten_one_level as flatten_one_level
 from optree.ops import tree_flatten_with_accessor as flatten_with_accessor
@@ -100,4 +102,6 @@ __all__ = [
     'broadcast_map',
     'broadcast_map_with_path',
     'broadcast_map_with_accessor',
+    'broadcast_prefix',
+    'broadcast_common',
 ]
