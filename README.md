@@ -91,6 +91,8 @@ Tree flattening is traversing the entire tree in a left-to-right depth-first man
 ([1], PyTreeSpec(*))
 >>> optree.tree_flatten(None)
 ([], PyTreeSpec(None))
+>>> optree.tree_map(lambda x: x**2, tree)
+{'b': (4, [9, 16]), 'a': 1, 'c': 25, 'd': 36}
 ```
 
 This usually implies that the equal pytrees return equal lists of leaves and the same tree structure.
@@ -103,11 +105,15 @@ True
 True
 >>> optree.tree_structure({'a': [1, 2], 'b': [3]}) == optree.tree_structure({'b': [3], 'a': [1, 2]})
 True
+>>> optree.tree_map(lambda x: x**2, {'a': [1, 2], 'b': [3]})
+{'a': [1, 4], 'b': [9]}
+>>> optree.tree_map(lambda x: x**2, {'b': [3], 'a': [1, 2]})
+{'b': [9], 'a': [1, 4]}
 ```
 
-> [!NOTE]
+> [!TIP]
 >
-> Since `v0.14.1`, a new namespace `optree.pytree` is introduced as aliases for `optree.tree_*` functions. The following examples are equivalent to the above:
+> Since OpTree v0.14.1, a new namespace `optree.pytree` is introduced as aliases for `optree.tree_*` functions. The following examples are equivalent to the above:
 >
 > ```python
 > import optree.pytree as pt
@@ -120,8 +126,10 @@ True
 > ([], PyTreeSpec(None))
 > >>> pt.map(lambda x: x**2, tree)
 > {'b': (4, [9, 16]), 'a': 1, 'c': 25, 'd': 36}
-> >>> pt.leaves({'a': [1, 2], 'b': [3]}) == pt.leaves({'b': [3], 'a': [1, 2]})
-> >>> pt.structure({'a': [1, 2], 'b': [3]}) == pt.structure({'b': [3], 'a': [1, 2]})
+> >>> pt.map(lambda x: x**2, {'a': [1, 2], 'b': [3]})
+> {'a': [1, 4], 'b': [9]}
+> >>> pt.map(lambda x: x**2, {'b': [3], 'a': [1, 2]})
+> {'b': [9], 'a': [1, 4]}
 > ```
 
 ### Tree Nodes and Leaves
