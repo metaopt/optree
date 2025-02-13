@@ -8,7 +8,7 @@ PyTree Operations
 Tree Operations
 ---------------
 
-Check the :ref:`Tree Manipulation Functions` and :ref:`Tree Reduce Functions` sections for more
+Check section :ref:`Tree Manipulation Functions` and :ref:`Tree Reduce Functions` for more
 detailed documentation.
 
 .. autosummary::
@@ -51,7 +51,7 @@ detailed documentation.
 Node Registration
 -----------------
 
-Check the :ref:`PyTree Node Registration` section for more detailed documentation.
+Check section :ref:`PyTree Node Registration` for more detailed documentation.
 
 .. autosummary::
 

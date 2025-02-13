@@ -7,7 +7,7 @@
 
 .. automodule:: optree.treespec
 
-Check the :ref:`PyTreeSpec Functions` section for more detailed documentation.
+Check section :ref:`PyTreeSpec Functions` for more detailed documentation.
 
 .. autosummary::
 

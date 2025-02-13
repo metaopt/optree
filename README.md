@@ -116,7 +116,7 @@ True
 > Since OpTree v0.14.1, a new namespace `optree.pytree` is introduced as aliases for `optree.tree_*` functions. The following examples are equivalent to the above:
 >
 > ```python
-> import optree.pytree as pt
+> >>> import optree.pytree as pt
 > >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': 5, 'd': 6}
 > >>> pt.flatten(tree)
 > ([1, 2, 3, 4, 5, 6], PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}))
