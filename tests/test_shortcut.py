@@ -12,24 +12,9 @@ def test_pytree_reexports():
         assert getattr(pytree, name) is getattr(optree, f'tree_{name}')
 
 
-def test_pytree_reexports():
-    # Leave as templates for future tests.
+def test_treespec_reexports():
     # Not all `treespec` functions are re-exported,
-    # assert two sets make non sense.
-
-    # assert set(treespec.__all__) == {
-    #     'leaf',
-    #     'none',
-    #     'tuple',
-    #     'list',
-    #     'dict',
-    #     'namedtuple',
-    #     'ordereddict',
-    #     'defaultdict',
-    #     'deque',
-    #     'structseq',
-    #     'from_collection',
-    # }
+    # only test functions exist in `optree/treespec.py` .
 
     for name in treespec.__all__:
         assert getattr(treespec, name) is getattr(optree, f'treespec_{name}')
