@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""The :mod:`optree.treespec` namespace contains constructors for ``TreeSpec`` class.
+"""The :mod:`optree.treespec` namespace contains constructors for class :class:`optree.PyTreeSpec`.
 
 >>> import optree.treespec as ts
 >>> ts.leaf()
