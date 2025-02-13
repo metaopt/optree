@@ -14,12 +14,12 @@
 # ==============================================================================
 """The :mod:`optree.treespec` namespace contains constructors for class :class:`optree.PyTreeSpec`.
 
->>> import optree.treespec as ts
->>> ts.leaf()
+>>> import optree.treespec as treespec
+>>> treespec.leaf()
 PyTreeSpec(*)
->>> ts.none()
+>>> treespec.none()
 PyTreeSpec(None)
->>> ts.dict({'a': ts.leaf(), 'b': ts.leaf()})
+>>> treespec.dict({'a': treespec.leaf(), 'b': treespec.leaf()})
 PyTreeSpec({'a': *, 'b': *})
 
 .. versionadded:: 0.14.1
