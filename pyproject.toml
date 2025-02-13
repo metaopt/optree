@@ -157,7 +157,12 @@ main.ignore-paths = ["^_C/$", "^tests/$"]
 basic.good-names = []
 design.max-args = 7
 format.max-line-length = 120
-"messages control".disable = ["duplicate-code", "consider-using-from-import"]
+"messages control".disable = [
+    "duplicate-code",
+    "consider-using-from-import",
+    "unpacking-non-sequence",
+    "unsubscriptable-object",
+]
 "messages control".enable = ["c-extension-no-member"]
 spelling.spelling-dict = "en_US"
 spelling.spelling-private-dict-file = "docs/source/spelling_wordlist.txt"
