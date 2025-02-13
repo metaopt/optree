@@ -29,6 +29,7 @@ True
 
 .. versionadded:: 0.14.1
 """
+# pylint: disable=redefined-builtin
 
 from __future__ import annotations
 

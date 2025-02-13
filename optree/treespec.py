@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-# pylint: disable=redefined-builtin
 """The :mod:`optree.treespec` namespace contains constructors for class :class:`optree.PyTreeSpec`.
 
 >>> import optree.treespec as treespec
@@ -25,6 +24,7 @@ PyTreeSpec({'a': *, 'b': *})
 
 .. versionadded:: 0.14.1
 """
+# pylint: disable=redefined-builtin
 
 from __future__ import annotations
 
