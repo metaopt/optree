@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
+- Add module `optree.pytree` and `optree.treespec` by [@lqhuang](https://github.com/lqhuang) in [#186](https://github.com/metaopt/optree/pull/186).
 
 ### Changed
 

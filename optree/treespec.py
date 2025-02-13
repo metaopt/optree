@@ -12,7 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""OpTree: Optimized PyTree Utilities."""
+"""The :mod:`optree.treespec` namespace contains constructors for ``TreeSpec`` class.
+
+>>> import optree.treespec as ts
+>>> ts.leaf()
+PyTreeSpec(*)
+>>> ts.none()
+PyTreeSpec(None)
+>>> ts.dict({'a': ts.leaf(), 'b': ts.leaf()})
+PyTreeSpec({'a': *, 'b': *})
+
+.. versionadded:: 0.14.1
+"""
 
 # pylint: disable=too-many-lines
 
@@ -88,6 +99,8 @@ def leaf(
 
     Returns:
         A treespec representing a leaf node.
+
+    .. versionadded:: 0.14.1
     """
     return _C.make_leaf(
         none_is_leaf,
@@ -141,6 +154,8 @@ def none(
 
     Returns:
         A treespec representing a :data:`None` node.
+
+    .. versionadded:: 0.14.1
     """
     return _C.make_none(
         none_is_leaf,
@@ -188,6 +203,8 @@ def tuple(
 
     Returns:
         A treespec representing a tuple node with the given children.
+
+    .. versionadded:: 0.14.1
     """
     return ops.treespec_tuple(
         iterable,
@@ -236,6 +253,8 @@ def list(
 
     Returns:
         A treespec representing a list node with the given children.
+
+    .. versionadded:: 0.14.1
     """
     return ops.treespec_list(
         iterable,
@@ -286,6 +305,8 @@ def dict(
 
     Returns:
         A treespec representing a dict node with the given children.
+
+    .. versionadded:: 0.14.1
     """
     return ops.treespec_dict(
         mapping,
@@ -333,6 +354,8 @@ def namedtuple(
 
     Returns:
         A treespec representing a dict node with the given children.
+
+    .. versionadded:: 0.14.1
     """
     return ops.treespec_namedtuple(
         namedtuple,
@@ -383,6 +406,8 @@ def ordereddict(
 
     Returns:
         A treespec representing an OrderedDict node with the given children.
+
+    .. versionadded:: 0.14.1
     """
     return ops.treespec_ordereddict(
         mapping,
@@ -439,6 +464,8 @@ def defaultdict(
 
     Returns:
         A treespec representing a defaultdict node with the given children.
+
+    .. versionadded:: 0.14.1
     """
     return ops.treespec_defaultdict(
         default_factory,
@@ -492,6 +519,8 @@ def deque(
 
     Returns:
         A treespec representing a deque node with the given children.
+
+    .. versionadded:: 0.14.1
     """
     return ops.treespec_deque(
         iterable,
@@ -524,6 +553,8 @@ def structseq(
 
     Returns:
         A treespec representing a PyStructSequence node with the given children.
+
+    .. versionadded:: 0.14.1
     """
     return ops.treespec_structseq(
         structseq,
@@ -580,5 +611,7 @@ def from_collection(
 
     Returns:
         A treespec representing the same structure of the collection with the given children.
+
+    .. versionadded:: 0.14.1
     """
     return _C.make_from_collection(collection, none_is_leaf, namespace)

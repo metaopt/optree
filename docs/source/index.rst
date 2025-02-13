@@ -7,6 +7,8 @@ OpTree: Optimized PyTree Utilities
     :maxdepth: 2
 
     ops.rst
+    pytree.rst
+    treespec.rst
 
 .. toctree::
     :maxdepth: 1

@@ -101,6 +101,23 @@ True
 True
 ```
 
+> [!NOTE]
+>
+> Since `v0.14.1`, a new namespace `optree.pytree` is introduced as aliases for `optree.tree_*` functions. The following examples are equivalent to the above:
+>
+> ```python
+> import optree.pytree as pt
+> >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': 5, 'd': 6}
+> >>> pt.flatten(tree)
+> ([1, 2, 3, 4, 5, 6], PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}))
+> >>> pt.flatten(1)
+> ([1], PyTreeSpec(*))
+> >>> pt.flatten(None)
+> ([], PyTreeSpec(None))
+> >>> pt.leaves({'a': [1, 2], 'b': [3]}) == optree.tree_leaves({'b': [3], 'a': [1, 2]})
+> >>> pt.structure({'a': [1, 2], 'b': [3]}) == optree.tree_structure({'b': [3], 'a': [1, 2]})
+> ```
+
 ### Tree Nodes and Leaves
 
 A tree is a collection of non-leaf nodes and leaf nodes, where the leaf nodes have no children to flatten.

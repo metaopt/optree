@@ -12,7 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""OpTree: Optimized PyTree Utilities."""
+"""Utilities for working with ``PyTree``.
+
+The :mod:`optree.pytree` namespace contains aliases of utilities from ``optree.tree_``.
+
+>>> import optree.pytree as pt
+...
+...
+ >>> import optree.pytree as pytree
+>>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+>>> leaves, treespec = pytree.flatten(tree)
+>>> leaves, treespec  # doctest: +IGNORE_WHITESPACE
+(
+    [1, 2, 3, 4, 5],
+    PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
+)
+>>> tree == pytree.unflatten(treespec, leaves)
+True
+
+.. versionadded:: 0.14.1
+"""
 
 # pylint: disable=too-many-lines
 
@@ -136,6 +155,8 @@ def flatten(
     Returns:
         A pair ``(leaves, treespec)`` where the first element is a list of leaf values and the
         second element is a treespec representing the structure of the pytree.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_flatten(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
@@ -210,7 +231,8 @@ def flatten_with_path(
     Returns:
         A triple ``(paths, leaves, treespec)``. The first element is a list of the paths to the leaf
         values, while each path is a tuple of the index or keys. The second element is a list of
-        leaf values and the last element is a treespec representing the structure of the pytree.
+
+    .. versionadded:: 0.14.1    leaf values and the last element is a treespec representing the structure of the pytree.
     """
     return ops.tree_flatten_with_path(
         tree,
@@ -317,6 +339,8 @@ def flatten_with_accessor(
         A triple ``(accessors, leaves, treespec)``. The first element is a list of accessors to the
         leaf values. The second element is a list of leaf values and the last element is a treespec
         representing the structure of the pytree.
+
+    .. versionadded:: 0.14.1
     """  # pylint: disable=line-too-long
     return ops.tree_flatten_with_accessor(
         tree,
@@ -343,8 +367,9 @@ def unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
             number of leaves of the treespec.
 
     Returns:
-        The reconstructed pytree, containing the ``leaves`` placed in the structure described by
-        ``treespec``.
+        The reconstructed pytree, containing the ``leaves`` placed in the structure described by ``treespec``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_unflatten(treespec, leaves)
 
@@ -388,6 +413,8 @@ def iter(
 
     Returns:
         An iterator over the leaf values.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_iter(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
@@ -431,6 +458,8 @@ def leaves(
 
     Returns:
         A list of leaf values.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
@@ -474,6 +503,8 @@ def structure(
 
     Returns:
         A treespec object representing the structure of the pytree.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_structure(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
@@ -517,6 +548,8 @@ def paths(
 
     Returns:
         A list of the paths to the leaf values, while each path is a tuple of the index or keys.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_paths(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
@@ -574,6 +607,8 @@ def accessors(
 
     Returns:
         A list of accessors to the leaf values.
+
+    .. versionadded:: 0.14.1
     """  # pylint: disable=line-too-long
     return ops.tree_accessors(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
@@ -614,6 +649,8 @@ def is_leaf(
 
     Returns:
         A boolean indicating if the given object is a leaf node.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_is_leaf(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
@@ -670,6 +707,8 @@ def map(
         A new pytree with the same structure as ``tree`` but with the value at each leaf given by
         ``func(x, *xs)`` where ``x`` is the value at the corresponding leaf in ``tree`` and ``xs``
         is the tuple of values at corresponding nodes in ``rests``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_map(
         func,
@@ -716,6 +755,8 @@ def map_(
         The original ``tree`` with the value at each leaf is given by the side-effect of function
         ``func(x, *xs)`` (not the return value) where ``x`` is the value at the corresponding leaf
         in ``tree`` and ``xs`` is the tuple of values at values at corresponding nodes in ``rests``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_map_(
         func,
@@ -773,6 +814,8 @@ def map_with_path(
         A new pytree with the same structure as ``tree`` but with the value at each leaf given by
         ``func(p, x, *xs)`` where ``(p, x)`` are the path and value at the corresponding leaf in
         ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_map_with_path(
         func,
@@ -821,6 +864,8 @@ def map_with_path_(
         ``func(p, x, *xs)`` (not the return value) where ``(p, x)`` are the path and value at the
         corresponding leaf in ``tree`` and ``xs`` is the tuple of values at values at corresponding
         nodes in ``rests``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_map_with_path_(
         func,
@@ -901,6 +946,8 @@ def map_with_accessor(
         A new pytree with the same structure as ``tree`` but with the value at each leaf given by
         ``func(a, x, *xs)`` where ``(a, x)`` are the accessor and value at the corresponding leaf in
         ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_map_with_accessor(
         func,
@@ -949,6 +996,8 @@ def map_with_accessor_(
         ``func(a, x, *xs)`` (not the return value) where ``(a, x)`` are the accessor and value at
         the corresponding leaf in ``tree`` and ``xs`` is the tuple of values at values at
         corresponding nodes in ``rests``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_map_with_accessor_(
         func,
@@ -979,6 +1028,8 @@ def replace_nones(sentinel: Any, tree: PyTree[T] | None, /, namespace: str = '')
 
     Returns:
         A new pytree with the same structure as ``tree`` but with :data:`None` replaced.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_replace_nones(sentinel, tree, namespace=namespace)
 
@@ -1026,6 +1077,8 @@ def transpose(
     Returns:
         A new pytree with the same structure as ``inner_treespec`` but with the value at each leaf
         has the same structure as ``outer_treespec``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_transpose(outer_treespec, inner_treespec, tree, is_leaf=is_leaf)
 
@@ -1101,6 +1154,8 @@ def transpose_map(
         leaf has the same structure as ``tree``. The subtree at each leaf is given by the result of
         function ``func(x, *xs)`` where ``x`` is the value at the corresponding leaf in ``tree`` and
         ``xs`` is the tuple of values at corresponding nodes in ``rests``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_transpose_map(
         func,
@@ -1178,6 +1233,8 @@ def transpose_map_with_path(
         leaf has the same structure as ``tree``. The subtree at each leaf is given by the result of
         function ``func(p, x, *xs)`` where ``(p, x)`` are the path and value at the corresponding
         leaf in ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
+
+    .. versionadded:: 0.14.1
     """  # pylint: disable=line-too-long
     return ops.tree_transpose_map_with_path(
         func,
@@ -1282,6 +1339,8 @@ def transpose_map_with_accessor(
         leaf has the same structure as ``tree``. The subtree at each leaf is given by the result of
         function ``func(a, x, *xs)`` where ``(a, x)`` are the accessor and value at the corresponding
         leaf in ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
+
+    .. versionadded:: 0.14.1
     """  # pylint: disable=line-too-long
     return ops.tree_transpose_map_with_accessor(
         func,
@@ -1346,6 +1405,8 @@ def broadcast_prefix(
 
     Returns:
         A pytree of same structure of ``full_tree`` with broadcasted subtrees in ``prefix_tree``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_broadcast_prefix(
         prefix_tree,
@@ -1415,6 +1476,8 @@ def broadcast_common(
 
     Returns:
         Two pytrees of common suffix structure of ``tree`` and ``other_tree`` with broadcasted subtrees.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_broadcast_common(
         tree,
@@ -1481,6 +1544,8 @@ def broadcast_map(
         with the value at each leaf given by ``func(x, *xs)`` where ``x`` is the value at the
         corresponding leaf (may be broadcasted) in ``tree`` and ``xs`` is the tuple of values at
         corresponding leaves (may be broadcasted) in ``rests``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_broadcast_map(
         func,
@@ -1556,6 +1621,8 @@ def broadcast_map_with_path(
         with the value at each leaf given by ``func(p, x, *xs)`` where ``(p, x)`` are the path and
         value at the corresponding leaf (may be broadcasted) in and ``xs`` is the tuple of values at
         corresponding leaves (may be broadcasted) in ``rests``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_broadcast_map_with_path(
         func,
@@ -1645,6 +1712,8 @@ def broadcast_map_with_accessor(
         with the value at each leaf given by ``func(a, x, *xs)`` where ``(a, x)`` are the accessor
         and value at the corresponding leaf (may be broadcasted) in and ``xs`` is the tuple of
         values at corresponding leaves (may be broadcasted) in ``rests``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_broadcast_map_with_accessor(
         func,
@@ -1723,6 +1792,8 @@ def reduce(  # pyright: ignore[reportInconsistentOverload]
 
     Returns:
         The result of reducing the leaves of the pytree using ``func``.
+
+    .. versionadded:: 0.14.1
     """  # pylint: disable=line-too-long
     return ops.tree_reduce(
         func,
@@ -1777,6 +1848,8 @@ def sum(
 
     Returns:
         The total sum of ``start`` and leaf values in ``tree``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_sum(
         tree,
@@ -1873,6 +1946,8 @@ def max(  # pyright: ignore[reportInconsistentOverload]
 
     Returns:
         The maximum leaf value in ``tree``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_max(
         tree,
@@ -1970,6 +2045,8 @@ def min(  # pyright: ignore[reportInconsistentOverload]
 
     Returns:
         The minimum leaf value in ``tree``.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_min(
         tree,
@@ -2023,6 +2100,8 @@ def all(
     Returns:
         :data:`True` if all leaves in ``tree`` are true, or if ``tree`` is empty.
         Otherwise, :data:`False`.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_all(
         tree,
@@ -2074,6 +2153,8 @@ def any(
     Returns:
         :data:`True` if any leaves in ``tree`` are true, otherwise, :data:`False`. If ``tree`` is
         empty, return :data:`False`.
+
+    .. versionadded:: 0.14.1
     """
     return ops.tree_any(
         tree,
@@ -2126,6 +2207,8 @@ def flatten_one_level(
         reconstruct the pytree node. The third element is a tuple of path entries to the children.
         The fourth element is a function that can be used to unflatten the metadata and
         children back to the pytree node.
+
+    .. versionadded:: 0.14.1
     """  # pylint: disable=line-too-long
     return ops.tree_flatten_one_level(
         tree,
