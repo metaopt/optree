@@ -120,8 +120,8 @@ True
 > ([], PyTreeSpec(None))
 > >>> pt.map(lambda x: x**2, tree)
 > {'b': (4, [9, 16]), 'a': 1, 'c': 25, 'd': 36}
-> >>> pt.leaves({'a': [1, 2], 'b': [3]}) == optree.tree_leaves({'b': [3], 'a': [1, 2]})
-> >>> pt.structure({'a': [1, 2], 'b': [3]}) == optree.tree_structure({'b': [3], 'a': [1, 2]})
+> >>> pt.leaves({'a': [1, 2], 'b': [3]}) == pt.leaves({'b': [3], 'a': [1, 2]})
+> >>> pt.structure({'a': [1, 2], 'b': [3]}) == pt.structure({'b': [3], 'a': [1, 2]})
 > ```
 
 ### Tree Nodes and Leaves
