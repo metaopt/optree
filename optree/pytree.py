@@ -1,0 +1,102 @@
+# Copyright 2022-2025 MetaOPT Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+"""Utilities for working with ``PyTree``.
+
+The :mod:`optree.pytree` namespace contains aliases of utilities from ``optree.tree_``.
+
+>>> import optree.pytree as pt
+...
+...
+ >>> import optree.pytree as pytree
+>>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+>>> leaves, treespec = pytree.flatten(tree)
+>>> leaves, treespec  # doctest: +IGNORE_WHITESPACE
+(
+    [1, 2, 3, 4, 5],
+    PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
+)
+>>> tree == pytree.unflatten(treespec, leaves)
+True
+
+.. versionadded:: 0.14.1
+"""
+
+from __future__ import annotations
+
+from optree.ops import tree_accessors as accessors
+from optree.ops import tree_all as all
+from optree.ops import tree_any as any
+from optree.ops import tree_broadcast_map as broadcast_map
+from optree.ops import tree_broadcast_map_with_accessor as broadcast_map_with_accessor
+from optree.ops import tree_broadcast_map_with_path as broadcast_map_with_path
+from optree.ops import tree_flatten as flatten
+from optree.ops import tree_flatten_one_level as flatten_one_level
+from optree.ops import tree_flatten_with_accessor as flatten_with_accessor
+from optree.ops import tree_flatten_with_path as flatten_with_path
+from optree.ops import tree_is_leaf as is_leaf
+from optree.ops import tree_iter as iter
+from optree.ops import tree_leaves as leaves
+from optree.ops import tree_map as map
+from optree.ops import tree_map_ as map_
+from optree.ops import tree_map_with_accessor as map_with_accessor
+from optree.ops import tree_map_with_accessor_ as map_with_accessor_
+from optree.ops import tree_map_with_path as map_with_path
+from optree.ops import tree_map_with_path_ as map_with_path_
+from optree.ops import tree_max as max
+from optree.ops import tree_min as min
+from optree.ops import tree_paths as paths
+from optree.ops import tree_reduce as reduce
+from optree.ops import tree_replace_nones as replace_nones
+from optree.ops import tree_structure as structure
+from optree.ops import tree_sum as sum
+from optree.ops import tree_transpose as transpose
+from optree.ops import tree_transpose_map as transpose_map
+from optree.ops import tree_transpose_map_with_accessor as transpose_map_with_accessor
+from optree.ops import tree_transpose_map_with_path as transpose_map_with_path
+from optree.ops import tree_unflatten as unflatten
+
+
+__all__ = [
+    'flatten',
+    'flatten_one_level',
+    'flatten_with_path',
+    'flatten_with_accessor',
+    'leaves',
+    'structure',
+    'paths',
+    'accessors',
+    'is_leaf',
+    'max',
+    'min',
+    'all',
+    'any',
+    'iter',
+    'sum',
+    'reduce',
+    'map',
+    'map_',
+    'map_with_path',
+    'map_with_path_',
+    'map_with_accessor',
+    'map_with_accessor_',
+    'replace_nones',
+    'transpose',
+    'transpose_map',
+    'transpose_map_with_path',
+    'transpose_map_with_accessor',
+    'broadcast_map',
+    'broadcast_map_with_path',
+    'broadcast_map_with_accessor',
+]
