@@ -70,6 +70,7 @@ from optree.ops import tree_unflatten as unflatten
 
 __all__ = [
     'flatten',
+    'unflatten',
     'flatten_one_level',
     'flatten_with_path',
     'flatten_with_accessor',
