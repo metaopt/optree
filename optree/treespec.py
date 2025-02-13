@@ -29,13 +29,17 @@ PyTreeSpec({'a': *, 'b': *})
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Collection, Iterable, Mapping, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Collection, Iterable, Mapping
 
 import optree._C as _C
 import optree.ops as ops
 
 
 if TYPE_CHECKING:
+    # NOTE: Avoid conflict with `tuple` function in the current module.
+    #       Linters are smart enough to derive the alias `_tuple` to `tuple` correctly.
+    from builtins import tuple as _tuple
+
     from optree.typing import NamedTuple, PyTreeSpec
     from optree.typing import structseq as StructSequence  # noqa: N812
 
@@ -264,7 +268,7 @@ def list(
 
 
 def dict(
-    mapping: Mapping[Any, PyTreeSpec] | Iterable[Tuple[Any, PyTreeSpec]] = (),  # noqa: UP006
+    mapping: Mapping[Any, PyTreeSpec] | Iterable[_tuple[Any, PyTreeSpec]] = (),
     /,
     *,
     none_is_leaf: bool = False,
@@ -365,7 +369,7 @@ def namedtuple(
 
 
 def ordereddict(
-    mapping: Mapping[Any, PyTreeSpec] | Iterable[Tuple[Any, PyTreeSpec]] = (),  # noqa: UP006
+    mapping: Mapping[Any, PyTreeSpec] | Iterable[_tuple[Any, PyTreeSpec]] = (),
     /,
     *,
     none_is_leaf: bool = False,
@@ -419,7 +423,7 @@ def ordereddict(
 
 def defaultdict(
     default_factory: Callable[[], Any] | None = None,
-    mapping: Mapping[Any, PyTreeSpec] | Iterable[Tuple[Any, PyTreeSpec]] = (),  # noqa: UP006
+    mapping: Mapping[Any, PyTreeSpec] | Iterable[_tuple[Any, PyTreeSpec]] = (),
     /,
     *,
     none_is_leaf: bool = False,
