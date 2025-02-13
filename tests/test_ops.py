@@ -3174,7 +3174,7 @@ def test_tree_any():
     dict_should_be_sorted=[False, True],
     dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_tree_flatten_one_level(
+def test_tree_flatten_one_level(  # noqa: C901
     tree,
     none_is_leaf,
     namespace,
@@ -3192,7 +3192,7 @@ def test_tree_flatten_one_level(
         path_stack = []
         accessor_stack = []
 
-        def flatten(node):
+        def flatten(node):  # noqa: C901
             counter = itertools.count()
             expected_children, one_level_treespec = pytree.flatten(
                 node,

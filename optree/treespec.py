@@ -53,6 +53,8 @@ def leaf(
 
     See also :func:`pytree.structure`, :func:`treespec.none`, and :func:`treespec.tuple`.
 
+    >>> import optree.pytree as pytree
+    >>> import optree.treespec as treespec
     >>> treespec.leaf()
     PyTreeSpec(*)
     >>> treespec.leaf(none_is_leaf=True)
@@ -102,6 +104,8 @@ def none(
 
     See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.tuple`.
 
+    >>> import optree.pytree as pytree
+    >>> import optree.treespec as treespec
     >>> treespec.none()
     PyTreeSpec(None)
     >>> treespec.none(none_is_leaf=True)
@@ -155,6 +159,8 @@ def tuple(
 
     See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
+    >>> import optree.pytree as pytree
+    >>> import optree.treespec as treespec
     >>> treespec.tuple([treespec.leaf(), treespec.leaf()])
     PyTreeSpec((*, *))
     >>> treespec.tuple([treespec.leaf(), treespec.leaf(), treespec.none()])
@@ -201,6 +207,8 @@ def list(
 
     See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
+    >>> import optree.pytree as pytree
+    >>> import optree.treespec as treespec
     >>> treespec.list([treespec.leaf(), treespec.leaf()])
     PyTreeSpec([*, *])
     >>> treespec.list([treespec.leaf(), treespec.leaf(), treespec.none()])
@@ -248,6 +256,8 @@ def dict(
 
     See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
+    >>> import optree.pytree as pytree
+    >>> import optree.treespec as treespec
     >>> treespec.dict({'a': treespec.leaf(), 'b': treespec.leaf()})
     PyTreeSpec({'a': *, 'b': *})
     >>> treespec.dict([('b', treespec.leaf()), ('c', treespec.leaf()), ('a', treespec.none())])
@@ -297,6 +307,8 @@ def namedtuple(
     See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
     >>> from collections import namedtuple
+    >>> import optree.pytree as pytree
+    >>> import optree.treespec as treespec
     >>> Point = namedtuple('Point', ['x', 'y'])
     >>> treespec.namedtuple(Point(x=treespec.leaf(), y=treespec.leaf()))
     PyTreeSpec(Point(x=*, y=*))
@@ -341,6 +353,8 @@ def ordereddict(
 
     See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
+    >>> import optree.pytree as pytree
+    >>> import optree.treespec as treespec
     >>> treespec.ordereddict({'a': treespec.leaf(), 'b': treespec.leaf()})
     PyTreeSpec(OrderedDict({'a': *, 'b': *}))
     >>> treespec.ordereddict([('b', treespec.leaf()), ('c', treespec.leaf()), ('a', treespec.none())])
@@ -391,6 +405,8 @@ def defaultdict(
 
     See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
+    >>> import optree.pytree as pytree
+    >>> import optree.treespec as treespec
     >>> treespec.defaultdict(int, {'a': treespec.leaf(), 'b': treespec.leaf()})
     PyTreeSpec(defaultdict(<class 'int'>, {'a': *, 'b': *}))
     >>> treespec.defaultdict(int, [('b', treespec.leaf()), ('c', treespec.leaf()), ('a', treespec.none())])
@@ -445,6 +461,8 @@ def deque(
 
     See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
+    >>> import optree.pytree as pytree
+    >>> import optree.treespec as treespec
     >>> treespec.deque([treespec.leaf(), treespec.leaf()])
     PyTreeSpec(deque([*, *]))
     >>> treespec.deque([treespec.leaf(), treespec.leaf(), treespec.none()], maxlen=5)
@@ -525,6 +543,9 @@ def from_collection(
 
     See also :func:`pytree.structure`, :func:`treespec.leaf`, and :func:`treespec.none`.
 
+    >>> from collections import deque
+    >>> import optree.pytree as pytree
+    >>> import optree.treespec as treespec
     >>> treespec.from_collection(None)
     PyTreeSpec(None)
     >>> treespec.from_collection(None, none_is_leaf=True)
