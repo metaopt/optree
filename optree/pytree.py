@@ -16,10 +16,7 @@
 
 The :mod:`optree.pytree` namespace contains aliases of ``optree.tree_*`` utilities.
 
->>> import optree.pytree as pt
-...
-...
- >>> import optree.pytree as pytree
+>>> import optree.pytree as pytree
 >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
 >>> leaves, treespec = pytree.flatten(tree)
 >>> leaves, treespec  # doctest: +IGNORE_WHITESPACE
