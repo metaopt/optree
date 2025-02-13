@@ -18,10 +18,20 @@ import optree
 
 def test_pytree_reexports():
     tree_operations = [name[len('tree_') :] for name in optree.__all__ if name.startswith('tree_')]
-    assert optree.pytree.__all__ == tree_operations
+    assert optree.pytree.__all__ == [
+        *tree_operations,
+        'register_node',
+        'register_node_class',
+        'unregister_node',
+        'dict_insertion_ordered',
+    ]
 
-    for name in optree.pytree.__all__:
+    for name in tree_operations:
         assert getattr(optree.pytree, name) is getattr(optree, f'tree_{name}')
+    assert optree.pytree.register_node is optree.register_pytree_node
+    assert optree.pytree.register_node_class is optree.register_pytree_node_class
+    assert optree.pytree.unregister_node is optree.unregister_pytree_node
+    assert optree.pytree.dict_insertion_ordered is optree.dict_insertion_ordered
 
 
 def test_treespec_reexports():

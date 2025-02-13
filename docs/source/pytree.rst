@@ -40,3 +40,7 @@ PyTree Operations
     all
     any
     flatten_one_level
+    register_node
+    register_node_class
+    unregister_node
+    dict_insertion_ordered

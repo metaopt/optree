@@ -65,6 +65,10 @@ from optree.ops import tree_transpose_map as transpose_map
 from optree.ops import tree_transpose_map_with_accessor as transpose_map_with_accessor
 from optree.ops import tree_transpose_map_with_path as transpose_map_with_path
 from optree.ops import tree_unflatten as unflatten
+from optree.registry import dict_insertion_ordered
+from optree.registry import register_pytree_node as register_node
+from optree.registry import register_pytree_node_class as register_node_class
+from optree.registry import unregister_pytree_node as unregister_node
 
 
 __all__ = [
@@ -101,4 +105,8 @@ __all__ = [
     'all',
     'any',
     'flatten_one_level',
+    'register_node',
+    'register_node_class',
+    'unregister_node',
+    'dict_insertion_ordered',
 ]

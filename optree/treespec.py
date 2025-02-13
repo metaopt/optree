@@ -24,21 +24,20 @@ PyTreeSpec({'a': *, 'b': *})
 
 .. versionadded:: 0.14.1
 """
-# pylint: disable=redefined-builtin
 
 from __future__ import annotations
 
 from optree.ops import treespec_defaultdict as defaultdict
 from optree.ops import treespec_deque as deque
-from optree.ops import treespec_dict as dict
+from optree.ops import treespec_dict as dict  # pylint: disable=redefined-builtin
 from optree.ops import treespec_from_collection as from_collection
 from optree.ops import treespec_leaf as leaf
-from optree.ops import treespec_list as list
+from optree.ops import treespec_list as list  # pylint: disable=redefined-builtin
 from optree.ops import treespec_namedtuple as namedtuple
 from optree.ops import treespec_none as none
 from optree.ops import treespec_ordereddict as ordereddict
 from optree.ops import treespec_structseq as structseq
-from optree.ops import treespec_tuple as tuple
+from optree.ops import treespec_tuple as tuple  # pylint: disable=redefined-builtin
 
 
 __all__ = [
