@@ -57,6 +57,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     'flatten',
+    'unflatten',
     'flatten_one_level',
     'flatten_with_path',
     'flatten_with_accessor',
@@ -86,6 +87,8 @@ __all__ = [
     'broadcast_map',
     'broadcast_map_with_path',
     'broadcast_map_with_accessor',
+    'broadcast_prefix',
+    'broadcast_common',
 ]
 
 
