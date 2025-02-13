@@ -18,28 +18,22 @@
 
 from __future__ import annotations
 
-import builtins
-import functools
-import itertools
-from collections import deque
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    ClassVar,
-    Collection,
-    Generic,
     Iterable,
     overload,
 )
 
-import optree._C as _C
-from optree.typing import NamedTuple, T
+import optree.ops as ops
+from optree.ops import __MISSING
 
 
 if TYPE_CHECKING:
-    from optree.accessor import PyTreeAccessor, PyTreeEntry
-    from optree.typing import MetaData, PyTree, PyTreeKind, PyTreeSpec, S, U
+    from ops import FlattenOneLevelOutputEx
+    from optree.accessor import PyTreeAccessor
+    from optree.typing import PyTree, PyTreeSpec, S, T, U
 
 
 __all__ = [
@@ -47,7 +41,6 @@ __all__ = [
     'flatten_one_level',
     'flatten_with_path',
     'flatten_with_accessor',
-    'unflatten',
     'leaves',
     'structure',
     'paths',
@@ -87,28 +80,28 @@ def flatten(
 ) -> tuple[list[T], PyTreeSpec]:
     """Flatten a pytree.
 
-    See also :func:`tree.flatten_with_path` and :func:`tree.unflatten`.
+    See also :func:`pytree.flatten_with_path` and :func:`pytree.unflatten`.
 
     The flattening order (i.e., the order of elements in the output list) is deterministic,
     corresponding to a left-to-right depth-first tree traversal.
 
-    >>> from optree import tree
-    >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
-    >>> tree.flatten(pytree)  # doctest: +IGNORE_WHITESPACE
+    >>> import optree.pytree as pt
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> pt.flatten(tree)  # doctest: +IGNORE_WHITESPACE
     (
         [1, 2, 3, 4, 5],
         PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
     )
-    >>> tree.flatten(pytree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    >>> pt.flatten(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
     (
         [1, 2, 3, 4, None, 5],
         PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf)
     )
-    >>> tree.flatten(1)
+    >>> pt.flatten(1)
     ([1], PyTreeSpec(*))
-    >>> tree.flatten(None)
+    >>> pt.flatten(None)
     ([], PyTreeSpec(None))
-    >>> tree.flatten(None, none_is_leaf=True)
+    >>> pt.flatten(None, none_is_leaf=True)
     ([None], PyTreeSpec(*, NoneIsLeaf))
 
     For unordered dictionaries, :class:`dict` and :class:`collections.defaultdict`, the order is
@@ -116,13 +109,13 @@ def flatten(
     if you want to keep the keys in the insertion order.
 
     >>> from collections import OrderedDict
-    >>> pytree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
-    >>> tree.flatten(pytree)  # doctest: +IGNORE_WHITESPACE
+    >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
+    >>> pt.flatten(tree)  # doctest: +IGNORE_WHITESPACE
     (
         [2, 3, 4, 1, 5],
         PyTreeSpec(OrderedDict({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}))
     )
-    >>> tree.flatten(pytree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    >>> pt.flatten(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
     (
         [2, 3, 4, 1, None, 5],
         PyTreeSpec(OrderedDict({'b': (*, [*, *]), 'a': *, 'c': *, 'd': *}), NoneIsLeaf)
@@ -144,7 +137,7 @@ def flatten(
         A pair ``(leaves, treespec)`` where the first element is a list of leaf values and the
         second element is a treespec representing the structure of the pytree.
     """
-    return _C.flatten(tree, is_leaf, none_is_leaf, namespace)
+    return ops.tree_flatten(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
 
 def flatten_with_path(
@@ -157,30 +150,30 @@ def flatten_with_path(
 ) -> tuple[list[tuple[Any, ...]], list[T], PyTreeSpec]:
     """Flatten a pytree and additionally record the paths.
 
-    See also :func:`tree.flatten`, :func:`tree.paths`, and :func:`treespec.paths`.
+    See also :func:`pytree.flatten`, :func:`pytree.paths`, and :func:`treespec.paths`.
 
     The flattening order (i.e., the order of elements in the output list) is deterministic,
     corresponding to a left-to-right depth-first tree traversal.
 
-    >>> from optree import tree
-    >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
-    >>> tree.flatten_with_path(pytree)  # doctest: +IGNORE_WHITESPACE
+    >>> import optree.pytree as pt
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> pt.flatten_with_path(tree)  # doctest: +IGNORE_WHITESPACE
     (
         [('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('d',)],
         [1, 2, 3, 4, 5],
         PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
     )
-    >>> tree.flatten_with_path(pytree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    >>> pt.flatten_with_path(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
     (
         [('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('c',), ('d',)],
         [1, 2, 3, 4, None, 5],
         PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf)
     )
-    >>> tree.flatten_with_path(1)
+    >>> pt.flatten_with_path(1)
     ([()], [1], PyTreeSpec(*))
-    >>> tree.flatten_with_path(None)
+    >>> pt.flatten_with_path(None)
     ([], [], PyTreeSpec(None))
-    >>> tree.flatten_with_path(None, none_is_leaf=True)
+    >>> pt.flatten_with_path(None, none_is_leaf=True)
     ([()], [None], PyTreeSpec(*, NoneIsLeaf))
 
     For unordered dictionaries, :class:`dict` and :class:`collections.defaultdict`, the order is
@@ -188,14 +181,14 @@ def flatten_with_path(
     if you want to keep the keys in the insertion order.
 
     >>> from collections import OrderedDict
-    >>> pytree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
-    >>> tree.flatten_with_path(pytree)  # doctest: +IGNORE_WHITESPACE
+    >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
+    >>> pt.flatten_with_path(tree)  # doctest: +IGNORE_WHITESPACE
     (
         [('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('d',)],
         [2, 3, 4, 1, 5],
         PyTreeSpec(OrderedDict({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}))
     )
-    >>> tree.flatten_with_path(pytree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    >>> pt.flatten_with_path(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
     (
         [('b', 0), ('b', 1, 0), ('b', 1, 1), ('a',), ('c',), ('d',)],
         [2, 3, 4, 1, None, 5],
@@ -219,7 +212,12 @@ def flatten_with_path(
         values, while each path is a tuple of the index or keys. The second element is a list of
         leaf values and the last element is a treespec representing the structure of the pytree.
     """
-    return _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)
+    return ops.tree_flatten_with_path(
+        tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 def flatten_with_accessor(
@@ -232,14 +230,14 @@ def flatten_with_accessor(
 ) -> tuple[list[PyTreeAccessor], list[T], PyTreeSpec]:
     """Flatten a pytree and additionally record the accessors.
 
-    See also :func:`tree.flatten`, :func:`tree.accessors`, and :func:`treespec.accessors`.
+    See also :func:`pytree.flatten`, :func:`pytree.accessors`, and :func:`treespec.accessors`.
 
     The flattening order (i.e., the order of elements in the output list) is deterministic,
     corresponding to a left-to-right depth-first tree traversal.
 
-    >>> from optree import tree
-    >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
-    >>> tree.flatten_with_accessor(pytree)  # doctest: +IGNORE_WHITESPACE
+    >>> import optree.pytree as pt
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> pt.flatten_with_accessor(tree)  # doctest: +IGNORE_WHITESPACE
     (
         [
             PyTreeAccessor(*['a'], (MappingEntry(key='a', type=<class 'dict'>),)),
@@ -251,7 +249,7 @@ def flatten_with_accessor(
         [1, 2, 3, 4, 5],
         PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
     )
-    >>> tree.flatten_with_accessor(pytree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    >>> pt.flatten_with_accessor(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
     (
         [
             PyTreeAccessor(*['a'], (MappingEntry(key='a', type=<class 'dict'>),)),
@@ -264,11 +262,11 @@ def flatten_with_accessor(
         [1, 2, 3, 4, None, 5],
         PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf)
     )
-    >>> tree.flatten_with_accessor(1)
+    >>> pt.flatten_with_accessor(1)
     ([PyTreeAccessor(*, ())], [1], PyTreeSpec(*))
-    >>> tree.flatten_with_accessor(None)
+    >>> pt.flatten_with_accessor(None)
     ([], [], PyTreeSpec(None))
-    >>> tree.flatten_with_accessor(None, none_is_leaf=True)
+    >>> pt.flatten_with_accessor(None, none_is_leaf=True)
     ([PyTreeAccessor(*, ())], [None], PyTreeSpec(*, NoneIsLeaf))
 
     For unordered dictionaries, :class:`dict` and :class:`collections.defaultdict`, the order is
@@ -276,8 +274,8 @@ def flatten_with_accessor(
     if you want to keep the keys in the insertion order.
 
     >>> from collections import OrderedDict
-    >>> pytree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
-    >>> tree.flatten_with_accessor(pytree)  # doctest: +IGNORE_WHITESPACE
+    >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
+    >>> pt.flatten_with_accessor(tree)  # doctest: +IGNORE_WHITESPACE
     (
         [
             PyTreeAccessor(*['b'][0], (MappingEntry(key='b', type=<class 'collections.OrderedDict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
@@ -289,7 +287,7 @@ def flatten_with_accessor(
         [2, 3, 4, 1, 5],
         PyTreeSpec(OrderedDict({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}))
     )
-    >>> tree.flatten_with_accessor(pytree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    >>> pt.flatten_with_accessor(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
     (
         [
             PyTreeAccessor(*['b'][0], (MappingEntry(key='b', type=<class 'collections.OrderedDict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
@@ -320,19 +318,23 @@ def flatten_with_accessor(
         leaf values. The second element is a list of leaf values and the last element is a treespec
         representing the structure of the pytree.
     """  # pylint: disable=line-too-long
-    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
-    return treespec.accessors(), leaves, treespec
+    return ops.tree_flatten_with_accessor(
+        tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 def unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
     """Reconstruct a pytree from the treespec and the leaves.
 
-    The inverse of :func:`tree.flatten`.
+    The inverse of :func:`pytree.flatten`.
 
-    >>> from optree import tree
-    >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
-    >>> leaves, treespec = tree.flatten(pytree)
-    >>> pytree == tree.unflatten(treespec, leaves)
+    >>> import optree.pytree as pt
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> leaves, treespec = pt.flatten(tree)
+    >>> tree == pt.unflatten(treespec, leaves)
     True
 
     Args:
@@ -344,10 +346,10 @@ def unflatten(treespec: PyTreeSpec, leaves: Iterable[T]) -> PyTree[T]:
         The reconstructed pytree, containing the ``leaves`` placed in the structure described by
         ``treespec``.
     """
-    return treespec.unflatten(leaves)
+    return ops.tree_unflatten(treespec, leaves)
 
 
-def _tree_iter(
+def iter(
     tree: PyTree[T],
     /,
     is_leaf: Callable[[T], bool] | None = None,
@@ -357,13 +359,13 @@ def _tree_iter(
 ) -> Iterable[T]:
     """Get an iterator over the leaves of a pytree.
 
-    See also :func:`tree.flatten` and :func:`tree.leaves`.
+    See also :func:`pytree.flatten` and :func:`pytree.leaves`.
 
-    >>> from optree import tree
-    >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
-    >>> list(tree.iter(pytree))
+    >>> import optree.pytree as pt
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> list(tree.iter(tree))
     [1, 2, 3, 4, 5]
-    >>> list(tree.iter(pytree, none_is_leaf=True))
+    >>> list(tree.iter(tree, none_is_leaf=True))
     [1, 2, 3, 4, None, 5]
     >>> list(tree.iter(1))
     [1]
@@ -387,10 +389,10 @@ def _tree_iter(
     Returns:
         An iterator over the leaf values.
     """
-    return _C.PyTreeIter(tree, is_leaf, none_is_leaf, namespace)
+    return ops.tree_iter(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
 
-def _tree_leaves(
+def leaves(
     tree: PyTree[T],
     /,
     is_leaf: Callable[[T], bool] | None = None,
@@ -400,19 +402,19 @@ def _tree_leaves(
 ) -> list[T]:
     """Get the leaves of a pytree.
 
-    See also :func:`tree.flatten` and :func:`tree.iter`.
+    See also :func:`pytree.flatten` and :func:`pytree.iter`.
 
-    >>> from optree import tree
-    >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
-    >>> tree.leaves(pytree)
+    >>> import optree.pytree as pt
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> pt.leaves(tree)
     [1, 2, 3, 4, 5]
-    >>> tree.leaves(pytree, none_is_leaf=True)
+    >>> pt.leaves(tree, none_is_leaf=True)
     [1, 2, 3, 4, None, 5]
-    >>> tree.leaves(1)
+    >>> pt.leaves(1)
     [1]
-    >>> tree.leaves(None)
+    >>> pt.leaves(None)
     []
-    >>> tree.leaves(None, none_is_leaf=True)
+    >>> pt.leaves(None, none_is_leaf=True)
     [None]
 
     Args:
@@ -430,10 +432,10 @@ def _tree_leaves(
     Returns:
         A list of leaf values.
     """
-    return _C.flatten(tree, is_leaf, none_is_leaf, namespace)[0]
+    return ops.tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
 
-def _tree_structure(
+def structure(
     tree: PyTree[T],
     /,
     is_leaf: Callable[[T], bool] | None = None,
@@ -443,19 +445,19 @@ def _tree_structure(
 ) -> PyTreeSpec:
     """Get the treespec for a pytree.
 
-    See also :func:`tree.flatten`.
+    See also :func:`pytree.flatten`.
 
-    >>> from optree import tree
-    >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
-    >>> tree.structure(pytree)
+    >>> import optree.pytree as pt
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> pt.structure(tree)
     PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
-    >>> tree.structure(pytree, none_is_leaf=True)
+    >>> pt.structure(tree, none_is_leaf=True)
     PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': *, 'd': *}, NoneIsLeaf)
-    >>> tree.structure(1)
+    >>> pt.structure(1)
     PyTreeSpec(*)
-    >>> tree.structure(None)
+    >>> pt.structure(None)
     PyTreeSpec(None)
-    >>> tree.structure(None, none_is_leaf=True)
+    >>> pt.structure(None, none_is_leaf=True)
     PyTreeSpec(*, NoneIsLeaf)
 
     Args:
@@ -473,7 +475,7 @@ def _tree_structure(
     Returns:
         A treespec object representing the structure of the pytree.
     """
-    return _C.flatten(tree, is_leaf, none_is_leaf, namespace)[1]
+    return ops.tree_structure(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
 
 def paths(
@@ -486,19 +488,19 @@ def paths(
 ) -> list[tuple[Any, ...]]:
     """Get the path entries to the leaves of a pytree.
 
-    See also :func:`tree.flatten`, :func:`tree.flatten_with_path`, and :func:`treespec.paths`.
+    See also :func:`pytree.flatten`, :func:`pytree.flatten_with_path`, and :func:`treespec.paths`.
 
-    >>> from optree import tree
-    >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
-    >>> tree.paths(pytree)
+    >>> import optree.pytree as pt
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> pt.paths(tree)
     [('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('d',)]
-    >>> tree.paths(pytree, none_is_leaf=True)
+    >>> pt.paths(tree, none_is_leaf=True)
     [('a',), ('b', 0), ('b', 1, 0), ('b', 1, 1), ('c',), ('d',)]
-    >>> tree.paths(1)
+    >>> pt.paths(1)
     [()]
-    >>> tree.paths(None)
+    >>> pt.paths(None)
     []
-    >>> tree.paths(None, none_is_leaf=True)
+    >>> pt.paths(None, none_is_leaf=True)
     [()]
 
     Args:
@@ -516,7 +518,7 @@ def paths(
     Returns:
         A list of the paths to the leaf values, while each path is a tuple of the index or keys.
     """
-    return _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)[0]
+    return ops.tree_paths(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
 
 def accessors(
@@ -529,12 +531,12 @@ def accessors(
 ) -> list[PyTreeAccessor]:
     """Get the accessors to the leaves of a pytree.
 
-    See also :func:`tree.flatten`, :func:`tree.flatten_with_accessor`, and
+    See also :func:`pytree.flatten`, :func:`pytree.flatten_with_accessor`, and
     :func:`treespec.accessors`.
 
-    >>> from optree import tree
-    >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
-    >>> tree.accessors(pytree)  # doctest: +IGNORE_WHITESPACE
+    >>> import optree.pytree as pt
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+    >>> pt.accessors(tree)  # doctest: +IGNORE_WHITESPACE
     [
         PyTreeAccessor(*['a'], (MappingEntry(key='a', type=<class 'dict'>),)),
         PyTreeAccessor(*['b'][0], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
@@ -542,7 +544,7 @@ def accessors(
         PyTreeAccessor(*['b'][1][1], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=1, type=<class 'tuple'>), SequenceEntry(index=1, type=<class 'list'>))),
         PyTreeAccessor(*['d'], (MappingEntry(key='d', type=<class 'dict'>),))
     ]
-    >>> tree.accessors(pytree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
+    >>> pt.accessors(tree, none_is_leaf=True)  # doctest: +IGNORE_WHITESPACE
     [
         PyTreeAccessor(*['a'], (MappingEntry(key='a', type=<class 'dict'>),)),
         PyTreeAccessor(*['b'][0], (MappingEntry(key='b', type=<class 'dict'>), SequenceEntry(index=0, type=<class 'tuple'>))),
@@ -551,11 +553,11 @@ def accessors(
         PyTreeAccessor(*['c'], (MappingEntry(key='c', type=<class 'dict'>),)),
         PyTreeAccessor(*['d'], (MappingEntry(key='d', type=<class 'dict'>),))
     ]
-    >>> tree.accessors(1)
+    >>> pt.accessors(1)
     [PyTreeAccessor(*, ())]
-    >>> tree.accessors(None)
+    >>> pt.accessors(None)
     []
-    >>> tree.accessors(None, none_is_leaf=True)
+    >>> pt.accessors(None, none_is_leaf=True)
     [PyTreeAccessor(*, ())]
 
     Args:
@@ -573,7 +575,7 @@ def accessors(
     Returns:
         A list of accessors to the leaf values.
     """  # pylint: disable=line-too-long
-    return _C.flatten(tree, is_leaf, none_is_leaf, namespace)[1].accessors()
+    return ops.tree_accessors(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
 
 def is_leaf(
@@ -586,16 +588,16 @@ def is_leaf(
 ) -> bool:
     """Test whether the given object is a leaf node.
 
-    See also :func:`tree.flatten`, :func:`tree.leaves`, and :func:`all_leaves`.
+    See also :func:`pytree.flatten`, :func:`pytree.leaves`, and :func:`all_leaves`.
 
-    >>> from optree import tree
-    >>> tree.is_leaf(1)
+    >>> import optree.pytree as pt
+    >>> pt.is_leaf(1)
     True
-    >>> tree.is_leaf(None)
+    >>> pt.is_leaf(None)
     False
-    >>> tree.is_leaf(None, none_is_leaf=True)
+    >>> pt.is_leaf(None, none_is_leaf=True)
     True
-    >>> tree.is_leaf({'a': 1, 'b': (2, 3)})
+    >>> pt.is_leaf({'a': 1, 'b': (2, 3)})
     False
 
     Args:
@@ -613,10 +615,10 @@ def is_leaf(
     Returns:
         A boolean indicating if the given object is a leaf node.
     """
-    return _C.is_leaf(tree, is_leaf, none_is_leaf, namespace)  # type: ignore[arg-type]
+    return ops.tree_is_leaf(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
 
 
-def _tree_map(
+def map(
     func: Callable[..., U],
     tree: PyTree[T],
     /,
@@ -627,23 +629,23 @@ def _tree_map(
 ) -> PyTree[U]:
     """Map a multi-input function over pytree args to produce a new pytree.
 
-    See also :func:`tree.map_`, :func:`tree.map_with_path`, :func:`tree.map_with_path_`,
-    and :func:`tree.broadcast_map`.
+    See also :func:`pytree.map_`, :func:`pytree.map_with_path`, :func:`pytree.map_with_path_`,
+    and :func:`pytree.broadcast_map`.
 
-    >>> from optree import tree
-    >>> tree.map(lambda x: x + 1, {'x': 7, 'y': (42, 64)})
+    >>> import optree.pytree as pt
+    >>> pt.map(lambda x: x + 1, {'x': 7, 'y': (42, 64)})
     {'x': 8, 'y': (43, 65)}
-    >>> tree.map(lambda x: x + 1, {'x': 7, 'y': (42, 64), 'z': None})
+    >>> pt.map(lambda x: x + 1, {'x': 7, 'y': (42, 64), 'z': None})
     {'x': 8, 'y': (43, 65), 'z': None}
-    >>> tree.map(lambda x: x is None, {'x': 7, 'y': (42, 64), 'z': None})
+    >>> pt.map(lambda x: x is None, {'x': 7, 'y': (42, 64), 'z': None})
     {'x': False, 'y': (False, False), 'z': None}
-    >>> tree.map(lambda x: x is None, {'x': 7, 'y': (42, 64), 'z': None}, none_is_leaf=True)
+    >>> pt.map(lambda x: x is None, {'x': 7, 'y': (42, 64), 'z': None}, none_is_leaf=True)
     {'x': False, 'y': (False, False), 'z': True}
 
     If multiple inputs are given, the structure of the tree is taken from the first input;
     subsequent inputs need only have ``tree`` as a prefix:
 
-    >>> tree.map(lambda x, y: [x] + y, [5, 6], [[7, 9], [1, 2]])
+    >>> pt.map(lambda x, y: [x] + y, [5, 6], [[7, 9], [1, 2]])
     [[5, 7, 9], [6, 1, 2]]
 
     Args:
@@ -669,9 +671,14 @@ def _tree_map(
         ``func(x, *xs)`` where ``x`` is the value at the corresponding leaf in ``tree`` and ``xs``
         is the tuple of values at corresponding nodes in ``rests``.
     """
-    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
-    flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
-    return treespec.unflatten(builtins.map(func, *flat_args))
+    return ops.tree_map(
+        func,
+        tree,
+        *rests,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 def map_(
@@ -683,9 +690,9 @@ def map_(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTree[T]:
-    """Like :func:`tree.map`, but do an inplace call on each leaf and return the original tree.
+    """Like :func:`pytree.map`, but do an inplace call on each leaf and return the original tree.
 
-    See also :func:`tree.map`, :func:`tree.map_with_path`, and :func:`tree.map_with_path_`.
+    See also :func:`pytree.map`, :func:`pytree.map_with_path`, and :func:`pytree.map_with_path_`.
 
     Args:
         func (callable): A function that takes ``1 + len(rests)`` arguments, to be applied at the
@@ -710,10 +717,14 @@ def map_(
         ``func(x, *xs)`` (not the return value) where ``x`` is the value at the corresponding leaf
         in ``tree`` and ``xs`` is the tuple of values at values at corresponding nodes in ``rests``.
     """
-    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
-    flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
-    deque(builtins.map(func, *flat_args), maxlen=0)  # consume and exhaust the iterable
-    return tree
+    return ops.tree_map_(
+        func,
+        tree,
+        *rests,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 def map_with_path(
@@ -727,16 +738,16 @@ def map_with_path(
 ) -> PyTree[U]:
     """Map a multi-input function over pytree args as well as the tree paths to produce a new pytree.
 
-    See also :func:`tree.map`, :func:`tree.map_`, and :func:`tree.map_with_path_`.
+    See also :func:`pytree.map`, :func:`pytree.map_`, and :func:`pytree.map_with_path_`.
 
-    >>> from optree import tree
-    >>> tree.map_with_path(lambda p, x: (len(p), x), {'x': 7, 'y': (42, 64)})
+    >>> import optree.pytree as pt
+    >>> pt.map_with_path(lambda p, x: (len(p), x), {'x': 7, 'y': (42, 64)})
     {'x': (1, 7), 'y': ((2, 42), (2, 64))}
-    >>> tree.map_with_path(lambda p, x: x + len(p), {'x': 7, 'y': (42, 64), 'z': None})
+    >>> pt.map_with_path(lambda p, x: x + len(p), {'x': 7, 'y': (42, 64), 'z': None})
     {'x': 8, 'y': (44, 66), 'z': None}
-    >>> tree.map_with_path(lambda p, x: p, {'x': 7, 'y': (42, 64), 'z': {1.5: None}})
+    >>> pt.map_with_path(lambda p, x: p, {'x': 7, 'y': (42, 64), 'z': {1.5: None}})
     {'x': ('x',), 'y': (('y', 0), ('y', 1)), 'z': {1.5: None}}
-    >>> tree.map_with_path(lambda p, x: p, {'x': 7, 'y': (42, 64), 'z': {1.5: None}}, none_is_leaf=True)
+    >>> pt.map_with_path(lambda p, x: p, {'x': 7, 'y': (42, 64), 'z': {1.5: None}}, none_is_leaf=True)
     {'x': ('x',), 'y': (('y', 0), ('y', 1)), 'z': {1.5: ('z', 1.5)}}
 
     Args:
@@ -763,9 +774,14 @@ def map_with_path(
         ``func(p, x, *xs)`` where ``(p, x)`` are the path and value at the corresponding leaf in
         ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
     """
-    paths, leaves, treespec = _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)
-    flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
-    return treespec.unflatten(builtins.map(func, paths, *flat_args))
+    return ops.tree_map_with_path(
+        func,
+        tree,
+        *rests,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 def map_with_path_(
@@ -777,9 +793,9 @@ def map_with_path_(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTree[T]:
-    """Like :func:`tree.map_with_path`, but do an inplace call on each leaf and return the original tree.
+    """Like :func:`pytree.map_with_path`, but do an inplace call on each leaf and return the original tree.
 
-    See also :func:`tree.map`, :func:`tree.map_`, and :func:`tree.map_with_path`.
+    See also :func:`pytree.map`, :func:`pytree.map_`, and :func:`pytree.map_with_path`.
 
     Args:
         func (callable): A function that takes ``2 + len(rests)`` arguments, to be applied at the
@@ -806,10 +822,14 @@ def map_with_path_(
         corresponding leaf in ``tree`` and ``xs`` is the tuple of values at values at corresponding
         nodes in ``rests``.
     """
-    paths, leaves, treespec = _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)
-    flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
-    deque(builtins.map(func, paths, *flat_args), maxlen=0)  # consume and exhaust the iterable
-    return tree
+    return ops.tree_map_with_path_(
+        func,
+        tree,
+        *rests,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 def map_with_accessor(
@@ -823,14 +843,14 @@ def map_with_accessor(
 ) -> PyTree[U]:
     """Map a multi-input function over pytree args as well as the tree accessors to produce a new pytree.
 
-    See also :func:`tree.map`, :func:`tree.map_`, and :func:`tree.map_with_accessor_`.
+    See also :func:`pytree.map`, :func:`pytree.map_`, and :func:`pytree.map_with_accessor_`.
 
-    >>> from optree import tree
-    >>> tree.map_with_accessor(lambda a, x: f'{a.codify("tree")} = {x!r}', {'x': 7, 'y': (42, 64)})
+    >>> import optree.pytree as pt
+    >>> pt.map_with_accessor(lambda a, x: f'{a.codify("tree")} = {x!r}', {'x': 7, 'y': (42, 64)})
     {'x': "tree['x'] = 7", 'y': ("tree['y'][0] = 42", "tree['y'][1] = 64")}
-    >>> tree.map_with_accessor(lambda a, x: x + len(a), {'x': 7, 'y': (42, 64), 'z': None})
+    >>> pt.map_with_accessor(lambda a, x: x + len(a), {'x': 7, 'y': (42, 64), 'z': None})
     {'x': 8, 'y': (44, 66), 'z': None}
-    >>> tree.map_with_accessor(  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
+    >>> pt.map_with_accessor(  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
     ...     lambda a, x: a,
     ...     {'x': 7, 'y': (42, 64), 'z': {1.5: None}},
     ... )
@@ -842,7 +862,7 @@ def map_with_accessor(
         ),
         'z': {1.5: None}
     }
-    >>> tree.map_with_accessor(  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
+    >>> pt.map_with_accessor(  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
     ...     lambda a, x: a,
     ...     {'x': 7, 'y': (42, 64), 'z': {1.5: None}},
     ...     none_is_leaf=True,
@@ -882,9 +902,14 @@ def map_with_accessor(
         ``func(a, x, *xs)`` where ``(a, x)`` are the accessor and value at the corresponding leaf in
         ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
     """
-    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
-    flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
-    return treespec.unflatten(builtins.map(func, treespec.accessors(), *flat_args))
+    return ops.tree_map_with_accessor(
+        func,
+        tree,
+        *rests,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 def map_with_accessor_(
@@ -896,9 +921,9 @@ def map_with_accessor_(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTree[T]:
-    """Like :func:`tree.map_with_accessor`, but do an inplace call on each leaf and return the original tree.
+    """Like :func:`pytree.map_with_accessor`, but do an inplace call on each leaf and return the original tree.
 
-    See also :func:`tree.map`, :func:`tree.map_`, and :func:`tree.map_with_accessor`.
+    See also :func:`pytree.map`, :func:`pytree.map_`, and :func:`pytree.map_with_accessor`.
 
     Args:
         func (callable): A function that takes ``2 + len(rests)`` arguments, to be applied at the
@@ -925,24 +950,25 @@ def map_with_accessor_(
         the corresponding leaf in ``tree`` and ``xs`` is the tuple of values at values at
         corresponding nodes in ``rests``.
     """
-    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
-    flat_args = [leaves] + [treespec.flatten_up_to(r) for r in rests]
-    deque(  # consume and exhaust the iterable
-        builtins.map(func, treespec.accessors(), *flat_args),
-        maxlen=0,
+    return ops.tree_map_with_accessor_(
+        func,
+        tree,
+        *rests,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
-    return tree
 
 
 def replace_nones(sentinel: Any, tree: PyTree[T] | None, /, namespace: str = '') -> PyTree[T]:
     """Replace :data:`None` in ``tree`` with ``sentinel``.
 
-    See also :func:`tree.flatten` and :func:`tree.map`.
+    See also :func:`pytree.flatten` and :func:`pytree.map`.
 
-    >>> from optree import tree
-    >>> tree.replace_nones(0, {'a': 1, 'b': None, 'c': (2, None)})
+    >>> import optree.pytree as pt
+    >>> pt.replace_nones(0, {'a': 1, 'b': None, 'c': (2, None)})
     {'a': 1, 'b': 0, 'c': (2, 0)}
-    >>> tree.replace_nones(0, None)
+    >>> pt.replace_nones(0, None)
     0
 
     Args:
@@ -954,14 +980,7 @@ def replace_nones(sentinel: Any, tree: PyTree[T] | None, /, namespace: str = '')
     Returns:
         A new pytree with the same structure as ``tree`` but with :data:`None` replaced.
     """
-    if tree is None:
-        return sentinel
-    return _tree_map(
-        lambda x: x if x is not None else sentinel,
-        tree,
-        none_is_leaf=True,
-        namespace=namespace,
-    )
+    return ops.tree_replace_nones(sentinel, tree, namespace=namespace)
 
 
 def transpose(
@@ -973,17 +992,17 @@ def transpose(
 ) -> PyTree[T]:  # PyTree[PyTree[T]]
     """Transform a tree having tree structure (outer, inner) into one having structure (inner, outer).
 
-    See also :func:`tree.flatten`, :func:`tree.structure`, and :func:`tree.transpose_map`.
+    See also :func:`pytree.flatten`, :func:`pytree.structure`, and :func:`pytree.transpose_map`.
 
-    >>> from optree import tree
-    >>> outer_treespec = tree.structure({'a': 1, 'b': 2, 'c': (3, 4)})
+    >>> import optree.pytree as pt
+    >>> outer_treespec = pt.structure({'a': 1, 'b': 2, 'c': (3, 4)})
     >>> outer_treespec
     PyTreeSpec({'a': *, 'b': *, 'c': (*, *)})
-    >>> inner_treespec = tree.structure((1, 2))
+    >>> inner_treespec = pt.structure((1, 2))
     >>> inner_treespec
     PyTreeSpec((*, *))
-    >>> pytree = {'a': (1, 2), 'b': (3, 4), 'c': ((5, 6), (7, 8))}
-    >>> tree.transpose(outer_treespec, inner_treespec, pytree)
+    >>> tree = {'a': (1, 2), 'b': (3, 4), 'c': ((5, 6), (7, 8))}
+    >>> pt.transpose(outer_treespec, inner_treespec, tree)
     ({'a': 1, 'b': 3, 'c': (5, 7)}, {'a': 2, 'b': 4, 'c': (6, 8)})
 
     For performance reasons, this function is only checks for the number of leaves in the input
@@ -992,7 +1011,7 @@ def transpose(
     is responsible for ensuring that the input pytree has a prefix structure of ``outer_treespec``
     followed by a prefix structure of ``inner_treespec``. Otherwise, the result may be incorrect.
 
-    >>> tree.transpose(outer_treespec, inner_treespec, list(range(1, 9)))
+    >>> pt.transpose(outer_treespec, inner_treespec, list(range(1, 9)))
     ({'a': 1, 'b': 3, 'c': (5, 7)}, {'a': 2, 'b': 4, 'c': (6, 8)})
 
     Args:
@@ -1008,39 +1027,7 @@ def transpose(
         A new pytree with the same structure as ``inner_treespec`` but with the value at each leaf
         has the same structure as ``outer_treespec``.
     """
-    if outer_treespec.none_is_leaf != inner_treespec.none_is_leaf:
-        raise ValueError('Tree structures must have the same none_is_leaf value.')
-    outer_size = outer_treespec.num_leaves
-    inner_size = inner_treespec.num_leaves
-    if outer_size == 0 or inner_size == 0:
-        raise ValueError('Tree structures must have at least one leaf.')
-    if (
-        outer_treespec.namespace
-        and inner_treespec.namespace
-        and outer_treespec.namespace != inner_treespec.namespace
-    ):
-        raise ValueError(
-            f'Tree structures must have the same namespace, '
-            f'got {outer_treespec.namespace!r} vs. {inner_treespec.namespace!r}.',
-        )
-
-    leaves, treespec = flatten(
-        tree,
-        is_leaf=is_leaf,
-        none_is_leaf=outer_treespec.none_is_leaf,
-        namespace=outer_treespec.namespace or inner_treespec.namespace,
-    )
-    if treespec.num_leaves != outer_size * inner_size:
-        expected_treespec = outer_treespec.compose(inner_treespec)
-        raise TypeError(f'Tree structure mismatch; expected: {expected_treespec}, got: {treespec}.')
-
-    grouped = [
-        leaves[offset : offset + inner_size]
-        for offset in range(0, outer_size * inner_size, inner_size)
-    ]
-    transposed = builtins.zip(*grouped)
-    subtrees = builtins.map(outer_treespec.unflatten, transposed)
-    return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
+    return ops.tree_transpose(outer_treespec, inner_treespec, tree, is_leaf=is_leaf)
 
 
 def transpose_map(
@@ -1055,11 +1042,11 @@ def transpose_map(
 ) -> PyTree[U]:  # PyTree[PyTree[U]]
     """Map a multi-input function over pytree args to produce a new pytree with transposed structure.
 
-    See also :func:`tree.map`, :func:`tree.map_with_path`, and :func:`tree.transpose`.
+    See also :func:`pytree.map`, :func:`pytree.map_with_path`, and :func:`pytree.transpose`.
 
-    >>> from optree import tree
-    >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
-    >>> tree.transpose_map(  # doctest: +IGNORE_WHITESPACE
+    >>> import optree.pytree as pt
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
+    >>> pt.transpose_map(  # doctest: +IGNORE_WHITESPACE
     ...     lambda x: {'identity': x, 'double': 2 * x},
     ...     pytree,
     ... )
@@ -1067,7 +1054,7 @@ def transpose_map(
         'identity': {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)},
         'double': {'b': (4, [6, 8]), 'a': 2, 'c': (10, 12)}
     }
-    >>> tree.transpose_map(  # doctest: +IGNORE_WHITESPACE
+    >>> pt.transpose_map(  # doctest: +IGNORE_WHITESPACE
     ...     lambda x: {'identity': x, 'double': (x, x)},
     ...     pytree,
     ... )
@@ -1078,7 +1065,7 @@ def transpose_map(
             {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
         )
     }
-    >>> tree.transpose_map(  # doctest: +IGNORE_WHITESPACE
+    >>> pt.transpose_map(  # doctest: +IGNORE_WHITESPACE
     ...     lambda x: {'identity': x, 'double': (x, x)},
     ...     pytree,
     ...     inner_treespec=tree.structure({'identity': 0, 'double': 0}),
@@ -1115,26 +1102,15 @@ def transpose_map(
         function ``func(x, *xs)`` where ``x`` is the value at the corresponding leaf in ``tree`` and
         ``xs`` is the tuple of values at corresponding nodes in ``rests``.
     """
-    leaves, outer_treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
-    if outer_treespec.num_leaves == 0:
-        raise ValueError(f'The outer structure must have at least one leaf. Got: {outer_treespec}.')
-    flat_args = [leaves] + [outer_treespec.flatten_up_to(r) for r in rests]
-    outputs = list(builtins.map(func, *flat_args))
-
-    if inner_treespec is None:
-        inner_treespec = _tree_structure(
-            outputs[0],
-            is_leaf=is_leaf,  # type: ignore[arg-type]
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-    if inner_treespec.num_leaves == 0:
-        raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
-
-    grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
-    transposed = builtins.zip(*grouped)
-    subtrees = builtins.map(outer_treespec.unflatten, transposed)
-    return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
+    return ops.tree_transpose_map(
+        func,
+        tree,
+        *rests,
+        inner_treespec=inner_treespec,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 def transpose_map_with_path(
@@ -1149,22 +1125,22 @@ def transpose_map_with_path(
 ) -> PyTree[U]:  # PyTree[PyTree[U]]
     """Map a multi-input function over pytree args as well as the tree paths to produce a new pytree with transposed structure.
 
-    See also :func:`tree.map_with_path`, :func:`tree.transpose_map`, and :func:`tree.transpose`.
+    See also :func:`pytree.map_with_path`, :func:`pytree.transpose_map`, and :func:`pytree.transpose`.
 
-    >>> from optree import tree
-    >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
-    >>> tree.transpose_map_with_path(  # doctest: +IGNORE_WHITESPACE
+    >>> import optree.pytree as pt
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
+    >>> pt.transpose_map_with_path(  # doctest: +IGNORE_WHITESPACE
     ...     lambda p, x: {'depth': len(p), 'value': x},
-    ...     pytree,
+    ...     tree,
     ... )
     {
         'depth': {'b': (2, [3, 3]), 'a': 1, 'c': (2, 2)},
         'value': {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
     }
-    >>> tree.transpose_map_with_path(  # doctest: +IGNORE_WHITESPACE
+    >>> pt.transpose_map_with_path(  # doctest: +IGNORE_WHITESPACE
     ...     lambda p, x: {'path': p, 'value': x},
-    ...     pytree,
-    ...     inner_treespec=tree.structure({'path': 0, 'value': 0}),
+    ...     tree,
+    ...     inner_treespec=pt.structure({'path': 0, 'value': 0}),
     ... )
     {
         'path': {
@@ -1203,26 +1179,15 @@ def transpose_map_with_path(
         function ``func(p, x, *xs)`` where ``(p, x)`` are the path and value at the corresponding
         leaf in ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
     """  # pylint: disable=line-too-long
-    paths, leaves, outer_treespec = _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)
-    if outer_treespec.num_leaves == 0:
-        raise ValueError(f'The outer structure must have at least one leaf. Got: {outer_treespec}.')
-    flat_args = [leaves] + [outer_treespec.flatten_up_to(r) for r in rests]
-    outputs = list(builtins.map(func, paths, *flat_args))
-
-    if inner_treespec is None:
-        inner_treespec = _tree_structure(
-            outputs[0],
-            is_leaf=is_leaf,  # type: ignore[arg-type]
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-    if inner_treespec.num_leaves == 0:
-        raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
-
-    grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
-    transposed = builtins.zip(*grouped)
-    subtrees = builtins.map(outer_treespec.unflatten, transposed)
-    return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
+    return ops.tree_transpose_map_with_path(
+        func,
+        tree,
+        *rests,
+        inner_treespec=inner_treespec,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 def transpose_map_with_accessor(
@@ -1237,11 +1202,11 @@ def transpose_map_with_accessor(
 ) -> PyTree[U]:  # PyTree[PyTree[U]]
     """Map a multi-input function over pytree args as well as the tree accessors to produce a new pytree with transposed structure.
 
-    See also :func:`tree.map_with_accessor`, :func:`tree.transpose_map`, and :func:`tree.transpose`.
+    See also :func:`pytree.map_with_accessor`, :func:`pytree.transpose_map`, and :func:`pytree.transpose`.
 
-    >>> from optree import tree
-    >>> pytree = {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
-    >>> tree.transpose_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
+    >>> import optree.pytree as pt
+    >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
+    >>> pt.transpose_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
     ...     lambda a, x: {'depth': len(a), 'code': a.codify('tree'), 'value': x},
     ...     pytree,
     ... )
@@ -1262,10 +1227,10 @@ def transpose_map_with_accessor(
             'c': (5, 6)
         }
     }
-    >>> tree.transpose_map_with_accessor(  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
+    >>> pt.transpose_map_with_accessor(  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
     ...     lambda a, x: {'path': a.path, 'accessor': a, 'value': x},
     ...     pytree,
-    ...     inner_treespec=tree.structure({'path': 0, 'accessor': 0, 'value': 0}),
+    ...     inner_treespec=pt.structure({'path': 0, 'accessor': 0, 'value': 0}),
     ... )
     {
         'path': {
@@ -1318,26 +1283,15 @@ def transpose_map_with_accessor(
         function ``func(a, x, *xs)`` where ``(a, x)`` are the accessor and value at the corresponding
         leaf in ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
     """  # pylint: disable=line-too-long
-    leaves, outer_treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
-    if outer_treespec.num_leaves == 0:
-        raise ValueError(f'The outer structure must have at least one leaf. Got: {outer_treespec}.')
-    flat_args = [leaves] + [outer_treespec.flatten_up_to(r) for r in rests]
-    outputs = list(builtins.map(func, outer_treespec.accessors(), *flat_args))
-
-    if inner_treespec is None:
-        inner_treespec = _tree_structure(
-            outputs[0],
-            is_leaf=is_leaf,  # type: ignore[arg-type]
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-    if inner_treespec.num_leaves == 0:
-        raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
-
-    grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
-    transposed = builtins.zip(*grouped)
-    subtrees = builtins.map(outer_treespec.unflatten, transposed)
-    return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
+    return ops.tree_transpose_map_with_accessor(
+        func,
+        tree,
+        *rests,
+        inner_treespec=inner_treespec,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 def broadcast_prefix(
@@ -1351,7 +1305,7 @@ def broadcast_prefix(
 ) -> PyTree[T]:  # PyTree[PyTree[T]]
     """Return a pytree of same structure of ``full_tree`` with broadcasted subtrees in ``prefix_tree``.
 
-    See also :func:`broadcast_prefix`, :func:`tree.broadcast_common`, and :func:`treespec.is_prefix`.
+    See also :func:`broadcast_prefix`, :func:`pytree.broadcast_common`, and :func:`treespec.is_prefix`.
 
     If a ``prefix_tree`` is a prefix of a ``full_tree``, this means the ``full_tree`` can be
     constructed by replacing the leaves of ``prefix_tree`` with appropriate **subtrees**.
@@ -1360,20 +1314,20 @@ def broadcast_prefix(
     from ``prefix_tree``. The number of replicas is determined by the corresponding subtree in
     ``full_tree``.
 
-    >>> from optree import tree
-    >>> tree.broadcast_prefix(1, [2, 3, 4])
+    >>> import optree.pytree as pt
+    >>> pt.broadcast_prefix(1, [2, 3, 4])
     [1, 1, 1]
-    >>> tree.broadcast_prefix([1, 2, 3], [4, 5, 6])
+    >>> pt.broadcast_prefix([1, 2, 3], [4, 5, 6])
     [1, 2, 3]
-    >>> tree.broadcast_prefix([1, 2, 3], [4, 5, 6, 7])
+    >>> pt.broadcast_prefix([1, 2, 3], [4, 5, 6, 7])
     Traceback (most recent call last):
         ...
     ValueError: list arity mismatch; expected: 3, got: 4; list: [4, 5, 6, 7].
-    >>> tree.broadcast_prefix([1, 2, 3], [4, 5, (6, 7)])
+    >>> pt.broadcast_prefix([1, 2, 3], [4, 5, (6, 7)])
     [1, 2, (3, 3)]
-    >>> tree.broadcast_prefix([1, 2, 3], [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}])
+    >>> pt.broadcast_prefix([1, 2, 3], [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}])
     [1, 2, {'a': 3, 'b': 3, 'c': (None, 3)}]
-    >>> tree.broadcast_prefix([1, 2, 3], [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}], none_is_leaf=True)
+    >>> pt.broadcast_prefix([1, 2, 3], [4, 5, {'a': 6, 'b': 7, 'c': (None, 8)}], none_is_leaf=True)
     [1, 2, {'a': 3, 'b': 3, 'c': (3, 3)}]
 
     Args:
@@ -1393,27 +1347,7 @@ def broadcast_prefix(
     Returns:
         A pytree of same structure of ``full_tree`` with broadcasted subtrees in ``prefix_tree``.
     """
-
-    def broadcast_leaves(x: T, subtree: PyTree[S]) -> PyTree[T]:
-        subtreespec = _tree_structure(
-            subtree,
-            is_leaf=is_leaf,  # type: ignore[arg-type]
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-        return subtreespec.unflatten(itertools.repeat(x, subtreespec.num_leaves))
-
-    # If prefix_tree is not a tree prefix of full_tree, this code can raise a ValueError;
-    # use prefix_errors to find disagreements and raise more precise error messages.
-    # errors = prefix_errors(
-    #     prefix_tree,
-    #     full_tree,
-    #     is_leaf=is_leaf,
-    #     none_is_leaf=none_is_leaf,
-    #     namespace=namespace,
-    # )
-    return _tree_map(
-        broadcast_leaves,  # type: ignore[arg-type]
+    return ops.tree_broadcast_prefix(
         prefix_tree,
         full_tree,
         is_leaf=is_leaf,
@@ -1433,7 +1367,7 @@ def broadcast_common(
 ) -> tuple[PyTree[T], PyTree[T]]:
     """Return two pytrees of common suffix structure of ``tree`` and ``other_tree`` with broadcasted subtrees.
 
-    See also :func:`broadcast_common`, :func:`tree.broadcast_prefix`, and :func:`treespec.is_prefix`.
+    See also :func:`broadcast_common`, :func:`pytree.broadcast_prefix`, and :func:`treespec.is_prefix`.
 
     If a ``suffix_tree`` is a suffix of a ``tree``, this means the ``suffix_tree`` can be
     constructed by replacing the leaves of ``tree`` with appropriate **subtrees**.
@@ -1443,26 +1377,26 @@ def broadcast_common(
     ``other_tree``. The number of replicas is determined by the corresponding subtree in the suffix
     structure.
 
-    >>> from optree import tree
-    >>> tree.broadcast_common(1, [2, 3, 4])
+    >>> import optree.pytree as pt
+    >>> pt.broadcast_common(1, [2, 3, 4])
     ([1, 1, 1], [2, 3, 4])
-    >>> tree.broadcast_common([1, 2, 3], [4, 5, 6])
+    >>> pt.broadcast_common([1, 2, 3], [4, 5, 6])
     ([1, 2, 3], [4, 5, 6])
-    >>> tree.broadcast_common([1, 2, 3], [4, 5, 6, 7])
+    >>> pt.broadcast_common([1, 2, 3], [4, 5, 6, 7])
     Traceback (most recent call last):
         ...
     ValueError: list arity mismatch; expected: 3, got: 4.
-    >>> tree.broadcast_common([1, (2, 3), 4], [5, 6, (7, 8)])
+    >>> pt.broadcast_common([1, (2, 3), 4], [5, 6, (7, 8)])
     ([1, (2, 3), (4, 4)], [5, (6, 6), (7, 8)])
-    >>> tree.broadcast_common([1, {'a': (2, 3)}, 4], [5, 6, {'a': 7, 'b': 8, 'c': (None, 9)}])
+    >>> pt.broadcast_common([1, {'a': (2, 3)}, 4], [5, 6, {'a': 7, 'b': 8, 'c': (None, 9)}])
     ([1, {'a': (2, 3)}, {'a': 4, 'b': 4, 'c': (None, 4)}],
      [5, {'a': (6, 6)}, {'a': 7, 'b': 8, 'c': (None, 9)}])
-    >>> tree.broadcast_common([1, {'a': (2, 3)}, 4], [5, 6, {'a': 7, 'b': 8, 'c': (None, 9)}], none_is_leaf=True)
+    >>> pt.broadcast_common([1, {'a': (2, 3)}, 4], [5, 6, {'a': 7, 'b': 8, 'c': (None, 9)}], none_is_leaf=True)
     ([1, {'a': (2, 3)}, {'a': 4, 'b': 4, 'c': (4, 4)}],
      [5, {'a': (6, 6)}, {'a': 7, 'b': 8, 'c': (None, 9)}])
-    >>> tree.broadcast_common([1, None], [None, 2])
+    >>> pt.broadcast_common([1, None], [None, 2])
     ([None, None], [None, None])
-    >>> tree.broadcast_common([1, None], [None, 2], none_is_leaf=True)
+    >>> pt.broadcast_common([1, None], [None, 2], none_is_leaf=True)
     ([1, None], [None, 2])
 
     Args:
@@ -1482,74 +1416,13 @@ def broadcast_common(
     Returns:
         Two pytrees of common suffix structure of ``tree`` and ``other_tree`` with broadcasted subtrees.
     """
-    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
-    other_leaves, other_treespec = _C.flatten(other_tree, is_leaf, none_is_leaf, namespace)
-    common_suffix_treespec = treespec.broadcast_to_common_suffix(other_treespec)
-
-    sentinel: T = object()  # type: ignore[assignment]
-    common_suffix_tree: PyTree[T] = common_suffix_treespec.unflatten(
-        itertools.repeat(sentinel, common_suffix_treespec.num_leaves),
+    return ops.tree_broadcast_common(
+        tree,
+        other_tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
-
-    def broadcast_leaves(x: T, subtree: PyTree[T]) -> PyTree[T]:
-        subtreespec = _tree_structure(
-            subtree,
-            is_leaf=is_leaf,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-        return subtreespec.unflatten(itertools.repeat(x, subtreespec.num_leaves))
-
-    broadcasted_tree: PyTree[T] = treespec.unflatten(
-        builtins.map(
-            broadcast_leaves,  # type: ignore[arg-type]
-            leaves,
-            treespec.flatten_up_to(common_suffix_tree),
-        ),
-    )
-    other_broadcasted_tree: PyTree[T] = other_treespec.unflatten(
-        builtins.map(
-            broadcast_leaves,  # type: ignore[arg-type]
-            other_leaves,
-            other_treespec.flatten_up_to(common_suffix_tree),
-        ),
-    )
-    return broadcasted_tree, other_broadcasted_tree
-
-
-def _broadcast_common(
-    tree: PyTree[T],
-    /,
-    *rests: PyTree[T],
-    is_leaf: Callable[[T], bool] | None = None,
-    none_is_leaf: bool = False,
-    namespace: str = '',
-) -> tuple[PyTree[T], ...]:
-    """Helper function for :func:`broadcast_common`."""
-    if not rests:
-        return (tree,)
-    if len(rests) == 1:
-        return broadcast_common(
-            tree,
-            rests[0],
-            is_leaf=is_leaf,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-
-    broadcasted_tree = tree
-    broadcasted_rests = list(rests)
-    for _ in range(2):
-        for i, rest in enumerate(rests):
-            broadcasted_tree, broadcasted_rests[i] = broadcast_common(
-                broadcasted_tree,
-                rest,
-                is_leaf=is_leaf,
-                none_is_leaf=none_is_leaf,
-                namespace=namespace,
-            )
-
-    return (broadcasted_tree, *broadcasted_rests)
 
 
 # pylint: disable-next=too-many-locals
@@ -1564,25 +1437,25 @@ def broadcast_map(
 ) -> PyTree[U]:
     """Map a multi-input function over pytree args to produce a new pytree.
 
-    See also :func:`tree.broadcast_map_with_path`, :func:`tree.map`, :func:`tree.map_`,
-    and :func:`tree.map_with_path`.
+    See also :func:`pytree.broadcast_map_with_path`, :func:`pytree.map`, :func:`pytree.map_`,
+    and :func:`pytree.map_with_path`.
 
-    If only one input is provided, this function is the same as :func:`tree.map`:
+    If only one input is provided, this function is the same as :func:`pytree.map`:
 
-    >>> from optree import tree
-    >>> tree.broadcast_map(lambda x: x + 1, {'x': 7, 'y': (42, 64)})
+    >>> import optree.pytree as pt
+    >>> pt.broadcast_map(lambda x: x + 1, {'x': 7, 'y': (42, 64)})
     {'x': 8, 'y': (43, 65)}
-    >>> tree.broadcast_map(lambda x: x + 1, {'x': 7, 'y': (42, 64), 'z': None})
+    >>> pt.broadcast_map(lambda x: x + 1, {'x': 7, 'y': (42, 64), 'z': None})
     {'x': 8, 'y': (43, 65), 'z': None}
-    >>> tree.broadcast_map(lambda x: x is None, {'x': 7, 'y': (42, 64), 'z': None})
+    >>> pt.broadcast_map(lambda x: x is None, {'x': 7, 'y': (42, 64), 'z': None})
     {'x': False, 'y': (False, False), 'z': None}
-    >>> tree.broadcast_map(lambda x: x is None, {'x': 7, 'y': (42, 64), 'z': None}, none_is_leaf=True)
+    >>> pt.broadcast_map(lambda x: x is None, {'x': 7, 'y': (42, 64), 'z': None}, none_is_leaf=True)
     {'x': False, 'y': (False, False), 'z': True}
 
     If multiple inputs are given, all input trees will be broadcasted to the common suffix structure
     of all inputs:
 
-    >>> tree.broadcast_map(lambda x, y: x * y, [5, 6, (3, 4)], [{'a': 7, 'b': 9}, [1, 2], 8])
+    >>> pt.broadcast_map(lambda x, y: x * y, [5, 6, (3, 4)], [{'a': 7, 'b': 9}, [1, 2], 8])
     [{'a': 35, 'b': 45}, [6, 12], (24, 32)]
 
     Args:
@@ -1609,15 +1482,10 @@ def broadcast_map(
         corresponding leaf (may be broadcasted) in ``tree`` and ``xs`` is the tuple of values at
         corresponding leaves (may be broadcasted) in ``rests``.
     """
-    return _tree_map(
+    return ops.tree_broadcast_map(
         func,
-        *_broadcast_common(
-            tree,
-            *rests,
-            is_leaf=is_leaf,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        ),
+        tree,
+        *rests,
         is_leaf=is_leaf,
         none_is_leaf=none_is_leaf,
         namespace=namespace,
@@ -1636,25 +1504,25 @@ def broadcast_map_with_path(
 ) -> PyTree[U]:
     """Map a multi-input function over pytree args as well as the tree paths to produce a new pytree.
 
-    See also :func:`tree.broadcast_map`, :func:`tree.map`, :func:`tree.map_`,
-    and :func:`tree.map_with_path`.
+    See also :func:`pytree.broadcast_map`, :func:`pytree.map`, :func:`pytree.map_`,
+    and :func:`pytree.map_with_path`.
 
-    If only one input is provided, this function is the same as :func:`tree.map`:
+    If only one input is provided, this function is the same as :func:`pytree.map`:
 
-    >>> from optree import tree
-    >>> tree.broadcast_map_with_path(lambda p, x: (len(p), x), {'x': 7, 'y': (42, 64)})
+    >>> import optree.pytree as pt
+    >>> pt.broadcast_map_with_path(lambda p, x: (len(p), x), {'x': 7, 'y': (42, 64)})
     {'x': (1, 7), 'y': ((2, 42), (2, 64))}
-    >>> tree.broadcast_map_with_path(lambda p, x: x + len(p), {'x': 7, 'y': (42, 64), 'z': None})
+    >>> pt.broadcast_map_with_path(lambda p, x: x + len(p), {'x': 7, 'y': (42, 64), 'z': None})
     {'x': 8, 'y': (44, 66), 'z': None}
-    >>> tree.broadcast_map_with_path(lambda p, x: p, {'x': 7, 'y': (42, 64), 'z': {1.5: None}})
+    >>> pt.broadcast_map_with_path(lambda p, x: p, {'x': 7, 'y': (42, 64), 'z': {1.5: None}})
     {'x': ('x',), 'y': (('y', 0), ('y', 1)), 'z': {1.5: None}}
-    >>> tree.broadcast_map_with_path(lambda p, x: p, {'x': 7, 'y': (42, 64), 'z': {1.5: None}}, none_is_leaf=True)
+    >>> pt.broadcast_map_with_path(lambda p, x: p, {'x': 7, 'y': (42, 64), 'z': {1.5: None}}, none_is_leaf=True)
     {'x': ('x',), 'y': (('y', 0), ('y', 1)), 'z': {1.5: ('z', 1.5)}}
 
     If multiple inputs are given, all input trees will be broadcasted to the common suffix structure
     of all inputs:
 
-    >>> tree.broadcast_map_with_path(  # doctest: +IGNORE_WHITESPACE
+    >>> pt.broadcast_map_with_path(  # doctest: +IGNORE_WHITESPACE
     ...     lambda p, x, y: (p, x * y),
     ...     [5, 6, (3, 4)],
     ...     [{'a': 7, 'b': 9}, [1, 2], 8],
@@ -1689,15 +1557,10 @@ def broadcast_map_with_path(
         value at the corresponding leaf (may be broadcasted) in and ``xs`` is the tuple of values at
         corresponding leaves (may be broadcasted) in ``rests``.
     """
-    return map_with_path(
+    return ops.tree_broadcast_map_with_path(
         func,
-        *_broadcast_common(
-            tree,
-            *rests,
-            is_leaf=is_leaf,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        ),
+        tree,
+        *rests,
         is_leaf=is_leaf,
         none_is_leaf=none_is_leaf,
         namespace=namespace,
@@ -1715,17 +1578,17 @@ def broadcast_map_with_accessor(
 ) -> PyTree[U]:
     """Map a multi-input function over pytree args as well as the tree accessors to produce a new pytree.
 
-    See also :func:`tree.broadcast_map`, :func:`tree.map`, :func:`tree.map_`,
-    and :func:`tree.map_with_accessor`.
+    See also :func:`pytree.broadcast_map`, :func:`pytree.map`, :func:`pytree.map_`,
+    and :func:`pytree.map_with_accessor`.
 
-    If only one input is provided, this function is the same as :func:`tree.map`:
+    If only one input is provided, this function is the same as :func:`pytree.map`:
 
-    >>> from optree import tree
-    >>> tree.broadcast_map_with_accessor(lambda a, x: (len(a), x), {'x': 7, 'y': (42, 64)})
+    >>> import optree.pytree as pt
+    >>> pt.broadcast_map_with_accessor(lambda a, x: (len(a), x), {'x': 7, 'y': (42, 64)})
     {'x': (1, 7), 'y': ((2, 42), (2, 64))}
-    >>> tree.broadcast_map_with_accessor(lambda a, x: x + len(a), {'x': 7, 'y': (42, 64), 'z': None})
+    >>> pt.broadcast_map_with_accessor(lambda a, x: x + len(a), {'x': 7, 'y': (42, 64), 'z': None})
     {'x': 8, 'y': (44, 66), 'z': None}
-    >>> tree.broadcast_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
+    >>> pt.broadcast_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
     ...     lambda a, x: a.codify('tree'),
     ...     {'x': 7, 'y': (42, 64), 'z': {1.5: None}},
     ... )
@@ -1734,7 +1597,7 @@ def broadcast_map_with_accessor(
         'y': ("tree['y'][0]", "tree['y'][1]"),
         'z': {1.5: None}
     }
-    >>> tree.broadcast_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
+    >>> pt.broadcast_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
     ...     lambda a, x: a.codify('tree'),
     ...     {'x': 7, 'y': (42, 64), 'z': {1.5: None}},
     ...     none_is_leaf=True,
@@ -1748,7 +1611,7 @@ def broadcast_map_with_accessor(
     If multiple inputs are given, all input trees will be broadcasted to the common suffix structure
     of all inputs:
 
-    >>> tree.broadcast_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
+    >>> pt.broadcast_map_with_accessor(  # doctest: +IGNORE_WHITESPACE
     ...     lambda a, x, y: f'{a.codify("tree")} = {x * y}',
     ...     [5, 6, (3, 4)],
     ...     [{'a': 7, 'b': 9}, [1, 2], 8],
@@ -1783,31 +1646,14 @@ def broadcast_map_with_accessor(
         and value at the corresponding leaf (may be broadcasted) in and ``xs`` is the tuple of
         values at corresponding leaves (may be broadcasted) in ``rests``.
     """
-    return map_with_accessor(
+    return ops.tree_broadcast_map_with_accessor(
         func,
-        *_broadcast_common(
-            tree,
-            *rests,
-            is_leaf=is_leaf,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        ),
+        tree,
+        *rests,
         is_leaf=is_leaf,
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
-
-
-# pylint: disable-next=missing-class-docstring,too-few-public-methods
-class MissingSentinel:  # pragma: no cover
-    __slots__: ClassVar[tuple[()]] = ()
-
-    def __repr__(self) -> str:
-        return '<MISSING>'
-
-
-__MISSING: T = MissingSentinel()  # type: ignore[valid-type]
-del MissingSentinel
 
 
 @overload
@@ -1835,7 +1681,7 @@ def reduce(
 ) -> T: ...
 
 
-def reduce(
+def reduce(  # pyright: ignore[reportInconsistentOverload]
     func: Callable[[T, S], T],
     tree: PyTree[S],
     /,
@@ -1847,16 +1693,16 @@ def reduce(
 ) -> T:
     """Traversal through a pytree and reduce the leaves in left-to-right depth-first order.
 
-    See also :func:`tree.leaves` and :func:`tree.sum`.
+    See also :func:`pytree.leaves` and :func:`pytree.sum`.
 
-    >>> from optree import tree
-    >>> tree.reduce(lambda x, y: x + y, {'x': 1, 'y': (2, 3)})
+    >>> import optree.pytree as pt
+    >>> pt.reduce(lambda x, y: x + y, {'x': 1, 'y': (2, 3)})
     6
-    >>> tree.reduce(lambda x, y: x + y, {'x': 1, 'y': (2, None), 'z': 3})  # `None` is a non-leaf node with arity 0 by default
+    >>> pt.reduce(lambda x, y: x + y, {'x': 1, 'y': (2, None), 'z': 3})  # `None` is a non-leaf node with arity 0 by default
     6
-    >>> tree.reduce(lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3})
+    >>> pt.reduce(lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3})
     3
-    >>> tree.reduce(lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
+    >>> pt.reduce(lambda x, y: x and y, {'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
     None
 
     Args:
@@ -1878,13 +1724,17 @@ def reduce(
     Returns:
         The result of reducing the leaves of the pytree using ``func``.
     """  # pylint: disable=line-too-long
-    leaves = _tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
-    if initial is __MISSING:
-        return functools.reduce(func, leaves)  # type: ignore[arg-type,return-value]
-    return functools.reduce(func, leaves, initial)
+    return ops.tree_reduce(
+        func,
+        tree,
+        initial=initial,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
-def _tree_sum(
+def sum(
     tree: PyTree[T],
     /,
     start: T = 0,  # type: ignore[assignment]
@@ -1895,20 +1745,20 @@ def _tree_sum(
 ) -> T:
     """Sum ``start`` and leaf values in ``tree`` in left-to-right depth-first order and return the total.
 
-    See also :func:`tree.leaves` and :func:`tree.reduce`.
+    See also :func:`pytree.leaves` and :func:`pytree.reduce`.
 
-    >>> from optree import tree
-    >>> tree.sum({'x': 1, 'y': (2, 3)})
+    >>> import optree.pytree as pt
+    >>> pt.sum({'x': 1, 'y': (2, 3)})
     6
-    >>> tree.sum({'x': 1, 'y': (2, None), 'z': 3})  # `None` is a non-leaf node with arity 0 by default
+    >>> pt.sum({'x': 1, 'y': (2, None), 'z': 3})  # `None` is a non-leaf node with arity 0 by default
     6
-    >>> tree.sum({'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
+    >>> pt.sum({'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
     Traceback (most recent call last):
         ...
     TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'
-    >>> tree.sum({'x': 'a', 'y': ('b', None), 'z': 'c'}, start='')
+    >>> pt.sum({'x': 'a', 'y': ('b', None), 'z': 'c'}, start='')
     'abc'
-    >>> tree.sum({'x': [1], 'y': ([2], [None]), 'z': [3]}, start=[], is_leaf=lambda x: isinstance(x, list))
+    >>> pt.sum({'x': [1], 'y': ([2], [None]), 'z': [3]}, start=[], is_leaf=lambda x: isinstance(x, list))
     [1, 2, None, 3]
 
     Args:
@@ -1928,17 +1778,17 @@ def _tree_sum(
     Returns:
         The total sum of ``start`` and leaf values in ``tree``.
     """
-    leaves = _tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
-    # sum() rejects string values for `start` parameter
-    if isinstance(start, str):
-        return ''.join([start, *leaves])  # type: ignore[list-item,return-value]
-    if isinstance(start, (bytes, bytearray)):
-        return b''.join([start, *leaves])  # type: ignore[list-item,return-value]
-    return builtins.sum(leaves, start)  # type: ignore[call-overload]
+    return ops.tree_sum(
+        tree,
+        start=start,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 @overload
-def _tree_max(
+def max(
     tree: PyTree[T],
     /,
     *,
@@ -1950,7 +1800,7 @@ def _tree_max(
 
 
 @overload
-def _tree_max(
+def max(
     tree: PyTree[T],
     /,
     *,
@@ -1962,7 +1812,7 @@ def _tree_max(
 ) -> T: ...
 
 
-def _tree_max(
+def max(  # pyright: ignore[reportInconsistentOverload]
     tree: PyTree[T],
     /,
     *,
@@ -1974,34 +1824,34 @@ def _tree_max(
 ) -> T:
     """Return the maximum leaf value in ``tree``.
 
-    See also :func:`tree.leaves` and :func:`tree.min`.
+    See also :func:`pytree.leaves` and :func:`pytree.min`.
 
-    >>> from optree import tree
-    >>> tree.max({})
+    >>> import optree.pytree as pt
+    >>> pt.max({})
     Traceback (most recent call last):
         ...
     ValueError: max() iterable argument is empty
-    >>> tree.max({}, default=0)
+    >>> pt.max({}, default=0)
     0
-    >>> tree.max({'x': 0, 'y': (2, 1)})
+    >>> pt.max({'x': 0, 'y': (2, 1)})
     2
-    >>> tree.max({'x': 0, 'y': (2, 1)}, key=lambda x: -x)
+    >>> pt.max({'x': 0, 'y': (2, 1)}, key=lambda x: -x)
     0
-    >>> tree.max({'a': None})  # `None` is a non-leaf node with arity 0 by default
+    >>> pt.max({'a': None})  # `None` is a non-leaf node with arity 0 by default
     Traceback (most recent call last):
         ...
     ValueError: max() iterable argument is empty
-    >>> tree.max({'a': None}, default=0)  # `None` is a non-leaf node with arity 0 by default
+    >>> pt.max({'a': None}, default=0)  # `None` is a non-leaf node with arity 0 by default
     0
-    >>> tree.max({'a': None}, none_is_leaf=True)
+    >>> pt.max({'a': None}, none_is_leaf=True)
     None
-    >>> tree.max(None)  # `None` is a non-leaf node with arity 0 by default
+    >>> pt.max(None)  # `None` is a non-leaf node with arity 0 by default
     Traceback (most recent call last):
         ...
     ValueError: max() iterable argument is empty
-    >>> tree.max(None, default=0)
+    >>> pt.max(None, default=0)
     0
-    >>> tree.max(None, none_is_leaf=True)
+    >>> pt.max(None, none_is_leaf=True)
     None
 
     Args:
@@ -2024,14 +1874,18 @@ def _tree_max(
     Returns:
         The maximum leaf value in ``tree``.
     """
-    leaves = _tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
-    if default is __MISSING:
-        return builtins.max(leaves, key=key)  # type: ignore[type-var,arg-type]
-    return builtins.max(leaves, default=default, key=key)  # type: ignore[type-var,arg-type]
+    return ops.tree_max(
+        tree,
+        default=default,
+        key=key,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
 @overload
-def _tree_min(
+def min(
     tree: PyTree[T],
     /,
     *,
@@ -2043,7 +1897,7 @@ def _tree_min(
 
 
 @overload
-def _tree_min(
+def min(
     tree: PyTree[T],
     /,
     *,
@@ -2055,7 +1909,7 @@ def _tree_min(
 ) -> T: ...
 
 
-def _tree_min(
+def min(  # pyright: ignore[reportInconsistentOverload]
     tree: PyTree[T],
     /,
     *,
@@ -2067,34 +1921,34 @@ def _tree_min(
 ) -> T:
     """Return the minimum leaf value in ``tree``.
 
-    See also :func:`tree.leaves` and :func:`tree.max`.
+    See also :func:`pytree.leaves` and :func:`pytree.max`.
 
-    >>> from optree import tree
-    >>> tree.min({})
+    >>> import optree.pytree as pt
+    >>> pt.min({})
     Traceback (most recent call last):
         ...
     ValueError: min() iterable argument is empty
-    >>> tree.min({}, default=0)
+    >>> pt.min({}, default=0)
     0
-    >>> tree.min({'x': 0, 'y': (2, 1)})
+    >>> pt.min({'x': 0, 'y': (2, 1)})
     0
-    >>> tree.min({'x': 0, 'y': (2, 1)}, key=lambda x: -x)
+    >>> pt.min({'x': 0, 'y': (2, 1)}, key=lambda x: -x)
     2
-    >>> tree.min({'a': None})  # `None` is a non-leaf node with arity 0 by default
+    >>> pt.min({'a': None})  # `None` is a non-leaf node with arity 0 by default
     Traceback (most recent call last):
         ...
     ValueError: min() iterable argument is empty
-    >>> tree.min({'a': None}, default=0)  # `None` is a non-leaf node with arity 0 by default
+    >>> pt.min({'a': None}, default=0)  # `None` is a non-leaf node with arity 0 by default
     0
-    >>> tree.min({'a': None}, none_is_leaf=True)
+    >>> pt.min({'a': None}, none_is_leaf=True)
     None
-    >>> tree.min(None)  # `None` is a non-leaf node with arity 0 by default
+    >>> pt.min(None)  # `None` is a non-leaf node with arity 0 by default
     Traceback (most recent call last):
         ...
     ValueError: min() iterable argument is empty
-    >>> tree.min(None, default=0)
+    >>> pt.min(None, default=0)
     0
-    >>> tree.min(None, none_is_leaf=True)
+    >>> pt.min(None, none_is_leaf=True)
     None
 
     Args:
@@ -2117,13 +1971,17 @@ def _tree_min(
     Returns:
         The minimum leaf value in ``tree``.
     """
-    leaves = _tree_leaves(tree, is_leaf=is_leaf, none_is_leaf=none_is_leaf, namespace=namespace)
-    if default is __MISSING:
-        return builtins.min(leaves, key=key)  # type: ignore[type-var,arg-type]
-    return builtins.min(leaves, default=default, key=key)  # type: ignore[type-var,arg-type]
+    return ops.tree_min(
+        tree,
+        default=default,
+        key=key,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
+    )
 
 
-def _tree_all(
+def all(
     tree: PyTree[T],
     /,
     *,
@@ -2133,20 +1991,20 @@ def _tree_all(
 ) -> bool:
     """Test whether all leaves in ``tree`` are true (or if ``tree`` is empty).
 
-    See also :func:`tree.leaves` and :func:`tree.any`.
+    See also :func:`pytree.leaves` and :func:`pytree.any`.
 
-    >>> from optree import tree
-    >>> tree.all({})
+    >>> import optree.pytree as pt
+    >>> pt.all({})
     True
-    >>> tree.all({'x': 1, 'y': (2, 3)})
+    >>> pt.all({'x': 1, 'y': (2, 3)})
     True
-    >>> tree.all({'x': 1, 'y': (2, None), 'z': 3})  # `None` is a non-leaf node by default
+    >>> pt.all({'x': 1, 'y': (2, None), 'z': 3})  # `None` is a non-leaf node by default
     True
-    >>> tree.all({'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
+    >>> pt.all({'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
     False
-    >>> tree.all(None)  # `None` is a non-leaf node by default
+    >>> pt.all(None)  # `None` is a non-leaf node by default
     True
-    >>> tree.all(None, none_is_leaf=True)
+    >>> pt.all(None, none_is_leaf=True)
     False
 
     Args:
@@ -2166,17 +2024,15 @@ def _tree_all(
         :data:`True` if all leaves in ``tree`` are true, or if ``tree`` is empty.
         Otherwise, :data:`False`.
     """
-    return builtins.all(
-        _tree_iter(
-            tree,  # type: ignore[arg-type]
-            is_leaf=is_leaf,  # type: ignore[arg-type]
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        ),
+    return ops.tree_all(
+        tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
 
 
-def _tree_any(
+def any(
     tree: PyTree[T],
     /,
     *,
@@ -2186,20 +2042,20 @@ def _tree_any(
 ) -> bool:
     """Test whether all leaves in ``tree`` are true (or :data:`False` if ``tree`` is empty).
 
-    See also :func:`tree.leaves` and :func:`tree.all`.
+    See also :func:`pytree.leaves` and :func:`pytree.all`.
 
-    >>> from optree import tree
-    >>> tree.any({})
+    >>> import optree.pytree as pt
+    >>> pt.any({})
     False
-    >>> tree.any({'x': 0, 'y': (2, 0)})
+    >>> pt.any({'x': 0, 'y': (2, 0)})
     True
-    >>> tree.any({'a': None})  # `None` is a non-leaf node with arity 0 by default
+    >>> pt.any({'a': None})  # `None` is a non-leaf node with arity 0 by default
     False
-    >>> tree.any({'a': None}, none_is_leaf=True)  # `None` is evaluated as false
+    >>> pt.any({'a': None}, none_is_leaf=True)  # `None` is evaluated as false
     False
-    >>> tree.any(None)  # `None` is a non-leaf node with arity 0 by default
+    >>> pt.any(None)  # `None` is a non-leaf node with arity 0 by default
     False
-    >>> tree.any(None, none_is_leaf=True)  # `None` is evaluated as false
+    >>> pt.any(None, none_is_leaf=True)  # `None` is evaluated as false
     False
 
     Args:
@@ -2219,44 +2075,12 @@ def _tree_any(
         :data:`True` if any leaves in ``tree`` are true, otherwise, :data:`False`. If ``tree`` is
         empty, return :data:`False`.
     """
-    return builtins.any(
-        _tree_iter(
-            tree,  # type: ignore[arg-type]
-            is_leaf=is_leaf,  # type: ignore[arg-type]
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        ),
+    return ops.tree_any(
+        tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
-
-
-class FlattenOneLevelOutput(NamedTuple, Generic[T]):
-    """The output of :func:`tree.flatten_one_level`."""
-
-    children: list[PyTree[T]]
-    """A list of one-level children of the pytree node."""
-
-    metadata: MetaData
-    """The metadata used to reconstruct the pytree node."""
-
-    entries: tuple[Any, ...]
-    """A tuple of path entries to the children."""
-
-    unflatten_func: Callable[[MetaData, list[PyTree[T]]], PyTree[T]]
-    """A function that can be used to unflatten the metadata and children back to the pytree node."""
-
-
-# Subclass the namedtuple class to allow assigning new attributes.
-class FlattenOneLevelOutputEx(FlattenOneLevelOutput[T]):
-    """The output of :func:`tree.flatten_one_level`."""
-
-    type: builtins.type[Collection[T]]
-    """The type of the pytree node."""
-
-    path_entry_type: builtins.type[PyTreeEntry]
-    """The type of the path entry for the pytree node."""
-
-    kind: PyTreeKind
-    """The kind of the pytree node."""
 
 
 def flatten_one_level(
@@ -2269,15 +2093,15 @@ def flatten_one_level(
 ) -> FlattenOneLevelOutputEx[T]:
     """Flatten the pytree one level, returning a 4-tuple of children, metadata, path entries, and an unflatten function.
 
-    See also :func:`tree.flatten`, :func:`tree.flatten_with_path`.
+    See also :func:`pytree.flatten`, :func:`pytree.flatten_with_path`.
 
-    >>> from optree import tree
-    >>> children, metadata, entries, unflatten_func = tree.flatten_one_level({'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5})
+    >>> import optree.pytree as pt
+    >>> children, metadata, entries, unflatten_func = pt.flatten_one_level({'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5})
     >>> children, metadata, entries
     ([1, (2, [3, 4]), None, 5], ['a', 'b', 'c', 'd'], ('a', 'b', 'c', 'd'))
     >>> unflatten_func(metadata, children)
     {'a': 1, 'b': (2, [3, 4]), 'c': None, 'd': 5}
-    >>> children, metadata, entries, unflatten_func = tree.flatten_one_level([{'a': 1, 'b': (2, 3)}, (4, 5)])
+    >>> children, metadata, entries, unflatten_func = pt.flatten_one_level([{'a': 1, 'b': (2, 3)}, (4, 5)])
     >>> children, metadata, entries
     ([{'a': 1, 'b': (2, 3)}, (4, 5)], None, (0, 1))
     >>> unflatten_func(metadata, children)
@@ -2303,55 +2127,9 @@ def flatten_one_level(
         The fourth element is a function that can be used to unflatten the metadata and
         children back to the pytree node.
     """  # pylint: disable=line-too-long
-    node_type = type(tree)
-    if (tree is None and none_is_leaf) or (is_leaf is not None and is_leaf(tree)):  # type: ignore[unreachable,arg-type]
-        raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
-
-    from optree.registry import register_pytree_node  # pylint: disable=import-outside-toplevel
-
-    handler = register_pytree_node.get(node_type, namespace=namespace)
-    if handler is None:
-        raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
-
-    flattened = tuple(handler.flatten_func(tree))
-    if len(flattened) == 2:
-        flattened = (*flattened, None)
-    elif len(flattened) != 3:
-        raise RuntimeError(
-            f'PyTree custom flatten function for type {node_type} should return a 2- or 3-tuple, '
-            f'got {len(flattened)}.',
-        )
-    flattened: tuple[Iterable[PyTree[T]], MetaData, Iterable[Any] | None]
-    children, metadata, entries = flattened
-    children = list(children)
-    entries = tuple(range(len(children)) if entries is None else entries)
-    if len(children) != len(entries):
-        raise RuntimeError(
-            f'PyTree custom flatten function for type {node_type} returned inconsistent '
-            f'number of children ({len(children)}) and number of entries ({len(entries)}).',
-        )
-
-    output = FlattenOneLevelOutputEx(
-        children=children,
-        metadata=metadata,
-        entries=entries,
-        unflatten_func=handler.unflatten_func,  # type: ignore[arg-type]
+    return ops.tree_flatten_one_level(
+        tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
-    output.type = node_type  # type: ignore[assignment]
-    output.path_entry_type = handler.path_entry_type
-    output.kind = handler.kind
-    return output
-
-
-# ---- Redfine functions may conflicted with common variable names ----
-leaves = _tree_leaves
-structure = _tree_structure
-
-# ---- Redfine functions conflicted with global builtins ----
-max = _tree_max
-min = _tree_min
-all = _tree_all
-any = _tree_any
-iter = _tree_iter
-sum = _tree_sum
-map = _tree_map
