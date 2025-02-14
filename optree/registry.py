@@ -14,6 +14,8 @@
 # ==============================================================================
 """Registry for custom pytree node types."""
 
+# pylint: disable=too-many-lines
+
 from __future__ import annotations
 
 import contextlib
@@ -145,14 +147,104 @@ def _add_get(
     return decorator
 
 
-def _pytree_node_registry_get(  # pylint: disable=too-many-return-statements
+@overload
+def pytree_node_registry_get(
     cls: type,
     /,
     *,
     namespace: str = '',
-) -> PyTreeNodeRegistryEntry | None:
-    if namespace is not __GLOBAL_NAMESPACE and namespace != '':
-        handler = _NODETYPE_REGISTRY.get((namespace, cls))
+) -> PyTreeNodeRegistryEntry | None: ...
+
+
+@overload
+def pytree_node_registry_get(
+    cls: None = None,
+    /,
+    *,
+    namespace: str = '',
+) -> dict[type, PyTreeNodeRegistryEntry]: ...
+
+
+# pylint: disable-next=too-many-return-statements
+def pytree_node_registry_get(  # noqa: C901
+    cls: type | None = None,
+    /,
+    *,
+    namespace: str = '',
+) -> dict[type, PyTreeNodeRegistryEntry] | PyTreeNodeRegistryEntry | None:
+    """Lookup the pytree node registry.
+
+    >>> register_pytree_node.get()  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
+    {
+        <class 'NoneType'>: PyTreeNodeRegistryEntry(
+            type=<class 'NoneType'>,
+            flatten_func=<function ...>,
+            unflatten_func=<function ...>,
+            path_entry_type=<class 'optree.accessor.PyTreeEntry'>,
+            kind=<PyTreeKind.NONE: 2>,
+            namespace=''
+        ),
+        <class 'tuple'>: PyTreeNodeRegistryEntry(
+            type=<class 'tuple'>,
+            flatten_func=<function ...>,
+            unflatten_func=<function ...>,
+            path_entry_type=<class 'optree.accessor.SequenceEntry'>,
+            kind=<PyTreeKind.TUPLE: 3>,
+            namespace=''
+        ),
+        <class 'list'>: PyTreeNodeRegistryEntry(
+            type=<class 'list'>,
+            flatten_func=<function ...>,
+            unflatten_func=<function ...>,
+            path_entry_type=<class 'optree.accessor.SequenceEntry'>,
+            kind=<PyTreeKind.LIST: 4>,
+            namespace=''
+        ),
+        ...
+    }
+    >>> register_pytree_node.get(defaultdict)  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
+    PyTreeNodeRegistryEntry(
+        type=<class 'collections.defaultdict'>,
+        flatten_func=<function ...>,
+        unflatten_func=<function ...>,
+        path_entry_type=<class 'optree.accessor.MappingEntry'>,
+        kind=<PyTreeKind.DEFAULTDICT: 8>,
+        namespace=''
+    )
+    >>> register_pytree_node.get(frozenset)  # frozenset is considered as a leaf node
+    None
+
+    Args:
+        cls (type or None, optional): The class of the pytree node to retrieve. If not provided, all
+            the registered pytree nodes in the namespace are returned.
+        namespace (str, optional): The namespace of the registry to retrieve. If not provided, the
+            global namespace is used.
+
+    Returns:
+        If the ``cls`` is not provided, a dictionary of all the registered pytree nodes in the
+        namespace is returned. If the ``cls`` is provided, the corresponding registry entry is
+        returned if the ``cls`` is registered as a pytree node. Otherwise, :data:`None` is returned,
+        i.e., the ``cls`` is represented as a leaf node.
+    """
+    if namespace is __GLOBAL_NAMESPACE:
+        namespace = ''
+
+    if cls is None:
+        namespaces = frozenset({namespace, ''})
+        with __REGISTRY_LOCK:
+            registry = {
+                handler.type: handler
+                for handler in _NODETYPE_REGISTRY.values()
+                if handler.namespace in namespaces
+            }
+        if _C.is_dict_insertion_ordered(namespace):
+            registry[dict] = _DICT_INSERTION_ORDERED_REGISTRY_ENTRY
+            registry[defaultdict] = _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY
+        return registry
+
+    if namespace != '':
+        with __REGISTRY_LOCK:
+            handler = _NODETYPE_REGISTRY.get((namespace, cls))
         if handler is not None:
             return handler
 
@@ -162,17 +254,20 @@ def _pytree_node_registry_get(  # pylint: disable=too-many-return-statements
         if cls is defaultdict:
             return _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY
 
-    handler = _NODETYPE_REGISTRY.get(cls)
+    with __REGISTRY_LOCK:
+        handler = _NODETYPE_REGISTRY.get(cls)
     if handler is not None:
         return handler
     if is_structseq_class(cls):
-        return _NODETYPE_REGISTRY.get(structseq)
+        with __REGISTRY_LOCK:
+            return _NODETYPE_REGISTRY.get(structseq)
     if is_namedtuple_class(cls):
-        return _NODETYPE_REGISTRY.get(namedtuple)  # type: ignore[call-overload] # noqa: PYI024
+        with __REGISTRY_LOCK:
+            return _NODETYPE_REGISTRY.get(namedtuple)  # type: ignore[call-overload] # noqa: PYI024
     return None
 
 
-@_add_get(_pytree_node_registry_get)
+@_add_get(pytree_node_registry_get)
 def register_pytree_node(
     cls: type[Collection[T]],
     /,
@@ -333,7 +428,7 @@ def register_pytree_node(
     return cls
 
 
-del _pytree_node_registry_get
+del pytree_node_registry_get
 
 
 CustomTreeNodeType: TypeAlias = Type[CustomTreeNode[T]]
