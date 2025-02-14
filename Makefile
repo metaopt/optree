@@ -23,7 +23,7 @@ default: install
 
 .PHONY: install
 install:
-	$(PYTHON) -m pip install -vv .
+	$(PYTHON) -m pip install -v .
 
 .PHONY: install-editable install-e
 install-editable install-e:
@@ -33,7 +33,7 @@ install-editable install-e:
 	OPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" \
 		CMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
 		_GLIBCXX_USE_CXX11_ABI="$(_GLIBCXX_USE_CXX11_ABI)" \
-		$(PYTHON) -m pip install -vv --no-build-isolation --editable .
+		$(PYTHON) -m pip install -v --no-build-isolation --editable .
 
 .PHONY: uninstall
 uninstall:

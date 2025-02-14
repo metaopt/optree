@@ -6,6 +6,7 @@
 .. currentmodule:: optree.treespec
 
 .. automodule:: optree.treespec
+    :no-members:
 
 Check section :ref:`PyTreeSpec Functions` for more detailed documentation.
 
