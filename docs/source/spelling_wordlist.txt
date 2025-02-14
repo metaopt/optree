@@ -98,3 +98,7 @@ cpu
 classmethod
 unregister
 versionadded
+PyTreeEntry
+SequenceEntry
+MappingEntry
+frozenset

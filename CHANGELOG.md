@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support using system `cmake` executable during setup by [@mgorny](https://github.com/mgorny) in [#188](https://github.com/metaopt/optree/pull/188).
 - Add shortcut module `optree.pytree` and `optree.treespec` by [@lqhuang](https://github.com/lqhuang) in [#189](https://github.com/metaopt/optree/pull/189).
+- Support lookup all registry entries in a `namespace` via `register_pytree_node.get()` by [@XuehaiPan](https://github.com/XuehaiPan) in [#190](https://github.com/metaopt/optree/pull/190).
 
 ### Changed
 

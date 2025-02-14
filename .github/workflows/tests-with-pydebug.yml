@@ -284,7 +284,7 @@ jobs:
 
       - name: Install OpTree
         run: |
-          ${{ env.PYTHON }} -m pip install -vv --editable '.[test]'
+          ${{ env.PYTHON }} -m pip install -v --editable '.[test]'
 
       - name: Test with pytest
         shell: bash

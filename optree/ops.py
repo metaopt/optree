@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     import builtins
 
     from optree.accessor import PyTreeEntry
-    from optree.typing import MetaData, PyTree, PyTreeKind, PyTreeSpec, S, U
+    from optree.typing import MetaData, PyTree, PyTreeKind, PyTreeSpec, S, U, UnflattenFunc
     from optree.typing import structseq as StructSequence  # noqa: N812
 
 
@@ -2478,7 +2478,7 @@ class FlattenOneLevelOutput(NamedTuple, Generic[T]):
     entries: tuple[Any, ...]
     """A tuple of path entries to the children."""
 
-    unflatten_func: Callable[[MetaData, list[PyTree[T]]], PyTree[T]]
+    unflatten_func: UnflattenFunc[PyTree[T]]
     """A function that can be used to unflatten the metadata and children back to the pytree node."""
 
 
@@ -2571,9 +2571,9 @@ def tree_flatten_one_level(
         children=children,
         metadata=metadata,
         entries=entries,
-        unflatten_func=handler.unflatten_func,  # type: ignore[arg-type]
+        unflatten_func=handler.unflatten_func,
     )
-    output.type = node_type  # type: ignore[assignment]
+    output.type = node_type
     output.path_entry_type = handler.path_entry_type
     output.kind = handler.kind
     return output

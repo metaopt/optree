@@ -136,13 +136,13 @@ jobs:
       - name: Test installable with C++17
         if: runner.os != 'Windows'
         run: |
-          OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 ${{ env.PYTHON }} -m pip install -vv --editable .
+          OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 ${{ env.PYTHON }} -m pip install -v --editable .
           ${{ env.PYTHON }} -X dev -W 'always' -W 'error' -c 'import optree'
           ${{ env.PYTHON }} -m pip uninstall -y optree
 
       - name: Install OpTree
         run: |
-          ${{ env.PYTHON }} -m pip install -vv --editable '.[test]'
+          ${{ env.PYTHON }} -m pip install -v --editable '.[test]'
 
       - name: Test with pytest
         shell: bash
