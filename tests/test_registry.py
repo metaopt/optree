@@ -453,18 +453,68 @@ def test_flatten_with_wrong_number_of_returns():
 
 
 def test_pytree_node_registry_get():
+    registry1 = optree.register_pytree_node.get()
+    assert optree.register_pytree_node.get() == registry1
+    assert optree.register_pytree_node.get(namespace=GLOBAL_NAMESPACE) == registry1
+    assert optree.register_pytree_node.get(namespace='undefined') == registry1
+    assert optree.register_pytree_node.get() is not registry1
+    assert all(handler.namespace == '' for handler in registry1.values())
+    with optree.dict_insertion_ordered(True, namespace=GLOBAL_NAMESPACE):
+        registry2 = optree.register_pytree_node.get()
+        assert registry2 != registry1
+        assert list(registry2) == list(registry1)
+        assert optree.register_pytree_node.get() == registry2
+        assert optree.register_pytree_node.get(namespace='undefined') == registry2
+        assert optree.register_pytree_node.get() is not registry2
+        assert all(handler.namespace == '' for handler in registry2.values())
+
     handler = optree.register_pytree_node.get(list)
     assert handler is not None
+    assert handler is registry1[list]
+    assert handler is registry2[list]
     lst = [1, 2, 3]
     assert tuple(handler.flatten_func(lst))[:2] == (lst, None)
 
     handler = optree.register_pytree_node.get(list, namespace='any')
     assert handler is not None
+    assert handler is registry1[list]
+    assert handler is registry2[list]
     lst = [1, 2, 3]
     assert tuple(handler.flatten_func(lst))[:2] == (lst, None)
 
+    handler = optree.register_pytree_node.get(dict)
+    assert handler is not None
+    assert handler is registry1[dict]
+    assert handler is not registry2[dict]
+    dct = {'b': 2, 'c': 3, 'a': 1}
+    assert tuple(handler.flatten_func(dct))[:2] == ((1, 2, 3), ['a', 'b', 'c'])
+
+    handler = optree.register_pytree_node.get(dict, namespace='any')
+    assert handler is not None
+    assert handler is registry1[dict]
+    assert handler is not registry2[dict]
+    dct = {'b': 2, 'c': 3, 'a': 1}
+    assert tuple(handler.flatten_func(dct))[:2] == ((1, 2, 3), ['a', 'b', 'c'])
+
+    with optree.dict_insertion_ordered(True, namespace=GLOBAL_NAMESPACE):
+        handler = optree.register_pytree_node.get(dict)
+        assert handler is not None
+        assert handler is registry2[dict]
+        assert handler is not registry1[dict]
+        dct = {'b': 2, 'c': 3, 'a': 1}
+        assert tuple(handler.flatten_func(dct))[:2] == ((2, 3, 1), ['b', 'c', 'a'])
+
+        handler = optree.register_pytree_node.get(dict, namespace='any')
+        assert handler is not None
+        assert handler is registry2[dict]
+        assert handler is not registry1[dict]
+        dct = {'b': 2, 'c': 3, 'a': 1}
+        assert tuple(handler.flatten_func(dct))[:2] == ((2, 3, 1), ['b', 'c', 'a'])
+
     handler = optree.register_pytree_node.get(set)
     assert handler is None
+    assert set not in registry1
+    assert set not in registry2
 
     optree.register_pytree_node(
         set,
@@ -472,11 +522,16 @@ def test_pytree_node_registry_get():
         lambda _, s: set(s),
         namespace=GLOBAL_NAMESPACE,
     )
+    registry3 = optree.register_pytree_node.get()
     handler = optree.register_pytree_node.get(set)
     assert handler is not None
+    assert set in registry3
+    assert handler is registry3[set]
+    assert list(registry1) == list(registry3)[:-1]
 
     handler = optree.register_pytree_node.get(set, namespace='set')
     assert handler is not None
+    assert optree.register_pytree_node.get(namespace='set') == registry3
 
     @optree.register_pytree_node_class(namespace='mylist')
     class MyList(UserList):
@@ -489,10 +544,25 @@ def test_pytree_node_registry_get():
 
     handler = optree.register_pytree_node.get(MyList)
     assert handler is None
+    assert optree.register_pytree_node.get() == registry3
+    assert MyList not in registry3
     handler = optree.register_pytree_node.get(MyList, namespace='set')
     assert handler is None
+    assert MyList not in registry3
+
     handler = optree.register_pytree_node.get(MyList, namespace='mylist')
+    registry4 = optree.register_pytree_node.get(namespace='mylist')
     assert handler is not None
+    assert MyList in registry4
+    assert handler is registry4[MyList]
+    assert list(registry3) == list(registry4)[: len(registry3)]
+    for cls, handler in registry4.items():
+        assert handler.type is cls
+        if cls not in registry3:
+            assert handler.namespace == 'mylist'
+        else:
+            assert handler.namespace == ''
+            assert handler is registry3[cls]
 
 
 def test_pytree_node_registry_with_init_subclass():
