@@ -18,6 +18,7 @@
 import re
 import weakref
 from collections import UserDict, UserList, namedtuple
+from dataclasses import dataclass
 
 import pytest
 
@@ -565,6 +566,17 @@ def test_pytree_node_registry_get():
             assert handler is registry3[cls]
 
 
+def test_pytree_node_registry_get_with_invalid_arguments():
+    registry = optree.register_pytree_node.get()
+    assert optree.register_pytree_node.get(None) == registry
+    assert optree.register_pytree_node.get(namespace=GLOBAL_NAMESPACE) == registry
+    assert optree.register_pytree_node.get(namedtuple) is registry[namedtuple]  # noqa: PYI024
+    with pytest.raises(TypeError, match='Expected a class or None'):
+        assert optree.register_pytree_node.get(dataclass)
+    with pytest.raises(TypeError, match='The namespace must be a string'):
+        optree.register_pytree_node.get(list, namespace=123)
+
+
 def test_pytree_node_registry_with_init_subclass():
     @optree.register_pytree_node_class(namespace='mydict')
     class MyDict(UserDict):
@@ -635,6 +647,9 @@ def test_pytree_node_registry_with_init_subclass():
 
 
 def test_unregister_pytree_node_with_non_class():
+    with pytest.raises(TypeError, match='Expected a class'):
+        optree.unregister_pytree_node(dataclass, namespace=GLOBAL_NAMESPACE)
+
     def func1():
         pass
 

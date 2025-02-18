@@ -165,7 +165,7 @@ def pytree_node_registry_get(
 ) -> dict[type, PyTreeNodeRegistryEntry]: ...
 
 
-# pylint: disable-next=too-many-return-statements
+# pylint: disable-next=too-many-return-statements,too-many-branches
 def pytree_node_registry_get(  # noqa: C901
     cls: type | None = None,
     /,
@@ -228,23 +228,29 @@ def pytree_node_registry_get(  # noqa: C901
     """
     if namespace is __GLOBAL_NAMESPACE:
         namespace = ''
+    if (
+        cls is not None
+        and cls is not namedtuple  # noqa: PYI024
+        and not inspect.isclass(cls)
+    ):
+        raise TypeError(f'Expected a class or None, got {cls!r}.')
+    if not isinstance(namespace, str):
+        raise TypeError(f'The namespace must be a string, got {namespace!r}.')
 
     if cls is None:
         namespaces = frozenset({namespace, ''})
-        with __REGISTRY_LOCK:
-            registry = {
-                handler.type: handler
-                for handler in _NODETYPE_REGISTRY.values()
-                if handler.namespace in namespaces
-            }
+        registry = {
+            handler.type: handler
+            for handler in _NODETYPE_REGISTRY.values()
+            if handler.namespace in namespaces
+        }
         if _C.is_dict_insertion_ordered(namespace):
             registry[dict] = _DICT_INSERTION_ORDERED_REGISTRY_ENTRY
             registry[defaultdict] = _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY
         return registry
 
     if namespace != '':
-        with __REGISTRY_LOCK:
-            handler = _NODETYPE_REGISTRY.get((namespace, cls))
+        handler = _NODETYPE_REGISTRY.get((namespace, cls))
         if handler is not None:
             return handler
 
@@ -254,16 +260,13 @@ def pytree_node_registry_get(  # noqa: C901
         if cls is defaultdict:
             return _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY
 
-    with __REGISTRY_LOCK:
-        handler = _NODETYPE_REGISTRY.get(cls)
+    handler = _NODETYPE_REGISTRY.get(cls)
     if handler is not None:
         return handler
     if is_structseq_class(cls):
-        with __REGISTRY_LOCK:
-            return _NODETYPE_REGISTRY.get(structseq)
+        return _NODETYPE_REGISTRY.get(structseq)
     if is_namedtuple_class(cls):
-        with __REGISTRY_LOCK:
-            return _NODETYPE_REGISTRY.get(namedtuple)  # type: ignore[call-overload] # noqa: PYI024
+        return _NODETYPE_REGISTRY.get(namedtuple)  # type: ignore[call-overload] # noqa: PYI024
     return None
 
 
