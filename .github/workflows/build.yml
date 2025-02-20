@@ -38,6 +38,7 @@ concurrency:
 
 env:
   PYTHON_TAG: "py3"  # to be updated
+  PYTHON_VERSION: "3"  # to be updated
   _GLIBCXX_USE_CXX11_ABI: "1"
 
 jobs:
@@ -89,7 +90,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        runner: [ubuntu-22.04, windows-latest, macos-latest]
+        runner: [ubuntu-latest, macos-latest, windows-latest]
         python-version:
           - "3.8"
           - "3.9"
@@ -110,16 +111,16 @@ jobs:
           # Windows
           - "ARM64"
         exclude:
-          - runner: ubuntu-22.04
+          - runner: ubuntu-latest
             python-version: "pypy-3.9"
             archs: "ppc64le"
-          - runner: ubuntu-22.04
+          - runner: ubuntu-latest
             python-version: "pypy-3.10"
             archs: "ppc64le"
-          - runner: ubuntu-22.04
+          - runner: ubuntu-latest
             python-version: "pypy-3.9"
             archs: "s390x"
-          - runner: ubuntu-22.04
+          - runner: ubuntu-latest
             python-version: "pypy-3.10"
             archs: "s390x"
           - runner: windows-latest
@@ -133,14 +134,8 @@ jobs:
             archs: "ARM64"
 
           # Exclude archs of other platforms
-          - runner: ubuntu-22.04
+          - runner: ubuntu-latest
             archs: "ARM64"
-          - runner: windows-latest
-            archs: "aarch64"
-          - runner: windows-latest
-            archs: "ppc64le"
-          - runner: windows-latest
-            archs: "s390x"
           - runner: macos-latest
             archs: "aarch64"
           - runner: macos-latest
@@ -149,6 +144,12 @@ jobs:
             archs: "s390x"
           - runner: macos-latest
             archs: "ARM64"
+          - runner: windows-latest
+            archs: "aarch64"
+          - runner: windows-latest
+            archs: "ppc64le"
+          - runner: windows-latest
+            archs: "s390x"
       fail-fast: false
     timeout-minutes: 180
     steps:
