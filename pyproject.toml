@@ -122,14 +122,9 @@ test-command = '''make -C "{project}" test PYTHON=python PYTESTOPTS="--quiet --e
 
 # Linter tools #################################################################
 
-[tool.black]
-line-length = 100
-skip-string-normalization = true
-target-version = ["py38"]
-
 [tool.mypy]
 python_version = "3.8"
-exclude = ["^setup\\.py$", "^tests/.*\\.py$"]
+exclude = ["^tests/.*\\.py$"]
 pretty = true
 show_column_numbers = true
 show_error_codes = true

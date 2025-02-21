@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import os
 import platform
@@ -7,30 +9,43 @@ import sys
 import sysconfig
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
+
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from types import ModuleType
 
 
 HERE = Path(__file__).absolute().parent
 
 
 class CMakeExtension(Extension):
-    def __init__(self, name, source_dir='.', target=None, **kwargs):
-        super().__init__(name, sources=[], **kwargs)
+    def __init__(
+        self,
+        name: str,
+        source_dir: Path | str = '.',
+        target: str | None = None,
+        language: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(name, sources=[], language=language, **kwargs)
         self.source_dir = Path(source_dir).absolute()
         self.target = target if target is not None else name.rpartition('.')[-1]
 
     @classmethod
-    def cmake_executable(cls):
-        cmake = os.getenv('CMAKE_COMMAND', '') or os.getenv('CMAKE_EXECUTABLE', '')
+    def cmake_executable(cls) -> str | None:
+        cmake = os.getenv('CMAKE_COMMAND') or os.getenv('CMAKE_EXECUTABLE')
         if not cmake:
             cmake = shutil.which('cmake')
         return cmake
 
 
 class cmake_build_ext(build_ext):  # noqa: N801
-    def build_extension(self, ext):  # noqa: C901
+    def build_extension(self, ext: Extension) -> None:  # noqa: C901
         if not isinstance(ext, CMakeExtension):
             super().build_extension(ext)
             return
@@ -66,7 +81,7 @@ class cmake_build_ext(build_ext):  # noqa: N801
                 cmake_args.append(f'-DCMAKE_OSX_ARCHITECTURES={";".join(archs)}')
         elif platform.system() == 'Windows':
             # Windows - set correct CMAKE_GENERATOR_PLATFORM
-            cmake_generator_platform = os.getenv('CMAKE_GENERATOR_PLATFORM', '')
+            cmake_generator_platform = os.getenv('CMAKE_GENERATOR_PLATFORM')
             if not cmake_generator_platform:
                 cmake_generator_platform = {
                     'win32': 'Win32',
@@ -87,11 +102,7 @@ class cmake_build_ext(build_ext):  # noqa: N801
                 cmake_args.append(f'-Dpybind11_DIR={pybind11.get_cmake_dir()}')
 
         build_args = ['--config', config]
-        if (
-            'CMAKE_BUILD_PARALLEL_LEVEL' not in os.environ
-            and hasattr(self, 'parallel')
-            and self.parallel
-        ):
+        if 'CMAKE_BUILD_PARALLEL_LEVEL' not in os.environ and bool(getattr(self, 'parallel', 0)):
             build_args.extend(['--parallel', str(self.parallel)])
         else:
             build_args.append('--parallel')
@@ -104,7 +115,7 @@ class cmake_build_ext(build_ext):  # noqa: N801
 
 
 @contextlib.contextmanager
-def vcs_version(name, path):
+def vcs_version(name: str, path: Path | str) -> Generator[ModuleType]:
     path = Path(path).absolute()
     assert path.is_file()
     module_spec = spec_from_file_location(name=name, location=path)
@@ -142,11 +153,12 @@ def vcs_version(name, path):
                 file.write(content)
 
 
-with vcs_version(name='optree.version', path=(HERE / 'optree' / 'version.py')) as version:
-    setup(
-        name='optree',
-        version=version.__version__,
-        cmdclass={'build_ext': cmake_build_ext},
-        ext_modules=[CMakeExtension('optree._C', source_dir=HERE)],
-        setup_requires=(['cmake >= 3.18'] if CMakeExtension.cmake_executable() is None else []),
-    )
+if __name__ == '__main__':
+    with vcs_version(name='optree.version', path=HERE / 'optree' / 'version.py') as version:
+        setup(
+            name='optree',
+            version=version.__version__,
+            cmdclass={'build_ext': cmake_build_ext},
+            ext_modules=[CMakeExtension('optree._C', source_dir=HERE, language='c++')],
+            setup_requires=(['cmake >= 3.18'] if CMakeExtension.cmake_executable() is None else []),
+        )

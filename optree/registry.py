@@ -239,11 +239,12 @@ def pytree_node_registry_get(  # noqa: C901
 
     if cls is None:
         namespaces = frozenset({namespace, ''})
-        registry = {
-            handler.type: handler
-            for handler in _NODETYPE_REGISTRY.values()
-            if handler.namespace in namespaces
-        }
+        with __REGISTRY_LOCK:
+            registry = {
+                handler.type: handler
+                for handler in _NODETYPE_REGISTRY.values()
+                if handler.namespace in namespaces
+            }
         if _C.is_dict_insertion_ordered(namespace):
             registry[dict] = _DICT_INSERTION_ORDERED_REGISTRY_ENTRY
             registry[defaultdict] = _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY
@@ -673,7 +674,7 @@ def _none_flatten(_: None, /) -> tuple[tuple[()], None]:
     return (), None
 
 
-def _none_unflatten(_: None, /, children: Iterable[Any]) -> None:
+def _none_unflatten(_: None, children: Iterable[Any], /) -> None:
     sentinel = object()
     if next(iter(children), sentinel) is not sentinel:
         raise ValueError('Expected no children.')
