@@ -103,7 +103,8 @@ jobs:
           - "pypy-3.10"
         archs:
           # Generic
-          - "auto"
+          - "auto64"
+          - "auto32"
           # Linux
           - "aarch64"
           - "ppc64le"
@@ -136,6 +137,8 @@ jobs:
           # Exclude archs of other platforms
           - runner: ubuntu-latest
             archs: "ARM64"
+          - runner: macos-latest
+            archs: "auto32"
           - runner: macos-latest
             archs: "aarch64"
           - runner: macos-latest
