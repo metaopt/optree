@@ -56,7 +56,6 @@ class cmake_build_ext(build_ext):  # noqa: N801
 
         ext_path = Path(self.get_ext_fullpath(ext.name)).absolute()
         build_temp = Path(self.build_temp).absolute()
-        build_temp.mkdir(parents=True, exist_ok=True)
 
         config = os.getenv('CMAKE_BUILD_TYPE', '') or ('Debug' if self.debug else 'Release')
         cmake_args = [
@@ -114,9 +113,9 @@ class cmake_build_ext(build_ext):  # noqa: N801
             # pip's build environment pseudo-isolation sets `PYTHONPATH`.
             # It may break console scripts (e.g., `cmake` installed from PyPI).
             python_path = os.environ.pop('PYTHONPATH', None)  # unset `PYTHONPATH`
+            self.mkpath(build_temp)
             self.spawn([cmake, '-S', str(ext.source_dir), '-B', str(build_temp), *cmake_args])
-            if not self.dry_run:
-                self.spawn([cmake, '--build', str(build_temp), *build_args])
+            self.spawn([cmake, '--build', str(build_temp), *build_args])
         finally:
             if python_path is not None:
                 os.environ['PYTHONPATH'] = python_path
