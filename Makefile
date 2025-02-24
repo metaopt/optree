@@ -138,10 +138,10 @@ addlicense-install: go-install
 .PHONY: pytest test
 pytest test: pytest-install
 	$(PYTEST) --version
-	cd tests && $(PYTHON) -X dev -W 'always' -W 'error' -c 'import $(PROJECT_PATH)' && \
-	$(PYTHON) -X dev -W 'always' -W 'error' -c 'import $(PROJECT_PATH)._C; print(f"GLIBCXX_USE_CXX11_ABI={$(PROJECT_PATH)._C.GLIBCXX_USE_CXX11_ABI}")' && \
+	cd tests && $(PYTHON) -X dev -W 'always' -W 'error' -c 'import $(PROJECT_NAME)' && \
+	$(PYTHON) -X dev -W 'always' -W 'error' -c 'import $(PROJECT_NAME)._C; print(f"GLIBCXX_USE_CXX11_ABI={$(PROJECT_NAME)._C.GLIBCXX_USE_CXX11_ABI}")' && \
 	$(PYTEST) --verbose --color=yes --durations=10 --showlocals \
-		--cov="$(PROJECT_PATH)" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
+		--cov="$(PROJECT_NAME)" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
 		$(PYTESTOPTS) .
 
 # Python linters
@@ -159,8 +159,8 @@ flake8: flake8-install
 .PHONY: py-format
 py-format: py-format-install
 	$(PYTHON) -m ruff --version
-	$(PYTHON) -m ruff format --check $(PYTHON_FILES) && \
-	$(PYTHON) -m ruff check --select=I $(PYTHON_FILES)
+	$(PYTHON) -m ruff format --check . && \
+	$(PYTHON) -m ruff check --select=I .
 
 .PHONY: ruff
 ruff: ruff-install
@@ -175,12 +175,12 @@ ruff-fix: ruff-install
 .PHONY: mypy
 mypy: mypy-install
 	$(PYTHON) -m mypy --version
-	$(PYTHON) -m mypy $(PROJECT_PATH)
+	$(PYTHON) -m mypy .
 
 .PHONY: xdoctest
 xdoctest: xdoctest-install
 	$(PYTHON) -m xdoctest --version
-	$(PYTHON) -m xdoctest --global-exec "from optree import *" $(PROJECT_PATH)
+	$(PYTHON) -m xdoctest --global-exec "from optree import *" $(PROJECT_NAME)
 
 .PHONY: doctest
 doctest: xdoctest

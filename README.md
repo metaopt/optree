@@ -65,7 +65,7 @@ Or, clone this repo and install manually:
 git clone --depth=1 https://github.com/metaopt/optree.git
 cd optree
 
-# export CMAKE_EXECUTABLE="/path/to/custom/cmake"
+# export CMAKE_COMMAND="/path/to/custom/cmake"
 # export CMAKE_BUILD_TYPE="Debug"
 # export pybind11_DIR="/path/to/custom/pybind11"
 pip3 install .

@@ -31,6 +31,7 @@ env:
   OPTREE_CXX_WERROR: "ON"
   _GLIBCXX_USE_CXX11_ABI: "1"
   FULL_TEST_PYTHON_VERSIONS: "3.10;3.11"
+  PYTHONUNBUFFERED: "1"
   PYTHON: "python"  # to be updated
   PYTHON_TAG: "py3"  # to be updated
   COLUMNS: "128"
@@ -126,19 +127,47 @@ jobs:
 
           cdb -version
 
+      - name: Test installable with C++17
+        shell: bash
+        if: runner.os != 'Windows'
+        run: |
+          (
+            set -x
+            ${{ env.PYTHON }} -m venv venv &&
+            source venv/bin/activate &&
+            export OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 &&
+            ${{ env.PYTHON }} -m pip install -v . &&
+            pushd venv &&
+            ${{ env.PYTHON }} -X dev -W 'always' -W 'error' -c 'import optree' &&
+            popd &&
+            rm -rf venv
+          )
+
+      - name: Check installable with CMake from PyPI
+        shell: bash
+        run: |
+          ACTIVATION_SCRIPT="venv/bin/activate"
+          if [[ "${{ runner.os }}" == 'Windows' ]]; then
+            ACTIVATION_SCRIPT="venv/Scripts/activate"
+          fi
+          (
+            set -x
+            ${{ env.PYTHON }} -m venv venv &&
+            source "${ACTIVATION_SCRIPT}" &&
+            ${{ env.PYTHON }} -m pip install -v cmake &&
+            ${{ env.PYTHON }} -m pip install -v . &&
+            pushd venv &&
+            ${{ env.PYTHON }} -X dev -W 'always' -W 'error' -c 'import optree' &&
+            popd &&
+            rm -rf venv
+          )
+
       - name: Install test dependencies
         shell: bash
         run: |
           if [[ ";${FULL_TEST_PYTHON_VERSIONS};" == *";${{ matrix.python-version }};"* ]]; then
             ${{ env.PYTHON }} -m pip install -r tests/requirements.txt
           fi
-
-      - name: Test installable with C++17
-        if: runner.os != 'Windows'
-        run: |
-          OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 ${{ env.PYTHON }} -m pip install -v --editable .
-          ${{ env.PYTHON }} -X dev -W 'always' -W 'error' -c 'import optree'
-          ${{ env.PYTHON }} -m pip uninstall -y optree
 
       - name: Install OpTree
         run: |
