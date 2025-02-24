@@ -133,6 +133,10 @@ jobs:
           - runner: windows-latest
             python-version: "pypy-3.10"
             archs: "ARM64"
+          - python-version: "pypy-3.9"
+            archs: "auto32"
+          - python-version: "pypy-3.10"
+            archs: "auto32"
 
           # Exclude archs of other platforms
           - runner: ubuntu-latest
