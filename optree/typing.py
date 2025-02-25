@@ -25,6 +25,7 @@ from collections.abc import Hashable
 from typing import (
     Any,
     Callable,
+    ClassVar,
     Collection,
     DefaultDict,
     Deque,
@@ -95,12 +96,12 @@ __all__ = [
     'DataclassEntry',
     'PyTreeAccessor',
     'is_namedtuple',
-    'is_namedtuple_instance',
     'is_namedtuple_class',
+    'is_namedtuple_instance',
     'namedtuple_fields',
     'is_structseq',
-    'is_structseq_instance',
     'is_structseq_class',
+    'is_structseq_instance',
     'structseq_fields',
     'T',
     'S',
@@ -412,10 +413,8 @@ def is_namedtuple_class(cls: type, /) -> bool:
         isinstance(cls, type)
         and issubclass(cls, tuple)
         and isinstance(getattr(cls, '_fields', None), tuple)
-        and all(
-            type(field) is str  # pylint: disable=unidiomatic-typecheck
-            for field in cls._fields  # type: ignore[attr-defined]
-        )
+        # pylint: disable-next=unidiomatic-typecheck
+        and all(type(field) is str for field in cls._fields)  # type: ignore[attr-defined]
         and callable(getattr(cls, '_make', None))
         and callable(getattr(cls, '_asdict', None))
     )
@@ -475,9 +474,11 @@ class StructSequenceMeta(type):
 class structseq(Tuple[_T_co, ...], metaclass=StructSequenceMeta):  # type: ignore[misc] # noqa: N801
     """A generic type stub for CPython's ``PyStructSequence`` type."""
 
-    n_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
-    n_sequence_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
-    n_unnamed_fields: Final[int]  # type: ignore[misc] # pylint: disable=invalid-name
+    __slots__: ClassVar[tuple[()]] = ()
+
+    n_fields: Final[ClassVar[int]]  # type: ignore[misc] # pylint: disable=invalid-name
+    n_sequence_fields: Final[ClassVar[int]]  # type: ignore[misc] # pylint: disable=invalid-name
+    n_unnamed_fields: Final[ClassVar[int]]  # type: ignore[misc] # pylint: disable=invalid-name
 
     def __init_subclass__(cls, /) -> Never:
         """Prohibit subclassing."""

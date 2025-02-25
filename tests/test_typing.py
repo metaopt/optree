@@ -36,6 +36,8 @@ from helpers import (
 
 
 class FakeNamedTuple(tuple):
+    __slots__ = ()
+
     _fields = ('a', 'b', 'c')
 
     def __new__(cls, a, b, c):
@@ -58,6 +60,8 @@ class FakeNamedTuple(tuple):
 
 
 class FakeStructSequence(tuple):
+    __slots__ = ()
+
     n_fields = 11
     n_sequence_fields = 9
     n_unnamed_fields = 0

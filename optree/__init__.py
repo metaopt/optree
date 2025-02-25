@@ -222,8 +222,8 @@ __all__ = [
     'is_namedtuple_instance',
     'namedtuple_fields',
     'is_structseq',
-    'is_structseq_instance',
     'is_structseq_class',
+    'is_structseq_instance',
     'structseq_fields',
 ]
 

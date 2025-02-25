@@ -196,10 +196,11 @@ select = [
     "B",       # flake8-bugbear
     "COM",     # flake8-commas
     "C4",      # flake8-comprehensions
+    "CPY",     # flake8-copyright
     "EXE",     # flake8-executable
     "FA",      # flake8-future-annotations
-    "LOG",     # flake8-logging
     "ISC",     # flake8-implicit-str-concat
+    "LOG",     # flake8-logging
     "INP",     # flake8-no-pep420
     "PIE",     # flake8-pie
     "PYI",     # flake8-pyi
@@ -207,8 +208,9 @@ select = [
     "RSE",     # flake8-raise
     "RET",     # flake8-return
     "SIM",     # flake8-simplify
+    "SLOT",    # flake8-slots
     "TID",     # flake8-tidy-imports
-    "TCH",     # flake8-type-checking
+    "TC",      # flake8-type-checking
     "PERF",    # perflint
     "FURB",    # refurb
     "TRY",     # tryceratops
