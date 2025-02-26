@@ -196,7 +196,6 @@ select = [
     "B",       # flake8-bugbear
     "COM",     # flake8-commas
     "C4",      # flake8-comprehensions
-    "CPY",     # flake8-copyright
     "EXE",     # flake8-executable
     "FA",      # flake8-future-annotations
     "ISC",     # flake8-implicit-str-concat
