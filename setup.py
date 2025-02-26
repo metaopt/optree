@@ -27,14 +27,18 @@ HERE = Path(__file__).absolute().parent
 @contextlib.contextmanager
 def unset_python_path() -> Generator[str | None]:
     python_path = None
+    python_no_user_site = None
     try:
         # pip's build environment pseudo-isolation sets `PYTHONPATH`.
         # It may break console scripts (e.g., `cmake` installed from PyPI).
         python_path = os.environ.pop('PYTHONPATH', None)  # unset `PYTHONPATH`
+        python_no_user_site = os.environ.pop('PYTHONNOUSERSITE', None)  # unset `PYTHONNOUSERSITE`
         yield python_path
     finally:
         if python_path is not None:
             os.environ['PYTHONPATH'] = python_path
+        if python_no_user_site is not None:
+            os.environ['PYTHONNOUSERSITE'] = python_no_user_site
 
 
 class CMakeExtension(Extension):
