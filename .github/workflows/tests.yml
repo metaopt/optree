@@ -92,6 +92,16 @@ jobs:
           )"
           echo "PYTHON_TAG=${PYTHON_TAG}" | tee -a "${GITHUB_ENV}"
 
+          echo "::group::Install CMake"
+          if [[ "${{ runner.os }}" == 'Linux' ]]; then
+            sudo apt-get update -qq && sudo apt-get install -yqq cmake
+          elif [[ "${{ runner.os }}" == 'macOS' ]]; then
+            brew update --quiet && brew install --formula cmake
+          elif [[ "${{ runner.os }}" == 'Windows' ]]; then
+            choco install cmake cmake.install --force --yes
+          fi
+          echo "::endgroup::"
+
       - name: Enable core dump generation (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -143,7 +153,18 @@ jobs:
             rm -rf venv
           )
 
-      - name: Check installable with CMake from PyPI
+      - name: Install test dependencies
+        shell: bash
+        run: |
+          if [[ ";${FULL_TEST_PYTHON_VERSIONS};" == *";${{ matrix.python-version }};"* ]]; then
+            ${{ env.PYTHON }} -m pip install -r tests/requirements.txt
+          fi
+
+      - name: Install OpTree (with system CMake)
+        run: |
+          ${{ env.PYTHON }} -m pip install -v --editable '.[test]'
+
+      - name: Check installable with CMake from PyPI (with venv'ed CMake)
         shell: bash
         run: |
           ACTIVATION_SCRIPT="venv/bin/activate"
@@ -162,16 +183,30 @@ jobs:
             rm -rf venv
           )
 
-      - name: Install test dependencies
+      - name: Check installable with CMake from PyPI (no system CMake)
         shell: bash
         run: |
-          if [[ ";${FULL_TEST_PYTHON_VERSIONS};" == *";${{ matrix.python-version }};"* ]]; then
-            ${{ env.PYTHON }} -m pip install -r tests/requirements.txt
+          if [[ "${{ runner.os }}" == 'Linux' ]]; then
+            sudo apt-get remove cmake -y
+          elif [[ "${{ runner.os }}" == 'macOS' ]]; then
+            brew uninstall cmake --force
+          elif [[ "${{ runner.os }}" == 'Windows' ]]; then
+            choco uninstall cmake cmake.install --force --yes || true
           fi
-
-      - name: Install OpTree
-        run: |
-          ${{ env.PYTHON }} -m pip install -v --editable '.[test]'
+          ACTIVATION_SCRIPT="venv/bin/activate"
+          if [[ "${{ runner.os }}" == 'Windows' ]]; then
+            ACTIVATION_SCRIPT="venv/Scripts/activate"
+          fi
+          (
+            set -x
+            ${{ env.PYTHON }} -m venv venv &&
+            source "${ACTIVATION_SCRIPT}" &&
+            ${{ env.PYTHON }} -m pip install -v . &&
+            pushd venv &&
+            ${{ env.PYTHON }} -X dev -W 'always' -W 'error' -c 'import optree' &&
+            popd &&
+            rm -rf venv
+          )
 
       - name: Test with pytest
         shell: bash
@@ -217,7 +252,7 @@ jobs:
               BACKTRACE_COMMAND="gdb --exec ${{ env.PYTHON }} --core '{}' -ex 'bt' -ex 'q'"
             elif [[ "${{ runner.os }}" == 'macOS' ]]; then
               echo "::group::Install LLDB"
-              brew install llvm --quiet
+              brew update --quiet && brew install --formula llvm --quiet
               echo "::endgroup::"
               BACKTRACE_COMMAND="lldb --file ${{ env.PYTHON }} --core '{}' -o 'bt' -o 'q'"
             elif [[ "${{ runner.os }}" == 'Windows' ]]; then

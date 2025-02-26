@@ -331,7 +331,7 @@ jobs:
               BACKTRACE_COMMAND="gdb --exec ${{ env.PYTHON }} --core '{}' -ex 'bt -full' -ex 'q'"
             elif [[ "${{ runner.os }}" == 'macOS' ]]; then
               echo "::group::Install LLDB"
-              brew install llvm --quiet
+              brew update --quiet && brew install --formula llvm --quiet
               echo "::endgroup::"
               BACKTRACE_COMMAND="lldb --file ${{ env.PYTHON }} --core '{}' -o 'bt all' -o 'q'"
             elif [[ "${{ runner.os }}" == 'Windows' ]]; then

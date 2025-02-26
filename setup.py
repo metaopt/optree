@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
+from setuptools.errors import ExecError
 
 
 if TYPE_CHECKING:
@@ -21,6 +22,19 @@ if TYPE_CHECKING:
 
 
 HERE = Path(__file__).absolute().parent
+
+
+@contextlib.contextmanager
+def unset_python_path() -> Generator[str | None]:
+    python_path = None
+    try:
+        # pip's build environment pseudo-isolation sets `PYTHONPATH`.
+        # It may break console scripts (e.g., `cmake` installed from PyPI).
+        python_path = os.environ.pop('PYTHONPATH', None)  # unset `PYTHONPATH`
+        yield python_path
+    finally:
+        if python_path is not None:
+            os.environ['PYTHONPATH'] = python_path
 
 
 class CMakeExtension(Extension):
@@ -108,17 +122,22 @@ class cmake_build_ext(build_ext):  # noqa: N801
 
         build_args.extend(['--target', ext.target, '--'])
 
-        python_path = None
+        spawn_context = contextlib.nullcontext
         try:
-            # pip's build environment pseudo-isolation sets `PYTHONPATH`.
-            # It may break console scripts (e.g., `cmake` installed from PyPI).
-            python_path = os.environ.pop('PYTHONPATH', None)  # unset `PYTHONPATH`
-            self.mkpath(build_temp)
+            self.spawn([cmake, '--version'])  # system cmake or cmake in the build environment
+        except ExecError:
+            self.warn(
+                f'Could not run `{cmake}` directly. '
+                'Unset the `PYTHONPATH` environment variable in the build environment.',
+            )
+            spawn_context = unset_python_path  # type: ignore[assignment]
+            with unset_python_path():
+                self.spawn([cmake, '--version'])  # cmake in the parent virtual environment
+
+        self.mkpath(build_temp)
+        with spawn_context():
             self.spawn([cmake, '-S', str(ext.source_dir), '-B', str(build_temp), *cmake_args])
             self.spawn([cmake, '--build', str(build_temp), *build_args])
-        finally:
-            if python_path is not None:
-                os.environ['PYTHONPATH'] = python_path
 
 
 @contextlib.contextmanager
