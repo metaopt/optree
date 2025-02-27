@@ -65,9 +65,18 @@ Or, clone this repo and install manually:
 git clone --depth=1 https://github.com/metaopt/optree.git
 cd optree
 
-# export CMAKE_COMMAND="/path/to/custom/cmake"
-# export CMAKE_BUILD_TYPE="Debug"
-# export pybind11_DIR="/path/to/custom/pybind11"
+pip3 install .
+```
+
+The following options are available while building the Python C extension from the source:
+
+```bash
+export CMAKE_COMMAND="/path/to/custom/cmake"
+export CMAKE_BUILD_TYPE="Debug"
+export CMAKE_CXX_STANDARD="20"  # C++17 is tested on Linux/macOS (C++20 is required on Windows)
+export OPTREE_CXX_WERROR="OFF"
+export _GLIBCXX_USE_CXX11_ABI="1"
+export pybind11_DIR="/path/to/custom/pybind11"
 pip3 install .
 ```
 
