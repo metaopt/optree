@@ -101,6 +101,7 @@ jobs:
           - "3.13t"
           - "pypy-3.9"
           - "pypy-3.10"
+          - "pypy-3.11"
         archs:
           # Generic
           - "auto64"
@@ -119,10 +120,16 @@ jobs:
             python-version: "pypy-3.10"
             archs: "ppc64le"
           - runner: ubuntu-latest
+            python-version: "pypy-3.11"
+            archs: "ppc64le"
+          - runner: ubuntu-latest
             python-version: "pypy-3.9"
             archs: "s390x"
           - runner: ubuntu-latest
             python-version: "pypy-3.10"
+            archs: "s390x"
+          - runner: ubuntu-latest
+            python-version: "pypy-3.11"
             archs: "s390x"
           - runner: windows-latest
             python-version: "3.8"
@@ -133,9 +140,14 @@ jobs:
           - runner: windows-latest
             python-version: "pypy-3.10"
             archs: "ARM64"
+          - runner: windows-latest
+            python-version: "pypy-3.11"
+            archs: "ARM64"
           - python-version: "pypy-3.9"
             archs: "auto32"
           - python-version: "pypy-3.10"
+            archs: "auto32"
+          - python-version: "pypy-3.11"
             archs: "auto32"
 
           # Exclude archs of other platforms
@@ -215,7 +227,7 @@ jobs:
           platforms: all
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.22
+        uses: pypa/cibuildwheel@v2.23
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_ARCHS: ${{ matrix.archs }}
