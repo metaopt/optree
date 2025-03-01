@@ -13,14 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Support using system `cmake` executable during setup by [@mgorny](https://github.com/mgorny) in [#188](https://github.com/metaopt/optree/pull/188).
-- Add shortcut module `optree.pytree` and `optree.treespec` by [@lqhuang](https://github.com/lqhuang) in [#189](https://github.com/metaopt/optree/pull/189).
-- Support lookup all registry entries in a `namespace` via `register_pytree_node.get()` by [@XuehaiPan](https://github.com/XuehaiPan) in [#190](https://github.com/metaopt/optree/pull/190).
-- Add PyPy 3.11 support by [@XuehaiPan](https://github.com/XuehaiPan) in [#194](https://github.com/metaopt/optree/pull/194).
+-
 
 ### Changed
 
-- Enable CXX11 ABI in C++ extension by [@XuehaiPan](https://github.com/XuehaiPan) in [#184](https://github.com/metaopt/optree/pull/184).
+-
 
 ### Fixed
 
@@ -29,6 +26,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 -
+
+------
+
+## [0.14.1] - 2025-03-02
+
+### Added
+
+- Support using system `cmake` executable during setup by [@mgorny](https://github.com/mgorny) in [#188](https://github.com/metaopt/optree/pull/188).
+- Add shortcut module `optree.pytree` and `optree.treespec` by [@lqhuang](https://github.com/lqhuang) in [#189](https://github.com/metaopt/optree/pull/189).
+- Support lookup all registry entries in a `namespace` via `register_pytree_node.get()` by [@XuehaiPan](https://github.com/XuehaiPan) in [#190](https://github.com/metaopt/optree/pull/190).
+- Add PyPy 3.11 support by [@XuehaiPan](https://github.com/XuehaiPan) in [#194](https://github.com/metaopt/optree/pull/194).
+
+### Changed
+
+- Enable CXX11 ABI in C++ extension by [@XuehaiPan](https://github.com/XuehaiPan) in [#184](https://github.com/metaopt/optree/pull/184).
 
 ------
 
@@ -385,7 +397,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/metaopt/optree/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/metaopt/optree/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/metaopt/optree/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/metaopt/optree/compare/v0.12.1...v0.13.0
