@@ -196,6 +196,7 @@ pre-commit: pre-commit-install
 cmake-configure: cmake-install
 	cmake --version
 	cmake -S . -B cmake-build-debug \
+		--fresh \
 		-DCMAKE_BUILD_TYPE=Debug \
 		-DCMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
 		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
@@ -220,7 +221,7 @@ clang-format: clang-format-install
 .PHONY: clang-tidy
 clang-tidy: clang-tidy-install cmake-configure
 	clang-tidy --version
-	clang-tidy --extra-arg="-v" --extra-arg="-std=c++17" --fix -p=cmake-build-debug $(CXX_FILES)
+	clang-tidy --extra-arg="-v" --fix -p=cmake-build-debug $(CXX_FILES)
 
 # Documentation
 
