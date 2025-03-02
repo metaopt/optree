@@ -96,10 +96,7 @@ from optree.ops import (
     treespec_tuple,
 )
 from optree.registry import (
-    AttributeKeyPathEntry,
-    GetitemKeyPathEntry,
     dict_insertion_ordered,
-    register_keypaths,
     register_pytree_node,
     register_pytree_node_class,
     unregister_pytree_node,

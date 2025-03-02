@@ -32,13 +32,6 @@ from helpers import (
     Vector2D,
     parametrize,
 )
-from optree.registry import (
-    AttributeKeyPathEntry,
-    FlattenedKeyPathEntry,
-    GetitemKeyPathEntry,
-    KeyPath,
-    KeyPathEntry,
-)
 
 
 def test_different_types():
@@ -543,7 +536,7 @@ def test_structseq():
         raise e('in_axes')
 
 
-def test_fallback_keypath():
+def test_fallback():
     (e,) = optree.prefix_errors(Vector2D(1, [2]), Vector2D(3, 4))
     expected = re.escape(
         textwrap.dedent(
@@ -592,86 +585,3 @@ def test_different_structure_no_children():
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
-
-
-def test_register_keypath():
-    with pytest.raises(TypeError, match=r'Expected a class, got .*\.'):
-        optree.register_keypaths(
-            [],
-            lambda lst: [GetitemKeyPathEntry(i) for i in range(len(lst))],
-        )
-    with pytest.raises(ValueError, match=r'Key path handler for .* has already been registered\.'):
-        optree.register_keypaths(
-            list,
-            lambda lst: [GetitemKeyPathEntry(i) for i in range(len(lst))],
-        )
-
-
-def test_key_path():
-    with pytest.raises(NotImplementedError):
-        KeyPathEntry('a').pprint()
-
-    root = KeyPath()
-    sequence_key_path = GetitemKeyPathEntry(0)
-    dict_key_path = GetitemKeyPathEntry('a')
-    namedtuple_key_path = AttributeKeyPathEntry('attr')
-    fallback_key_path = FlattenedKeyPathEntry(1)
-
-    with pytest.raises(
-        TypeError,
-        match=re.escape("unsupported operand type(s) for +: 'GetitemKeyPathEntry' and 'int'"),
-    ):
-        sequence_key_path + 1
-    with pytest.raises(
-        TypeError,
-        match=re.escape("unsupported operand type(s) for +: 'int' and 'GetitemKeyPathEntry'"),
-    ):
-        1 + sequence_key_path
-
-    with pytest.raises(
-        TypeError,
-        match=re.escape("unsupported operand type(s) for +: 'KeyPath' and 'int'"),
-    ):
-        root + 1
-    with pytest.raises(
-        TypeError,
-        match=re.escape("unsupported operand type(s) for +: 'int' and 'KeyPath'"),
-    ):
-        1 + root
-
-    assert root.pprint() == ' tree root'
-    assert root + root == root
-    assert root + sequence_key_path == KeyPath((sequence_key_path,))
-    assert (
-        root + sequence_key_path + dict_key_path + namedtuple_key_path + fallback_key_path
-        == KeyPath((sequence_key_path, dict_key_path, namedtuple_key_path, fallback_key_path))
-    )
-    assert (root + sequence_key_path).pprint() == '[0]'
-    assert (sequence_key_path + root).pprint() == '[0]'
-    assert (root + dict_key_path).pprint() == "['a']"
-    assert (root + namedtuple_key_path).pprint() == '.attr'
-    assert (root + fallback_key_path).pprint() == '[<flat index 1>]'
-    assert sequence_key_path + dict_key_path == KeyPath((sequence_key_path, dict_key_path))
-    assert (sequence_key_path + dict_key_path).pprint() == "[0]['a']"
-    assert (dict_key_path + sequence_key_path).pprint() == "['a'][0]"
-    assert (sequence_key_path + namedtuple_key_path).pprint() == '[0].attr'
-    assert (namedtuple_key_path + sequence_key_path).pprint() == '.attr[0]'
-    assert (dict_key_path + namedtuple_key_path).pprint() == "['a'].attr"
-    assert (namedtuple_key_path + dict_key_path).pprint() == ".attr['a']"
-    assert (sequence_key_path + fallback_key_path).pprint() == '[0][<flat index 1>]'
-    assert (fallback_key_path + sequence_key_path).pprint() == '[<flat index 1>][0]'
-    assert (dict_key_path + fallback_key_path).pprint() == "['a'][<flat index 1>]"
-    assert (fallback_key_path + dict_key_path).pprint() == "[<flat index 1>]['a']"
-    assert (namedtuple_key_path + fallback_key_path).pprint() == '.attr[<flat index 1>]'
-    assert (fallback_key_path + namedtuple_key_path).pprint() == '[<flat index 1>].attr'
-    assert sequence_key_path + dict_key_path + namedtuple_key_path + fallback_key_path == KeyPath(
-        (
-            sequence_key_path,
-            dict_key_path,
-            namedtuple_key_path,
-            fallback_key_path,
-        ),
-    )
-    assert (
-        sequence_key_path + dict_key_path + namedtuple_key_path + fallback_key_path
-    ).pprint() == "[0]['a'].attr[<flat index 1>]"
