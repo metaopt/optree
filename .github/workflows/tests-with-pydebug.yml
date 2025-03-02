@@ -111,7 +111,9 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
-            pyenv update
+            for ((i = 0; i < 3; ++i)); do
+              pyenv update && break
+            done
           fi
           echo "::group::pyenv install --list"
           pyenv install --list
@@ -152,7 +154,9 @@ jobs:
               PYENV_INSTALL_ARGS+=("--debug")
             fi
           else
-            pyenv update
+            for ((i = 0; i < 3; ++i)); do
+              pyenv update && break
+            done
           fi
           pyenv install ${{ env.PYTHON_VERSION }} "${PYENV_INSTALL_ARGS[@]}"
 
