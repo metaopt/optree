@@ -28,7 +28,6 @@ from optree.accessor import (
     SequenceEntry,
     StructSequenceEntry,
 )
-from optree.functools import Partial
 from optree.ops import (
     MAX_RECURSION_DEPTH,
     NONE_IS_LEAF,

@@ -18,10 +18,7 @@ from __future__ import annotations
 
 import functools
 from typing import TYPE_CHECKING, Any, Callable, ClassVar
-from typing_extensions import (
-    Self,  # Python 3.11+
-    deprecated,  # Python 3.13+
-)
+from typing_extensions import Self  # Python 3.11+
 
 from optree import registry
 from optree.accessor import GetAttrEntry
@@ -170,16 +167,3 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
         """Unflatten the children and metadata into a :class:`partial` instance."""
         args, keywords = children
         return cls(metadata, *args, **keywords)
-
-
-# pylint: disable-next=protected-access
-@registry.register_pytree_node_class(namespace=registry.__GLOBAL_NAMESPACE)
-@deprecated(
-    'The class `optree.Partial` is deprecated and will be removed in a future version. '
-    'Please use `optree.functools.partial` instead.',
-    category=FutureWarning,
-)
-class Partial(partial):
-    """Deprecated alias for :class:`partial`."""
-
-    __slots__: ClassVar[tuple[()]] = ()

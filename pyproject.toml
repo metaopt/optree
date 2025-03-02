@@ -297,5 +297,4 @@ verbosity_assertions = 3
 filterwarnings = [
     "error",
     "always",
-    "ignore:The class `optree.Partial` is deprecated and will be removed in a future version. Please use `optree.functools.partial` instead.:FutureWarning",
 ]
