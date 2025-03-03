@@ -119,9 +119,10 @@ public:
     // Return an unflattened PyTree given an iterable of leaves and a PyTreeSpec.
     [[nodiscard]] py::object Unflatten(const py::iterable &leaves) const;
 
-    // Flatten a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure
-    // of 'x'. For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeSpec [(*,
-    // *), *], the result is the list of leaves [1, (2, 3), {"foo": 4}].
+    // Flatten a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure of
+    // 'full_tree'.
+    // For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeSpec([(*, *), *]),
+    // the result is the list of leaves [1, (2, 3), {"foo": 4}].
     [[nodiscard]] py::list FlattenUpTo(const py::object &full_tree) const;
 
     // Broadcast to a common suffix of this PyTreeSpec and other PyTreeSpec.
@@ -137,8 +138,15 @@ public:
     // Compose two PyTreeSpecs, replacing the leaves of this tree with copies of `inner`.
     [[nodiscard]] std::unique_ptr<PyTreeSpec> Compose(const PyTreeSpec &inner_treespec) const;
 
-    // Map a function over a PyTree structure, applying f_leaf to each leaf, and
-    // f_node(node_type, node_data, children) to each container node.
+    // Map a function over a PyTree structure, applying `f_leaf(leaf)` to each leaf,
+    // and `f_node(node)` to each reconstructed non-leaf node.
+    [[nodiscard]] py::object Traverse(
+        const py::iterable &leaves,
+        const std::optional<py::function> &f_node = std::nullopt,
+        const std::optional<py::function> &f_leaf = std::nullopt) const;
+
+    // Map a function over a PyTree structure, applying `f_leaf(leaf)` to each leaf,
+    // and `f_node(node_type, node_data, children)` to each non-leaf node.
     [[nodiscard]] py::object Walk(const py::iterable &leaves,
                                   const std::optional<py::function> &f_node = std::nullopt,
                                   const std::optional<py::function> &f_leaf = std::nullopt) const;
@@ -390,6 +398,12 @@ private:
         const ssize_t &pos,
         const std::vector<Node> &other_traversal,
         const ssize_t &other_pos);
+
+    template <bool PassRawNode = true>
+    [[nodiscard]] py::object WalkImpl(
+        const py::iterable &leaves,
+        const std::optional<py::function> &f_node = std::nullopt,
+        const std::optional<py::function> &f_leaf = std::nullopt) const;
 
     template <typename Span, typename Stack>
     [[nodiscard]] ssize_t PathsImpl(Span &paths,   // NOLINT[runtime/references]

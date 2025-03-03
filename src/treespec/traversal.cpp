@@ -92,7 +92,7 @@ py::object PyTreeIter::NextImpl() {
                 if (PyList_Reverse(keys.ptr()) < 0) [[unlikely]] {
                     throw py::error_already_set();
                 }
-                for (const py::handle& key : keys) {
+                for (const py::handle &key : keys) {
                     m_agenda.emplace_back(DictGetItem(dict, key), depth);
                 }
                 break;
@@ -172,16 +172,17 @@ py::object PyTreeIter::Next() {
     }
 }
 
+template <bool PassRawNode>
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-py::object PyTreeSpec::Walk(const py::iterable& leaves,
-                            const std::optional<py::function>& f_node,
-                            const std::optional<py::function>& f_leaf) const {
+py::object PyTreeSpec::WalkImpl(const py::iterable &leaves,
+                                const std::optional<py::function> &f_node,
+                                const std::optional<py::function> &f_leaf) const {
     PYTREESPEC_SANITY_CHECK(*this);
 
     const scoped_critical_section cs{leaves};
     auto agenda = reserved_vector<py::object>(4);
     auto it = leaves.begin();
-    for (const Node& node : m_traversal) {
+    for (const Node &node : m_traversal) {
         switch (node.kind) {
             case PyTreeKind::Leaf: {
                 if (it == leaves.end()) [[unlikely]] {
@@ -208,14 +209,14 @@ py::object PyTreeSpec::Walk(const py::iterable& leaves,
                 const ssize_t size = py::ssize_t_cast(agenda.size());
                 EXPECT_GE(size, node.arity, "Too few elements for custom type.");
 
-                if (f_node) [[likely]] {
+                if (PassRawNode && f_node) [[likely]] {
                     const py::tuple children{node.arity};
                     for (ssize_t i = node.arity - 1; i >= 0; --i) {
                         TupleSetItem(children, i, agenda.back());
                         agenda.pop_back();
                     }
 
-                    const py::object& node_type = GetType(node);
+                    const py::object &node_type = GetType(node);
                     {
                         const scoped_critical_section cs2{node_type};
                         agenda.emplace_back(EVALUATE_WITH_LOCK_HELD2(
@@ -226,12 +227,13 @@ py::object PyTreeSpec::Walk(const py::iterable& leaves,
                             *f_node));
                     }
                 } else [[unlikely]] {
-                    py::object out =
+                    const py::object out =
                         MakeNode(node,
                                  (node.arity > 0 ? &agenda[size - node.arity] : nullptr),
                                  node.arity);
                     agenda.resize(size - node.arity);
-                    agenda.emplace_back(std::move(out));
+                    agenda.emplace_back(
+                        f_node ? EVALUATE_WITH_LOCK_HELD2((*f_node)(out), out, *f_node) : out);
                 }
                 break;
             }
@@ -246,6 +248,18 @@ py::object PyTreeSpec::Walk(const py::iterable& leaves,
 
     EXPECT_EQ(agenda.size(), 1, "PyTreeSpec traversal did not yield a singleton.");
     return agenda.back();
+}
+
+py::object PyTreeSpec::Traverse(const py::iterable &leaves,
+                                const std::optional<py::function> &f_node,
+                                const std::optional<py::function> &f_leaf) const {
+    return WalkImpl</*PassRawNode=*/false>(leaves, f_node, f_leaf);
+}
+
+py::object PyTreeSpec::Walk(const py::iterable &leaves,
+                            const std::optional<py::function> &f_node,
+                            const std::optional<py::function> &f_leaf) const {
+    return WalkImpl</*PassRawNode=*/true>(leaves, f_node, f_leaf);
 }
 
 }  // namespace optree

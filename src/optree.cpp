@@ -237,10 +237,18 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              "Compose two treespecs. Constructs the inner treespec as a subtree at each leaf node.",
              py::arg("inner_treespec"),
              py::pos_only())
+        .def("traverse",
+             &PyTreeSpec::Traverse,
+             "Walk over the pytree structure, calling ``f_leaf(leaf)`` at leaves, "
+             "and ``f_node(node)`` at reconstructed non-leaf nodes.",
+             py::arg("leaves"),
+             py::pos_only(),
+             py::arg("f_node") = std::nullopt,
+             py::arg("f_leaf") = std::nullopt)
         .def("walk",
              &PyTreeSpec::Walk,
-             "Walk over the pytree structure, calling ``f_node(node_type, node_data, children)`` "
-             "at nodes, and ``f_leaf(leaf)`` at leaves.",
+             "Walk over the pytree structure, calling ``f_leaf(leaf)`` at leaves, "
+             "and ``f_node(node_type, node_data, children)`` at non-leaf nodes.",
              py::arg("leaves"),
              py::pos_only(),
              py::arg("f_node") = std::nullopt,
