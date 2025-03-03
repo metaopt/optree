@@ -190,7 +190,7 @@ jobs:
           if [[ "${{ runner.os }}" == 'Linux' ]]; then
             sudo apt-get remove cmake -y
           elif [[ "${{ runner.os }}" == 'macOS' ]]; then
-            brew uninstall cmake --force
+            brew uninstall --formula cmake --force
           elif [[ "${{ runner.os }}" == 'Windows' ]]; then
             choco uninstall cmake cmake.install --force --yes || true
           fi
