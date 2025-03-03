@@ -25,7 +25,7 @@ import pytest
 
 import optree
 import optree._C
-from helpers import GLOBAL_NAMESPACE, Py_GIL_DISABLED, gc_collect, skipif_pypy
+from helpers import GLOBAL_NAMESPACE, PYPY, Py_GIL_DISABLED, gc_collect, skipif_pypy
 
 
 def test_register_pytree_node_class_with_no_namespace():
@@ -572,7 +572,7 @@ def test_pytree_node_registry_get_with_invalid_arguments():
     assert optree.register_pytree_node.get(None) == registry
     assert optree.register_pytree_node.get(namespace=GLOBAL_NAMESPACE) == registry
     assert optree.register_pytree_node.get(namedtuple) is registry[namedtuple]  # noqa: PYI024
-    if sys.version_info[:2] != (3, 9):
+    if sys.version_info[:2] != (3, 9) or PYPY:
         with pytest.raises(TypeError, match='Expected a class or None'):
             optree.register_pytree_node.get(dataclass)
         with pytest.raises(TypeError, match='The namespace must be a string'):

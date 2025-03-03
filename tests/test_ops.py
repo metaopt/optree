@@ -231,6 +231,123 @@ def test_tree_iter(
             next(it)
 
 
+def test_traverse():
+    tree = {'b': 2, 'a': 1, 'c': {'f': None, 'e': 3, 'g': 4}}
+    #          tree
+    #        /  |  \
+    #     ---   |   ---
+    #    /      |      \
+    # ('a')   ('b')   ('c')
+    #   1       2     / | \
+    #              ---  |  ---
+    #             /     |     \
+    #          ('e')  ('f')  ('g')
+    #            3     None    4
+    #                   |
+    #                   X
+    #
+
+    def unflatten_node(node):
+        return node
+
+    def get_functions():
+        nodes_visited = []
+        leaves_visited = []
+
+        def f_node(node):
+            nodes_visited.append(node)
+            return copy.deepcopy(nodes_visited), None
+
+        def f_leaf(leaf):
+            leaves_visited.append(leaf)
+            return copy.deepcopy(leaves_visited)
+
+        return f_node, f_leaf, leaves_visited, nodes_visited
+
+    leaves, treespec = optree.tree_flatten(tree)
+
+    f_node, f_leaf, *_ = get_functions()
+    with pytest.raises(ValueError, match=re.escape('Too few leaves for PyTreeSpec.')):
+        treespec.traverse(leaves[:-1], f_node, f_leaf)
+
+    f_node, f_leaf, *_ = get_functions()
+    with pytest.raises(ValueError, match=re.escape('Too many leaves for PyTreeSpec.')):
+        treespec.traverse((*leaves, 0), f_node, f_leaf)
+
+    f_node, f_leaf, leaves_visited, nodes_visited = get_functions()
+    output = treespec.traverse(leaves, f_node, f_leaf)
+    assert leaves_visited == [1, 2, 3, 4]
+    assert nodes_visited == [
+        None,
+        {'f': ([None], None), 'e': [1, 2, 3], 'g': [1, 2, 3, 4]},
+        {
+            'b': [1, 2],
+            'a': [1],
+            'c': ([None, {'f': ([None], None), 'e': [1, 2, 3], 'g': [1, 2, 3, 4]}], None),
+        },
+    ]
+    assert output == (
+        [
+            None,
+            {'f': ([None], None), 'e': [1, 2, 3], 'g': [1, 2, 3, 4]},
+            {
+                'b': [1, 2],
+                'a': [1],
+                'c': ([None, {'f': ([None], None), 'e': [1, 2, 3], 'g': [1, 2, 3, 4]}], None),
+            },
+        ],
+        None,
+    )
+
+    assert treespec.traverse(leaves) == tree
+    assert treespec.traverse(leaves, unflatten_node, None) == tree
+    assert treespec.traverse(leaves, None, lambda x: x + 1) == optree.tree_map(
+        lambda x: x + 1,
+        tree,
+    )
+
+    leaves, treespec = optree.tree_flatten(tree, none_is_leaf=True)
+
+    f_node, f_leaf, *_ = get_functions()
+    with pytest.raises(ValueError, match=re.escape('Too few leaves for PyTreeSpec.')):
+        treespec.traverse(leaves[:-1], f_node, f_leaf)
+
+    f_node, f_leaf, *_ = get_functions()
+    with pytest.raises(ValueError, match=re.escape('Too many leaves for PyTreeSpec.')):
+        treespec.traverse((*leaves, 0), f_node, f_leaf)
+
+    f_node, f_leaf, leaves_visited, nodes_visited = get_functions()
+    output = treespec.traverse(leaves, f_node, f_leaf)
+    assert leaves_visited == [1, 2, 3, None, 4]
+    assert nodes_visited == [
+        {'f': [1, 2, 3, None], 'e': [1, 2, 3], 'g': [1, 2, 3, None, 4]},
+        {
+            'b': [1, 2],
+            'a': [1],
+            'c': ([{'f': [1, 2, 3, None], 'e': [1, 2, 3], 'g': [1, 2, 3, None, 4]}], None),
+        },
+    ]
+    assert output == (
+        [
+            {'f': [1, 2, 3, None], 'e': [1, 2, 3], 'g': [1, 2, 3, None, 4]},
+            {
+                'b': [1, 2],
+                'a': [1],
+                'c': ([{'f': [1, 2, 3, None], 'e': [1, 2, 3], 'g': [1, 2, 3, None, 4]}], None),
+            },
+        ],
+        None,
+    )
+
+    assert treespec.traverse(leaves) == tree
+    assert treespec.traverse(leaves, unflatten_node, None) == tree
+    assert treespec.traverse(leaves, None, lambda x: (x,)) == optree.tree_map(
+        lambda x: (x,),
+        tree,
+        none_is_leaf=True,
+    )
+
+
 def test_walk():
     tree = {'b': 2, 'a': 1, 'c': {'f': None, 'e': 3, 'g': 4}}
     #          tree

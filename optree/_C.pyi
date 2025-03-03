@@ -123,6 +123,13 @@ class PyTreeSpec:
         f_leaf: Callable[[Self], Self] | None = None,
     ) -> Self: ...
     def compose(self, inner_treespec: Self, /) -> Self: ...
+    def traverse(
+        self,
+        leaves: Iterable[T],
+        /,
+        f_node: Callable[[Collection[U]], U] | None = None,
+        f_leaf: Callable[[T], U] | None = None,
+    ) -> U: ...
     def walk(
         self,
         leaves: Iterable[T],

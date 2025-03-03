@@ -68,6 +68,7 @@ if(MSVC)
         " /experimental:external /external:anglebrackets /external:W0"
         " /Wall /Wv:19.40"  # Visual Studio 2022 version 17.10
         # Suppress following warnings
+        " /wd4127"  # conditional expression is constant
         " /wd4365"  # conversion from 'type_1' to 'type_2', signed/unsigned mismatch
         " /wd4514"  # unreferenced inline function has been removed
         " /wd4710"  # function not inlined
