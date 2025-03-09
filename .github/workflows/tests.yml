@@ -50,6 +50,7 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.13t"
           - "pypy-3.9"
           - "pypy-3.10"
           - "pypy-3.11"
@@ -60,7 +61,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@main
         with:
           python-version: ${{ matrix.python-version }}
           update-environment: true
