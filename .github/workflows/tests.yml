@@ -50,6 +50,7 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.13t"
           - "pypy-3.9"
           - "pypy-3.10"
           - "pypy-3.11"
@@ -83,11 +84,11 @@ jobs:
           echo "::endgroup::"
 
           export PYTHON_TAG="$(
-            echo 'import sys; print(
+            echo 'import sys, sysconfig; print(
               "{0.name[0]}p{1.major}{1.minor}{2}".format(
                 sys.implementation,
                 sys.version_info,
-                getattr(sys, "abiflags", ""),
+                getattr(sys, "abiflags", "t" if sysconfig.get_config_var("Py_GIL_DISABLED") else ""),
               ).lower(),
             )' | ${{ env.PYTHON }} -
           )"
