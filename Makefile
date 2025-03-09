@@ -1,3 +1,18 @@
+# Copyright 2022-2025 MetaOPT Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 PROJECT_NAME   = optree
 COPYRIGHT      = "MetaOPT Team. All Rights Reserved."
 SHELL          = /bin/bash
@@ -53,10 +68,18 @@ build:
 check_pip_install = $(PYTHON) -m pip show $(1) &>/dev/null || (cd && $(PYTHON) -m pip install --upgrade $(1))
 check_pip_install_extra = $(PYTHON) -m pip show $(1) &>/dev/null || (cd && $(PYTHON) -m pip install --upgrade $(2))
 
-.PHONY: pylint-install
-pylint-install:
-	$(call check_pip_install_extra,pylint,pylint[spelling])
-	$(call check_pip_install,pyenchant)
+.PHONY: pre-commit-install
+pre-commit-install:
+	$(call check_pip_install,pre-commit)
+	$(PYTHON) -m pre_commit install --install-hooks
+
+.PHONY: python-format-install
+python-format-install:
+	$(call check_pip_install,ruff)
+
+.PHONY: ruff-install
+ruff-install:
+	$(call check_pip_install,ruff)
 
 .PHONY: flake8-install
 flake8-install:
@@ -67,13 +90,10 @@ flake8-install:
 	$(call check_pip_install,flake8-pyi)
 	$(call check_pip_install,flake8-simplify)
 
-.PHONY: py-format-install
-py-format-install:
-	$(call check_pip_install,ruff)
-
-.PHONY: ruff-install
-ruff-install:
-	$(call check_pip_install,ruff)
+.PHONY: pylint-install
+pylint-install:
+	$(call check_pip_install_extra,pylint,pylint[spelling])
+	$(call check_pip_install,pyenchant)
 
 .PHONY: mypy-install
 mypy-install:
@@ -82,11 +102,6 @@ mypy-install:
 .PHONY: xdoctest-install
 xdoctest-install:
 	$(call check_pip_install,xdoctest)
-
-.PHONY: pre-commit-install
-pre-commit-install:
-	$(call check_pip_install,pre-commit)
-	$(PYTHON) -m pre_commit install --install-hooks
 
 .PHONY: docs-install
 docs-install:
@@ -113,10 +128,6 @@ test-install: pytest-install
 cmake-install:
 	command -v cmake || $(call check_pip_install,cmake)
 
-.PHONY: cpplint-install
-cpplint-install:
-	$(call check_pip_install,cpplint)
-
 .PHONY: clang-format-install
 clang-format-install:
 	$(call check_pip_install,clang-format)
@@ -124,6 +135,10 @@ clang-format-install:
 .PHONY: clang-tidy-install
 clang-tidy-install:
 	$(call check_pip_install,clang-tidy)
+
+.PHONY: cpplint-install
+cpplint-install:
+	$(call check_pip_install,cpplint)
 
 .PHONY: go-install
 go-install:
@@ -144,20 +159,15 @@ pytest test: pytest-install
 		--cov="$(PROJECT_NAME)" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
 		$(PYTESTOPTS) .
 
-# Python linters
+# Python Linters
 
-.PHONY: pylint
-pylint: pylint-install
-	$(PYTHON) -m pylint --version
-	$(PYTHON) -m pylint $(PROJECT_PATH)
+.PHONY: pre-commit
+pre-commit: pre-commit-install
+	$(PYTHON) -m pre_commit --version
+	$(PYTHON) -m pre_commit run --all-files
 
-.PHONY: flake8
-flake8: flake8-install
-	$(PYTHON) -m flake8 --version
-	$(PYTHON) -m flake8 --doctests --count --show-source --statistics
-
-.PHONY: py-format
-py-format: py-format-install
+.PHONY: python-format
+python-format: python-format-install
 	$(PYTHON) -m ruff --version
 	$(PYTHON) -m ruff format --check . && \
 	$(PYTHON) -m ruff check --select=I .
@@ -172,25 +182,27 @@ ruff-fix: ruff-install
 	$(PYTHON) -m ruff --version
 	$(PYTHON) -m ruff check --fix --exit-non-zero-on-fix .
 
+.PHONY: flake8
+flake8: flake8-install
+	$(PYTHON) -m flake8 --version
+	$(PYTHON) -m flake8 --doctests --count --show-source --statistics
+
+.PHONY: pylint
+pylint: pylint-install
+	$(PYTHON) -m pylint --version
+	$(PYTHON) -m pylint $(PROJECT_PATH)
+
 .PHONY: mypy
 mypy: mypy-install
 	$(PYTHON) -m mypy --version
 	$(PYTHON) -m mypy .
 
-.PHONY: xdoctest
-xdoctest: xdoctest-install
+.PHONY: xdoctest doctest
+xdoctest doctest: xdoctest-install
 	$(PYTHON) -m xdoctest --version
 	$(PYTHON) -m xdoctest --global-exec "from optree import *" $(PROJECT_NAME)
 
-.PHONY: doctest
-doctest: xdoctest
-
-.PHONY: pre-commit
-pre-commit: pre-commit-install
-	$(PYTHON) -m pre_commit --version
-	$(PYTHON) -m pre_commit run --all-files
-
-# C++ linters
+# C++ Linters
 
 .PHONY: cmake-configure
 cmake-configure: cmake-install
@@ -208,11 +220,6 @@ cmake-configure: cmake-install
 cmake cmake-build: cmake-configure
 	cmake --build cmake-build-debug --parallel
 
-.PHONY: cpplint
-cpplint: cpplint-install
-	$(PYTHON) -m cpplint --version
-	$(PYTHON) -m cpplint $(CXX_FILES)
-
 .PHONY: clang-format
 clang-format: clang-format-install
 	clang-format --version
@@ -222,6 +229,11 @@ clang-format: clang-format-install
 clang-tidy: clang-tidy-install cmake-configure
 	clang-tidy --version
 	clang-tidy --extra-arg="-v" --fix -p=cmake-build-debug $(CXX_FILES)
+
+.PHONY: cpplint
+cpplint: cpplint-install
+	$(PYTHON) -m cpplint --version
+	$(PYTHON) -m cpplint $(CXX_FILES)
 
 # Documentation
 
@@ -248,21 +260,21 @@ spelling: docs-install
 clean-docs:
 	make -C docs clean || true
 
-# Utility functions
+# Utility Functions
 
 .PHONY: lint
-lint: ruff flake8 py-format mypy pylint doctest clang-format clang-tidy cpplint addlicense docstyle spelling
+lint: python-format ruff flake8 pylint mypy doctest clang-format clang-tidy cpplint addlicense docstyle spelling
 
 .PHONY: format
-format: py-format-install ruff-install clang-format-install addlicense-install
+format: python-format-install ruff-install clang-format-install addlicense-install
 	$(PYTHON) -m ruff format $(PYTHON_FILES)
 	$(PYTHON) -m ruff check --fix --exit-zero .
 	$(CLANG_FORMAT) -style=file -i $(CXX_FILES)
 	addlicense -c $(COPYRIGHT) -l apache -y 2022-$(shell date +"%Y") \
 		-ignore tests/coverage.xml $(SOURCE_FOLDERS)
 
-.PHONY: clean-py
-clean-py:
+.PHONY: clean-python
+clean-python:
 	find . -type f -name '*.py[co]' -delete
 	find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
 	find . -depth -type d -name ".ruff_cache" -exec rm -r "{}" +
@@ -279,4 +291,4 @@ clean-build:
 	rm -rf *.egg-info .eggs
 
 .PHONY: clean
-clean: clean-py clean-build clean-docs
+clean: clean-python clean-build clean-docs
