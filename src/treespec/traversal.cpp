@@ -221,7 +221,7 @@ py::object PyTreeSpec::WalkImpl(const py::iterable &leaves,
                         const scoped_critical_section cs2{node_type};
                         agenda.emplace_back(EVALUATE_WITH_LOCK_HELD2(
                             (*f_node)(node_type,
-                                      (node.node_data ? node.node_data : py::none()),
+                                      node.node_data ? node.node_data : py::none(),
                                       children),
                             node.node_data,
                             *f_node));
@@ -229,7 +229,7 @@ py::object PyTreeSpec::WalkImpl(const py::iterable &leaves,
                 } else [[unlikely]] {
                     const py::object out =
                         MakeNode(node,
-                                 (node.arity > 0 ? &agenda[size - node.arity] : nullptr),
+                                 node.arity > 0 ? &agenda[size - node.arity] : nullptr,
                                  node.arity);
                     agenda.resize(size - node.arity);
                     agenda.emplace_back(

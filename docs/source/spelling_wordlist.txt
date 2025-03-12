@@ -102,3 +102,4 @@ PyTreeEntry
 SequenceEntry
 MappingEntry
 frozenset
+eq

@@ -19,8 +19,8 @@ SHELL          = /bin/bash
 .SHELLFLAGS    := -eu -o pipefail -c
 PROJECT_PATH   = $(PROJECT_NAME)
 SOURCE_FOLDERS = $(PROJECT_PATH) include src tests docs
-PYTHON_FILES   = $(shell find $(SOURCE_FOLDERS) -type f -name "*.py" -o -name "*.pyi")
-CXX_FILES      = $(shell find $(SOURCE_FOLDERS) -type f -name "*.h" -o -name "*.cpp")
+PYTHON_FILES   = $(shell find $(SOURCE_FOLDERS) -type f -iname "*.py" -o -iname "*.pyi") setup.py benchmark.py
+CXX_FILES      = $(shell find $(SOURCE_FOLDERS) -type f -iname "*.[ch]pp" -o -iname "*.cc" -o -iname "*.c" -o -iname "*.h")
 COMMIT_HASH    = $(shell git rev-parse HEAD)
 COMMIT_HASH_SHORT = $(shell git rev-parse --short=7 HEAD)
 GOPATH         ?= $(HOME)/go
@@ -166,8 +166,8 @@ pre-commit: pre-commit-install
 	$(PYTHON) -m pre_commit --version
 	$(PYTHON) -m pre_commit run --all-files
 
-.PHONY: python-format
-python-format: python-format-install
+.PHONY: python-format pyfmt ruff-format
+python-format pyfmt ruff-format: python-format-install
 	$(PYTHON) -m ruff --version
 	$(PYTHON) -m ruff format --check . && \
 	$(PYTHON) -m ruff check --select=I .
