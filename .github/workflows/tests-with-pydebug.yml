@@ -311,7 +311,7 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         run: |
-          find . -type f -name '*.py[co]' -delete
+          find . -type f -name '*.py[cod]' -delete
           find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
           if git status --ignored --porcelain | grep -qvE '/$'; then
             ls -alh $(git status --ignored --porcelain | grep -vE '/$' | cut -d ' ' -f2)
