@@ -35,6 +35,7 @@ from helpers import (
     GLOBAL_NAMESPACE,
     NAMESPACED_TREE,
     PYPY,
+    TEST_ROOT,
     TREE_STRINGS,
     TREES,
     MyAnotherDict,
@@ -483,6 +484,8 @@ def test_treespec_pickle_missing_registration():
                     f"""
                     import pickle
                     import sys
+
+                    sys.path.insert(0, {str(TEST_ROOT)!r})
 
                     try:
                         treespec = pickle.loads({serialized!r})

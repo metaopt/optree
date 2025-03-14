@@ -23,12 +23,16 @@ import sys
 import sysconfig
 import time
 from collections import OrderedDict, UserDict, defaultdict, deque, namedtuple
+from pathlib import Path
 from typing import Any, NamedTuple
 
 import pytest
 
 import optree
 from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
+
+
+TEST_ROOT = Path(__file__).absolute().parent
 
 
 PYPY = platform.python_implementation() == 'PyPy'
