@@ -275,7 +275,7 @@ format: python-format-install ruff-install clang-format-install addlicense-insta
 
 .PHONY: clean-python
 clean-python:
-	find . -type f -name '*.py[co]' -delete
+	find . -type f -name '*.py[cod]' -delete
 	find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
 	find . -depth -type d -name ".ruff_cache" -exec rm -r "{}" +
 	find . -depth -type d -name ".mypy_cache" -exec rm -r "{}" +
