@@ -17,6 +17,7 @@
 
 import contextlib
 import itertools
+import os
 import pickle
 import platform
 import re
@@ -35,6 +36,7 @@ from helpers import (
     GLOBAL_NAMESPACE,
     NAMESPACED_TREE,
     PYPY,
+    TEST_ROOT,
     TREE_STRINGS,
     TREES,
     MyAnotherDict,
@@ -474,6 +476,7 @@ def test_treespec_pickle_missing_registration():
     treespec = optree.tree_structure(Foo(0, 1), namespace='foo')
     serialized = pickle.dumps(treespec)
 
+    python_path = os.pathsep.join([str(TEST_ROOT), os.getenv('PYTHONPATH', '.')])
     try:
         output = subprocess.run(
             [
@@ -494,6 +497,7 @@ def test_treespec_pickle_missing_registration():
                     """,
                 ).strip(),
             ],
+            env={'PYTHONPATH': python_path},
             capture_output=True,
             check=True,
             text=True,
