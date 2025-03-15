@@ -59,14 +59,7 @@ lint = [
     "ruff",
     "pylint[spelling]",
     "mypy",
-    "flake8",
-    "flake8-bugbear",
-    "flake8-comprehensions",
-    "flake8-docstrings",
-    "flake8-pyi",
-    "flake8-simplify",
     "doc8",
-    "pydocstyle",
     "pyenchant",
     "xdoctest",
     "cpplint",
@@ -295,7 +288,4 @@ ban-relative-imports = "all"
 
 [tool.pytest.ini_options]
 verbosity_assertions = 3
-filterwarnings = [
-    "error",
-    "always",
-]
+filterwarnings = ["error", "always"]

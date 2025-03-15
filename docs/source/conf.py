@@ -102,6 +102,7 @@ language = 'en'
 exclude_patterns = ['_build', 'build', 'Thumbs.db', '.DS_Store']
 spelling_exclude_patterns = ['']
 spelling_word_list_filename = ['spelling_wordlist.txt']
+spelling_show_suggestions = True
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'default'

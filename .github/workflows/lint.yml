@@ -71,10 +71,6 @@ jobs:
         run: |
           make ruff
 
-      - name: flake8
-        run: |
-          make flake8
-
       - name: pylint
         run: |
           make pylint
@@ -97,4 +93,9 @@ jobs:
 
       - name: spelling
         run: |
+          dictionary="$(cat docs/source/spelling_wordlist.txt)"
+          if [[ "$(sort --ignore-case <<<"${dictionary}" | uniq)" != "${dictionary}" ]]; then
+            echo "spelling_wordlist.txt is not sorted or contains duplicates" >&2
+            exit 1
+          fi
           make spelling

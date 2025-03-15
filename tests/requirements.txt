@@ -6,12 +6,6 @@ pytest-xdist
 ruff
 pylint[spelling]
 mypy
-flake8
-flake8-bugbear
-flake8-comprehensions
-flake8-docstrings
-flake8-pyi
-flake8-simplify
 doc8
 pyenchant
 xdoctest
