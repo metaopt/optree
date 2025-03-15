@@ -14,7 +14,7 @@ authors = [
     { name = "Xuehai Pan", email = "XuehaiPan@pku.edu.cn" },
     { name = "Jie Ren", email = "jieren9806@gmail.com" },
 ]
-license = { text = "Apache License, Version 2.0" }
+license = { text = "Apache-2.0" }
 keywords = [
     "PyTree",
     "Tree Manipulation",
@@ -103,7 +103,8 @@ include-package-data = true
 include = ["optree", "optree.*"]
 
 [tool.setuptools.package-data]
-optree = ['*.so', '*.pyd']
+extension = ["*.so", "*.pyd"]
+typing = ["*.pyi", "*.typed"]
 
 # Wheel builder ################################################################
 # Reference: https://cibuildwheel.readthedocs.io
@@ -125,7 +126,7 @@ test-command = '''make -C "{project}" test PYTHON=python PYTESTOPTS="--quiet --e
 
 [tool.mypy]
 python_version = "3.8"
-exclude = ["^tests/.*\\.py$"]
+exclude = ['^tests/.*\.py$']
 pretty = true
 show_column_numbers = true
 show_error_codes = true

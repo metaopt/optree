@@ -1,15 +1,11 @@
-recursive-include optree *.pyi
-recursive-include optree *.typed
-include LICENSE
-
 # Include source files in SDist
 include CMakeLists.txt
-recursive-include src *
-recursive-include include *
+graft src
+graft include
 
 # Include test suites in SDist
-recursive-include tests *
+graft tests
 
 # Prune compiled files
 prune */__pycache__
-global-exclude *.py[cod] *.o *.so *.dylib *.pxd *.a
+global-exclude *~ *.py[cod] *.so *.a *.dylib *.pxd *.dll *.lib *.o *.obj
