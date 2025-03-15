@@ -496,7 +496,7 @@ def test_standard_dictionary(
 def test_namedtuple():
     lhs, rhs = CustomTuple(1, [2, [3]]), CustomTuple(4, [5, 6])
     lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=re.escape('Expected an instance of list, got 6.')):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
     assert not lhs_treespec.is_prefix(rhs_treespec)
 
@@ -519,7 +519,7 @@ def test_structseq():
         TimeStructTimeType((4, [5, 6], *range(7))),
     )
     lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=re.escape('Expected an instance of list, got 6.')):
         optree.tree_map_(lambda x, y: None, lhs, rhs)
     assert not lhs_treespec.is_prefix(rhs_treespec)
 

@@ -197,6 +197,7 @@ select = [
     "INP",     # flake8-no-pep420
     "PIE",     # flake8-pie
     "PYI",     # flake8-pyi
+    "PT",      # flake8-pytest-style
     "Q",       # flake8-quotes
     "RSE",     # flake8-raise
     "RET",     # flake8-return
@@ -204,6 +205,7 @@ select = [
     "SLOT",    # flake8-slots
     "TID",     # flake8-tidy-imports
     "TC",      # flake8-type-checking
+    "NPY",     # numpy
     "PERF",    # perflint
     "FURB",    # refurb
     "TRY",     # tryceratops

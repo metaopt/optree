@@ -31,6 +31,7 @@ from helpers import LEAVES, TREES, parametrize
 @parametrize(tree=list(TREES + LEAVES))
 def test_tree_ravel(tree):
     random.seed(0)
+    rng = np.random.default_rng(0)
 
     def replace_leaf(_):
         candidates = [random.randint(-100, 100), random.uniform(-100.0, 100.0)]
@@ -49,7 +50,7 @@ def test_tree_ravel(tree):
         ]
         for dtype in dtypes:
             candidates.extend(
-                np.random.uniform(low=-5.0, high=5.0, size=shape).astype(dtype) for shape in shapes
+                rng.uniform(low=-5.0, high=5.0, size=shape).astype(dtype) for shape in shapes
             )
 
         return random.choice(candidates)
@@ -96,6 +97,7 @@ def test_tree_ravel(tree):
 @parametrize(tree=list(TREES + LEAVES))
 def test_tree_ravel_single_dtype(tree):
     random.seed(0)
+    rng = np.random.default_rng(0)
     dtype = np.float16
     default_dtype = np.array([]).dtype
 
@@ -108,7 +110,7 @@ def test_tree_ravel_single_dtype(tree):
             (random.randint(1, 10), random.randint(1, 10), random.randint(1, 10)),
         ]
         candidates.extend(
-            np.random.uniform(low=-5.0, high=5.0, size=shape).astype(dtype) for shape in shapes
+            rng.uniform(low=-5.0, high=5.0, size=shape).astype(dtype) for shape in shapes
         )
         return random.choice(candidates)
 

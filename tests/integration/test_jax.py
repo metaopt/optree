@@ -36,6 +36,7 @@ from helpers import LEAVES, TREES, parametrize
 def test_tree_ravel(tree):
     jax.config.update('jax_enable_x64', True)
     random.seed(0)
+    rng = np.random.default_rng(0)
 
     def replace_leaf(_):
         candidates = [random.randint(-100, 100), random.uniform(-100.0, 100.0)]
@@ -54,7 +55,7 @@ def test_tree_ravel(tree):
         ]
         for dtype in dtypes:
             candidates.extend(
-                jnp.array(np.random.uniform(low=-5.0, high=5.0, size=shape), dtype=dtype)
+                jnp.array(rng.uniform(low=-5.0, high=5.0, size=shape), dtype=dtype)
                 for shape in shapes
             )
 
@@ -103,6 +104,7 @@ def test_tree_ravel(tree):
 def test_tree_ravel_single_dtype(tree):
     jax.config.update('jax_enable_x64', True)
     random.seed(0)
+    rng = np.random.default_rng(0)
     jax_dtype = jnp.float32
 
     def replace_leaf(_):
@@ -114,7 +116,7 @@ def test_tree_ravel_single_dtype(tree):
             (random.randint(1, 10), random.randint(1, 10), random.randint(1, 10)),
         ]
         candidates.extend(
-            jnp.array(np.random.uniform(low=-5.0, high=5.0, size=shape), dtype=jax_dtype)
+            jnp.array(rng.uniform(low=-5.0, high=5.0, size=shape), dtype=jax_dtype)
             for shape in shapes
         )
         return random.choice(candidates)

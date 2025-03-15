@@ -1035,11 +1035,13 @@ def test_treespec_transform():
         match=re.escape('Expected the PyTreeSpec transform function returns a PyTreeSpec'),
     ):
         optree.treespec_transform(treespec, lambda _: None)
+
     with pytest.raises(
         TypeError,
         match=re.escape('Expected the PyTreeSpec transform function returns a PyTreeSpec'),
     ):
         optree.treespec_transform(treespec, None, lambda _: None)
+
     with pytest.raises(
         ValueError,
         match=(
@@ -1054,13 +1056,14 @@ def test_treespec_transform():
                 none_is_leaf=True,
             ),
         )
+
+    def fn(spec):
+        with optree.dict_insertion_ordered(True, namespace='undefined'):
+            return optree.treespec_dict(zip('abcd', spec.children()), namespace='undefined')
+
     with pytest.raises(ValueError, match=r'Expected treespec\(s\) with namespace .*, got .*\.'):
-
-        def fn(spec):
-            with optree.dict_insertion_ordered(True, namespace='undefined'):
-                return optree.treespec_dict(zip('abcd', spec.children()), namespace='undefined')
-
         optree.treespec_transform(namespaced_treespec, fn)
+
     with pytest.raises(
         ValueError,
         match=re.escape(
@@ -1069,6 +1072,7 @@ def test_treespec_transform():
         ),
     ):
         optree.treespec_transform(treespec, lambda _: optree.tree_structure([0, 1]))
+
     with pytest.raises(
         ValueError,
         match=re.escape(
