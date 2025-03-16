@@ -35,7 +35,7 @@ def test_imports():
         assert isinstance(optree.integration.jax, types.ModuleType)
 
     try:
-        import numpy  # noqa: F401
+        import numpy as np  # noqa: F401
     except ImportError:
         with pytest.raises(ImportError):
             optree.integration.numpy  # noqa: B018

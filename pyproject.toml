@@ -59,14 +59,7 @@ lint = [
     "ruff",
     "pylint[spelling]",
     "mypy",
-    "flake8",
-    "flake8-bugbear",
-    "flake8-comprehensions",
-    "flake8-docstrings",
-    "flake8-pyi",
-    "flake8-simplify",
     "doc8",
-    "pydocstyle",
     "pyenchant",
     "xdoctest",
     "cpplint",
@@ -204,6 +197,7 @@ select = [
     "INP",     # flake8-no-pep420
     "PIE",     # flake8-pie
     "PYI",     # flake8-pyi
+    "PT",      # flake8-pytest-style
     "Q",       # flake8-quotes
     "RSE",     # flake8-raise
     "RET",     # flake8-return
@@ -211,6 +205,7 @@ select = [
     "SLOT",    # flake8-slots
     "TID",     # flake8-tidy-imports
     "TC",      # flake8-type-checking
+    "NPY",     # numpy
     "PERF",    # perflint
     "FURB",    # refurb
     "TRY",     # tryceratops
@@ -295,7 +290,4 @@ ban-relative-imports = "all"
 
 [tool.pytest.ini_options]
 verbosity_assertions = 3
-filterwarnings = [
-    "error",
-    "always",
-]
+filterwarnings = ["error", "always"]

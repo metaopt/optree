@@ -81,15 +81,6 @@ python-format-install:
 ruff-install:
 	$(call check_pip_install,ruff)
 
-.PHONY: flake8-install
-flake8-install:
-	$(call check_pip_install,flake8)
-	$(call check_pip_install,flake8-bugbear)
-	$(call check_pip_install,flake8-comprehensions)
-	$(call check_pip_install,flake8-docstrings)
-	$(call check_pip_install,flake8-pyi)
-	$(call check_pip_install,flake8-simplify)
-
 .PHONY: pylint-install
 pylint-install:
 	$(call check_pip_install_extra,pylint,pylint[spelling])
@@ -182,11 +173,6 @@ ruff-fix: ruff-install
 	$(PYTHON) -m ruff --version
 	$(PYTHON) -m ruff check --fix --exit-non-zero-on-fix .
 
-.PHONY: flake8
-flake8: flake8-install
-	$(PYTHON) -m flake8 --version
-	$(PYTHON) -m flake8 --doctests --count --show-source --statistics
-
 .PHONY: pylint
 pylint: pylint-install
 	$(PYTHON) -m pylint --version
@@ -200,7 +186,7 @@ mypy: mypy-install
 .PHONY: xdoctest doctest
 xdoctest doctest: xdoctest-install
 	$(PYTHON) -m xdoctest --version
-	$(PYTHON) -m xdoctest --global-exec "from optree import *" $(PROJECT_NAME)
+	$(PYTHON) -m xdoctest --global-exec "from $(PROJECT_NAME) import *" $(PROJECT_NAME)
 
 # C++ Linters
 
@@ -263,7 +249,7 @@ clean-docs:
 # Utility Functions
 
 .PHONY: lint
-lint: python-format ruff flake8 pylint mypy doctest clang-format clang-tidy cpplint addlicense docstyle spelling
+lint: python-format ruff pylint mypy doctest clang-format clang-tidy cpplint addlicense docstyle spelling
 
 .PHONY: format
 format: python-format-install ruff-install clang-format-install addlicense-install

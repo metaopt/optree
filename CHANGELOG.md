@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove deprecated key path APIs by [@XuehaiPan](https://github.com/XuehaiPan) in [#195](https://github.com/metaopt/optree/pull/195).
 - Remove deprecated `optree.Partial` by [@XuehaiPan](https://github.com/XuehaiPan) in [#196](https://github.com/metaopt/optree/pull/196).
+- Remove duplicate lint checks by [@XuehaiPan](https://github.com/XuehaiPan) in [#202](https://github.com/metaopt/optree/pull/202).
 
 ------
 
