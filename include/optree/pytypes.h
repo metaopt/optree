@@ -342,7 +342,11 @@ inline bool IsStructSequenceClassImpl(const py::handle& type) {
         try {
             py::exec("class _(cls): pass", py::dict(py::arg("cls") = type));
         } catch (py::error_already_set& ex) {
-            return ex.matches(PyExc_AssertionError) || ex.matches(PyExc_TypeError);
+            if (ex.matches(PyExc_AssertionError) || ex.matches(PyExc_TypeError)) [[likely]] {
+                PyErr_Clear();
+                return true;
+            }
+            std::rethrow_exception(std::current_exception());
         }
         return false;
 #else
