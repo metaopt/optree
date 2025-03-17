@@ -45,42 +45,42 @@ def flatten(
     tree: PyTree[T],
     /,
     leaf_predicate: Callable[[T], bool] | None = None,
-    node_is_leaf: bool = False,
+    none_is_leaf: bool = False,
     namespace: str = '',
 ) -> tuple[list[T], PyTreeSpec]: ...
 def flatten_with_path(
     tree: PyTree[T],
     /,
     leaf_predicate: Callable[[T], bool] | None = None,
-    node_is_leaf: bool = False,
+    none_is_leaf: bool = False,
     namespace: str = '',
 ) -> tuple[list[tuple[Any, ...]], list[T], PyTreeSpec]: ...
 def make_leaf(
-    node_is_leaf: bool = False,
+    none_is_leaf: bool = False,
     namespace: str = '',  # unused
 ) -> PyTreeSpec: ...
 def make_none(
-    node_is_leaf: bool = False,
+    none_is_leaf: bool = False,
     namespace: str = '',  # unused
 ) -> PyTreeSpec: ...
 def make_from_collection(
     collection: Collection[PyTreeSpec],
     /,
-    node_is_leaf: bool = False,
+    none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec: ...
 def is_leaf(
     obj: T,
     /,
     leaf_predicate: Callable[[T], bool] | None = None,
-    node_is_leaf: bool = False,
+    none_is_leaf: bool = False,
     namespace: str = '',
 ) -> bool: ...
 def all_leaves(
     iterable: Iterable[T],
     /,
     leaf_predicate: Callable[[T], bool] | None = None,
-    node_is_leaf: bool = False,
+    none_is_leaf: bool = False,
     namespace: str = '',
 ) -> bool: ...
 def is_namedtuple(obj: object | type, /) -> bool: ...
@@ -163,7 +163,7 @@ class PyTreeIter(Iterator[T]):
         tree: PyTree[T],
         /,
         leaf_predicate: Callable[[T], bool] | None = None,
-        node_is_leaf: bool = False,
+        none_is_leaf: bool = False,
         namespace: str = '',
     ) -> None: ...
     def __iter__(self, /) -> Self: ...

@@ -90,8 +90,8 @@ template <bool NoneIsLeaf>
             PYTREESPEC_SANITY_CHECK(treespec);
             if (treespec.m_none_is_leaf != NoneIsLeaf) [[unlikely]] {
                 throw py::value_error(NoneIsLeaf
-                                          ? "Expected treespec(s) with `node_is_leaf=True`."
-                                          : "Expected treespec(s) with `node_is_leaf=False`.");
+                                          ? "Expected treespec(s) with `none_is_leaf=True`."
+                                          : "Expected treespec(s) with `none_is_leaf=False`.");
             }
             if (!treespec.m_namespace.empty()) [[unlikely]] {
                 if (common_registry_namespace.empty()) [[likely]] {

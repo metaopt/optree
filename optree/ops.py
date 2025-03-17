@@ -2979,11 +2979,11 @@ def treespec_tuple(
     >>> treespec_tuple([treespec_leaf(), tree_structure({'a': 1, 'b': 2}, none_is_leaf=True)])
     Traceback (most recent call last):
         ...
-    ValueError: Expected treespec(s) with `node_is_leaf=False`.
+    ValueError: Expected treespec(s) with `none_is_leaf=False`.
 
     Args:
         iterable (iterable of PyTreeSpec, optional): A iterable of child treespecs. They must have
-            the same ``node_is_leaf`` and ``namespace`` values.
+            the same ``none_is_leaf`` and ``namespace`` values.
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
             :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
             treespec rather than in the leaves list and :data:`None` will be remain in the result
@@ -3025,11 +3025,11 @@ def treespec_list(
     >>> treespec_list([treespec_leaf(), tree_structure({'a': 1, 'b': 2}, none_is_leaf=True)])
     Traceback (most recent call last):
         ...
-    ValueError: Expected treespec(s) with `node_is_leaf=False`.
+    ValueError: Expected treespec(s) with `none_is_leaf=False`.
 
     Args:
         iterable (iterable of PyTreeSpec, optional): A iterable of child treespecs. They must have
-            the same ``node_is_leaf`` and ``namespace`` values.
+            the same ``none_is_leaf`` and ``namespace`` values.
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
             :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
             treespec rather than in the leaves list and :data:`None` will be remain in the result
@@ -3072,11 +3072,11 @@ def treespec_dict(
     >>> treespec_dict({'a': treespec_leaf(), 'b': tree_structure([1, 2], none_is_leaf=True)})
     Traceback (most recent call last):
         ...
-    ValueError: Expected treespec(s) with `node_is_leaf=False`.
+    ValueError: Expected treespec(s) with `none_is_leaf=False`.
 
     Args:
         mapping (mapping of PyTreeSpec, optional): A mapping of child treespecs. They must have the
-            same ``node_is_leaf`` and ``namespace`` values.
+            same ``none_is_leaf`` and ``namespace`` values.
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
             :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
             treespec rather than in the leaves list and :data:`None` will be remain in the result
@@ -3117,11 +3117,11 @@ def treespec_namedtuple(
     >>> treespec_namedtuple(Point(x=treespec_leaf(), y=tree_structure([1, 2], none_is_leaf=True)))
     Traceback (most recent call last):
         ...
-    ValueError: Expected treespec(s) with `node_is_leaf=False`.
+    ValueError: Expected treespec(s) with `none_is_leaf=False`.
 
     Args:
         namedtuple (namedtuple of PyTreeSpec): A namedtuple of child treespecs. They must have the
-            same ``node_is_leaf`` and ``namespace`` values.
+            same ``none_is_leaf`` and ``namespace`` values.
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
             :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
             treespec rather than in the leaves list and :data:`None` will be remain in the result
@@ -3166,11 +3166,11 @@ def treespec_ordereddict(
     >>> treespec_ordereddict({'a': treespec_leaf(), 'b': tree_structure([1, 2], none_is_leaf=True)})
     Traceback (most recent call last):
         ...
-    ValueError: Expected treespec(s) with `node_is_leaf=False`.
+    ValueError: Expected treespec(s) with `none_is_leaf=False`.
 
     Args:
         mapping (mapping of PyTreeSpec, optional): A mapping of child treespecs. They must have the
-            same ``node_is_leaf`` and ``namespace`` values.
+            same ``none_is_leaf`` and ``namespace`` values.
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
             :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
             treespec rather than in the leaves list and :data:`None` will be remain in the result
@@ -3217,13 +3217,13 @@ def treespec_defaultdict(
     >>> treespec_defaultdict(int, {'a': treespec_leaf(), 'b': tree_structure([1, 2], none_is_leaf=True)})
     Traceback (most recent call last):
         ...
-    ValueError: Expected treespec(s) with `node_is_leaf=False`.
+    ValueError: Expected treespec(s) with `none_is_leaf=False`.
 
     Args:
         default_factory (callable or None, optional): A factory function that will be used to create
             a missing value. (default: :data:`None`)
         mapping (mapping of PyTreeSpec, optional): A mapping of child treespecs. They must have the
-            same ``node_is_leaf`` and ``namespace`` values.
+            same ``none_is_leaf`` and ``namespace`` values.
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
             :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
             treespec rather than in the leaves list and :data:`None` will be remain in the result
@@ -3267,11 +3267,11 @@ def treespec_deque(
     >>> treespec_deque([treespec_leaf(), tree_structure({'a': 1, 'b': 2}, none_is_leaf=True)], maxlen=5)
     Traceback (most recent call last):
         ...
-    ValueError: Expected treespec(s) with `node_is_leaf=False`.
+    ValueError: Expected treespec(s) with `none_is_leaf=False`.
 
     Args:
         iterable (iterable of PyTreeSpec, optional): A iterable of child treespecs. They must have
-            the same ``node_is_leaf`` and ``namespace`` values.
+            the same ``none_is_leaf`` and ``namespace`` values.
         maxlen (int or None, optional): The maximum size of a deque or :data:`None` if unbounded.
             (default: :data:`None`)
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
@@ -3304,7 +3304,7 @@ def treespec_structseq(
 
     Args:
         structseq (PyStructSequence of PyTreeSpec): A PyStructSequence of child treespecs. They must
-            have the same ``node_is_leaf`` and ``namespace`` values.
+            have the same ``none_is_leaf`` and ``namespace`` values.
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
             :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
             treespec rather than in the leaves list and :data:`None` will be remain in the result
@@ -3354,12 +3354,12 @@ def treespec_from_collection(
     >>> treespec_from_collection([treespec_leaf(), tree_structure({'a': 1, 'b': 2}, none_is_leaf=True)])
     Traceback (most recent call last):
         ...
-    ValueError: Expected treespec(s) with `node_is_leaf=False`.
+    ValueError: Expected treespec(s) with `none_is_leaf=False`.
 
 
     Args:
         collection (collection of PyTreeSpec): A collection of child treespecs. They must have the
-            same ``node_is_leaf`` and ``namespace`` values.
+            same ``none_is_leaf`` and ``namespace`` values.
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
             :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
             treespec rather than in the leaves list and :data:`None` will be remain in the result

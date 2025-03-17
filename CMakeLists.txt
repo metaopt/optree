@@ -261,4 +261,4 @@ endif()
 message(STATUS "Use PYTHON_MODULE_EXTENSION: \"${PYTHON_MODULE_EXTENSION}\"")
 
 include_directories("${CMAKE_SOURCE_DIR}/include")
-add_subdirectory(src)
+add_subdirectory("${CMAKE_SOURCE_DIR}/src")
