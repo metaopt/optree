@@ -138,7 +138,7 @@ class cmake_build_ext(build_ext):  # noqa: N801
             with unset_python_path():
                 self.spawn([cmake, '--version'])  # cmake in the parent virtual environment
 
-        self.mkpath(build_temp)
+        self.mkpath(str(build_temp))
         with spawn_context():
             self.spawn([cmake, '-S', str(ext.source_dir), '-B', str(build_temp), *cmake_args])
             self.spawn([cmake, '--build', str(build_temp), *build_args])
