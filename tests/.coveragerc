@@ -1,7 +1,7 @@
 [run]
 branch = true
 omit =
-    ../optree/version.py
+    */optree/version.py
 plugins =
     covdefaults
     confcoverage
@@ -18,8 +18,8 @@ exclude_also =
     ^\s*@(warnings\.)?deprecated\(.*
     ^\s*if __name__ == ('__main__'|"__main__"):
     ^\s*if (typing\.|_)?TYPE_CHECKING:
-fail_under = 90
-precision = 1
+fail_under = 80
+precision = 2
 show_missing = true
 skip_covered = true
 

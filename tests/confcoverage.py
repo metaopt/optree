@@ -19,6 +19,7 @@ import os
 import re
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -40,7 +41,23 @@ def is_importable(mod: str) -> bool:
         if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
     }
     try:
-        subprocess.check_call([sys.executable, '-c', f'import {mod}'], cwd=TEST_ROOT, env=env)
+        subprocess.check_call(
+            [
+                sys.executable,
+                '-c',
+                textwrap.dedent(
+                    f"""
+                    try:
+                        import {mod}
+                    except ImportError:
+                        exit(1)
+                    exit(0)
+                    """,
+                ).strip(),
+            ],
+            cwd=TEST_ROOT,
+            env=env,
+        )
     except subprocess.CalledProcessError:
         return False
     return True
