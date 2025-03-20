@@ -39,9 +39,9 @@ def __getattr__(name: str, /) -> ModuleType:
 
         module = sys.modules[__name__]
 
-        submodule = importlib.import_module(f'{__name__}.{name}')
-        setattr(module, name, submodule)
-        return submodule
+        submodule = importlib.import_module(f'{__name__}.{name}')  # pragma: no cover
+        setattr(module, name, submodule)  # pragma: no cover
+        return submodule  # pragma: no cover
 
     raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
 

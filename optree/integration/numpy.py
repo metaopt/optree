@@ -14,6 +14,8 @@
 # ==============================================================================
 """Integration with NumPy."""
 
+# pragma: numpy cover file
+
 from __future__ import annotations
 
 import functools

@@ -4,6 +4,7 @@ omit =
     ../optree/version.py
 plugins =
     covdefaults
+    confcoverage
 source = ../optree
 
 [report]
@@ -21,3 +22,9 @@ fail_under = 90
 precision = 1
 show_missing = true
 skip_covered = true
+
+[confcoverage]
+optional_modules =
+    jax
+    numpy
+    torch
