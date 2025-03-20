@@ -59,6 +59,7 @@ OrderedDict
 param
 params
 pragma
+pypy
 pytree
 pytreeentry
 pytreekind

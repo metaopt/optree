@@ -65,6 +65,7 @@ dependencies:
   - conda-forge::pytest
   - conda-forge::pytest-cov
   - conda-forge::pytest-xdist
+  - conda-forge::covdefaults
   - conda-forge::ruff
   - conda-forge::pylint
   - conda-forge::mypy

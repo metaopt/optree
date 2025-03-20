@@ -87,7 +87,7 @@ class PyTreeNodeRegistryEntry(Generic[T]):
     flatten_func: FlattenFunc[T]
     unflatten_func: UnflattenFunc[T]
 
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 10):  # pragma: >=3.10 cover
         _: dataclasses.KW_ONLY  # Python 3.10+
 
     path_entry_type: builtins.type[PyTreeEntry] = AutoEntry

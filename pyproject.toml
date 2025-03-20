@@ -65,7 +65,7 @@ lint = [
     "cpplint",
     "pre-commit",
 ]
-test = ["pytest", "pytest-cov", "pytest-xdist"]
+test = ["pytest", "pytest-cov", "pytest-xdist", "covdefaults"]
 docs = [
     "sphinx",
     "sphinx-autoapi",
@@ -113,7 +113,7 @@ environment-pass = [
     "_GLIBCXX_USE_CXX11_ABI",
 ]
 test-extras = ["test"]
-test-command = '''make -C "{project}" test PYTHON=python PYTESTOPTS="--quiet --exitfirst --no-showlocals"'''
+test-command = '''make -C "{project}" test PYTHON=python PYTESTOPTS="--quiet --exitfirst"'''
 
 # Linter tools #################################################################
 

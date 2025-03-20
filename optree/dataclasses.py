@@ -177,9 +177,9 @@ def field(  # noqa: D417 # pylint: disable=function-redefined
         'metadata': metadata,
     }
 
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 10):  # pragma: >=3.10 cover
         kwargs['kw_only'] = kw_only
-    elif kw_only is not dataclasses.MISSING:
+    elif kw_only is not dataclasses.MISSING:  # pragma: <3.10 cover
         raise TypeError("field() got an unexpected keyword argument 'kw_only'")
 
     if not init and pytree_node:
@@ -266,20 +266,20 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-
         'frozen': frozen,
     }
 
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 10):  # pragma: >=3.10 cover
         kwargs['match_args'] = match_args
         kwargs['kw_only'] = kw_only
         kwargs['slots'] = slots
-    elif match_args is not True:
+    elif match_args is not True:  # pragma: <3.10 cover
         raise TypeError("dataclass() got an unexpected keyword argument 'match_args'")
-    elif kw_only is not False:
+    elif kw_only is not False:  # pragma: <3.10 cover
         raise TypeError("dataclass() got an unexpected keyword argument 'kw_only'")
-    elif slots is not False:
+    elif slots is not False:  # pragma: <3.10 cover
         raise TypeError("dataclass() got an unexpected keyword argument 'slots'")
 
-    if sys.version_info >= (3, 11):
+    if sys.version_info >= (3, 11):  # pragma: >=3.11 cover
         kwargs['weakref_slot'] = weakref_slot
-    elif weakref_slot is not False:
+    elif weakref_slot is not False:  # pragma: <3.11 cover
         raise TypeError("dataclass() got an unexpected keyword argument 'weakref_slot'")
 
     if cls is None:
@@ -423,23 +423,23 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
         'namespace': ns,
     }
 
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 10):  # pragma: >=3.10 cover
         dataclass_kwargs['match_args'] = match_args
         dataclass_kwargs['kw_only'] = kw_only
         dataclass_kwargs['slots'] = slots
-    elif match_args is not True:
+    elif match_args is not True:  # pragma: <3.10 cover
         raise TypeError("make_dataclass() got an unexpected keyword argument 'match_args'")
-    elif kw_only is not False:
+    elif kw_only is not False:  # pragma: <3.10 cover
         raise TypeError("make_dataclass() got an unexpected keyword argument 'kw_only'")
-    elif slots is not False:
+    elif slots is not False:  # pragma: <3.10 cover
         raise TypeError("make_dataclass() got an unexpected keyword argument 'slots'")
 
-    if sys.version_info >= (3, 11):
+    if sys.version_info >= (3, 11):  # pragma: >=3.11 cover
         dataclass_kwargs['weakref_slot'] = weakref_slot
-    elif weakref_slot is not False:
+    elif weakref_slot is not False:  # pragma: <3.11 cover
         raise TypeError("make_dataclass() got an unexpected keyword argument 'weakref_slot'")
 
-    if sys.version_info >= (3, 12):
+    if sys.version_info >= (3, 12):  # pragma: >=3.12 cover
         if module is None:
             try:
                 # pylint: disable-next=protected-access
@@ -449,7 +449,7 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
                     # pylint: disable-next=protected-access
                     module = sys._getframe(1).f_globals.get('__name__', '__main__')
         make_dataclass_kwargs['module'] = module
-    elif module is not None:
+    elif module is not None:  # pragma: <3.12 cover
         raise TypeError("make_dataclass() got an unexpected keyword argument'module'")
 
     cls = dataclasses.make_dataclass(

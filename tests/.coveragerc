@@ -2,6 +2,8 @@
 branch = true
 omit =
     ../optree/version.py
+plugins =
+    covdefaults
 source = ../optree
 
 [report]

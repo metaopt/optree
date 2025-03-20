@@ -1,6 +1,8 @@
 API References
 ==============
 
+.. currentmodule:: optree
+
 .. automodule:: optree
     :members:
     :undoc-members:
