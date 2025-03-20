@@ -1,14 +1,21 @@
 [run]
+branch = true
 omit =
     ../optree/version.py
+source = ../optree
 
 [report]
-exclude_lines =
-    pragma: no cover
-    raise NotImplementedError
-    class .*\bProtocol\):
-    @(abc\.)?abstractmethod
-    @(typing\.)?overload
-    @(warnings\.)?deprecated\(.*
-    if __name__ == ('__main__'|"__main__"):
-    if TYPE_CHECKING:
+exclude_also =
+    \A(?s:.*# pragma: no cover file\b.*)\Z
+    # pragma: no cover begin\b(?s:.)*?# pragma: no cover end\b
+    ^\s*raise NotImplementedError\b
+    ^\s*class .*\bProtocol(\[.*\])?\):
+    ^\s*@(abc\.)?abstractmethod
+    ^\s*@(typing\.)?overload
+    ^\s*@(warnings\.)?deprecated\(.*
+    ^\s*if __name__ == ('__main__'|"__main__"):
+    ^\s*if (typing\.|_)?TYPE_CHECKING:
+fail_under = 90
+precision = 1
+show_missing = true
+skip_covered = true

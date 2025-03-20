@@ -289,6 +289,48 @@ def test_different_metadata():
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
 
+    lhs, rhs = OrderedDict({'a': 1, 'b': 2}), OrderedDict({'a': 3})
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
+    with pytest.raises(
+        ValueError,
+        match=r'dictionary key mismatch; expected key\(s\): .*, got key\(s\): .*; OrderedDict: .*\.',
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
+    expected = re.escape(
+        textwrap.dedent(
+            """
+            pytree structure error: different pytree keys at key path
+                in_axes tree root
+            """,
+        ).strip(),
+    )
+    with pytest.raises(ValueError, match=expected):
+        raise e('in_axes')
+
+    lhs, rhs = OrderedDict({'a': 1, 'b': 2}), OrderedDict({'a': 3, 'b': 4, 'c': 5})
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
+    with pytest.raises(
+        ValueError,
+        match=r'dictionary key mismatch; expected key\(s\): .*, got key\(s\): .*; OrderedDict: .*\.',
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
+    expected = re.escape(
+        textwrap.dedent(
+            """
+            pytree structure error: different pytree keys at key path
+                in_axes tree root
+            """,
+        ).strip(),
+    )
+    with pytest.raises(ValueError, match=expected):
+        raise e('in_axes')
+
     lhs, rhs = OrderedDict({'a': 1, 'b': [2, 3]}), OrderedDict({'b': [5, [6]], 'a': 4})
     lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     optree.tree_map_(lambda x, y: None, lhs, rhs)  # ignore key ordering

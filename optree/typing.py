@@ -161,18 +161,22 @@ class CustomTreeNode(Protocol[T]):
 _UnionType = type(Union[int, str])
 
 
-def _tp_cache(func: Callable[P, T], /) -> Callable[P, T]:
-    cached = functools.lru_cache(func)
+try:  # pragma: no cover
+    from typing import _tp_cache  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover
 
-    @functools.wraps(func)
-    def inner(*args: P.args, **kwargs: P.kwargs) -> T:
-        try:
-            return cached(*args, **kwargs)  # type: ignore[arg-type]
-        except TypeError:  # pragma: no cover
-            # All real errors (not unhashable args) are raised below.
-            return func(*args, **kwargs)
+    def _tp_cache(func: Callable[P, T], /) -> Callable[P, T]:
+        cached = functools.lru_cache(func)
 
-    return inner
+        @functools.wraps(func)
+        def inner(*args: P.args, **kwargs: P.kwargs) -> T:
+            try:
+                return cached(*args, **kwargs)  # type: ignore[arg-type]
+            except TypeError:
+                # All real errors (not unhashable args) are raised below.
+                return func(*args, **kwargs)
+
+        return inner
 
 
 class PyTree(Generic[T]):  # pragma: no cover
