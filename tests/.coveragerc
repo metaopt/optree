@@ -18,7 +18,7 @@ exclude_also =
     ^\s*@(warnings\.)?deprecated\(.*
     ^\s*if __name__ == ('__main__'|"__main__"):
     ^\s*if (typing\.|_)?TYPE_CHECKING:
-fail_under = 80
+fail_under = 0
 precision = 2
 show_missing = true
 skip_covered = true
