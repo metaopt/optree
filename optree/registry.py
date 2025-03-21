@@ -87,7 +87,7 @@ class PyTreeNodeRegistryEntry(Generic[T]):
     flatten_func: FlattenFunc[T]
     unflatten_func: UnflattenFunc[T]
 
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 10):  # pragma: >=3.10 cover
         _: dataclasses.KW_ONLY  # Python 3.10+
 
     path_entry_type: builtins.type[PyTreeEntry] = AutoEntry
@@ -228,9 +228,11 @@ def pytree_node_registry_get(  # noqa: C901
         and cls is not namedtuple  # noqa: PYI024
         and not inspect.isclass(cls)
     ):
-        raise TypeError(f'Expected a class or None, got {cls!r}.')
+        raise TypeError(f'Expected a class or None, got {cls!r}.')  # pragma: !=3.9 cover
     if not isinstance(namespace, str):
-        raise TypeError(f'The namespace must be a string, got {namespace!r}.')
+        raise TypeError(  # pragma: !=3.9 cover
+            f'The namespace must be a string, got {namespace!r}.',
+        )
 
     if cls is None:
         namespaces = frozenset({namespace, ''})

@@ -3,6 +3,7 @@
 pytest
 pytest-cov
 pytest-xdist
+covdefaults
 ruff
 pylint[spelling]
 mypy

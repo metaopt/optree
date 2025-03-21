@@ -31,6 +31,8 @@
 # ==============================================================================
 """Integration with JAX."""
 
+# pragma: jax cover file
+
 from __future__ import annotations
 
 import contextlib

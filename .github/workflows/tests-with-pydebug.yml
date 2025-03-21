@@ -356,14 +356,25 @@ jobs:
             fi
           fi
 
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: tests/coverage-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml
+          flags: unittests,unittests-${{ env.PYTHON_TAG }}-${{ runner.os }}
+          name: codecov-pydebug
+          verbose: true
+          fail_ci_if_error: false
+
       - name: Upload JUnit results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: tests/junit-${{ env.PYTHON_TAG }}.xml
-          flags: junit-${{ env.PYTHON_TAG }}
-          name: junit-umbrella
+          file: tests/junit-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml
+          flags: junit,junit-${{ env.PYTHON_TAG }}-${{ runner.os }}
+          name: junit-pydebug
           verbose: true
           fail_ci_if_error: false
 

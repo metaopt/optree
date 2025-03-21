@@ -19,6 +19,7 @@ import copy
 import functools
 import itertools
 import operator
+import os
 import pickle
 import re
 import subprocess
@@ -32,6 +33,7 @@ from helpers import (
     GLOBAL_NAMESPACE,
     IS_LEAF_FUNCTIONS,
     LEAVES,
+    TEST_ROOT,
     TREE_ACCESSORS,
     TREE_PATHS,
     TREES,
@@ -50,6 +52,11 @@ from helpers import (
 
 
 def test_import_no_warnings():
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
+    }
     assert (
         subprocess.check_output(
             [
@@ -63,6 +70,8 @@ def test_import_no_warnings():
             ],
             stderr=subprocess.STDOUT,
             text=True,
+            cwd=TEST_ROOT,
+            env=env,
         )
         == ''
     )

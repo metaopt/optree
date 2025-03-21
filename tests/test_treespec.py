@@ -17,6 +17,7 @@
 
 import contextlib
 import itertools
+import os
 import pickle
 import platform
 import re
@@ -475,6 +476,11 @@ def test_treespec_pickle_missing_registration():
     treespec = optree.tree_structure(Foo(0, 1), namespace='foo')
     serialized = pickle.dumps(treespec)
 
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
+    }
     try:
         output = subprocess.run(
             [
@@ -500,6 +506,8 @@ def test_treespec_pickle_missing_registration():
             capture_output=True,
             check=True,
             text=True,
+            cwd=TEST_ROOT,
+            env=env,
         )
         message = output.stdout.strip()
     except subprocess.CalledProcessError as ex:

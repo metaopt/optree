@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add method `PyTreeSpec.traverse` by [@XuehaiPan](https://github.com/XuehaiPan) in [#197](https://github.com/metaopt/optree/pull/197).
 - Include test suites in SDist by [@XuehaiPan](https://github.com/XuehaiPan) in [#201](https://github.com/metaopt/optree/pull/201).
+- Include branch coverage and add conditional pragmas by [@XuehaiPan](https://github.com/XuehaiPan) in [#204](https://github.com/metaopt/optree/pull/204).
 
 ### Changed
 

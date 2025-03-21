@@ -161,18 +161,22 @@ class CustomTreeNode(Protocol[T]):
 _UnionType = type(Union[int, str])
 
 
-def _tp_cache(func: Callable[P, T], /) -> Callable[P, T]:
-    cached = functools.lru_cache(func)
+try:  # pragma: no cover
+    from typing import _tp_cache  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover
 
-    @functools.wraps(func)
-    def inner(*args: P.args, **kwargs: P.kwargs) -> T:
-        try:
-            return cached(*args, **kwargs)  # type: ignore[arg-type]
-        except TypeError:  # pragma: no cover
-            # All real errors (not unhashable args) are raised below.
-            return func(*args, **kwargs)
+    def _tp_cache(func: Callable[P, T], /) -> Callable[P, T]:
+        cached = functools.lru_cache(func)
 
-    return inner
+        @functools.wraps(func)
+        def inner(*args: P.args, **kwargs: P.kwargs) -> T:
+            try:
+                return cached(*args, **kwargs)  # type: ignore[arg-type]
+            except TypeError:
+                # All real errors (not unhashable args) are raised below.
+                return func(*args, **kwargs)
+
+        return inner
 
 
 class PyTree(Generic[T]):  # pragma: no cover
@@ -522,13 +526,13 @@ def is_structseq_class(cls: type, /) -> bool:
         and isinstance(getattr(cls, 'n_unnamed_fields', None), int)
     ):
         # Check the type does not allow subclassing
-        if platform.python_implementation() == 'PyPy':
+        if platform.python_implementation() == 'PyPy':  # pragma: pypy cover
             try:
                 types.new_class('subclass', bases=(cls,))
             except (AssertionError, TypeError):
                 return True
             return False
-        return not bool(cls.__flags__ & Py_TPFLAGS_BASETYPE)
+        return not bool(cls.__flags__ & Py_TPFLAGS_BASETYPE)  # pragma: pypy no cover
     return False
 
 
@@ -548,14 +552,14 @@ def structseq_fields(obj: tuple | type[tuple], /) -> tuple[str, ...]:
         if not is_structseq_class(cls):
             raise TypeError(f'Expected an instance of PyStructSequence type, got {obj!r}.')
 
-    if platform.python_implementation() == 'PyPy':
+    if platform.python_implementation() == 'PyPy':  # pragma: pypy cover
         indices_by_name = {
             name: member.index  # type: ignore[attr-defined]
             for name, member in vars(cls).items()
             if isinstance(member, StructSequenceFieldType)
         }
         fields = sorted(indices_by_name, key=indices_by_name.get)  # type: ignore[arg-type]
-    else:
+    else:  # pragma: pypy no cover
         fields = [
             name
             for name, member in vars(cls).items()
