@@ -1,10 +1,28 @@
+# Copyright 2022-2025 MetaOPT Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+"""The setup script for the :mod:`optree` package."""
+
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import platform
 import re
 import shutil
+import subprocess
 import sys
 import sysconfig
 from importlib.util import module_from_spec, spec_from_file_location
@@ -13,15 +31,22 @@ from typing import TYPE_CHECKING, Any
 
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
-from setuptools.errors import ExecError
 
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     from types import ModuleType
 
+    from packaging.version import Version
+else:
+    try:
+        from packaging.version import Version
+    except ImportError:
+        from setuptools.dist import Version
+
 
 HERE = Path(__file__).absolute().parent
+CMAKE_MINIMUM_VERSION = '3.18'
 
 
 @contextlib.contextmanager
@@ -41,6 +66,32 @@ def unset_python_path() -> Generator[str | None]:
             os.environ['PYTHONNOUSERSITE'] = python_no_user_site
 
 
+def cmake_context(
+    cmake: str | os.PathLike[str],
+    dry_run: bool = False,
+) -> contextlib.AbstractContextManager[str | None]:
+    if dry_run:
+        return contextlib.nullcontext()
+
+    cmake = os.fspath(cmake)
+    spawn_context = contextlib.nullcontext
+    try:
+        # System CMake or CMake in the build environment
+        subprocess.check_call([cmake, '--version'])  # noqa: S603
+    except (OSError, subprocess.CalledProcessError):
+        print(
+            f'Could not run `{cmake}` directly. '
+            'Unset the `PYTHONPATH` environment variable in the build environment.',
+            file=sys.stderr,
+        )
+        spawn_context = unset_python_path  # type: ignore[assignment]
+        with unset_python_path():
+            # CMake in the parent virtual environment
+            subprocess.check_call([cmake, '--version'])  # noqa: S603
+
+    return spawn_context()
+
+
 class CMakeExtension(Extension):
     def __init__(
         self,
@@ -55,10 +106,27 @@ class CMakeExtension(Extension):
         self.target = target if target is not None else name.rpartition('.')[-1]
 
     @classmethod
-    def cmake_executable(cls) -> str | None:
+    def cmake_executable(cls, *, minimum_version: Version | str | None = None) -> str | None:
         cmake = os.getenv('CMAKE_COMMAND') or os.getenv('CMAKE_EXECUTABLE')
         if not cmake:
             cmake = shutil.which('cmake')
+        if cmake and minimum_version is not None:
+            with cmake_context(cmake):
+                try:
+                    cmake_capabilities = json.loads(
+                        subprocess.check_output(  # noqa: S603
+                            [cmake, '-E', 'capabilities'],
+                            stderr=subprocess.DEVNULL,
+                            text=True,
+                        ),
+                    )
+                except (OSError, subprocess.CalledProcessError, json.JSONDecodeError):
+                    cmake_capabilities = {}
+            cmake_version = Version(cmake_capabilities.get('version', {}).get('string', '0.0.0'))
+            if isinstance(minimum_version, str):
+                minimum_version = Version(minimum_version)
+            if cmake_version < minimum_version:
+                cmake = None
         return cmake
 
 
@@ -126,20 +194,8 @@ class cmake_build_ext(build_ext):  # noqa: N801
 
         build_args.extend(['--target', ext.target, '--'])
 
-        spawn_context = contextlib.nullcontext
-        try:
-            self.spawn([cmake, '--version'])  # system cmake or cmake in the build environment
-        except ExecError:
-            self.warn(
-                f'Could not run `{cmake}` directly. '
-                'Unset the `PYTHONPATH` environment variable in the build environment.',
-            )
-            spawn_context = unset_python_path  # type: ignore[assignment]
-            with unset_python_path():
-                self.spawn([cmake, '--version'])  # cmake in the parent virtual environment
-
         self.mkpath(str(build_temp))
-        with spawn_context():
+        with cmake_context(cmake, dry_run=self.dry_run):
             self.spawn([cmake, '-S', str(ext.source_dir), '-B', str(build_temp), *cmake_args])
             self.spawn([cmake, '--build', str(build_temp), *build_args])
 
@@ -190,5 +246,9 @@ if __name__ == '__main__':
             version=version.__version__,
             cmdclass={'build_ext': cmake_build_ext},
             ext_modules=[CMakeExtension('optree._C', source_dir=HERE, language='c++')],
-            setup_requires=(['cmake >= 3.18'] if CMakeExtension.cmake_executable() is None else []),
+            setup_requires=(
+                [f'cmake >= {CMAKE_MINIMUM_VERSION}']
+                if CMakeExtension.cmake_executable(minimum_version=CMAKE_MINIMUM_VERSION) is None
+                else []
+            ),
         )

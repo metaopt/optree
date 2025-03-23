@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
-import functools
 import inspect
 import sys
 from collections import OrderedDict, defaultdict, deque, namedtuple
@@ -36,11 +35,9 @@ from typing import (
     Generic,
     Iterable,
     NamedTuple,
-    Type,
     TypeVar,
     overload,
 )
-from typing_extensions import TypeAlias  # Python 3.10+
 
 import optree._C as _C
 from optree.accessor import (
@@ -432,7 +429,9 @@ def register_pytree_node(
 del pytree_node_registry_get, _add_get
 
 
-CustomTreeNodeType: TypeAlias = Type[CustomTreeNode[T]]
+if TYPE_CHECKING:
+    # pylint: disable-next=invalid-name
+    CustomTreeNodeType = TypeVar('CustomTreeNodeType', bound=type[CustomTreeNode])
 
 
 @overload
@@ -528,11 +527,7 @@ def register_pytree_node_class(  # noqa: C901
             raise ValueError('Cannot specify `namespace` when the first argument is a string.')
         if cls == '':
             raise ValueError('The namespace cannot be an empty string.')
-        return functools.partial(
-            register_pytree_node_class,
-            path_entry_type=path_entry_type,
-            namespace=cls,
-        )  # type: ignore[return-value]
+        cls, namespace = None, cls
 
     if namespace is None:
         raise ValueError('Must specify `namespace` when the first argument is a class.')
@@ -542,17 +537,23 @@ def register_pytree_node_class(  # noqa: C901
         raise ValueError('The namespace cannot be an empty string.')
 
     if cls is None:
-        return functools.partial(
-            register_pytree_node_class,
-            path_entry_type=path_entry_type,
-            namespace=namespace,
-        )  # type: ignore[return-value]
+
+        def decorator(cls: CustomTreeNodeType, /) -> CustomTreeNodeType:
+            return register_pytree_node_class(
+                cls,
+                path_entry_type=path_entry_type,
+                namespace=namespace,
+            )
+
+        return decorator
+
     if not inspect.isclass(cls):
         raise TypeError(f'Expected a class, got {cls!r}.')
     if path_entry_type is None:
         path_entry_type = getattr(cls, 'TREE_PATH_ENTRY_TYPE', AutoEntry)
     if not (inspect.isclass(path_entry_type) and issubclass(path_entry_type, PyTreeEntry)):
         raise TypeError(f'Expected a subclass of PyTreeEntry, got {path_entry_type!r}.')
+
     register_pytree_node(
         cls,
         methodcaller('tree_flatten'),
