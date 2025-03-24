@@ -361,8 +361,8 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: tests/coverage-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml
-          flags: unittests,unittests-${{ env.PYTHON_TAG }}-${{ runner.os }}
+          files: tests/coverage-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml
+          flags: unittests-pydebug,unittests-pydebug-${{ env.PYTHON_TAG }}-${{ runner.os }}
           name: codecov-pydebug
           verbose: true
           fail_ci_if_error: false
@@ -372,8 +372,8 @@ jobs:
         uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: tests/junit-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml
-          flags: junit,junit-${{ env.PYTHON_TAG }}-${{ runner.os }}
+          files: tests/junit-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml
+          flags: junit-pydebug,junit-pydebug-${{ env.PYTHON_TAG }}-${{ runner.os }}
           name: junit-pydebug
           verbose: true
           fail_ci_if_error: false
