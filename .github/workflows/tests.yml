@@ -83,6 +83,10 @@ jobs:
           ${{ env.PYTHON }} -c 'import rich, sysconfig; rich.print(sysconfig.get_config_vars())'
           echo "::endgroup::"
 
+          if [[ "${{ matrix.python-version }}" == *t* ]]; then
+            echo "PYTHON_GIL=0" | tee -a "${GITHUB_ENV}"
+          fi
+
           export PYTHON_TAG="$(
             echo 'import sys, sysconfig; print(
               "{0.name[0]}p{1.major}{1.minor}{2}".format(

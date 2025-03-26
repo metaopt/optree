@@ -181,7 +181,7 @@ jobs:
           PYTHON_VERSION="${{ matrix.python-version }}"
           PYTHON_VERSION="${PYTHON_VERSION%t}"
           echo "Using Python version: ${PYTHON_VERSION}"
-          echo "PYTHON_VERSION=${PYTHON_VERSION}" >> "${GITHUB_ENV}"
+          echo "PYTHON_VERSION=${PYTHON_VERSION}" | tee -a "${GITHUB_ENV}"
 
       - name: Set up Python
         uses: actions/setup-python@v5

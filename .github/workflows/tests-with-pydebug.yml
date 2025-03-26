@@ -77,8 +77,8 @@ jobs:
           export PATH="${PYENV_ROOT}/bin:${PYENV_ROOT}/shims:${PATH}"
           export PATH="${PWD}/venv/bin:${PATH}"
           git clone https://github.com/pyenv/pyenv.git "${PYENV_ROOT}"
-          echo "PYENV_ROOT=${PYENV_ROOT}" >> "${GITHUB_ENV}"
-          echo "PATH=${PATH}" >> "${GITHUB_ENV}"
+          echo "PYENV_ROOT=${PYENV_ROOT}" | tee -a "${GITHUB_ENV}"
+          echo "PATH=${PATH}" | tee -a "${GITHUB_ENV}"
           if [[ "${{ runner.os }}" == 'Linux' ]]; then
             sudo apt-get update -qq && sudo apt-get install -yqq --no-install-recommends \
               make \
@@ -120,7 +120,7 @@ jobs:
           echo "::endgroup::"
 
           if [[ "${{ matrix.python-abiflags }}" == *t* ]]; then
-            echo "PYTHON_GIL=0" >> "${GITHUB_ENV}"
+            echo "PYTHON_GIL=0" | tee -a "${GITHUB_ENV}"
           fi
 
           if [[ "${{ runner.os }}" != 'Windows' && "${{ matrix.python-abiflags }}" == *t* ]]; then
