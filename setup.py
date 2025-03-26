@@ -14,6 +14,8 @@
 # ==============================================================================
 """The setup script for the :mod:`optree` package."""
 
+# pylint: disable=missing-class-docstring,missing-function-docstring
+
 from __future__ import annotations
 
 import contextlib
@@ -92,6 +94,7 @@ def cmake_context(
     return spawn_context()
 
 
+# pylint: disable-next=too-few-public-methods
 class CMakeExtension(Extension):
     def __init__(
         self,
@@ -130,7 +133,9 @@ class CMakeExtension(Extension):
         return cmake
 
 
+# pylint: disable-next=invalid-name
 class cmake_build_ext(build_ext):  # noqa: N801
+    # pylint: disable-next=too-many-branches
     def build_extension(self, ext: Extension) -> None:  # noqa: C901
         if not isinstance(ext, CMakeExtension):
             super().build_extension(ext)
@@ -182,7 +187,7 @@ class cmake_build_ext(build_ext):  # noqa: N801
             cmake_args.append(f'-Dpybind11_DIR={pybind11_dir}')
         else:
             with contextlib.suppress(ImportError):
-                import pybind11
+                import pybind11  # pylint: disable=import-outside-toplevel
 
                 cmake_args.append(f'-Dpybind11_DIR={pybind11.get_cmake_dir()}')
 

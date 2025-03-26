@@ -10,6 +10,7 @@ boolean
 broadcasted
 classmethod
 cls
+cmake
 const
 cpu
 cpython

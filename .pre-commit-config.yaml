@@ -49,8 +49,7 @@ repos:
       - id: mypy
         exclude: |
           (?x)(
-            ^tests/|
-            ^setup.py$
+            ^tests/
           )
   - repo: local
     hooks:
@@ -62,6 +61,5 @@ repos:
         require_serial: true
         exclude: |
           (?x)(
-            ^tests/|
-            ^setup.py$
+            ^tests/
           )

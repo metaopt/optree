@@ -177,7 +177,7 @@ ruff-fix: ruff-install
 .PHONY: pylint
 pylint: pylint-install
 	$(PYTHON) -m pylint --version
-	$(PYTHON) -m pylint $(PROJECT_PATH)
+	$(PYTHON) -m pylint $(PROJECT_PATH) setup.py
 
 .PHONY: mypy
 mypy: mypy-install
