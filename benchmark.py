@@ -27,7 +27,7 @@ import textwrap
 import timeit
 from collections import OrderedDict
 from itertools import count
-from typing import Any, Iterable, NamedTuple, Sequence
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import jax
 import pandas as pd
@@ -38,6 +38,10 @@ from torch import nn
 from torchvision import models
 
 import optree
+
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
 
 
 try:

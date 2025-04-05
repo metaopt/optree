@@ -66,8 +66,12 @@ import inspect
 import sys
 import types
 from dataclasses import *  # noqa: F401,F403,RUF100 # pylint: disable=wildcard-import,unused-wildcard-import
-from typing import Any, Callable, Iterable, Literal, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar, overload
 from typing_extensions import dataclass_transform  # Python 3.11+
+
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 # Redefine `field`, `dataclasses`, and `make_dataclasses`.

@@ -23,17 +23,7 @@ import functools
 import itertools
 import textwrap
 from collections import OrderedDict, defaultdict, deque
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Collection,
-    Generic,
-    Iterable,
-    Mapping,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, overload
 
 import optree._C as _C
 from optree.accessor import PyTreeAccessor
@@ -42,6 +32,7 @@ from optree.typing import NamedTuple, T, is_namedtuple_instance, is_structseq_in
 
 if TYPE_CHECKING:
     import builtins
+    from collections.abc import Collection, Iterable, Mapping
 
     from optree.accessor import PyTreeEntry
     from optree.typing import MetaData, PyTree, PyTreeKind, PyTreeSpec, S, U, UnflattenFunc

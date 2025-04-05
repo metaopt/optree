@@ -25,19 +25,7 @@ import sys
 from collections import OrderedDict, defaultdict, deque, namedtuple
 from operator import itemgetter, methodcaller
 from threading import Lock
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Collection,
-    Generator,
-    Generic,
-    Iterable,
-    NamedTuple,
-    TypeVar,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, NamedTuple, TypeVar, overload
 
 import optree._C as _C
 from optree.accessor import (
@@ -61,6 +49,7 @@ from optree.utils import safe_zip, total_order_sorted, unzip2
 
 if TYPE_CHECKING:
     import builtins
+    from collections.abc import Collection, Generator, Iterable
 
     from optree.typing import KT, VT, FlattenFunc, UnflattenFunc
 
