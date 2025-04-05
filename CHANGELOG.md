@@ -13,10 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add method `PyTreeSpec.traverse` by [@XuehaiPan](https://github.com/XuehaiPan) in [#197](https://github.com/metaopt/optree/pull/197).
-- Include test suites in SDist by [@XuehaiPan](https://github.com/XuehaiPan) in [#201](https://github.com/metaopt/optree/pull/201).
-- Include branch coverage and add conditional pragmas by [@XuehaiPan](https://github.com/XuehaiPan) in [#204](https://github.com/metaopt/optree/pull/204).
-- Detect `cmake` version and guard minimum version in `setup.py` by [@XuehaiPan](https://github.com/XuehaiPan) in [#205](https://github.com/metaopt/optree/pull/205).
+-
 
 ### Changed
 
@@ -25,6 +22,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 -
+
+### Removed
+
+-
+
+------
+
+## [0.15.0] - 2025-04-06
+
+### Added
+
+- Add method `PyTreeSpec.traverse` by [@XuehaiPan](https://github.com/XuehaiPan) in [#197](https://github.com/metaopt/optree/pull/197).
+- Include test suites in SDist by [@XuehaiPan](https://github.com/XuehaiPan) in [#201](https://github.com/metaopt/optree/pull/201).
+- Include branch coverage and add conditional pragmas by [@XuehaiPan](https://github.com/XuehaiPan) in [#204](https://github.com/metaopt/optree/pull/204).
+- Detect `cmake` version and guard minimum version in `setup.py` by [@XuehaiPan](https://github.com/XuehaiPan) in [#205](https://github.com/metaopt/optree/pull/205).
 
 ### Removed
 
@@ -402,7 +414,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/metaopt/optree/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/metaopt/optree/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/metaopt/optree/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/metaopt/optree/compare/v0.13.0...v0.13.1
