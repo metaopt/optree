@@ -450,7 +450,7 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
                     module = sys._getframe(1).f_globals.get('__name__', '__main__')
         make_dataclass_kwargs['module'] = module
     elif module is not None:  # pragma: <3.12 cover
-        raise TypeError("make_dataclass() got an unexpected keyword argument'module'")
+        raise TypeError("make_dataclass() got an unexpected keyword argument 'module'")
 
     cls = dataclasses.make_dataclass(
         cls_name,

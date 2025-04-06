@@ -69,17 +69,24 @@ def unset_python_path() -> Generator[str | None]:
 
 
 def cmake_context(
-    cmake: str | os.PathLike[str],
+    cmake: os.PathLike[str] | str,
+    *,
     dry_run: bool = False,
+    verbose: bool = False,
 ) -> contextlib.AbstractContextManager[str | None]:
     if dry_run:
         return contextlib.nullcontext()
 
     cmake = os.fspath(cmake)
     spawn_context = contextlib.nullcontext
+    output = ''
     try:
         # System CMake or CMake in the build environment
-        subprocess.check_call([cmake, '--version'])  # noqa: S603
+        output = subprocess.check_output(  # noqa: S603
+            [cmake, '--version'],
+            stderr=subprocess.STDOUT,
+            text=True,
+        ).strip()
     except (OSError, subprocess.CalledProcessError):
         print(
             f'Could not run `{cmake}` directly. '
@@ -89,7 +96,14 @@ def cmake_context(
         spawn_context = unset_python_path  # type: ignore[assignment]
         with unset_python_path():
             # CMake in the parent virtual environment
-            subprocess.check_call([cmake, '--version'])  # noqa: S603
+            output = subprocess.check_output(  # noqa: S603
+                [cmake, '--version'],
+                stderr=subprocess.STDOUT,
+                text=True,
+            ).strip()
+
+    if verbose and output:
+        print(output, file=sys.stderr)
 
     return spawn_context()
 
@@ -99,7 +113,7 @@ class CMakeExtension(Extension):
     def __init__(
         self,
         name: str,
-        source_dir: Path | str = '.',
+        source_dir: os.PathLike[str] | str = '.',
         target: str | None = None,
         language: str | None = None,
         **kwargs: Any,
@@ -109,12 +123,17 @@ class CMakeExtension(Extension):
         self.target = target if target is not None else name.rpartition('.')[-1]
 
     @classmethod
-    def cmake_executable(cls, *, minimum_version: Version | str | None = None) -> str | None:
+    def cmake_executable(
+        cls,
+        *,
+        minimum_version: Version | str | None = None,
+        verbose: bool = False,
+    ) -> str | None:
         cmake = os.getenv('CMAKE_COMMAND') or os.getenv('CMAKE_EXECUTABLE')
         if not cmake:
             cmake = shutil.which('cmake')
         if cmake and minimum_version is not None:
-            with cmake_context(cmake):
+            with cmake_context(cmake, verbose=verbose):
                 try:
                     cmake_capabilities = json.loads(
                         subprocess.check_output(  # noqa: S603
@@ -200,13 +219,13 @@ class cmake_build_ext(build_ext):  # noqa: N801
         build_args.extend(['--target', ext.target, '--'])
 
         self.mkpath(str(build_temp))
-        with cmake_context(cmake, dry_run=self.dry_run):
+        with cmake_context(cmake, dry_run=self.dry_run, verbose=True):
             self.spawn([cmake, '-S', str(ext.source_dir), '-B', str(build_temp), *cmake_args])
             self.spawn([cmake, '--build', str(build_temp), *build_args])
 
 
 @contextlib.contextmanager
-def vcs_version(name: str, path: Path | str) -> Generator[ModuleType]:
+def vcs_version(name: str, path: os.PathLike[str] | str) -> Generator[ModuleType]:
     path = Path(path).absolute()
     assert path.is_file()
     module_spec = spec_from_file_location(name=name, location=path)
