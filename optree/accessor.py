@@ -18,19 +18,8 @@ from __future__ import annotations
 
 import dataclasses
 import sys
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ClassVar,
-    Generic,
-    Iterable,
-    Literal,
-    Mapping,
-    Sequence,
-    Tuple,
-    TypeVar,
-    overload,
-)
+from collections.abc import Iterable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, TypeVar, overload
 from typing_extensions import Self  # Python 3.11+
 
 import optree._C as _C
@@ -371,7 +360,7 @@ class DataclassEntry(GetAttrEntry):
         return f'{self.__class__.__name__}(field={self.field!r}, type={self.type!r})'
 
 
-class PyTreeAccessor(Tuple[PyTreeEntry, ...]):
+class PyTreeAccessor(tuple[PyTreeEntry, ...]):
     """A path class for PyTrees."""
 
     __slots__: ClassVar[tuple[()]] = ()

@@ -21,9 +21,7 @@ namespace optree {
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ int PyTreeSpec::PyTpTraverse(PyObject* self_base, visitproc visit, void* arg) {
-#if PY_VERSION_HEX >= 0x03090000  // Python 3.9
     Py_VISIT(Py_TYPE(self_base));
-#endif
     auto* const instance = reinterpret_cast<py::detail::instance*>(self_base);
     if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
         // The holder is not constructed yet. Skip the traversal to avoid segfault.
@@ -41,9 +39,7 @@ namespace optree {
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ int PyTreeIter::PyTpTraverse(PyObject* self_base, visitproc visit, void* arg) {
-#if PY_VERSION_HEX >= 0x03090000  // Python 3.9
     Py_VISIT(Py_TYPE(self_base));
-#endif
     auto* const instance = reinterpret_cast<py::detail::instance*>(self_base);
     if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
         // The holder is not constructed yet. Skip the traversal to avoid segfault.

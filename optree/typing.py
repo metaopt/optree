@@ -21,31 +21,33 @@ import functools
 import platform
 import sys
 import types
-from collections.abc import Hashable
-from typing import (
-    Any,
-    Callable,
-    ClassVar,
+from builtins import dict as Dict  # noqa: N812
+from builtins import list as List  # noqa: N812
+from builtins import tuple as Tuple  # noqa: N812
+from collections import OrderedDict
+from collections import defaultdict as DefaultDict  # noqa: N812
+from collections import deque as Deque  # noqa: N812
+from collections.abc import (
     Collection,
-    DefaultDict,
-    Deque,
-    Dict,
-    Final,
-    ForwardRef,
-    Generic,
+    Hashable,
     ItemsView,
     Iterable,
     Iterator,
     KeysView,
-    List,
-    Optional,
-    OrderedDict,
-    Protocol,
     Sequence,
-    Tuple,
+    ValuesView,
+)
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    ForwardRef,
+    Generic,
+    Optional,
+    Protocol,
     TypeVar,
     Union,
-    ValuesView,
     runtime_checkable,
 )
 from typing_extensions import (
@@ -186,10 +188,10 @@ class PyTree(Generic[T]):  # pragma: no cover
     >>> TensorTree = PyTree[torch.Tensor]
     >>> TensorTree  # doctest: +IGNORE_WHITESPACE
     typing.Union[torch.Tensor,
-                 typing.Tuple[ForwardRef('PyTree[torch.Tensor]'), ...],
-                 typing.List[ForwardRef('PyTree[torch.Tensor]')],
-                 typing.Dict[typing.Any, ForwardRef('PyTree[torch.Tensor]')],
-                 typing.Deque[ForwardRef('PyTree[torch.Tensor]')],
+                 tuple[ForwardRef('PyTree[torch.Tensor]'), ...],
+                 list[ForwardRef('PyTree[torch.Tensor]')],
+                 dict[typing.Any, ForwardRef('PyTree[torch.Tensor]')],
+                 collections.deque[ForwardRef('PyTree[torch.Tensor]')],
                  optree.typing.CustomTreeNode[ForwardRef('PyTree[torch.Tensor]')]]
     """
 
@@ -328,10 +330,10 @@ class PyTreeTypeVar:  # pragma: no cover
     >>> TensorTree = PyTreeTypeVar('TensorTree', torch.Tensor)
     >>> TensorTree  # doctest: +IGNORE_WHITESPACE
     typing.Union[torch.Tensor,
-                 typing.Tuple[ForwardRef('TensorTree'), ...],
-                 typing.List[ForwardRef('TensorTree')],
-                 typing.Dict[typing.Any, ForwardRef('TensorTree')],
-                 typing.Deque[ForwardRef('TensorTree')],
+                 tuple[ForwardRef('TensorTree'), ...],
+                 list[ForwardRef('TensorTree')],
+                 dict[typing.Any, ForwardRef('TensorTree')],
+                 collections.deque[ForwardRef('TensorTree')],
                  optree.typing.CustomTreeNode[ForwardRef('TensorTree')]]
     """
 
