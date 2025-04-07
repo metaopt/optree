@@ -15,6 +15,7 @@
 
 # pylint: disable=missing-class-docstring,missing-function-docstring,invalid-name
 
+import contextlib
 import dataclasses
 import gc
 import itertools
@@ -65,6 +66,18 @@ def parametrize(**argvalues):
     )
 
     return pytest.mark.parametrize(arguments, argvalues, ids=ids)
+
+
+@contextlib.contextmanager
+def recursionlimit(limit):
+    gc_collect()
+    old_limit = sys.getrecursionlimit()
+    sys.setrecursionlimit(min(old_limit, limit))
+    try:
+        yield
+    finally:
+        sys.setrecursionlimit(old_limit)
+        gc_collect()
 
 
 MISSING = object()

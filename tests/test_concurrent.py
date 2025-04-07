@@ -25,7 +25,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import pytest
 
 import optree
-from helpers import GLOBAL_NAMESPACE, PYPY, TREES, Py_GIL_DISABLED, gc_collect, parametrize
+from helpers import (
+    GLOBAL_NAMESPACE,
+    PYPY,
+    TREES,
+    Py_GIL_DISABLED,
+    gc_collect,
+    parametrize,
+    recursionlimit,
+)
 
 
 if PYPY:
@@ -246,8 +254,9 @@ def test_treespec_self_referential():  # noqa: C901
 
     concurrent_run(check7)
 
-    with pytest.raises(RecursionError):
-        assert treespec != other
+    with recursionlimit(64):
+        with pytest.raises(RecursionError):
+            assert treespec != other
 
     wr = weakref.ref(treespec)
     del treespec, key, other
