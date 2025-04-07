@@ -43,6 +43,7 @@ from helpers import (
     MyDict,
     gc_collect,
     parametrize,
+    recursionlimit,
 )
 
 
@@ -246,8 +247,9 @@ def test_treespec_self_referential():
     assert hash(treespec) == hash(other)
 
     if not PYPY:
-        with pytest.raises(RecursionError):
-            assert treespec != other
+        with recursionlimit(64):
+            with pytest.raises(RecursionError):
+                assert treespec != other
 
     wr = weakref.ref(treespec)
     del treespec, key, other

@@ -145,8 +145,8 @@ addlicense-install: go-install
 .PHONY: pytest test
 pytest test: pytest-install
 	$(PYTEST) --version
-	cd tests && $(PYTHON) -X dev -W 'always' -W 'error' -c 'import $(PROJECT_NAME)' && \
-	$(PYTHON) -X dev -W 'always' -W 'error' -c 'import $(PROJECT_NAME)._C; print(f"GLIBCXX_USE_CXX11_ABI={$(PROJECT_NAME)._C.GLIBCXX_USE_CXX11_ABI}")' && \
+	cd tests && $(PYTHON) -X dev -Walways -Werror -c 'import $(PROJECT_NAME)' && \
+	$(PYTHON) -X dev -Walways -Werror -c 'import $(PROJECT_NAME)._C; print(f"GLIBCXX_USE_CXX11_ABI={$(PROJECT_NAME)._C.GLIBCXX_USE_CXX11_ABI}")' && \
 	$(PYTEST) --verbose --color=yes --durations=10 --showlocals \
 		--cov="$(PROJECT_NAME)" --cov-report=term-missing \
 		$(PYTESTOPTS) .
