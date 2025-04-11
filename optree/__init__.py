@@ -118,7 +118,7 @@ from optree.typing import (
     namedtuple_fields,
     structseq_fields,
 )
-from optree.version import __version__
+from optree.version import __version__ as __version__  # pylint: disable=useless-import-alias
 
 
 __all__ = [
