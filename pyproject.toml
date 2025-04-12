@@ -1,7 +1,7 @@
 # Package ######################################################################
 
 [build-system]
-requires = ["setuptools", "pybind11 >= 2.12"]
+requires = ["setuptools >= 77.0", "pybind11 >= 2.12"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,12 +9,8 @@ name = "optree"
 description = "Optimized PyTree Utilities."
 readme = "README.md"
 requires-python = ">= 3.9"
-authors = [
-    { name = "OpTree Contributors" },
-    { name = "Xuehai Pan", email = "XuehaiPan@pku.edu.cn" },
-    { name = "Jie Ren", email = "jieren9806@gmail.com" },
-]
-license = { text = "Apache-2.0" }
+authors = [{ name = "OpTree Contributors" }]
+license = "Apache-2.0"
 keywords = [
     "PyTree",
     "Tree Manipulation",
@@ -23,7 +19,6 @@ keywords = [
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: C++",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
