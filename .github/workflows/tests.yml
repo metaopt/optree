@@ -134,7 +134,7 @@ jobs:
           $DebuggersDir = "$WindowsKitsDir\Debuggers\x64"
           Get-ChildItem -Path $DebuggersDir
           $Env:PATH = "$DebuggersDir;$Env:PATH"
-          $PYTEST = 'cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q" ${{ env.PYTHON }} -X dev -m pytest'
+          $PYTEST = 'cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q" ${{ env.PYTHON }} -X dev -m pytest -Walways'
           Write-Output "_NT_SOURCE_PATH=$Env:_NT_SOURCE_PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
           Write-Output "_NT_SYMBOL_PATH=$Env:_NT_SYMBOL_PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
           Write-Output "PATH=$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append

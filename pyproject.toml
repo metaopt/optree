@@ -289,4 +289,4 @@ ban-relative-imports = "all"
 
 [tool.pytest.ini_options]
 verbosity_assertions = 3
-filterwarnings = ["error", "always"]
+filterwarnings = ["always", "error"]
