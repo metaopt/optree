@@ -64,7 +64,7 @@ def test_tree_ravel(tree):
         return random.choice(candidates)
 
     tree = optree.tree_map(replace_leaf, tree)
-    flat, unravel_func = optree.integration.torch.tree_ravel(tree)
+    flat, unravel_func = optree.integrations.torch.tree_ravel(tree)
 
     leaves, treespec = optree.tree_flatten(tree)
     assert flat.numel() == sum(leaf.numel() for leaf in leaves)
@@ -125,7 +125,7 @@ def test_tree_ravel_single_dtype(tree):
         return random.choice(candidates)
 
     tree = optree.tree_map(replace_leaf, tree)
-    flat, unravel_func = optree.integration.torch.tree_ravel(tree)
+    flat, unravel_func = optree.integrations.torch.tree_ravel(tree)
 
     leaves, treespec = optree.tree_flatten(tree)
     assert flat.dtype == dtype if leaves else default_dtype
@@ -162,12 +162,12 @@ def test_tree_ravel_single_dtype(tree):
 
 def test_tree_ravel_non_tensor():
     with pytest.raises(ValueError, match=r'All leaves must be tensors\.'):
-        optree.integration.torch.tree_ravel(1)
+        optree.integrations.torch.tree_ravel(1)
 
     with pytest.raises(ValueError, match=r'All leaves must be tensors\.'):
-        optree.integration.torch.tree_ravel((1, 2))
+        optree.integrations.torch.tree_ravel((1, 2))
 
     with pytest.raises(ValueError, match=r'All leaves must be tensors\.'):
-        optree.integration.torch.tree_ravel((torch.tensor(1), 2))
+        optree.integrations.torch.tree_ravel((torch.tensor(1), 2))
 
-    optree.integration.torch.tree_ravel((torch.tensor(1), torch.tensor(2)))
+    optree.integrations.torch.tree_ravel((torch.tensor(1), torch.tensor(2)))

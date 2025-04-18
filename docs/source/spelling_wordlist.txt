@@ -38,6 +38,7 @@ initializer
 inplace
 instantiate
 instantiation
+integrations
 isinstance
 issubclass
 iterable

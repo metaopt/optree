@@ -28,7 +28,7 @@ from threading import Lock
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, NamedTuple, TypeVar, overload
 
 import optree._C as _C
-from optree.accessor import (
+from optree.accessors import (
     AutoEntry,
     MappingEntry,
     NamedTupleEntry,
@@ -161,7 +161,7 @@ def pytree_node_registry_get(  # noqa: C901
             type=<class 'NoneType'>,
             flatten_func=<function ...>,
             unflatten_func=<function ...>,
-            path_entry_type=<class 'optree.accessor.PyTreeEntry'>,
+            path_entry_type=<class 'optree.accessors.PyTreeEntry'>,
             kind=<PyTreeKind.NONE: 2>,
             namespace=''
         ),
@@ -169,7 +169,7 @@ def pytree_node_registry_get(  # noqa: C901
             type=<class 'tuple'>,
             flatten_func=<function ...>,
             unflatten_func=<function ...>,
-            path_entry_type=<class 'optree.accessor.SequenceEntry'>,
+            path_entry_type=<class 'optree.accessors.SequenceEntry'>,
             kind=<PyTreeKind.TUPLE: 3>,
             namespace=''
         ),
@@ -177,7 +177,7 @@ def pytree_node_registry_get(  # noqa: C901
             type=<class 'list'>,
             flatten_func=<function ...>,
             unflatten_func=<function ...>,
-            path_entry_type=<class 'optree.accessor.SequenceEntry'>,
+            path_entry_type=<class 'optree.accessors.SequenceEntry'>,
             kind=<PyTreeKind.LIST: 4>,
             namespace=''
         ),
@@ -188,7 +188,7 @@ def pytree_node_registry_get(  # noqa: C901
         type=<class 'collections.defaultdict'>,
         flatten_func=<function ...>,
         unflatten_func=<function ...>,
-        path_entry_type=<class 'optree.accessor.MappingEntry'>,
+        path_entry_type=<class 'optree.accessors.MappingEntry'>,
         kind=<PyTreeKind.DEFAULTDICT: 8>,
         namespace=''
     )

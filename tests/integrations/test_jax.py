@@ -62,7 +62,7 @@ def test_tree_ravel(tree):
         return random.choice(candidates)
 
     tree = optree.tree_map(replace_leaf, tree)
-    flat, unravel_func = optree.integration.jax.tree_ravel(tree)
+    flat, unravel_func = optree.integrations.jax.tree_ravel(tree)
 
     leaves, treespec = optree.tree_flatten(tree)
     assert jnp.size(flat) == sum(jnp.size(leaf) for leaf in leaves)
@@ -122,7 +122,7 @@ def test_tree_ravel_single_dtype(tree):
         return random.choice(candidates)
 
     tree = optree.tree_map(replace_leaf, tree)
-    flat, unravel_func = optree.integration.jax.tree_ravel(tree)
+    flat, unravel_func = optree.integrations.jax.tree_ravel(tree)
 
     leaves, treespec = optree.tree_flatten(tree)
     assert flat.dtype == jax_dtype if leaves else jnp.float64

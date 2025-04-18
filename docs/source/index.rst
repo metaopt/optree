@@ -22,7 +22,7 @@ OpTree: Optimized PyTree Utilities
 .. toctree::
     :maxdepth: 2
 
-    integration.rst
+    integrations.rst
 
 License
 -------

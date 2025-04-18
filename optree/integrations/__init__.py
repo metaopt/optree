@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Integration with third-party libraries."""
+"""Integrations with third-party libraries."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from types import ModuleType
 
-    from optree.integration import jax, numpy, torch
+    from optree.integrations import jax, numpy, torch
 
 
 SUBMODULES: frozenset[str] = frozenset({'jax', 'numpy', 'torch'})
