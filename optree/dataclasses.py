@@ -342,7 +342,7 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-
         kwargs.update(metadata)
         return cls(**kwargs)
 
-    from optree.accessor import DataclassEntry  # pylint: disable=import-outside-toplevel
+    from optree.accessors import DataclassEntry  # pylint: disable=import-outside-toplevel
     from optree.registry import register_pytree_node  # pylint: disable=import-outside-toplevel
 
     return register_pytree_node(  # type: ignore[return-value]

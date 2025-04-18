@@ -60,7 +60,7 @@ from typing_extensions import (
 
 import optree._C as _C
 from optree._C import PyTreeKind, PyTreeSpec
-from optree.accessor import (
+from optree.accessors import (
     AutoEntry,
     DataclassEntry,
     FlattenedEntry,
