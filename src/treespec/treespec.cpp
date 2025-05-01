@@ -570,37 +570,37 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
     return treespec;
 }
 
-std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner_treespec) const {
+std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner) const {
     PYTREESPEC_SANITY_CHECK(*this);
-    PYTREESPEC_SANITY_CHECK(inner_treespec);
+    PYTREESPEC_SANITY_CHECK(inner);
 
-    if (m_none_is_leaf != inner_treespec.m_none_is_leaf) [[unlikely]] {
+    if (m_none_is_leaf != inner.m_none_is_leaf) [[unlikely]] {
         throw py::value_error("PyTreeSpecs must have the same none_is_leaf value.");
     }
-    if (!m_namespace.empty() && !inner_treespec.m_namespace.empty() &&
-        m_namespace != inner_treespec.m_namespace) [[unlikely]] {
+    if (!m_namespace.empty() && !inner.m_namespace.empty() && m_namespace != inner.m_namespace)
+        [[unlikely]] {
         std::ostringstream oss{};
         oss << "PyTreeSpecs must have the same namespace, got " << PyRepr(m_namespace) << " vs. "
-            << PyRepr(inner_treespec.m_namespace) << ".";
+            << PyRepr(inner.m_namespace) << ".";
         throw py::value_error(oss.str());
     }
 
     auto treespec = std::make_unique<PyTreeSpec>();
     treespec->m_none_is_leaf = m_none_is_leaf;
-    if (inner_treespec.m_namespace.empty()) [[likely]] {
+    if (inner.m_namespace.empty()) [[likely]] {
         treespec->m_namespace = m_namespace;
     } else [[unlikely]] {
-        treespec->m_namespace = inner_treespec.m_namespace;
+        treespec->m_namespace = inner.m_namespace;
     }
 
     const ssize_t num_outer_leaves = GetNumLeaves();
     const ssize_t num_outer_nodes = GetNumNodes();
-    const ssize_t num_inner_leaves = inner_treespec.GetNumLeaves();
-    const ssize_t num_inner_nodes = inner_treespec.GetNumNodes();
+    const ssize_t num_inner_leaves = inner.GetNumLeaves();
+    const ssize_t num_inner_nodes = inner.GetNumNodes();
     for (const Node& node : m_traversal) {
         if (node.kind == PyTreeKind::Leaf) [[likely]] {
-            std::copy(inner_treespec.m_traversal.cbegin(),
-                      inner_treespec.m_traversal.cend(),
+            std::copy(inner.m_traversal.cbegin(),
+                      inner.m_traversal.cend(),
                       std::back_inserter(treespec->m_traversal));
         } else [[unlikely]] {
             Node new_node{node};
