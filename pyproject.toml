@@ -78,15 +78,6 @@ docs = [
     "numpy",
     "torch",
 ]
-benchmark = [
-    "jax[cpu] >= 0.4.6, < 0.5.0a0",
-    "torch >= 2.0, < 2.6.0a0",
-    "torchvision",
-    "dm-tree >= 0.1, < 0.2.0a0",
-    "pandas",
-    "tabulate",
-    "termcolor",
-]
 
 [tool.setuptools]
 include-package-data = true
@@ -245,9 +236,6 @@ typing-modules = ["optree.typing"]
 "setup.py" = [
     "D",       # pydocstyle
     "ANN",     # flake8-annotations
-]
-"benchmark.py" = [
-    "D",       # pydocstyle
 ]
 "tests/**/*.py" = [
     "D",       # pydocstyle
