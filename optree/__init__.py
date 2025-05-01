@@ -233,3 +233,16 @@ NONE_IS_NODE: bool = NONE_IS_NODE  # literal constant
 """Literal constant that treats :data:`None` as a pytree non-leaf node."""
 NONE_IS_LEAF: bool = NONE_IS_LEAF  # literal constant
 """Literal constant that treats :data:`None` as a pytree leaf node."""
+
+
+# pylint: disable-next=fixme
+# TODO: remove this file in version 0.18.0
+def __getattr__(name: str, /) -> object:  # pragma: no cover
+    """Get an attribute from the module."""
+    if name == 'accessor':
+        global accessor  # pylint: disable=global-statement
+
+        import optree.accessor as accessor  # pylint: disable=import-outside-toplevel
+
+        return accessor  # type: ignore[name-defined]
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
