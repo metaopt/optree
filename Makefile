@@ -19,7 +19,7 @@ SHELL          = /bin/bash
 .SHELLFLAGS    := -eu -o pipefail -c
 PROJECT_PATH   = $(PROJECT_NAME)
 SOURCE_FOLDERS = $(PROJECT_PATH) include src tests docs
-PYTHON_FILES   = $(shell find $(SOURCE_FOLDERS) -type f -iname "*.py" -o -iname "*.pyi") setup.py benchmark.py
+PYTHON_FILES   = $(shell find $(SOURCE_FOLDERS) -type f -iname "*.py" -o -iname "*.pyi") setup.py
 CXX_FILES      = $(shell find $(SOURCE_FOLDERS) -type f -iname "*.[ch]pp" -o -iname "*.cc" -o -iname "*.c" -o -iname "*.h")
 COMMIT_HASH    = $(shell git rev-parse HEAD)
 COMMIT_HASH_SHORT = $(shell git rev-parse --short=7 HEAD)
