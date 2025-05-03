@@ -302,7 +302,7 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-
     if namespace is not GLOBAL_NAMESPACE and not isinstance(namespace, str):
         raise TypeError(f'The namespace must be a string, got {namespace!r}.')
     if namespace == '':
-        raise ValueError('The namespace cannot be an empty string.')
+        namespace = GLOBAL_NAMESPACE
 
     cls = dataclasses.dataclass(cls, **kwargs)  # type: ignore[assignment]
 
@@ -412,7 +412,7 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
     if namespace is not GLOBAL_NAMESPACE and not isinstance(namespace, str):
         raise TypeError(f'The namespace must be a string, got {namespace!r}.')
     if namespace == '':
-        raise ValueError('The namespace cannot be an empty string.')
+        namespace = GLOBAL_NAMESPACE
 
     dataclass_kwargs = {
         'init': init,
