@@ -126,7 +126,7 @@ __all__ = [
 ]
 
 
-PyTreeDef = PyTreeSpec  # alias
+PyTreeDef: TypeAlias = PyTreeSpec  # alias
 
 T = TypeVar('T')
 S = TypeVar('S')

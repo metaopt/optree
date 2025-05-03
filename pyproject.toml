@@ -228,23 +228,15 @@ typing-modules = ["optree.typing"]
 "__init__.py" = [
     "F401",    # unused-import
 ]
-"optree/typing.py" = [
-    "E402",    # module-import-not-at-top-of-file
-    "F722",    # forward-annotation-syntax-error
-    "F811",    # redefined-while-unused
-]
 "setup.py" = [
     "D",       # pydocstyle
-    "ANN",     # flake8-annotations
 ]
 "tests/**/*.py" = [
     "D",       # pydocstyle
     "ANN",     # flake8-annotations
     "S",       # flake8-bandit
-    "BLE",     # flake8-blind-except
     "SIM",     # flake8-simplify
     "INP001",  # flake8-no-pep420
-    "E402",    # module-import-not-at-top-of-file
 ]
 "docs/source/conf.py" = [
     "D",       # pydocstyle
@@ -253,7 +245,6 @@ typing-modules = ["optree.typing"]
 ]
 ".github/workflows/**/*.py" = [
     "D",       # pydocstyle
-    "ANN",     # flake8-annotations
 ]
 
 [tool.ruff.lint.isort]

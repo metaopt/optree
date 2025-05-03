@@ -527,11 +527,14 @@ def test_standard_dictionary(
             namespace=namespace,
         )
         assert shuffled_treespec.is_prefix(shuffled_suffix_treespec)
-        () == optree.prefix_errors(  # noqa: B015
-            shuffled_tree,
-            shuffled_suffix_tree,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
+        assert (
+            optree.prefix_errors(
+                shuffled_tree,
+                shuffled_suffix_tree,
+                none_is_leaf=none_is_leaf,
+                namespace=namespace,
+            )
+            == []
         )
 
 
