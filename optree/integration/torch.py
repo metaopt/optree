@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Access support for pytrees."""
+"""Integration with PyTorch."""
 
 # pragma: no cover file
 
 import sys
 import warnings
 
-import optree.accessors
-from optree.accessors import *  # noqa: F403 # pylint: disable=wildcard-import,unused-wildcard-import
-from optree.accessors import __all__  # noqa: F401
+import optree.integrations.torch
+from optree.integrations.torch import *  # noqa: F403 # pylint: disable=wildcard-import,unused-wildcard-import
+from optree.integrations.torch import __all__  # noqa: F401
 
 
 # pylint: disable-next=fixme
@@ -31,12 +31,12 @@ with warnings.catch_warnings():
 
     warnings.warn(
         f'The {__name__!r} module is deprecated and will be removed in version 0.18.0. '
-        f'Please use {optree.accessors.__name__!r} instead.',
+        f'Please use {optree.integrations.torch.__name__!r} instead.',
         FutureWarning,
         stacklevel=2,
     )
 
 
-sys.modules[__name__] = optree.accessors
+sys.modules[__name__] = optree.integrations.torch
 
 del sys, warnings, optree

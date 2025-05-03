@@ -12,16 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Access support for pytrees."""
+"""Integrations with third-party libraries."""
 
 # pragma: no cover file
 
 import sys
 import warnings
+from typing import TYPE_CHECKING
 
-import optree.accessors
-from optree.accessors import *  # noqa: F403 # pylint: disable=wildcard-import,unused-wildcard-import
-from optree.accessors import __all__  # noqa: F401
+import optree.integrations
+from optree.integrations import SUBMODULES, __dir__, __getattr__
+
+
+if TYPE_CHECKING:
+    from optree.integration import jax, numpy, torch
 
 
 # pylint: disable-next=fixme
@@ -31,12 +35,12 @@ with warnings.catch_warnings():
 
     warnings.warn(
         f'The {__name__!r} module is deprecated and will be removed in version 0.18.0. '
-        f'Please use {optree.accessors.__name__!r} instead.',
+        f'Please use {optree.integrations.__name__!r} instead.',
         FutureWarning,
         stacklevel=2,
     )
 
 
-sys.modules[__name__] = optree.accessors
+sys.modules[__name__] = optree.integrations
 
-del sys, warnings, optree
+del TYPE_CHECKING, sys, warnings, optree
