@@ -56,7 +56,7 @@ def test_tree_ravel(tree):
         return random.choice(candidates)
 
     tree = optree.tree_map(replace_leaf, tree)
-    flat, unravel_func = optree.integration.numpy.tree_ravel(tree)
+    flat, unravel_func = optree.integrations.numpy.tree_ravel(tree)
 
     leaves, treespec = optree.tree_flatten(tree)
     assert np.size(flat) == sum(np.size(leaf) for leaf in leaves)
@@ -115,7 +115,7 @@ def test_tree_ravel_single_dtype(tree):
         return random.choice(candidates)
 
     tree = optree.tree_map(replace_leaf, tree)
-    flat, unravel_func = optree.integration.numpy.tree_ravel(tree)
+    flat, unravel_func = optree.integrations.numpy.tree_ravel(tree)
 
     leaves, treespec = optree.tree_flatten(tree)
     assert flat.dtype == dtype if leaves else default_dtype

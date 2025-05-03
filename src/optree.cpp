@@ -216,9 +216,9 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::pos_only())
         .def("flatten_up_to",
              &PyTreeSpec::FlattenUpTo,
-             "Flatten the subtrees in ``full_tree`` up to the structure of this treespec "
+             "Flatten the subtrees in ``tree`` up to the structure of this treespec "
              "and return a list of subtrees.",
-             py::arg("full_tree"),
+             py::arg("tree"),
              py::pos_only())
         .def("broadcast_to_common_suffix",
              &PyTreeSpec::BroadcastToCommonSuffix,
@@ -235,7 +235,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
         .def("compose",
              &PyTreeSpec::Compose,
              "Compose two treespecs. Constructs the inner treespec as a subtree at each leaf node.",
-             py::arg("inner_treespec"),
+             py::arg("inner"),
              py::pos_only())
         .def("traverse",
              &PyTreeSpec::Traverse,

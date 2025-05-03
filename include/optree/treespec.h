@@ -120,10 +120,10 @@ public:
     [[nodiscard]] py::object Unflatten(const py::iterable &leaves) const;
 
     // Flatten a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure of
-    // 'full_tree'.
+    // 'tree'.
     // For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeSpec([(*, *), *]),
     // the result is the list of leaves [1, (2, 3), {"foo": 4}].
-    [[nodiscard]] py::list FlattenUpTo(const py::object &full_tree) const;
+    [[nodiscard]] py::list FlattenUpTo(const py::object &tree) const;
 
     // Broadcast to a common suffix of this PyTreeSpec and other PyTreeSpec.
     [[nodiscard]] std::unique_ptr<PyTreeSpec> BroadcastToCommonSuffix(
@@ -136,7 +136,7 @@ public:
         const std::optional<py::function> &f_leaf = std::nullopt) const;
 
     // Compose two PyTreeSpecs, replacing the leaves of this tree with copies of `inner`.
-    [[nodiscard]] std::unique_ptr<PyTreeSpec> Compose(const PyTreeSpec &inner_treespec) const;
+    [[nodiscard]] std::unique_ptr<PyTreeSpec> Compose(const PyTreeSpec &inner) const;
 
     // Map a function over a PyTree structure, applying `f_leaf(leaf)` to each leaf,
     // and `f_node(node)` to each reconstructed non-leaf node.

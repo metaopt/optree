@@ -14,8 +14,8 @@
 # ==============================================================================
 """OpTree: Optimized PyTree Utilities."""
 
-from optree import accessor, dataclasses, functools, integration, pytree, treespec, typing
-from optree.accessor import (
+from optree import accessors, dataclasses, functools, integrations, pytree, treespec, typing
+from optree.accessors import (
     AutoEntry,
     DataclassEntry,
     FlattenedEntry,
@@ -233,3 +233,22 @@ NONE_IS_NODE: bool = NONE_IS_NODE  # literal constant
 """Literal constant that treats :data:`None` as a pytree non-leaf node."""
 NONE_IS_LEAF: bool = NONE_IS_LEAF  # literal constant
 """Literal constant that treats :data:`None` as a pytree leaf node."""
+
+
+# pylint: disable-next=fixme
+# TODO: remove this file in version 0.18.0
+def __getattr__(name: str, /) -> object:  # pragma: no cover
+    """Get an attribute from the module."""
+    if name == 'accessor':
+        global accessor  # pylint: disable=global-statement
+
+        import optree.accessor as accessor  # pylint: disable=import-outside-toplevel
+
+        return accessor  # type: ignore[name-defined]
+    if name == 'integration':
+        global integration  # pylint: disable=global-statement
+
+        import optree.integration as integration  # pylint: disable=import-outside-toplevel
+
+        return integration  # type: ignore[name-defined]
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')

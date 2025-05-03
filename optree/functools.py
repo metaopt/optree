@@ -21,13 +21,13 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar
 from typing_extensions import Self  # Python 3.11+
 
 from optree import registry
-from optree.accessor import GetAttrEntry
+from optree.accessors import GetAttrEntry
 from optree.ops import tree_reduce as reduce
 from optree.typing import CustomTreeNode, T
 
 
 if TYPE_CHECKING:
-    from optree.accessor import PyTreeEntry
+    from optree.accessors import PyTreeEntry
 
 
 __all__ = [

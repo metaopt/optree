@@ -21,31 +21,31 @@ import optree
 
 
 def test_imports():
-    assert dir(optree.integration) == ['SUBMODULES', 'jax', 'numpy', 'torch']
+    assert dir(optree.integrations) == ['SUBMODULES', 'jax', 'numpy', 'torch']
 
     with pytest.raises(AttributeError):
-        optree.integration.abc  # noqa: B018
+        optree.integrations.abc  # noqa: B018
 
     try:
         import jax  # noqa: F401
     except ImportError:
         with pytest.raises(ImportError):
-            optree.integration.jax  # noqa: B018
+            optree.integrations.jax  # noqa: B018
     else:
-        assert isinstance(optree.integration.jax, types.ModuleType)
+        assert isinstance(optree.integrations.jax, types.ModuleType)
 
     try:
         import numpy as np  # noqa: F401
     except ImportError:
         with pytest.raises(ImportError):
-            optree.integration.numpy  # noqa: B018
+            optree.integrations.numpy  # noqa: B018
     else:
-        assert isinstance(optree.integration.numpy, types.ModuleType)
+        assert isinstance(optree.integrations.numpy, types.ModuleType)
 
     try:
         import torch  # noqa: F401
     except ImportError:
         with pytest.raises(ImportError):
-            optree.integration.torch  # noqa: B018
+            optree.integrations.torch  # noqa: B018
     else:
-        assert isinstance(optree.integration.torch, types.ModuleType)
+        assert isinstance(optree.integrations.torch, types.ModuleType)

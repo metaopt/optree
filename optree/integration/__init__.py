@@ -12,38 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Integration with third-party libraries."""
+"""Integrations with third-party libraries."""
 
-from __future__ import annotations
+# pragma: no cover file
 
+import sys
+import warnings
 from typing import TYPE_CHECKING
+
+import optree.integrations
+from optree.integrations import SUBMODULES, __dir__, __getattr__
 
 
 if TYPE_CHECKING:
-    from types import ModuleType
-
     from optree.integration import jax, numpy, torch
 
 
-SUBMODULES: frozenset[str] = frozenset({'jax', 'numpy', 'torch'})
+# pylint: disable-next=fixme
+# TODO: remove this file in version 0.18.0
+with warnings.catch_warnings():
+    warnings.filterwarnings('ignore', category=FutureWarning, module=__name__, append=False)
+
+    warnings.warn(
+        f'The {__name__!r} module is deprecated and will be removed in version 0.18.0. '
+        f'Please use {optree.integrations.__name__!r} instead.',
+        FutureWarning,
+        stacklevel=2,
+    )
 
 
-def __dir__() -> list[str]:
-    return [*sorted(SUBMODULES), 'SUBMODULES']
+sys.modules[__name__] = optree.integrations
 
-
-def __getattr__(name: str, /) -> ModuleType:
-    if name in SUBMODULES:
-        import importlib  # pylint: disable=import-outside-toplevel
-        import sys  # pylint: disable=import-outside-toplevel
-
-        module = sys.modules[__name__]
-
-        submodule = importlib.import_module(f'{__name__}.{name}')  # pragma: no cover
-        setattr(module, name, submodule)  # pragma: no cover
-        return submodule  # pragma: no cover
-
-    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
-
-
-del TYPE_CHECKING
+del TYPE_CHECKING, sys, warnings, optree
