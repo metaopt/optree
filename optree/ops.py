@@ -35,8 +35,16 @@ if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Mapping
 
     from optree.accessors import PyTreeEntry
-    from optree.typing import MetaData, PyTree, PyTreeKind, PyTreeSpec, S, U, UnflattenFunc
-    from optree.typing import structseq as StructSequence  # noqa: N812
+    from optree.typing import (
+        MetaData,
+        PyTree,
+        PyTreeKind,
+        PyTreeSpec,
+        S,
+        StructSequence,
+        U,
+        UnflattenFunc,
+    )
 
 
 __all__ = [

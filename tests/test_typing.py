@@ -319,13 +319,13 @@ def test_is_structseq():
         assert is_structseq_instance(obj) == (not isinstance(obj, type) and is_structseq(obj))
         return is_structseq(obj)
 
-    with pytest.raises(TypeError, match="type 'structseq' is not an acceptable base type"):
+    with pytest.raises(TypeError, match="type 'StructSequence' is not an acceptable base type"):
 
-        class MyTuple(optree.typing.structseq):
+        class MyTuple(optree.typing.StructSequence):
             pass
 
     with pytest.raises(NotImplementedError):
-        optree.typing.structseq(range(1))
+        optree.typing.StructSequence(range(1))
 
     for is_structseq, is_structseq_class, is_structseq_instance in (  # noqa: B007
         (

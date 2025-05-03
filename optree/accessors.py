@@ -29,7 +29,7 @@ from optree._C import PyTreeKind
 if TYPE_CHECKING:
     import builtins
 
-    from optree.typing import NamedTuple, structseq
+    from optree.typing import NamedTuple, StructSequence
 
 
 __all__ = [
@@ -302,7 +302,7 @@ class StructSequenceEntry(SequenceEntry[_T]):
     __slots__: ClassVar[tuple[()]] = ()
 
     entry: int
-    type: builtins.type[structseq[_T]]
+    type: builtins.type[StructSequence[_T]]
     kind: Literal[PyTreeKind.STRUCTSEQUENCE]
 
     @property
@@ -433,14 +433,11 @@ class PyTreeAccessor(tuple[PyTreeEntry, ...]):
 
 
 # These classes are used internally in the C++ side for accessor APIs
-setattr(_C, 'PyTreeEntry', PyTreeEntry)  # noqa: B010
-setattr(_C, 'GetItemEntry', GetItemEntry)  # noqa: B010
-setattr(_C, 'GetAttrEntry', GetAttrEntry)  # noqa: B010
-setattr(_C, 'FlattenedEntry', FlattenedEntry)  # noqa: B010
-setattr(_C, 'AutoEntry', AutoEntry)  # noqa: B010
-setattr(_C, 'SequenceEntry', SequenceEntry)  # noqa: B010
-setattr(_C, 'MappingEntry', MappingEntry)  # noqa: B010
-setattr(_C, 'NamedTupleEntry', NamedTupleEntry)  # noqa: B010
-setattr(_C, 'StructSequenceEntry', StructSequenceEntry)  # noqa: B010
-setattr(_C, 'DataclassEntry', DataclassEntry)  # noqa: B010
-setattr(_C, 'PyTreeAccessor', PyTreeAccessor)  # noqa: B010
+_name, _cls = '', object
+for _name in __all__:
+    _cls = globals()[_name]
+    if not isinstance(_cls, type):  # pragma: no cover
+        raise TypeError(f'Expected a class, got {_cls!r}.')
+    _cls.__module__ = 'optree'
+    setattr(_C, _name, _cls)
+del _name, _cls
