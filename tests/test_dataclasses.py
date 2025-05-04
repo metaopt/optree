@@ -368,30 +368,41 @@ def test_dataclass_with_invalid_namespace():
             x: int
             y: float
 
-    with pytest.raises(ValueError, match=re.escape('The namespace cannot be an empty string.')):
-
-        @optree.dataclasses.dataclass(namespace='')
-        class Foo2:
-            x: int
-            y: float
-
-    @optree.dataclasses.dataclass(namespace=GLOBAL_NAMESPACE)
-    class Foo:
+    @optree.dataclasses.dataclass(namespace='')
+    class Foo2:
         x: int
         y: float
 
-    foo = Foo(1, 2.0)
+    foo = Foo2(1, 2.0)
     accessors, leaves, treespec = optree.tree_flatten_with_accessor(foo)
     assert optree.tree_unflatten(treespec, leaves) == foo
     assert accessors == [
-        optree.PyTreeAccessor((optree.DataclassEntry('x', Foo, optree.PyTreeKind.CUSTOM),)),
-        optree.PyTreeAccessor((optree.DataclassEntry('y', Foo, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('x', Foo2, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('y', Foo2, optree.PyTreeKind.CUSTOM),)),
     ]
     assert [a(foo) for a in accessors] == [1, 2.0]
     assert leaves == [1, 2.0]
     assert treespec.namespace == ''
     assert treespec.kind == optree.PyTreeKind.CUSTOM
-    assert treespec.type is Foo
+    assert treespec.type is Foo2
+
+    @optree.dataclasses.dataclass(namespace=GLOBAL_NAMESPACE)
+    class Foo3:
+        x: int
+        y: float
+
+    foo = Foo3(1, 2.0)
+    accessors, leaves, treespec = optree.tree_flatten_with_accessor(foo)
+    assert optree.tree_unflatten(treespec, leaves) == foo
+    assert accessors == [
+        optree.PyTreeAccessor((optree.DataclassEntry('x', Foo3, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('y', Foo3, optree.PyTreeKind.CUSTOM),)),
+    ]
+    assert [a(foo) for a in accessors] == [1, 2.0]
+    assert leaves == [1, 2.0]
+    assert treespec.namespace == ''
+    assert treespec.kind == optree.PyTreeKind.CUSTOM
+    assert treespec.type is Foo3
 
 
 def test_make_dataclass_future_parameters():
@@ -684,30 +695,41 @@ def test_make_dataclass_with_invalid_namespace():
     with pytest.raises(TypeError, match='The namespace must be a string'):
         optree.dataclasses.make_dataclass('Foo1', ['x', ('y', int), ('z', float, 0.0)], namespace=1)
 
-    with pytest.raises(ValueError, match=re.escape('The namespace cannot be an empty string.')):
-        optree.dataclasses.make_dataclass(
-            'Foo2',
-            ['x', ('y', int), ('z', float, 0.0)],
-            namespace='',
-        )
-
-    Foo = optree.dataclasses.make_dataclass(  # noqa: N806
-        'Foo',
+    Foo2 = optree.dataclasses.make_dataclass(  # noqa: N806
+        'Foo2',
         [('x', int), ('y', float)],
-        namespace=GLOBAL_NAMESPACE,
+        namespace='',
     )
-    foo = Foo(1, 2.0)
+    foo = Foo2(1, 2.0)
     accessors, leaves, treespec = optree.tree_flatten_with_accessor(foo)
     assert optree.tree_unflatten(treespec, leaves) == foo
     assert accessors == [
-        optree.PyTreeAccessor((optree.DataclassEntry('x', Foo, optree.PyTreeKind.CUSTOM),)),
-        optree.PyTreeAccessor((optree.DataclassEntry('y', Foo, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('x', Foo2, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('y', Foo2, optree.PyTreeKind.CUSTOM),)),
     ]
     assert [a(foo) for a in accessors] == [1, 2.0]
     assert leaves == [1, 2.0]
     assert treespec.namespace == ''
     assert treespec.kind == optree.PyTreeKind.CUSTOM
-    assert treespec.type is Foo
+    assert treespec.type is Foo2
+
+    Foo3 = optree.dataclasses.make_dataclass(  # noqa: N806
+        'Foo3',
+        [('x', int), ('y', float)],
+        namespace=GLOBAL_NAMESPACE,
+    )
+    foo = Foo3(1, 2.0)
+    accessors, leaves, treespec = optree.tree_flatten_with_accessor(foo)
+    assert optree.tree_unflatten(treespec, leaves) == foo
+    assert accessors == [
+        optree.PyTreeAccessor((optree.DataclassEntry('x', Foo3, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('y', Foo3, optree.PyTreeKind.CUSTOM),)),
+    ]
+    assert [a(foo) for a in accessors] == [1, 2.0]
+    assert leaves == [1, 2.0]
+    assert treespec.namespace == ''
+    assert treespec.kind == optree.PyTreeKind.CUSTOM
+    assert treespec.type is Foo3
 
     with pytest.raises(TypeError, match='The namespace must be a string'):
         optree.dataclasses.make_dataclass(
@@ -717,29 +739,40 @@ def test_make_dataclass_with_invalid_namespace():
             namespace=None,
         )
 
-    with pytest.raises(ValueError, match=re.escape('The namespace cannot be an empty string.')):
-        optree.dataclasses.make_dataclass(
-            'Foo2',
-            ['x', ('y', int), ('z', float, 0.0)],
-            ns='',
-            namespace={},
-        )
-
-    Bar = optree.dataclasses.make_dataclass(  # noqa: N806
-        'Bar',
+    Bar2 = optree.dataclasses.make_dataclass(  # noqa: N806
+        'Bar2',
         [('x', int), ('y', float)],
-        ns=GLOBAL_NAMESPACE,
+        ns='',
         namespace={},
     )
-    bar = Bar(1, 2.0)
+    bar = Bar2(1, 2.0)
     accessors, leaves, treespec = optree.tree_flatten_with_accessor(bar)
     assert optree.tree_unflatten(treespec, leaves) == bar
     assert accessors == [
-        optree.PyTreeAccessor((optree.DataclassEntry('x', Bar, optree.PyTreeKind.CUSTOM),)),
-        optree.PyTreeAccessor((optree.DataclassEntry('y', Bar, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('x', Bar2, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('y', Bar2, optree.PyTreeKind.CUSTOM),)),
     ]
     assert [a(bar) for a in accessors] == [1, 2.0]
     assert leaves == [1, 2.0]
     assert treespec.namespace == ''
     assert treespec.kind == optree.PyTreeKind.CUSTOM
-    assert treespec.type is Bar
+    assert treespec.type is Bar2
+
+    Bar3 = optree.dataclasses.make_dataclass(  # noqa: N806
+        'Bar3',
+        [('x', int), ('y', float)],
+        ns=GLOBAL_NAMESPACE,
+        namespace={},
+    )
+    bar = Bar3(1, 2.0)
+    accessors, leaves, treespec = optree.tree_flatten_with_accessor(bar)
+    assert optree.tree_unflatten(treespec, leaves) == bar
+    assert accessors == [
+        optree.PyTreeAccessor((optree.DataclassEntry('x', Bar3, optree.PyTreeKind.CUSTOM),)),
+        optree.PyTreeAccessor((optree.DataclassEntry('y', Bar3, optree.PyTreeKind.CUSTOM),)),
+    ]
+    assert [a(bar) for a in accessors] == [1, 2.0]
+    assert leaves == [1, 2.0]
+    assert treespec.namespace == ''
+    assert treespec.kind == optree.PyTreeKind.CUSTOM
+    assert treespec.type is Bar3
