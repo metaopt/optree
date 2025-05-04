@@ -19,6 +19,10 @@ import optree
 def test_pytree_reexports():
     tree_operations = [name[len('tree_') :] for name in optree.__all__ if name.startswith('tree_')]
     assert optree.pytree.__all__ == [
+        'reexport',
+        'PyTreeSpec',
+        'PyTreeKind',
+        'PyTreeEntry',
         *tree_operations,
         'register_node',
         'register_node_class',
