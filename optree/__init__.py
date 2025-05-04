@@ -238,7 +238,7 @@ NONE_IS_LEAF: bool = NONE_IS_LEAF  # literal constant
 
 
 # pylint: disable-next=fixme
-# TODO: remove this file in version 0.18.0
+# TODO: remove this function in version 0.18.0
 def __getattr__(name: str, /) -> object:  # pragma: no cover
     """Get an attribute from the module."""
     if name == 'accessor':
