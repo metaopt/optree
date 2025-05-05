@@ -26,6 +26,16 @@ limitations under the License.
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#if defined(PYBIND11_HAS_NATIVE_ENUM) ||                                                           \
+    (defined(PYBIND11_INTERNALS_VERSION) && PYBIND11_INTERNALS_VERSION >= 8)
+#ifndef PYBIND11_HAS_NATIVE_ENUM
+#define PYBIND11_HAS_NATIVE_ENUM
+#endif
+#include <pybind11/native_enum.h>
+#else
+#undef PYBIND11_HAS_NATIVE_ENUM
+#endif
+
 namespace optree {
 
 py::module_ GetCxxModule(const std::optional<py::module_>& module) {
@@ -205,6 +215,22 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
 #define def_method_pos_only(...) def(__VA_ARGS__)
 #endif
 
+#ifdef PYBIND11_HAS_NATIVE_ENUM
+    py::native_enum<PyTreeKind>(mod, "PyTreeKind", "enum.IntEnum", "The kind of a pytree node.")
+        .value("CUSTOM", PyTreeKind::Custom, "A custom type.")
+        .value("LEAF", PyTreeKind::Leaf, "A opaque leaf node.")
+        .value("NONE", PyTreeKind::None, "None.")
+        .value("TUPLE", PyTreeKind::Tuple, "A tuple.")
+        .value("LIST", PyTreeKind::List, "A list.")
+        .value("DICT", PyTreeKind::Dict, "A dict.")
+        .value("NAMEDTUPLE", PyTreeKind::NamedTuple, "A collections.namedtuple.")
+        .value("ORDEREDDICT", PyTreeKind::OrderedDict, "A collections.OrderedDict.")
+        .value("DEFAULTDICT", PyTreeKind::DefaultDict, "A collections.defaultdict.")
+        .value("DEQUE", PyTreeKind::Deque, "A collections.deque.")
+        .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.")
+        .finalize();
+    auto PyTreeKindTypeObject = py::getattr(mod, "PyTreeKind");
+#else
     auto PyTreeKindTypeObject =
         py::enum_<PyTreeKind>(mod, "PyTreeKind", "The kind of a pytree node.", py::module_local())
             .value("CUSTOM", PyTreeKind::Custom, "A custom type.")
@@ -218,6 +244,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             .value("DEFAULTDICT", PyTreeKind::DefaultDict, "A collections.defaultdict.")
             .value("DEQUE", PyTreeKind::Deque, "A collections.deque.")
             .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.");
+#endif
     auto* const PyTreeKind_Type = reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr());
     PyTreeKind_Type->tp_name = "optree.PyTreeKind";
     py::setattr(PyTreeKindTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
@@ -442,15 +469,23 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
 
 #undef def_method_pos_only
 
+// Make the types immutable to avoid attribute assignment, modification, and deletion.
 #ifdef Py_TPFLAGS_IMMUTABLETYPE
     PyTreeKind_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
     PyTreeSpec_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
     PyTreeIter_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
+
+#ifndef PYBIND11_HAS_NATIVE_ENUM
+    // Only run Python C API `PyType_Ready(type)` on C++ types.
+    // Re-running `PyType_Ready` for native Python enums can cause unexpected behavior,
+    // such as infinite recursion for `repr(e)` and `hash(e)`.
     PyTreeKind_Type->tp_flags &= ~Py_TPFLAGS_READY;
+#endif
     PyTreeSpec_Type->tp_flags &= ~Py_TPFLAGS_READY;
     PyTreeIter_Type->tp_flags &= ~Py_TPFLAGS_READY;
 #endif
 
+    // Re-ready types or do consistency checks for the types.
     if (PyType_Ready(PyTreeKind_Type) < 0) [[unlikely]] {
         INTERNAL_ERROR("`PyType_Ready(&PyTreeKind_Type)` failed.");
     }

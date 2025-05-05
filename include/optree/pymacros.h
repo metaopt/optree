@@ -21,11 +21,15 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
-namespace py = pybind11;
-
-#if PY_VERSION_HEX < 0x03090000  // Python 3.9
+#if !(defined(PY_VERSION_HEX) && PY_VERSION_HEX >= 0x03090000)  // Python 3.9
 #error "Python 3.9 or newer is required."
 #endif
+
+#if !(defined(PYBIND11_VERSION_HEX) && PYBIND11_VERSION_HEX >= 0x020C00F0)  // pybind11 2.12.0
+#error "pybind11 2.12.0 or newer is required."
+#endif
+
+namespace py = pybind11;
 
 #ifndef Py_ALWAYS_INLINE
 #define Py_ALWAYS_INLINE
