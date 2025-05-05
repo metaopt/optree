@@ -111,6 +111,7 @@ pytest-install:
 	$(call check_pip_install,pytest-cov)
 	$(call check_pip_install,pytest-xdist)
 	$(call check_pip_install,covdefaults)
+	$(call check_pip_install,rich)
 
 .PHONY: test-install
 test-install: pytest-install
@@ -146,7 +147,8 @@ addlicense-install: go-install
 pytest test: pytest-install
 	$(PYTEST) --version
 	cd tests && $(PYTHON) -X dev -Walways -Werror -c 'import $(PROJECT_NAME)' && \
-	$(PYTHON) -X dev -Walways -Werror -c 'import $(PROJECT_NAME)._C; print(f"GLIBCXX_USE_CXX11_ABI={$(PROJECT_NAME)._C.GLIBCXX_USE_CXX11_ABI}")' && \
+	$(PYTHON) -X dev -Walways -Werror -c \
+		'import rich, $(PROJECT_NAME)._C; rich.inspect($(PROJECT_NAME)._C, value=True, methods=True)' && \
 	$(PYTEST) --verbose --color=yes --durations=10 --showlocals \
 		--cov="$(PROJECT_NAME)" --cov-report=term-missing \
 		$(PYTESTOPTS) .

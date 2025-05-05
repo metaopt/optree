@@ -22,6 +22,7 @@ limitations under the License.
 #include <optional>    // std::optional, std::nullopt
 #include <string>      // std::string
 
+#include <pybind11/eval.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
@@ -41,15 +42,44 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
     GetCxxModule(mod);
 
     mod.doc() = "Optimized PyTree Utilities.";
-    py::register_local_exception<InternalError>(mod, "InternalError", PyExc_SystemError);
-    mod.attr("MAX_RECURSION_DEPTH") = py::int_(MAX_RECURSION_DEPTH);
     mod.attr("Py_TPFLAGS_BASETYPE") = py::int_(Py_TPFLAGS_BASETYPE);
+
+    // Meta information during build
+    mod.attr("PY_VERSION") = py::str(PY_VERSION);
+    mod.attr("PY_VERSION_HEX") = py::int_(PY_VERSION_HEX);
+#ifdef PYPY_VERSION
+    mod.attr("PYPY_VERSION") = py::str(PYPY_VERSION);
+    mod.attr("PYPY_VERSION_NUM") = py::int_(PYPY_VERSION_NUM);
+    mod.attr("PYPY_VERSION_HEX") = py::int_(PYPY_VERSION_NUM);
+#endif
+    mod.attr("PYBIND11_VERSION_HEX") = py::int_(PYBIND11_VERSION_HEX);
+    mod.attr("PYBIND11_INTERNALS_VERSION") = py::int_(PYBIND11_INTERNALS_VERSION);
 #ifdef _GLIBCXX_USE_CXX11_ABI
     // NOLINTNEXTLINE[modernize-use-bool-literals]
     mod.attr("GLIBCXX_USE_CXX11_ABI") = py::bool_(static_cast<bool>(_GLIBCXX_USE_CXX11_ABI));
 #else
     mod.attr("GLIBCXX_USE_CXX11_ABI") = py::bool_(false);
 #endif
+    py::exec(
+        R"py(
+        class HexInt(int):
+            def __repr__(self) -> str:
+                return f'0x{self:08X}'
+
+        globals().update(
+            **{
+                name: HexInt(value)
+                for name, value in globals().items()
+                if name.endswith('_HEX') and isinstance(value, int)
+            },
+        )
+
+        del HexInt
+        )py",
+        py::getattr(mod, "__dict__"));
+
+    py::register_local_exception<InternalError>(mod, "InternalError", PyExc_SystemError);
+    mod.attr("MAX_RECURSION_DEPTH") = py::int_(MAX_RECURSION_DEPTH);
 
     mod.def("register_node",
             &PyTreeTypeRegistry::Register,

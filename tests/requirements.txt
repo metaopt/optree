@@ -4,6 +4,7 @@ pytest
 pytest-cov
 pytest-xdist
 covdefaults
+rich
 ruff
 pylint[spelling]
 mypy
