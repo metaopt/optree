@@ -59,15 +59,7 @@ def test_import_no_warnings():
     }
     assert (
         subprocess.check_output(
-            [
-                sys.executable,
-                '-W',
-                'always',
-                '-W',
-                'error',
-                '-c',
-                'import optree',
-            ],
+            [sys.executable, '-Walways', '-Werror', '-c', 'import optree'],
             stderr=subprocess.STDOUT,
             text=True,
             cwd=TEST_ROOT,

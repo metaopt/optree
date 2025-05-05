@@ -97,7 +97,10 @@ if(NOT DEFINED OPTREE_CXX_WERROR AND NOT "$ENV{OPTREE_CXX_WERROR}" STREQUAL "")
 endif()
 
 if(OPTREE_CXX_WERROR)
-    message(WARNING "Treats all compiler warnings as errors. Set `OPTREE_CXX_WERROR=OFF` to disable this.")
+    message(
+        AUTHOR_WARNING
+        "Treat all compiler warnings as errors. Set `OPTREE_CXX_WERROR=OFF` to disable this."
+    )
     if(MSVC)
         string(APPEND CMAKE_CXX_FLAGS " /WX")
     else()

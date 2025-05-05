@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Explicitly set recursion limit for recursion tests by [@XuehaiPan](https://github.com/XuehaiPan) in [#207](https://github.com/metaopt/optree/pull/207).
+- Dump build-time meta-information to C extension [@XuehaiPan](https://github.com/XuehaiPan) in [#215](https://github.com/metaopt/optree/pull/215).
 
 ### Changed
 
