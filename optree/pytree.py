@@ -32,7 +32,6 @@ True
 
 from __future__ import annotations
 
-import contextlib as _contextlib
 import functools as _functools
 import inspect as _inspect
 import sys as _sys
@@ -277,80 +276,87 @@ if _TYPE_CHECKING:
         unregister_node = staticmethod(unregister_node)
         dict_insertion_ordered = staticmethod(dict_insertion_ordered)
 
+    def reexport(*, namespace: str, module: str | None = None) -> ReexportedPyTreeModule:
+        """Re-export a pytree utility module with the given namespace as default."""
+        raise NotImplementedError('reexport() is not available in type checking mode')
 
-def reexport(*, namespace: str, module: str | None = None) -> ReexportedPyTreeModule:
-    """Re-export a pytree utility module with the given namespace as default.
+else:
 
-    >>> import optree
-    >>> pytree = optree.pytree.reexport(namespace='my-pkg', module='my_pkg.pytree')
-    >>> pytree.flatten({'a': 1, 'b': 2})
-    ([1, 2], PyTreeSpec({'a': *, 'b': *}))
+    def reexport(*, namespace: str, module: str | None = None) -> _ModuleType:  # type: ignore[misc]
+        """Re-export a pytree utility module with the given namespace as default.
 
-    This function is useful for downstream libraries that want to re-export the pytree utilities
-    with their own namespace::
+        >>> import optree
+        >>> pytree = optree.pytree.reexport(namespace='my-pkg', module='my_pkg.pytree')
+        >>> pytree.flatten({'a': 1, 'b': 2})
+        ([1, 2], PyTreeSpec({'a': *, 'b': *}))
 
-        # foo/__init__.py
-        import optree
-        pytree = optree.pytree.reexport(namespace='foo')
+        This function is useful for downstream libraries that want to re-export the pytree utilities
+        with their own namespace::
 
-        # foo/bar.py
-        from foo import pytree
+            # foo/__init__.py
+            import optree
+            pytree = optree.pytree.reexport(namespace='foo')
 
-        @pytree.dataclasses.dataclass
-        class Bar:
-            a: int
-            b: float
+            # foo/bar.py
+            from foo import pytree
 
-        print(pytree.flatten({'a': 1, 'b': 2, 'c': Bar(3, 4.0)}))
-        # Output:
-        #   ([1, 2, 3, 4.0], PyTreeSpec({'a': *, 'b': *, 'c': CustomTreeNode(Bar[()], [*, *])}, namespace='foo'))
+            @pytree.dataclasses.dataclass
+            class Bar:
+                a: int
+                b: float
 
-    Args:
-        namespace (str): The namespace to re-export from.
-        module (str, optional): The name of the module to re-export.
-            If not provided, defaults to ``<caller_module>.pytree``. The caller module is determined
-            by inspecting the stack frame.
+            print(pytree.flatten({'a': 1, 'b': 2, 'c': Bar(3, 4.0)}))
+            # Output:
+            #   ([1, 2, 3, 4.0], PyTreeSpec({'a': *, 'b': *, 'c': CustomTreeNode(Bar[()], [*, *])}, namespace='foo'))
 
-    Returns:
-        The re-exported module.
-    """
-    if module is None:
-        try:
-            # pylint: disable-next=protected-access
-            caller_module = _sys._getframemodulename(1) or '__main__'  # type: ignore[attr-defined]
-        except AttributeError:  # pragma: no cover
-            with _contextlib.suppress(AttributeError, ValueError):
+        Args:
+            namespace (str): The namespace to re-export from.
+            module (str, optional): The name of the module to re-export.
+                If not provided, defaults to ``<caller_module>.pytree``. The caller module is determined
+                by inspecting the stack frame.
+
+        Returns:
+            The re-exported module.
+        """
+        if module is None:
+            try:
                 # pylint: disable-next=protected-access
-                caller_module = _sys._getframe(1).f_globals.get('__name__', '__main__')
-        module = f'{caller_module}.pytree'
-    if not _all(part.isidentifier() for part in module.split('.')):
-        raise ValueError(f'invalid module name: {module!r}')
+                caller_module = _sys._getframemodulename(1) or '__main__'  # type: ignore[attr-defined]
+            except AttributeError:  # pragma: no cover
+                try:
+                    # pylint: disable-next=protected-access
+                    caller_module = _sys._getframe(1).f_globals.get('__name__', '__main__')
+                except (AttributeError, ValueError):
+                    caller_module = '__main__'
+            module = f'{caller_module}.pytree'
+        if not _all(part.isidentifier() for part in module.split('.')):
+            raise ValueError(f'invalid module name: {module!r}')
 
-    for mod in (module, f'{module}.dataclasses', f'{module}.functools'):
-        if mod in _sys.modules:
-            raise ValueError(f'module {mod!r} already exists')
+        for module_name in (module, f'{module}.dataclasses', f'{module}.functools'):
+            if module_name in _sys.modules:
+                raise ValueError(f'module {module_name!r} already exists')
 
-    reexported_dataclasses = ReexportedModule(
-        f'{module}.dataclasses',
-        namespace=namespace,
-        original=dataclasses,
-    )
-    reexported_functools = ReexportedModule(
-        f'{module}.functools',
-        namespace=namespace,
-        original=functools,
-    )
-    mod: ReexportedPyTreeModule = ReexportedModule(  # type: ignore[assignment]
-        module,
-        namespace=namespace,
-        original=_sys.modules[__name__],
-        extra_members={
-            '__version__': __version__,
-            'dataclasses': reexported_dataclasses,
-            'functools': reexported_functools,
-        },
-    )
-    _sys.modules[module] = mod
-    _sys.modules[f'{module}.dataclasses'] = reexported_dataclasses
-    _sys.modules[f'{module}.functools'] = reexported_functools
-    return mod
+        reexported_dataclasses = ReexportedModule(
+            f'{module}.dataclasses',
+            namespace=namespace,
+            original=dataclasses,
+        )
+        reexported_functools = ReexportedModule(
+            f'{module}.functools',
+            namespace=namespace,
+            original=functools,
+        )
+        mod: ReexportedPyTreeModule = ReexportedModule(  # type: ignore[assignment]
+            module,
+            namespace=namespace,
+            original=_sys.modules[__name__],
+            extra_members={
+                '__version__': __version__,
+                'dataclasses': reexported_dataclasses,
+                'functools': reexported_functools,
+            },
+        )
+        _sys.modules[module] = mod
+        _sys.modules[f'{module}.dataclasses'] = reexported_dataclasses
+        _sys.modules[f'{module}.functools'] = reexported_functools
+        return mod
