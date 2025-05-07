@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Explicitly set recursion limit for recursion tests by [@XuehaiPan](https://github.com/XuehaiPan) in [#207](https://github.com/metaopt/optree/pull/207).
-- Dump build-time meta-information to C extension [@XuehaiPan](https://github.com/XuehaiPan) in [#215](https://github.com/metaopt/optree/pull/215).
+- Dump build-time meta-information to C extension by [@XuehaiPan](https://github.com/XuehaiPan) in [#215](https://github.com/metaopt/optree/pull/215).
+- Use `pybind11::native_enum` to create enum class `PyTreeKind` if available by [@XuehaiPan](https://github.com/XuehaiPan) in [#214](https://github.com/metaopt/optree/pull/214).
 
 ### Changed
 
@@ -23,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- Never call `PyType_Ready` twice and use `PyType_Modified` instead by [@XuehaiPan](https://github.com/XuehaiPan) in [#214](https://github.com/metaopt/optree/pull/214).
 
 ### Removed
 
