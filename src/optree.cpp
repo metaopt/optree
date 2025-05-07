@@ -49,6 +49,8 @@ py::module_ GetCxxModule(const std::optional<py::module_>& module) {
 }
 
 void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
+    const scoped_critical_section lock{mod};
+
     GetCxxModule(mod);
 
     mod.doc() = "Optimized PyTree Utilities.";
@@ -471,30 +473,14 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
 
 // Make the types immutable to avoid attribute assignment, modification, and deletion.
 #ifdef Py_TPFLAGS_IMMUTABLETYPE
+    // Locked by scoped_critical_section{mod}
     PyTreeKind_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
     PyTreeSpec_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
     PyTreeIter_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
-
-#ifndef PYBIND11_HAS_NATIVE_ENUM
-    // Only run Python C API `PyType_Ready(type)` on C++ types.
-    // Re-running `PyType_Ready` for native Python enums can cause unexpected behavior,
-    // such as infinite recursion for `repr(e)` and `hash(e)`.
-    PyTreeKind_Type->tp_flags &= ~Py_TPFLAGS_READY;
 #endif
-    PyTreeSpec_Type->tp_flags &= ~Py_TPFLAGS_READY;
-    PyTreeIter_Type->tp_flags &= ~Py_TPFLAGS_READY;
-#endif
-
-    // Re-ready types or do consistency checks for the types.
-    if (PyType_Ready(PyTreeKind_Type) < 0) [[unlikely]] {
-        INTERNAL_ERROR("`PyType_Ready(&PyTreeKind_Type)` failed.");
-    }
-    if (PyType_Ready(PyTreeSpec_Type) < 0) [[unlikely]] {
-        INTERNAL_ERROR("`PyType_Ready(&PyTreeSpec_Type)` failed.");
-    }
-    if (PyType_Ready(PyTreeIter_Type) < 0) [[unlikely]] {
-        INTERNAL_ERROR("`PyType_Ready(&PyTreeIter_Type)` failed.");
-    }
+    PyType_Modified(PyTreeKind_Type);
+    PyType_Modified(PyTreeSpec_Type);
+    PyType_Modified(PyTreeIter_Type);
 
     py::getattr(py::module_::import("atexit"),
                 "register")(py::cpp_function(&PyTreeTypeRegistry::Clear));
