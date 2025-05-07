@@ -284,6 +284,17 @@ jobs:
 
           cdb -version
 
+      - name: Use nightly pybind11
+        shell: bash
+        if: |
+          github.event_name == 'pull_request' &&
+          contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
+        run: |
+          python .github/workflows/set_setup_requires.py
+          echo "::group::pyproject.toml"
+          cat pyproject.toml
+          echo "::endgroup::"
+
       - name: Install OpTree
         run: |
           ${{ env.PYTHON }} -m pip install -v --editable '.[test]'
@@ -311,7 +322,7 @@ jobs:
           find . -type f -name '*.py[cod]' -delete
           find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
           if git status --ignored --porcelain | grep -qvE '/$'; then
-            ls -alh $(git status --ignored --porcelain | grep -vE '/$' | cut -d ' ' -f2)
+            ls -alh $(git status --ignored --porcelain | grep -vE '/$' | grep -oE '\S+$')
           fi
 
       - name: Collect backtraces from coredumps (if any)

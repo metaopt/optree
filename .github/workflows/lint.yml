@@ -42,7 +42,18 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install wheel pybind11 -r docs/requirements.txt
-          python -m pip install --force-reinstall pybind11@git+https://github.com/pybind/pybind11.git#egg=pybind11
+
+      - name: Install nightly pybind11
+        shell: bash
+        if: |
+          github.event_name == 'pull_request' &&
+          contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
+        run: |
+          python .github/workflows/set_setup_requires.py
+          echo "::group::pyproject.toml"
+          cat pyproject.toml
+          echo "::endgroup::"
+          python -m pip install --force-reinstall 'pybind11 @ git+https://github.com/pybind/pybind11.git#egg=pybind11'
 
       - name: Install OpTree
         run: |

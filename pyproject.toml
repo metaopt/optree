@@ -1,7 +1,7 @@
 # Package ######################################################################
 
 [build-system]
-requires = ["setuptools", "pybind11@git+https://github.com/pybind/pybind11.git#egg=pybind11"]
+requires = ["setuptools", "pybind11 >= 2.12"]
 build-backend = "setuptools.build_meta"
 
 [project]
