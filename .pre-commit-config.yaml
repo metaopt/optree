@@ -27,7 +27,7 @@ repos:
         fail_fast: true
       - id: debug-statements
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v20.1.3
+    rev: v20.1.4
     hooks:
       - id: clang-format
   - repo: https://github.com/cpplint/cpplint
