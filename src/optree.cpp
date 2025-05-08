@@ -26,14 +26,8 @@ limitations under the License.
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#if defined(PYBIND11_HAS_NATIVE_ENUM) ||                                                           \
-    (defined(PYBIND11_INTERNALS_VERSION) && PYBIND11_INTERNALS_VERSION >= 8)
-#ifndef PYBIND11_HAS_NATIVE_ENUM
-#define PYBIND11_HAS_NATIVE_ENUM
-#endif
+#ifdef PYBIND11_HAS_NATIVE_ENUM
 #include <pybind11/native_enum.h>
-#else
-#undef PYBIND11_HAS_NATIVE_ENUM
 #endif
 
 namespace optree {
@@ -66,6 +60,11 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
 #endif
     mod.attr("PYBIND11_VERSION_HEX") = py::int_(PYBIND11_VERSION_HEX);
     mod.attr("PYBIND11_INTERNALS_VERSION") = py::int_(PYBIND11_INTERNALS_VERSION);
+#ifdef PYBIND11_HAS_NATIVE_ENUM
+    mod.attr("PYBIND11_HAS_NATIVE_ENUM") = py::bool_(true);
+#else
+    mod.attr("PYBIND11_HAS_NATIVE_ENUM") = py::bool_(false);
+#endif
 #ifdef _GLIBCXX_USE_CXX11_ABI
     // NOLINTNEXTLINE[modernize-use-bool-literals]
     mod.attr("GLIBCXX_USE_CXX11_ABI") = py::bool_(static_cast<bool>(_GLIBCXX_USE_CXX11_ABI));

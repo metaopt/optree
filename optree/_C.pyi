@@ -45,6 +45,7 @@ if sys.implementation.name == 'pypy':  # noqa: PYI002
     PYPY_VERSION_HEX: Final[int]
 PYBIND11_VERSION_HEX: Final[int]
 PYBIND11_INTERNALS_VERSION: Final[int]
+PYBIND11_HAS_NATIVE_ENUM: Final[bool]
 GLIBCXX_USE_CXX11_ABI: Final[bool]
 
 @final
