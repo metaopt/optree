@@ -30,6 +30,7 @@ PYTHON         ?= $(shell command -v python3 || command -v python)
 PYTEST         ?= $(PYTHON) -X dev -m pytest -Walways
 PYTESTOPTS     ?=
 CMAKE_BUILD_TYPE   ?= Debug
+CMAKE_BUILD_TYPE_LOWER = $(shell $(PYTHON) -c 'print("$(CMAKE_BUILD_TYPE)".lower())')
 CMAKE_CXX_STANDARD ?= 20
 OPTREE_CXX_WERROR  ?= ON
 _GLIBCXX_USE_CXX11_ABI ?= 1
@@ -197,7 +198,7 @@ xdoctest doctest: xdoctest-install
 .PHONY: cmake-configure
 cmake-configure: cmake-install
 	cmake --version
-	cmake -S . -B cmake-build \
+	cmake -S . -B cmake-build-$(CMAKE_BUILD_TYPE_LOWER) \
 		--fresh \
 		-DCMAKE_BUILD_TYPE="$(CMAKE_BUILD_TYPE)" \
 		-DCMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
@@ -208,7 +209,7 @@ cmake-configure: cmake-install
 
 .PHONY: cmake cmake-build
 cmake cmake-build: cmake-configure
-	cmake --build cmake-build --parallel
+	cmake --build cmake-build-$(CMAKE_BUILD_TYPE_LOWER) --parallel
 
 .PHONY: clang-format
 clang-format: clang-format-install
@@ -218,7 +219,7 @@ clang-format: clang-format-install
 .PHONY: clang-tidy
 clang-tidy: clang-tidy-install cmake-configure
 	clang-tidy --version
-	clang-tidy --extra-arg="-v" --fix -p=cmake-build $(CXX_FILES)
+	clang-tidy --extra-arg="-v" --fix -p=cmake-build-$(CMAKE_BUILD_TYPE_LOWER) $(CXX_FILES)
 
 .PHONY: cpplint
 cpplint: cpplint-install

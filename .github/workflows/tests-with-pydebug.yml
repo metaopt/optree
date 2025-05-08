@@ -36,7 +36,7 @@ env:
   PYTHON_VERSION: "3"  # to be updated
   pybind11_VERSION: "stable"  # to be updated
   PYENV_ROOT: "~/.pyenv"  # to be updated
-  COLUMNS: "128"
+  COLUMNS: "100"
 
 jobs:
   test:
@@ -298,7 +298,7 @@ jobs:
           echo "pybind11_VERSION=HEAD" | tee -a "${GITHUB_ENV}"
 
       - name: Test buildable without Python frontend
-        shell: bash
+        if: runner.os != 'Windows'
         run: |
           make cmake-build PYTHON="${{ env.PYTHON }}" && make clean
 

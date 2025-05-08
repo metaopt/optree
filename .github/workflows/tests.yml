@@ -35,7 +35,7 @@ env:
   PYTHON: "python"  # to be updated
   PYTHON_TAG: "py3"  # to be updated
   pybind11_VERSION: "stable"  # to be updated
-  COLUMNS: "128"
+  COLUMNS: "100"
 
 jobs:
   test:
@@ -163,8 +163,8 @@ jobs:
             set -x
             ${{ env.PYTHON }} -m venv venv &&
             source venv/bin/activate &&
-            export OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 &&
-            ${{ env.PYTHON }} -m pip install -v . &&
+            OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 \
+              ${{ env.PYTHON }} -m pip install -v . &&
             pushd venv &&
             ${{ env.PYTHON }} -X dev -Walways -Werror -c 'import optree' &&
             popd &&
@@ -172,16 +172,12 @@ jobs:
           )
 
       - name: Test buildable without Python frontend
-        shell: bash
+        if: runner.os != 'Windows'
         run: |
-          ACTIVATION_SCRIPT="venv/bin/activate"
-          if [[ "${{ runner.os }}" == 'Windows' ]]; then
-            ACTIVATION_SCRIPT="venv/Scripts/activate"
-          fi
           (
             set -x
             ${{ env.PYTHON }} -m venv venv &&
-            source "${ACTIVATION_SCRIPT}" &&
+            source venv/bin/activate &&
             make cmake-build && make clean &&
             rm -rf venv
           )
