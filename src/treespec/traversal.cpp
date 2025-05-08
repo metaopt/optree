@@ -152,6 +152,7 @@ py::object PyTreeIter::NextImpl() {
                 break;
             }
 
+            case PyTreeKind::NumKinds:
             default:
                 INTERNAL_ERROR();
         }
@@ -238,6 +239,7 @@ py::object PyTreeSpec::WalkImpl(const py::iterable &leaves,
                 break;
             }
 
+            case PyTreeKind::NumKinds:
             default:
                 INTERNAL_ERROR();
         }

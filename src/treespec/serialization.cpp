@@ -51,6 +51,7 @@ namespace optree {
         case PyTreeKind::Custom:
             EXPECT_NE(node.custom, nullptr, "The custom registration is null.");
             return PyRepr(node.custom->type);
+        case PyTreeKind::NumKinds:
         default:
             INTERNAL_ERROR();
     }
@@ -233,6 +234,7 @@ std::string PyTreeSpec::ToStringImpl() const {
                 break;
             }
 
+            case PyTreeKind::NumKinds:
             default:
                 INTERNAL_ERROR();
         }
@@ -378,6 +380,7 @@ py::object PyTreeSpec::ToPickleable() const {
                 break;
             }
 
+            case PyTreeKind::NumKinds:
             default:
                 INTERNAL_ERROR();
         }

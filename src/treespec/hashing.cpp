@@ -82,6 +82,7 @@ ssize_t PyTreeSpec::HashValueImpl() const {
                 break;
             }
 
+            case PyTreeKind::NumKinds:
             default:
                 INTERNAL_ERROR();
         }

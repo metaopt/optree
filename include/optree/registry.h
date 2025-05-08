@@ -50,6 +50,7 @@ enum class PyTreeKind : std::uint8_t {
     DefaultDict,     // A collections.defaultdict
     Deque,           // A collections.deque
     StructSequence,  // A PyStructSequence
+    NumKinds,        // Number of kinds (placed at the end)
 };
 
 constexpr PyTreeKind kCustom = PyTreeKind::Custom;
@@ -63,8 +64,7 @@ constexpr PyTreeKind kOrderedDict = PyTreeKind::OrderedDict;
 constexpr PyTreeKind kDefaultDict = PyTreeKind::DefaultDict;
 constexpr PyTreeKind kDeque = PyTreeKind::Deque;
 constexpr PyTreeKind kStructSequence = PyTreeKind::StructSequence;
-
-constexpr std::uint8_t kNumPyTreeKinds = std::uint8_t(kStructSequence) + 1;  // last enum value + 1
+constexpr PyTreeKind kNumPyTreeKinds = PyTreeKind::NumKinds;
 
 // Registry of custom node types.
 class PyTreeTypeRegistry {

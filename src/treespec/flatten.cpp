@@ -188,6 +188,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 break;
             }
 
+            case PyTreeKind::NumKinds:
             default:
                 INTERNAL_ERROR();
         }
@@ -463,6 +464,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 break;
             }
 
+            case PyTreeKind::NumKinds:
             default:
                 INTERNAL_ERROR();
         }
@@ -789,6 +791,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& tree) const {
                 break;
             }
 
+            case PyTreeKind::NumKinds:
             default:
                 INTERNAL_ERROR();
         }

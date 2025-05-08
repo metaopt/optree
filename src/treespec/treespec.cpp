@@ -120,6 +120,7 @@ namespace optree {
                                             node.custom->unflatten_func);
         }
 
+        case PyTreeKind::NumKinds:
         default:
             INTERNAL_ERROR();
     }
@@ -175,6 +176,7 @@ namespace optree {
             return node.custom->path_entry_type;
         }
 
+        case PyTreeKind::NumKinds:
         default:
             INTERNAL_ERROR();
     }
@@ -376,6 +378,7 @@ namespace optree {
 
         case PyTreeKind::Leaf:
         case PyTreeKind::None:
+        case PyTreeKind::NumKinds:
         default:
             INTERNAL_ERROR();
     }
@@ -684,6 +687,7 @@ ssize_t PyTreeSpec::PathsImpl(Span& paths,  // NOLINT[misc-no-recursion]
                 break;
             }
 
+            case PyTreeKind::NumKinds:
             default:
                 INTERNAL_ERROR();
         }
@@ -793,6 +797,7 @@ ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,  // NOLINT[misc-no-recursion]
                 break;
             }
 
+            case PyTreeKind::NumKinds:
             default:
                 INTERNAL_ERROR();
         }
@@ -857,6 +862,7 @@ py::list PyTreeSpec::Entries() const {
             return py::getattr(TupleGetItem(root.node_data, 1), Py_Get_ID(copy))();
         }
 
+        case PyTreeKind::NumKinds:
         default:
             INTERNAL_ERROR();
     }
@@ -898,6 +904,7 @@ py::object PyTreeSpec::Entry(ssize_t index) const {
 
         case PyTreeKind::None:
         case PyTreeKind::Leaf:
+        case PyTreeKind::NumKinds:
         default:
             INTERNAL_ERROR();
     }
@@ -987,6 +994,7 @@ py::object PyTreeSpec::GetType(const std::optional<Node>& node) const {
             return PyDefaultDictTypeObject;
         case PyTreeKind::Deque:
             return PyDequeTypeObject;
+        case PyTreeKind::NumKinds:
         default:
             INTERNAL_ERROR();
     }
