@@ -19,8 +19,8 @@ import builtins
 import enum
 import sys
 from collections.abc import Callable, Collection, Iterable, Iterator
-from typing import Any, Final, final
-from typing_extensions import Self
+from typing import Any, ClassVar, Final, final
+from typing_extensions import Self  # Python 3.11+
 
 from optree.typing import (
     FlattenFunc,
@@ -64,6 +64,8 @@ class PyTreeKind(enum.IntEnum):
     DEFAULTDICT = enum.auto()  # a collections.defaultdict
     DEQUE = enum.auto()  # a collections.deque
     STRUCTSEQUENCE = enum.auto()  # a PyStructSequence
+
+    NUM_KINDS: ClassVar[int]
 
 MAX_RECURSION_DEPTH: Final[int]
 

@@ -249,6 +249,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
     auto* const PyTreeKind_Type = reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr());
     PyTreeKind_Type->tp_name = "optree.PyTreeKind";
     py::setattr(PyTreeKindTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeKindTypeObject.ptr(), "NUM_KINDS", py::int_(optree::kNumPyTreeKinds));
 
     auto PyTreeSpecTypeObject = py::class_<PyTreeSpec>(
         mod,

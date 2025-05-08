@@ -64,6 +64,8 @@ constexpr PyTreeKind kDefaultDict = PyTreeKind::DefaultDict;
 constexpr PyTreeKind kDeque = PyTreeKind::Deque;
 constexpr PyTreeKind kStructSequence = PyTreeKind::StructSequence;
 
+constexpr std::uint8_t kNumPyTreeKinds = std::uint8_t(kStructSequence) + 1;  // last enum value + 1
+
 // Registry of custom node types.
 class PyTreeTypeRegistry {
 public:
