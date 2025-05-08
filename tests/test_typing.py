@@ -15,6 +15,7 @@
 
 # pylint: disable=missing-function-docstring
 
+import enum
 import re
 import sys
 import time
@@ -33,6 +34,7 @@ from helpers import (
     getrefcount,
     skipif_pypy,
 )
+from optree._C import PYBIND11_HAS_NATIVE_ENUM
 
 
 class FakeNamedTuple(tuple):
@@ -65,6 +67,44 @@ class FakeStructSequence(tuple):
     n_fields = 11
     n_sequence_fields = 9
     n_unnamed_fields = 0
+
+
+def test_pytreekind_enum():
+    if PYBIND11_HAS_NATIVE_ENUM:
+        all_kinds = list(optree.PyTreeKind)
+        assert len(all_kinds) == optree.PyTreeKind.NUM_KINDS
+        assert issubclass(optree.PyTreeKind, enum.IntEnum)
+        assert issubclass(optree.PyTreeKind, int)
+
+        assert optree.PyTreeKind.CUSTOM == 0
+        assert optree.PyTreeKind.LEAF == 1
+        assert optree.PyTreeKind.NONE == 2
+        assert optree.PyTreeKind.CUSTOM.name == 'CUSTOM'
+        assert optree.PyTreeKind.LEAF.name == 'LEAF'
+        assert optree.PyTreeKind.NONE.name == 'NONE'
+        for i, kind in enumerate(all_kinds):
+            assert isinstance(kind, int)
+            assert kind == i
+            assert kind is optree.PyTreeKind(i)
+            assert kind is getattr(optree.PyTreeKind, kind.name)
+
+        with pytest.raises(ValueError, match=r'.* is not a valid .*\bPyTreeKind\b.*'):
+            optree.PyTreeKind(optree.PyTreeKind.NUM_KINDS)
+    else:
+        all_kinds = [optree.PyTreeKind(i) for i in range(optree.PyTreeKind.NUM_KINDS)]
+
+    assert optree.PyTreeKind.CUSTOM.value == 0
+    assert optree.PyTreeKind.LEAF.value == 1
+    assert optree.PyTreeKind.NONE.value == 2
+    assert optree.PyTreeKind.CUSTOM.name == 'CUSTOM'
+    assert optree.PyTreeKind.LEAF.name == 'LEAF'
+    assert optree.PyTreeKind.NONE.name == 'NONE'
+    for i, kind in enumerate(all_kinds):
+        assert isinstance(kind, optree.PyTreeKind)
+        assert int(kind) == i
+        assert kind.value == i
+        assert kind == optree.PyTreeKind(i)
+        assert kind == getattr(optree.PyTreeKind, kind.name)
 
 
 def test_is_namedtuple():

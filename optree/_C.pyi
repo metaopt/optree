@@ -19,8 +19,9 @@ import builtins
 import enum
 import sys
 from collections.abc import Callable, Collection, Iterable, Iterator
-from typing import Any, Final, final
-from typing_extensions import Self
+from types import MappingProxyType
+from typing import Any, ClassVar, Final, final
+from typing_extensions import Self  # Python 3.11+
 
 from optree.typing import (
     FlattenFunc,
@@ -37,6 +38,7 @@ from optree.typing import (
 Py_TPFLAGS_BASETYPE: Final[int]  # (1UL << 10)
 
 # Meta-information during build-time
+BUILDTIME_METADATA: Final[MappingProxyType[str, Any]]
 PY_VERSION: Final[str]
 PY_VERSION_HEX: Final[int]
 if sys.implementation.name == 'pypy':  # noqa: PYI002
@@ -45,6 +47,7 @@ if sys.implementation.name == 'pypy':  # noqa: PYI002
     PYPY_VERSION_HEX: Final[int]
 PYBIND11_VERSION_HEX: Final[int]
 PYBIND11_INTERNALS_VERSION: Final[int]
+PYBIND11_HAS_NATIVE_ENUM: Final[bool]
 GLIBCXX_USE_CXX11_ABI: Final[bool]
 
 @final
@@ -63,6 +66,8 @@ class PyTreeKind(enum.IntEnum):
     DEFAULTDICT = enum.auto()  # a collections.defaultdict
     DEQUE = enum.auto()  # a collections.deque
     STRUCTSEQUENCE = enum.auto()  # a PyStructSequence
+
+    NUM_KINDS: ClassVar[int]
 
 MAX_RECURSION_DEPTH: Final[int]
 

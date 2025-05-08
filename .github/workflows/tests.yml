@@ -34,7 +34,8 @@ env:
   PYTHONUNBUFFERED: "1"
   PYTHON: "python"  # to be updated
   PYTHON_TAG: "py3"  # to be updated
-  COLUMNS: "128"
+  pybind11_VERSION: "stable"  # to be updated
+  COLUMNS: "100"
 
 jobs:
   test:
@@ -142,6 +143,18 @@ jobs:
 
           cdb -version
 
+      - name: Use nightly pybind11
+        shell: bash
+        if: |
+          github.event_name == 'pull_request' &&
+          contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
+        run: |
+          ${{ env.PYTHON }} .github/workflows/set_setup_requires.py
+          echo "::group::pyproject.toml"
+          cat pyproject.toml
+          echo "::endgroup::"
+          echo "pybind11_VERSION=HEAD" | tee -a "${GITHUB_ENV}"
+
       - name: Test installable with C++17
         shell: bash
         if: runner.os != 'Windows'
@@ -150,11 +163,22 @@ jobs:
             set -x
             ${{ env.PYTHON }} -m venv venv &&
             source venv/bin/activate &&
-            export OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 &&
-            ${{ env.PYTHON }} -m pip install -v . &&
+            OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 \
+              ${{ env.PYTHON }} -m pip install -v . &&
             pushd venv &&
             ${{ env.PYTHON }} -X dev -Walways -Werror -c 'import optree' &&
             popd &&
+            rm -rf venv
+          )
+
+      - name: Test buildable without Python frontend
+        if: runner.os != 'Windows'
+        run: |
+          (
+            set -x
+            ${{ env.PYTHON }} -m venv venv &&
+            source venv/bin/activate &&
+            make cmake-build && make clean &&
             rm -rf venv
           )
 
@@ -236,7 +260,7 @@ jobs:
           find . -type f -name '*.py[cod]' -delete
           find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
           if git status --ignored --porcelain | grep -qvE '/$'; then
-            ls -alh $(git status --ignored --porcelain | grep -vE '/$' | cut -d ' ' -f2)
+            ls -alh $(git status --ignored --porcelain | grep -vE '/$' | grep -oE '\S+$')
           fi
 
       - name: Collect backtraces from coredumps (if any)

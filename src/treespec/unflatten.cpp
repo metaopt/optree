@@ -65,6 +65,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
                 break;
             }
 
+            case PyTreeKind::NumKinds:
             default:
                 INTERNAL_ERROR();
         }

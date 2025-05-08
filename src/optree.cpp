@@ -21,10 +21,15 @@ limitations under the License.
 #include <memory>      // std::unique_ptr
 #include <optional>    // std::optional, std::nullopt
 #include <string>      // std::string
+#include <utility>     // std::move
 
 #include <pybind11/eval.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+
+#ifdef PYBIND11_HAS_NATIVE_ENUM
+#include <pybind11/native_enum.h>
+#endif
 
 namespace optree {
 
@@ -39,42 +44,58 @@ py::module_ GetCxxModule(const std::optional<py::module_>& module) {
 }
 
 void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
+    const scoped_critical_section lock{mod};
+
     GetCxxModule(mod);
 
     mod.doc() = "Optimized PyTree Utilities.";
     mod.attr("Py_TPFLAGS_BASETYPE") = py::int_(Py_TPFLAGS_BASETYPE);
 
     // Meta information during build
-    mod.attr("PY_VERSION") = py::str(PY_VERSION);
-    mod.attr("PY_VERSION_HEX") = py::int_(PY_VERSION_HEX);
+    py::dict BUILDTIME_METADATA{};
+    BUILDTIME_METADATA["PY_VERSION"] = py::str(PY_VERSION);
+    BUILDTIME_METADATA["PY_VERSION_HEX"] = py::int_(PY_VERSION_HEX);
 #ifdef PYPY_VERSION
-    mod.attr("PYPY_VERSION") = py::str(PYPY_VERSION);
-    mod.attr("PYPY_VERSION_NUM") = py::int_(PYPY_VERSION_NUM);
-    mod.attr("PYPY_VERSION_HEX") = py::int_(PYPY_VERSION_NUM);
+    BUILDTIME_METADATA["PYPY_VERSION"] = py::str(PYPY_VERSION);
+    BUILDTIME_METADATA["PYPY_VERSION_NUM"] = py::int_(PYPY_VERSION_NUM);
+    BUILDTIME_METADATA["PYPY_VERSION_HEX"] = py::int_(PYPY_VERSION_NUM);
 #endif
-    mod.attr("PYBIND11_VERSION_HEX") = py::int_(PYBIND11_VERSION_HEX);
-    mod.attr("PYBIND11_INTERNALS_VERSION") = py::int_(PYBIND11_INTERNALS_VERSION);
-#ifdef _GLIBCXX_USE_CXX11_ABI
-    // NOLINTNEXTLINE[modernize-use-bool-literals]
-    mod.attr("GLIBCXX_USE_CXX11_ABI") = py::bool_(static_cast<bool>(_GLIBCXX_USE_CXX11_ABI));
+    BUILDTIME_METADATA["PYBIND11_VERSION_HEX"] = py::int_(PYBIND11_VERSION_HEX);
+    BUILDTIME_METADATA["PYBIND11_INTERNALS_VERSION"] = py::int_(PYBIND11_INTERNALS_VERSION);
+#ifdef PYBIND11_HAS_NATIVE_ENUM
+    BUILDTIME_METADATA["PYBIND11_HAS_NATIVE_ENUM"] = py::bool_(true);
 #else
-    mod.attr("GLIBCXX_USE_CXX11_ABI") = py::bool_(false);
+    BUILDTIME_METADATA["PYBIND11_HAS_NATIVE_ENUM"] = py::bool_(false);
 #endif
+#ifdef _GLIBCXX_USE_CXX11_ABI
+    BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] =
+        // NOLINTNEXTLINE[modernize-use-bool-literals]
+        py::bool_(static_cast<bool>(_GLIBCXX_USE_CXX11_ABI));
+#else
+    BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] = py::bool_(false);
+#endif
+    mod.attr("BUILDTIME_METADATA") = std::move(BUILDTIME_METADATA);
     py::exec(
         R"py(
+        import types
+
         class HexInt(int):
             def __repr__(self) -> str:
                 return f'0x{self:08X}'
 
-        globals().update(
+        BUILDTIME_METADATA.update(
             **{
                 name: HexInt(value)
-                for name, value in globals().items()
+                for name, value in BUILDTIME_METADATA.items()
                 if name.endswith('_HEX') and isinstance(value, int)
             },
         )
 
-        del HexInt
+        BUILDTIME_METADATA = types.MappingProxyType(BUILDTIME_METADATA)
+
+        globals().update(BUILDTIME_METADATA)
+
+        del types, HexInt
         )py",
         py::getattr(mod, "__dict__"));
 
@@ -205,6 +226,22 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
 #define def_method_pos_only(...) def(__VA_ARGS__)
 #endif
 
+#ifdef PYBIND11_HAS_NATIVE_ENUM
+    py::native_enum<PyTreeKind>(mod, "PyTreeKind", "enum.IntEnum", "The kind of a pytree node.")
+        .value("CUSTOM", PyTreeKind::Custom, "A custom type.")
+        .value("LEAF", PyTreeKind::Leaf, "A opaque leaf node.")
+        .value("NONE", PyTreeKind::None, "None.")
+        .value("TUPLE", PyTreeKind::Tuple, "A tuple.")
+        .value("LIST", PyTreeKind::List, "A list.")
+        .value("DICT", PyTreeKind::Dict, "A dict.")
+        .value("NAMEDTUPLE", PyTreeKind::NamedTuple, "A collections.namedtuple.")
+        .value("ORDEREDDICT", PyTreeKind::OrderedDict, "A collections.OrderedDict.")
+        .value("DEFAULTDICT", PyTreeKind::DefaultDict, "A collections.defaultdict.")
+        .value("DEQUE", PyTreeKind::Deque, "A collections.deque.")
+        .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.")
+        .finalize();
+    auto PyTreeKindTypeObject = py::getattr(mod, "PyTreeKind");
+#else
     auto PyTreeKindTypeObject =
         py::enum_<PyTreeKind>(mod, "PyTreeKind", "The kind of a pytree node.", py::module_local())
             .value("CUSTOM", PyTreeKind::Custom, "A custom type.")
@@ -218,9 +255,13 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
             .value("DEFAULTDICT", PyTreeKind::DefaultDict, "A collections.defaultdict.")
             .value("DEQUE", PyTreeKind::Deque, "A collections.deque.")
             .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.");
+#endif
     auto* const PyTreeKind_Type = reinterpret_cast<PyTypeObject*>(PyTreeKindTypeObject.ptr());
     PyTreeKind_Type->tp_name = "optree.PyTreeKind";
     py::setattr(PyTreeKindTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeKindTypeObject.ptr(),
+                "NUM_KINDS",
+                py::int_(py::ssize_t(PyTreeKind::NumKinds)));
 
     auto PyTreeSpecTypeObject = py::class_<PyTreeSpec>(
         mod,
@@ -443,23 +484,14 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
 #undef def_method_pos_only
 
 #ifdef Py_TPFLAGS_IMMUTABLETYPE
+    // Make the types immutable to avoid attribute assignment, modification, and deletion.
     PyTreeKind_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
     PyTreeSpec_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
     PyTreeIter_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
-    PyTreeKind_Type->tp_flags &= ~Py_TPFLAGS_READY;
-    PyTreeSpec_Type->tp_flags &= ~Py_TPFLAGS_READY;
-    PyTreeIter_Type->tp_flags &= ~Py_TPFLAGS_READY;
 #endif
-
-    if (PyType_Ready(PyTreeKind_Type) < 0) [[unlikely]] {
-        INTERNAL_ERROR("`PyType_Ready(&PyTreeKind_Type)` failed.");
-    }
-    if (PyType_Ready(PyTreeSpec_Type) < 0) [[unlikely]] {
-        INTERNAL_ERROR("`PyType_Ready(&PyTreeSpec_Type)` failed.");
-    }
-    if (PyType_Ready(PyTreeIter_Type) < 0) [[unlikely]] {
-        INTERNAL_ERROR("`PyType_Ready(&PyTreeIter_Type)` failed.");
-    }
+    PyType_Modified(PyTreeKind_Type);
+    PyType_Modified(PyTreeSpec_Type);
+    PyType_Modified(PyTreeIter_Type);
 
     py::getattr(py::module_::import("atexit"),
                 "register")(py::cpp_function(&PyTreeTypeRegistry::Clear));

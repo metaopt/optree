@@ -151,6 +151,7 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec &other, const bool &strict) const {
             }
 
             case PyTreeKind::Leaf:
+            case PyTreeKind::NumKinds:
             default:
                 INTERNAL_ERROR();
         }

@@ -254,6 +254,7 @@ template <bool NoneIsLeaf>
             break;
         }
 
+        case PyTreeKind::NumKinds:
         default:
             INTERNAL_ERROR();
     }
