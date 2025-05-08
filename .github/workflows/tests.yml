@@ -34,6 +34,7 @@ env:
   PYTHONUNBUFFERED: "1"
   PYTHON: "python"  # to be updated
   PYTHON_TAG: "py3"  # to be updated
+  pybind11_VERSION: "stable"  # to be updated
   COLUMNS: "128"
 
 jobs:
@@ -148,10 +149,11 @@ jobs:
           github.event_name == 'pull_request' &&
           contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
         run: |
-          python .github/workflows/set_setup_requires.py
+          ${{ env.PYTHON }} .github/workflows/set_setup_requires.py
           echo "::group::pyproject.toml"
           cat pyproject.toml
           echo "::endgroup::"
+          echo "pybind11_VERSION=HEAD" | tee -a "${GITHUB_ENV}"
 
       - name: Test installable with C++17
         shell: bash
@@ -166,6 +168,21 @@ jobs:
             pushd venv &&
             ${{ env.PYTHON }} -X dev -Walways -Werror -c 'import optree' &&
             popd &&
+            rm -rf venv
+          )
+
+      - name: Test buildable without Python frontend
+        shell: bash
+        run: |
+          ACTIVATION_SCRIPT="venv/bin/activate"
+          if [[ "${{ runner.os }}" == 'Windows' ]]; then
+            ACTIVATION_SCRIPT="venv/Scripts/activate"
+          fi
+          (
+            set -x
+            ${{ env.PYTHON }} -m venv venv &&
+            source "${ACTIVATION_SCRIPT}" &&
+            make cmake-build && make clean &&
             rm -rf venv
           )
 

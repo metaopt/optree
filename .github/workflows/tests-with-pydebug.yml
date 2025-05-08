@@ -34,6 +34,7 @@ env:
   PYTHON: "python"  # to be updated
   PYTHON_TAG: "py3"  # to be updated
   PYTHON_VERSION: "3"  # to be updated
+  pybind11_VERSION: "stable"  # to be updated
   PYENV_ROOT: "~/.pyenv"  # to be updated
   COLUMNS: "128"
 
@@ -290,10 +291,16 @@ jobs:
           github.event_name == 'pull_request' &&
           contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
         run: |
-          python .github/workflows/set_setup_requires.py
+          ${{ env.PYTHON }} .github/workflows/set_setup_requires.py
           echo "::group::pyproject.toml"
           cat pyproject.toml
           echo "::endgroup::"
+          echo "pybind11_VERSION=HEAD" | tee -a "${GITHUB_ENV}"
+
+      - name: Test buildable without Python frontend
+        shell: bash
+        run: |
+          make cmake-build PYTHON="${{ env.PYTHON }}" && make clean
 
       - name: Install OpTree
         run: |

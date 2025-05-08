@@ -29,6 +29,7 @@ PATH           := $(PATH):$(GOBIN)
 PYTHON         ?= $(shell command -v python3 || command -v python)
 PYTEST         ?= $(PYTHON) -X dev -m pytest -Walways
 PYTESTOPTS     ?=
+CMAKE_BUILD_TYPE   ?= Debug
 CMAKE_CXX_STANDARD ?= 20
 OPTREE_CXX_WERROR  ?= ON
 _GLIBCXX_USE_CXX11_ABI ?= 1
@@ -196,9 +197,9 @@ xdoctest doctest: xdoctest-install
 .PHONY: cmake-configure
 cmake-configure: cmake-install
 	cmake --version
-	cmake -S . -B cmake-build-debug \
+	cmake -S . -B cmake-build \
 		--fresh \
-		-DCMAKE_BUILD_TYPE=Debug \
+		-DCMAKE_BUILD_TYPE="$(CMAKE_BUILD_TYPE)" \
 		-DCMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
 		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
 		-DPython_EXECUTABLE="$(PYTHON)" \
@@ -207,7 +208,7 @@ cmake-configure: cmake-install
 
 .PHONY: cmake cmake-build
 cmake cmake-build: cmake-configure
-	cmake --build cmake-build-debug --parallel
+	cmake --build cmake-build --parallel
 
 .PHONY: clang-format
 clang-format: clang-format-install
@@ -217,7 +218,7 @@ clang-format: clang-format-install
 .PHONY: clang-tidy
 clang-tidy: clang-tidy-install cmake-configure
 	clang-tidy --version
-	clang-tidy --extra-arg="-v" --fix -p=cmake-build-debug $(CXX_FILES)
+	clang-tidy --extra-arg="-v" --fix -p=cmake-build $(CXX_FILES)
 
 .PHONY: cpplint
 cpplint: cpplint-install
@@ -233,8 +234,8 @@ addlicense: addlicense-install
 
 .PHONY: docstyle
 docstyle: docs-install
-	make -C docs clean || true
-	$(PYTHON) -m doc8 docs && make -C docs html SPHINXOPTS="-W"
+	$(MAKE) -C docs clean || true
+	$(PYTHON) -m doc8 docs && $(MAKE) -C docs html SPHINXOPTS="-W"
 
 .PHONY: docs
 docs: docs-install
@@ -242,12 +243,12 @@ docs: docs-install
 
 .PHONY: spelling
 spelling: docs-install
-	make -C docs clean || true
-	make -C docs spelling SPHINXOPTS="-W"
+	$(MAKE) -C docs clean || true
+	$(MAKE) -C docs spelling SPHINXOPTS="-W"
 
 .PHONY: clean-docs
 clean-docs:
-	make -C docs clean || true
+	$(MAKE) -C docs clean || true
 
 # Utility Functions
 
