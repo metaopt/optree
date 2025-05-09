@@ -67,6 +67,11 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
 #else
     BUILDTIME_METADATA["PYBIND11_HAS_NATIVE_ENUM"] = py::bool_(false);
 #endif
+#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+    BUILDTIME_METADATA["PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT"] = py::bool_(true);
+#else
+    BUILDTIME_METADATA["PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT"] = py::bool_(false);
+#endif
 #ifdef _GLIBCXX_USE_CXX11_ABI
     BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] =
         // NOLINTNEXTLINE[modernize-use-bool-literals]
