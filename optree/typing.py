@@ -20,6 +20,7 @@ import abc
 import functools
 import platform
 import sys
+import threading
 import types
 from builtins import dict as Dict  # noqa: N812
 from builtins import list as List  # noqa: N812
@@ -49,6 +50,7 @@ from typing import (
     TypeVar,
     Union,
     final,
+    get_origin,
     runtime_checkable,
 )
 from typing_extensions import (
@@ -57,7 +59,9 @@ from typing_extensions import (
     ParamSpec,  # Python 3.10+
     Self,  # Python 3.11+
     TypeAlias,  # Python 3.10+
+    TypeAliasType,  # Python 3.12+
 )
+from weakref import WeakKeyDictionary  # pylint: disable=wrong-import-order
 
 import optree._C as _C
 from optree._C import PyTreeKind, PyTreeSpec
@@ -166,7 +170,7 @@ _UnionType = type(Union[int, str])
 
 
 try:  # pragma: no cover
-    from typing import _tp_cache  # type: ignore[attr-defined]
+    from typing import _tp_cache  # type: ignore[attr-defined] # pylint: disable=ungrouped-imports
 except ImportError:  # pragma: no cover
 
     def _tp_cache(func: Callable[P, T], /) -> Callable[P, T]:
@@ -197,16 +201,25 @@ class PyTree(Generic[T]):  # pragma: no cover
                  optree.typing.CustomTreeNode[ForwardRef('PyTree[torch.Tensor]')]]
     """
 
+    __slots__: ClassVar[tuple[()]] = ()
+    __instances__: ClassVar[
+        WeakKeyDictionary[
+            TypeAliasType,
+            tuple[type | TypeAliasType, str | None],
+        ]
+    ] = WeakKeyDictionary()
+    __instance_lock__: ClassVar[threading.Lock] = threading.Lock()
+
     @_tp_cache
-    def __class_getitem__(  # noqa: C901
+    def __class_getitem__(  # noqa: C901 # pylint: disable=too-many-branches
         cls,
         item: (
             type[T]
-            | TypeAlias
-            | tuple[type[T] | TypeAlias]
-            | tuple[type[T] | TypeAlias, str | None]
+            | TypeAliasType
+            | tuple[type[T] | TypeAliasType]
+            | tuple[type[T] | TypeAliasType, str | None]
         ),
-    ) -> TypeAlias:
+    ) -> TypeAliasType:
         """Instantiate a PyTree type with the given type."""
         if not isinstance(item, tuple):
             item = (item, None)
@@ -224,17 +237,18 @@ class PyTree(Generic[T]):  # pragma: no cover
                 f'a parameter and a string of type name, got {item!r}.',
             )
 
-        if (
-            isinstance(param, _UnionType)
-            and param.__origin__ is Union  # type: ignore[attr-defined]
-            and hasattr(param, '__pytree_args__')
-        ):
-            return param  # PyTree[PyTree[T]] -> PyTree[T]
+        if isinstance(param, _UnionType) and get_origin(param) is Union:  # type: ignore[unreachable]
+            with cls.__instance_lock__:  # type: ignore[unreachable]
+                try:
+                    if param in cls.__instances__:
+                        return param  # PyTree[PyTree[T]] -> PyTree[T]
+                except TypeError:
+                    pass  # non-hashable type
 
         if name is not None:
             recurse_ref = ForwardRef(name)
         elif isinstance(param, TypeVar):
-            recurse_ref = ForwardRef(f'{cls.__name__}[{param.__name__}]')
+            recurse_ref = ForwardRef(f'{cls.__name__}[{param.__name__}]')  # type: ignore[unreachable]
         elif isinstance(param, type):
             if param.__module__ == 'builtins':
                 typename = param.__qualname__
@@ -255,21 +269,10 @@ class PyTree(Generic[T]):  # pragma: no cover
             Deque[recurse_ref],  # type: ignore[valid-type]
             CustomTreeNode[recurse_ref],  # type: ignore[valid-type]
         ]
-        pytree_alias.__pytree_args__ = item  # type: ignore[attr-defined]
 
-        # pylint: disable-next=no-member
-        original_copy_with = pytree_alias.copy_with  # type: ignore[attr-defined]
-        original_num_params = len(pytree_alias.__args__)  # type: ignore[attr-defined]
-
-        def copy_with(params: tuple) -> TypeAlias:
-            if not isinstance(params, tuple) or len(params) != original_num_params:
-                return original_copy_with(params)
-            if params[0] is param:
-                return pytree_alias
-            return PyTree[params[0]]  # type: ignore[misc,valid-type]
-
-        object.__setattr__(pytree_alias, 'copy_with', copy_with)
-        return pytree_alias
+        with cls.__instance_lock__:
+            cls.__instances__[pytree_alias] = (param, name)  # type: ignore[index]
+        return pytree_alias  # type: ignore[return-value]
 
     def __new__(cls, /) -> Never:  # pylint: disable=arguments-differ
         """Prohibit instantiation."""
@@ -340,7 +343,7 @@ class PyTreeTypeVar:  # pragma: no cover
     """
 
     @_tp_cache
-    def __new__(cls, /, name: str, param: type | TypeAlias) -> TypeAlias:
+    def __new__(cls, /, name: str, param: type | TypeAliasType) -> TypeAliasType:  # type: ignore[misc]
         """Instantiate a PyTree type variable with the given name and parameter."""
         if not isinstance(name, str):
             raise TypeError(f'{cls.__name__} only supports a string of type name, got {name!r}.')
