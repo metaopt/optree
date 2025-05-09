@@ -29,7 +29,7 @@ dependencies:
   - pip
 
   # Dependency
-  - typing-extensions >= 4.5.0
+  - typing-extensions >= 4.6.0
 
   # Build toolchain
   - cmake >= 3.18
