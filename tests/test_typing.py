@@ -21,6 +21,7 @@ import sys
 import time
 import weakref
 from collections import namedtuple
+from typing import TypeVar, Union
 
 import pytest
 
@@ -106,6 +107,23 @@ def test_pytreekind_enum():
         assert kind.value == i
         assert kind == optree.PyTreeKind(i)
         assert kind == getattr(optree.PyTreeKind, kind.name)
+
+
+def test_pytree_typing():
+    T = TypeVar('T')
+
+    optree.PyTree[int]
+    optree.PyTree[Union[int, str]]
+    optree.PyTree[T]
+    assert optree.PyTree[optree.PyTree[int]] == optree.PyTree[int]
+    assert optree.PyTree[optree.PyTree[Union[int, str]]] == optree.PyTree[Union[int, str]]
+    assert optree.PyTree[optree.PyTree[T]] == optree.PyTree[T]
+    if sys.version_info >= (3, 10):
+        optree.PyTree[int | str]
+        assert optree.PyTree[optree.PyTree[int | str]] == optree.PyTree[int | str]
+
+    IntTree = optree.PyTreeTypeVar('IntTree', int)  # noqa: N806
+    assert IntTree == optree.PyTree[IntTree]
 
 
 def test_is_namedtuple():

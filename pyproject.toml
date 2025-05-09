@@ -37,7 +37,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Utilities",
 ]
-dependencies = ["typing-extensions >= 4.5.0"]
+dependencies = ["typing-extensions >= 4.6.0"]
 dynamic = ["version"]
 
 [project.urls]
