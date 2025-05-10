@@ -489,7 +489,7 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
 
     registered_by_decorator = False
     if sys.version_info >= (3, 14):  # pragma: >=3.14 cover
-        if decorator is dataclass:
+        if decorator in (dataclasses.dataclass, dataclass):
             decorator = functools.partial(dataclass, namespace=namespace)
             registered_by_decorator = True
         make_dataclass_kwargs['decorator'] = decorator
