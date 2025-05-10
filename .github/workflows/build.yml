@@ -234,6 +234,7 @@ jobs:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_ARCHS: ${{ matrix.archs }}
           CIBW_ARCHS_MACOS: ${{ matrix.archs }} universal2
+          CIBW_ALLOW_EMPTY: 'True'
         with:
           package-dir: .
           output-dir: wheelhouse
