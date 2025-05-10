@@ -67,6 +67,11 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
 #else
     BUILDTIME_METADATA["PYBIND11_HAS_NATIVE_ENUM"] = py::bool_(false);
 #endif
+#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+    BUILDTIME_METADATA["PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT"] = py::bool_(true);
+#else
+    BUILDTIME_METADATA["PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT"] = py::bool_(false);
+#endif
 #ifdef _GLIBCXX_USE_CXX11_ABI
     BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] =
         // NOLINTNEXTLINE[modernize-use-bool-literals]
@@ -263,18 +268,24 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
                 "NUM_KINDS",
                 py::int_(py::ssize_t(PyTreeKind::NumKinds)));
 
-    auto PyTreeSpecTypeObject = py::class_<PyTreeSpec>(
-        mod,
-        "PyTreeSpec",
-        "Representing the structure of the pytree.",
-        // NOLINTBEGIN[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
-        py::custom_type_setup([](PyHeapTypeObject* heap_type) -> void {
-            auto* const type = &heap_type->ht_type;
-            type->tp_flags |= Py_TPFLAGS_HAVE_GC;
-            type->tp_traverse = &PyTreeSpec::PyTpTraverse;
-        }),
-        // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
-        py::module_local());
+    auto PyTreeSpecTypeObject =
+#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+        py::classh
+#else
+        py::class_
+#endif
+        <PyTreeSpec>(
+            mod,
+            "PyTreeSpec",
+            "Representing the structure of the pytree.",
+            // NOLINTBEGIN[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
+            py::custom_type_setup([](PyHeapTypeObject* heap_type) -> void {
+                auto* const type = &heap_type->ht_type;
+                type->tp_flags |= Py_TPFLAGS_HAVE_GC;
+                type->tp_traverse = &PyTreeSpec::PyTpTraverse;
+            }),
+            // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
+            py::module_local());
     auto* const PyTreeSpec_Type = reinterpret_cast<PyTypeObject*>(PyTreeSpecTypeObject.ptr());
     PyTreeSpec_Type->tp_name = "optree.PyTreeSpec";
     py::setattr(PyTreeSpecTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
@@ -454,18 +465,24 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::arg("state"),
              py::pos_only());
 
-    auto PyTreeIterTypeObject = py::class_<PyTreeIter>(
-        mod,
-        "PyTreeIter",
-        "Iterator over the leaves of a pytree.",
-        // NOLINTBEGIN[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
-        py::custom_type_setup([](PyHeapTypeObject* heap_type) -> void {
-            auto* const type = &heap_type->ht_type;
-            type->tp_flags |= Py_TPFLAGS_HAVE_GC;
-            type->tp_traverse = &PyTreeIter::PyTpTraverse;
-        }),
-        // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
-        py::module_local());
+    auto PyTreeIterTypeObject =
+#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+        py::classh
+#else
+        py::class_
+#endif
+        <PyTreeIter>(
+            mod,
+            "PyTreeIter",
+            "Iterator over the leaves of a pytree.",
+            // NOLINTBEGIN[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
+            py::custom_type_setup([](PyHeapTypeObject* heap_type) -> void {
+                auto* const type = &heap_type->ht_type;
+                type->tp_flags |= Py_TPFLAGS_HAVE_GC;
+                type->tp_traverse = &PyTreeIter::PyTpTraverse;
+            }),
+            // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
+            py::module_local());
     auto* const PyTreeIter_Type = reinterpret_cast<PyTypeObject*>(PyTreeIterTypeObject.ptr());
     PyTreeIter_Type->tp_name = "optree.PyTreeIter";
     py::setattr(PyTreeIterTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));

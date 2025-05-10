@@ -24,7 +24,7 @@ namespace optree {
     Py_VISIT(Py_TYPE(self_base));
     auto* const instance = reinterpret_cast<py::detail::instance*>(self_base);
     if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
-        // The holder is not constructed yet. Skip the traversal to avoid segfault.
+        // The holder has not been constructed yet. Skip the traversal to avoid segmentation faults.
         return 0;
     }
     auto& self = thread_safe_cast<PyTreeSpec&>(py::handle{self_base});
@@ -42,7 +42,7 @@ namespace optree {
     Py_VISIT(Py_TYPE(self_base));
     auto* const instance = reinterpret_cast<py::detail::instance*>(self_base);
     if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
-        // The holder is not constructed yet. Skip the traversal to avoid segfault.
+        // The holder has not been constructed yet. Skip the traversal to avoid segmentation faults.
         return 0;
     }
     auto& self = thread_safe_cast<PyTreeIter&>(py::handle{self_base});
