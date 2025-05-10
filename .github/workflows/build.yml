@@ -40,6 +40,7 @@ env:
   PYTHON_TAG: "py3"  # to be updated
   PYTHON_VERSION: "3"  # to be updated
   _GLIBCXX_USE_CXX11_ABI: "1"
+  CIBW_ALLOW_EMPTY: "true"
 
 jobs:
   build-sdist:
@@ -234,7 +235,7 @@ jobs:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_ARCHS: ${{ matrix.archs }}
           CIBW_ARCHS_MACOS: ${{ matrix.archs }} universal2
-          CIBW_ALLOW_EMPTY: 'True'
+          CIBW_ALLOW_EMPTY: ${{ env.CIBW_ALLOW_EMPTY }}
         with:
           package-dir: .
           output-dir: wheelhouse
@@ -244,7 +245,7 @@ jobs:
         with:
           name: wheels-${{ env.PYTHON_TAG }}-${{ runner.os }}-${{ matrix.archs }}
           path: wheelhouse/*.whl
-          if-no-files-found: error
+          if-no-files-found: ${{ env.CIBW_ALLOW_EMPTY == 'true' && 'warn' || 'error' }}
 
   list-artifacts:
     name: List artifacts
