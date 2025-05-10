@@ -188,14 +188,19 @@ typehints_use_signature_return = False
 
 
 def typehints_formatter(annotation, config=None):
-    from typing import Union
+    from typing import Union, get_origin
+
+    if 'optree' not in sys.modules:
+        sys.path.insert(0, str(PROJECT_ROOT))
+
+    import optree
 
     if (
         isinstance(annotation, type(Union[int, str]))
-        and annotation.__origin__ is Union
-        and hasattr(annotation, '__pytree_args__')
+        and get_origin(annotation) is Union
+        and annotation in optree.PyTree.__instances__
     ):
-        param, name = annotation.__pytree_args__
+        param, name = optree.PyTree.__instances__[annotation]
         if name is not None:
             return f':py:class:`{name}`'
 
