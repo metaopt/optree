@@ -21,9 +21,11 @@ import os
 import pickle
 import platform
 import re
+import signal
 import subprocess
 import sys
 import sysconfig
+import tempfile
 import textwrap
 import weakref
 from collections import OrderedDict, UserList, defaultdict, deque
@@ -44,7 +46,66 @@ from helpers import (
     gc_collect,
     parametrize,
     recursionlimit,
+    skipif_pypy,
 )
+
+
+@pytest.mark.skipif(
+    platform.machine().lower() not in ('x86_64', 'amd64'),
+    reason='Only run on x86_64 and AMD64 architectures',
+)
+@skipif_pypy
+def test_treespec_construct():
+    with pytest.raises(TypeError, match=re.escape('No constructor defined!')):
+        optree.PyTreeSpec()
+    treespec = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+    with pytest.raises(TypeError, match=re.escape('No constructor defined!')):
+        treespec.__init__()
+
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
+    }
+    script = textwrap.dedent(
+        r"""
+        import signal
+        import sys
+
+        import optree
+        import optree._C
+
+        for _ in range(32):
+            treespec = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+            try:
+                repr(treespec)
+            except optree._C.InternalError as ex:
+                assert 'The tree node traversal is empty.' in str(ex)
+                assert 'src/treespec/serialization.cpp' in str(ex).replace('\\', '/')
+                sys.exit(0)
+            else:
+                print('No exception was raised.', file=sys.stderr)
+                sys.exit(1)
+        """,
+    ).strip()
+    returncode = 0
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            subprocess.check_call(
+                [sys.executable, '-Walways', '-Werror', '-c', script],
+                cwd=tmpdir,
+                env=env,
+            )
+    except subprocess.CalledProcessError as ex:
+        returncode = abs(ex.returncode)
+        if 128 < returncode < 256:
+            returncode -= 128
+    assert returncode in (
+        0,
+        signal.SIGSEGV,
+        signal.SIGABRT,
+        0xC0000005,  # STATUS_ACCESS_VIOLATION on Windows
+    )
 
 
 def test_treespec_equal_hash():
