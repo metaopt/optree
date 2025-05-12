@@ -21,20 +21,19 @@ limitations under the License.
 #include <optional>   // std::optional, std::nullopt
 #include <sstream>    // std::ostringstream
 #include <stdexcept>  // std::logic_error
-#include <string>     // std::string
-
-#ifndef SOURCE_PATH_PREFIX_SIZE
-#define SOURCE_PATH_PREFIX_SIZE 0
-#endif
-
-#ifndef FILE_RELPATH
-#define FILE_RELPATH ((const char*)&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
-#endif
-
-#define VA_FUNC2_(__0, __1, NAME, ...) NAME
-#define VA_FUNC3_(__0, __1, __2, NAME, ...) NAME
+#include <string>     // std::string, std::char_traits
 
 namespace optree {
+
+constexpr std::size_t CURRENT_FILE_PATH_SIZE = std::char_traits<char>::length(__FILE__);
+constexpr std::size_t CURRENT_FILE_RELPATH_FROM_PROJECT_ROOT_SIZE =
+    std::char_traits<char>::length("include/optree/exceptions.h");
+static_assert(CURRENT_FILE_PATH_SIZE >= CURRENT_FILE_RELPATH_FROM_PROJECT_ROOT_SIZE,
+              "SOURCE_PATH_PREFIX_SIZE must be greater than 0.");
+constexpr std::size_t SOURCE_PATH_PREFIX_SIZE =
+    CURRENT_FILE_PATH_SIZE - CURRENT_FILE_RELPATH_FROM_PROJECT_ROOT_SIZE;
+// NOLINTNEXTLINE[bugprone-reserved-identifier]
+#define __FILE_RELPATH_FROM_PROJECT_ROOT__ ((const char*)&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
 
 class InternalError : public std::logic_error {
 public:
@@ -57,7 +56,8 @@ public:
           }()) {}
 };
 
-}  // namespace optree
+#define VA_FUNC2_(__0, __1, NAME, ...) NAME
+#define VA_FUNC3_(__0, __1, __2, NAME, ...) NAME
 
 #ifndef __GNUC__
 #define __PRETTY_FUNCTION__ std::nullopt  // NOLINT[bugprone-reserved-identifier]
@@ -65,7 +65,10 @@ public:
 
 #define INTERNAL_ERROR0_() INTERNAL_ERROR1_("Unreachable code.")
 #define INTERNAL_ERROR1_(message)                                                                  \
-    throw optree::InternalError((message), FILE_RELPATH, __LINE__, __PRETTY_FUNCTION__)
+    throw optree::InternalError((message),                                                         \
+                                __FILE_RELPATH_FROM_PROJECT_ROOT__,                                \
+                                __LINE__,                                                          \
+                                __PRETTY_FUNCTION__)
 #define INTERNAL_ERROR(...)                                                                        \
     VA_FUNC2_(__0 __VA_OPT__(, ) __VA_ARGS__, INTERNAL_ERROR1_, INTERNAL_ERROR0_)(__VA_ARGS__)
 
@@ -86,3 +89,5 @@ public:
 #define EXPECT_LE(a, b, ...) EXPECT_((a) <= (b)__VA_OPT__(, ) __VA_ARGS__)
 #define EXPECT_GT(a, b, ...) EXPECT_((a) > (b)__VA_OPT__(, ) __VA_ARGS__)
 #define EXPECT_GE(a, b, ...) EXPECT_((a) >= (b)__VA_OPT__(, ) __VA_ARGS__)
+
+}  // namespace optree
