@@ -27,8 +27,8 @@ limitations under the License.
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#ifdef PYBIND11_HAS_NATIVE_ENUM
-#include <pybind11/native_enum.h>
+#if defined(PYBIND11_HAS_NATIVE_ENUM)
+#    include <pybind11/native_enum.h>
 #endif
 
 namespace optree {
@@ -56,24 +56,24 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
     py::dict BUILDTIME_METADATA{};
     BUILDTIME_METADATA["PY_VERSION"] = py::str(PY_VERSION);
     BUILDTIME_METADATA["PY_VERSION_HEX"] = py::int_(PY_VERSION_HEX);
-#ifdef PYPY_VERSION
+#if defined(PYPY_VERSION)
     BUILDTIME_METADATA["PYPY_VERSION"] = py::str(PYPY_VERSION);
     BUILDTIME_METADATA["PYPY_VERSION_NUM"] = py::int_(PYPY_VERSION_NUM);
     BUILDTIME_METADATA["PYPY_VERSION_HEX"] = py::int_(PYPY_VERSION_NUM);
 #endif
     BUILDTIME_METADATA["PYBIND11_VERSION_HEX"] = py::int_(PYBIND11_VERSION_HEX);
     BUILDTIME_METADATA["PYBIND11_INTERNALS_VERSION"] = py::int_(PYBIND11_INTERNALS_VERSION);
-#ifdef PYBIND11_HAS_NATIVE_ENUM
+#if defined(PYBIND11_HAS_NATIVE_ENUM)
     BUILDTIME_METADATA["PYBIND11_HAS_NATIVE_ENUM"] = py::bool_(true);
 #else
     BUILDTIME_METADATA["PYBIND11_HAS_NATIVE_ENUM"] = py::bool_(false);
 #endif
-#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+#if defined(PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT)
     BUILDTIME_METADATA["PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT"] = py::bool_(true);
 #else
     BUILDTIME_METADATA["PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT"] = py::bool_(false);
 #endif
-#ifdef _GLIBCXX_USE_CXX11_ABI
+#if defined(_GLIBCXX_USE_CXX11_ABI)
     BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] =
         // NOLINTNEXTLINE[modernize-use-bool-literals]
         py::bool_(static_cast<bool>(_GLIBCXX_USE_CXX11_ABI));
@@ -227,12 +227,12 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::pos_only());
 
 #if PYBIND11_VERSION_HEX >= 0x020E00F0  // pybind11 2.14.0
-#define def_method_pos_only(...) def(__VA_ARGS__ __VA_OPT__(, ) py::pos_only())
+#    define def_method_pos_only(...) def(__VA_ARGS__ __VA_OPT__(, ) py::pos_only())
 #else
-#define def_method_pos_only(...) def(__VA_ARGS__)
+#    define def_method_pos_only(...) def(__VA_ARGS__)
 #endif
 
-#ifdef PYBIND11_HAS_NATIVE_ENUM
+#if defined(PYBIND11_HAS_NATIVE_ENUM)
     py::native_enum<PyTreeKind>(mod, "PyTreeKind", "enum.IntEnum", "The kind of a pytree node.")
         .value("CUSTOM", PyTreeKind::Custom, "A custom type.")
         .value("LEAF", PyTreeKind::Leaf, "A opaque leaf node.")
@@ -270,7 +270,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
                 py::int_(py::ssize_t(PyTreeKind::NumKinds)));
 
     auto PyTreeSpecTypeObject =
-#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+#if defined(PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT)
         py::classh
 #else
         py::class_
@@ -467,7 +467,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::pos_only());
 
     auto PyTreeIterTypeObject =
-#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+#if defined(PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT)
         py::classh
 #else
         py::class_
@@ -501,7 +501,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
 
 #undef def_method_pos_only
 
-#ifdef Py_TPFLAGS_IMMUTABLETYPE
+#if defined(Py_TPFLAGS_IMMUTABLETYPE)
     // Make the types immutable to avoid attribute assignment, modification, and deletion.
     PyTreeKind_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;
     PyTreeSpec_Type->tp_flags |= Py_TPFLAGS_IMMUTABLETYPE;

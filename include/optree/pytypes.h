@@ -26,7 +26,7 @@ limitations under the License.
 #include <Python.h>
 
 #if PY_VERSION_HEX < 0x030C00F0  // Python 3.12.0
-#include <structmember.h>        // PyMemberDef
+#    include <structmember.h>    // PyMemberDef
 #endif
 
 #include <pybind11/eval.h>  // pybind11::exec
@@ -98,7 +98,7 @@ inline Py_ALWAYS_INLINE py::ssize_t ListGetSize(const py::handle& list) {
     return PyList_GET_SIZE(list.ptr());
 }
 inline Py_ALWAYS_INLINE py::ssize_t DictGetSize(const py::handle& dict) {
-#ifdef PyDict_GET_SIZE
+#if defined(PyDict_GET_SIZE)
     return PyDict_GET_SIZE(dict.ptr());
 #else
     return PyDict_Size(dict.ptr());
@@ -338,7 +338,7 @@ inline bool IsStructSequenceClassImpl(const py::handle& type) {
                 return false;
             }
         }
-#ifdef PYPY_VERSION
+#if defined(PYPY_VERSION)
         try {
             py::exec("class _(cls): pass", py::dict(py::arg("cls") = type));
         } catch (py::error_already_set& ex) {
@@ -400,7 +400,7 @@ inline Py_ALWAYS_INLINE void AssertExactStructSequence(const py::handle& object)
     }
 }
 inline py::tuple StructSequenceGetFieldsImpl(const py::handle& type) {
-#ifdef PYPY_VERSION
+#if defined(PYPY_VERSION)
     py::list fields{};
     py::exec(
         R"py(

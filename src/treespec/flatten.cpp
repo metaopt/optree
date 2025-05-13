@@ -208,7 +208,7 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
     bool is_dict_insertion_ordered = false;
     bool is_dict_insertion_ordered_in_current_namespace = false;
     {
-#ifdef HAVE_READ_WRITE_LOCK
+#if defined(HAVE_READ_WRITE_LOCK)
         const scoped_read_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
 #endif
         is_dict_insertion_ordered = IsDictInsertionOrdered(registry_namespace);
@@ -485,7 +485,7 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
     bool is_dict_insertion_ordered = false;
     bool is_dict_insertion_ordered_in_current_namespace = false;
     {
-#ifdef HAVE_READ_WRITE_LOCK
+#if defined(HAVE_READ_WRITE_LOCK)
         const scoped_read_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
 #endif
         is_dict_insertion_ordered = IsDictInsertionOrdered(registry_namespace);

@@ -162,7 +162,7 @@ py::object PyTreeIter::NextImpl() {
 }
 
 py::object PyTreeIter::Next() {
-#ifdef Py_GIL_DISABLED
+#if defined(Py_GIL_DISABLED)
     const scoped_lock_guard lock{m_mutex};
 #endif
 

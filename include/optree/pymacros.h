@@ -22,34 +22,34 @@ limitations under the License.
 #include <pybind11/pybind11.h>
 
 #if !(defined(PY_VERSION_HEX) && PY_VERSION_HEX >= 0x03090000)  // Python 3.9
-#error "Python 3.9 or newer is required."
+#    error "Python 3.9 or newer is required."
 #endif
 
 #if !(defined(PYBIND11_VERSION_HEX) && PYBIND11_VERSION_HEX >= 0x020C00F0)  // pybind11 2.12.0
-#error "pybind11 2.12.0 or newer is required."
+#    error "pybind11 2.12.0 or newer is required."
 #endif
 
 namespace py = pybind11;
 
-#ifndef Py_ALWAYS_INLINE
-#define Py_ALWAYS_INLINE
+#if !defined(Py_ALWAYS_INLINE)
+#    define Py_ALWAYS_INLINE
 #endif
 
-#ifndef Py_NO_INLINE
-#define Py_NO_INLINE
+#if !defined(Py_NO_INLINE)
+#    define Py_NO_INLINE
 #endif
 
-#ifndef Py_Is
-#define Py_Is(x, y) ((x) == (y))
+#if !defined(Py_Is)
+#    define Py_Is(x, y) ((x) == (y))
 #endif
-#ifndef Py_IsNone
-#define Py_IsNone(x) Py_Is((x), Py_None)
+#if !defined(Py_IsNone)
+#    define Py_IsNone(x) Py_Is((x), Py_None)
 #endif
-#ifndef Py_IsTrue
-#define Py_IsTrue(x) Py_Is((x), Py_True)
+#if !defined(Py_IsTrue)
+#    define Py_IsTrue(x) Py_Is((x), Py_True)
 #endif
-#ifndef Py_IsFalse
-#define Py_IsFalse(x) Py_Is((x), Py_False)
+#if !defined(Py_IsFalse)
+#    define Py_IsFalse(x) Py_Is((x), Py_False)
 #endif
 
 inline constexpr Py_ALWAYS_INLINE bool Py_IsConstant(PyObject* x) noexcept {

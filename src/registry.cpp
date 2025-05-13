@@ -300,7 +300,7 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     EXPECT_EQ(registry1->m_registrations.size(), registry2->m_registrations.size() + 1);
     EXPECT_EQ(registry1->m_named_registrations.size(), registry2->m_named_registrations.size());
 
-#ifdef Py_DEBUG
+#if defined(Py_DEBUG)
     for (const auto& cls : sm_builtins_types) {
         EXPECT_NE(registry1->m_registrations.find(cls), registry1->m_registrations.end());
     }

@@ -59,8 +59,8 @@ public:
 #define VA_FUNC2_(__0, __1, NAME, ...) NAME
 #define VA_FUNC3_(__0, __1, __2, NAME, ...) NAME
 
-#ifndef __GNUC__
-#define __PRETTY_FUNCTION__ std::nullopt  // NOLINT[bugprone-reserved-identifier]
+#if !defined(__GNUC__)
+#    define __PRETTY_FUNCTION__ std::nullopt  // NOLINT[bugprone-reserved-identifier]
 #endif
 
 #define INTERNAL_ERROR0_() INTERNAL_ERROR1_("Unreachable code.")

@@ -41,12 +41,12 @@ using size_t = py::size_t;
 using ssize_t = py::ssize_t;
 
 // The maximum depth of a pytree.
-#ifndef Py_C_RECURSION_LIMIT
-#ifndef Py_DEBUG
-#define Py_C_RECURSION_LIMIT 1000
-#else
-#define Py_C_RECURSION_LIMIT 500
-#endif
+#if !defined(Py_C_RECURSION_LIMIT)
+#    if !defined(Py_DEBUG)
+#        define Py_C_RECURSION_LIMIT 1000
+#    else
+#        define Py_C_RECURSION_LIMIT 500
+#    endif
 #endif
 #if !defined(PYPY_VERSION) && !(defined(MS_WINDOWS) && defined(Py_DEBUG))
 constexpr ssize_t MAX_RECURSION_DEPTH = std::min(1000, Py_C_RECURSION_LIMIT);
@@ -472,7 +472,7 @@ private:
     const bool m_none_is_leaf;
     const std::string m_namespace;
     const bool m_is_dict_insertion_ordered;
-#ifdef Py_GIL_DISABLED
+#if defined(Py_GIL_DISABLED)
     mutable mutex m_mutex{};
 #endif
 

@@ -27,7 +27,7 @@ limitations under the License.
 
 namespace py = pybind11;
 
-#ifdef Py_GIL_DISABLED
+#if defined(Py_GIL_DISABLED)
 
 class pymutex {
 public:
@@ -62,7 +62,7 @@ using scoped_recursive_lock_guard = std::lock_guard<recursive_mutex>;
 #if (defined(__APPLE__) /* header <shared_mutex> is not available on macOS build target */ &&      \
      PY_VERSION_HEX < /* Python 3.12.0 */ 0x030C00F0)
 
-#undef HAVE_READ_WRITE_LOCK
+#    undef HAVE_READ_WRITE_LOCK
 
 using read_write_mutex = mutex;
 using scoped_read_lock_guard = scoped_lock_guard;
@@ -70,9 +70,9 @@ using scoped_write_lock_guard = scoped_lock_guard;
 
 #else
 
-#define HAVE_READ_WRITE_LOCK
+#    define HAVE_READ_WRITE_LOCK
 
-#include <shared_mutex>  // std::shared_mutex, std::shared_lock
+#    include <shared_mutex>  // std::shared_mutex, std::shared_lock
 
 using read_write_mutex = std::shared_mutex;
 using scoped_read_lock_guard = std::shared_lock<read_write_mutex>;
@@ -84,7 +84,7 @@ class scoped_critical_section {
 public:
     scoped_critical_section() = delete;
 
-#ifdef Py_GIL_DISABLED
+#if defined(Py_GIL_DISABLED)
     explicit scoped_critical_section(const py::handle& handle) : m_ptr{handle.ptr()} {
         if (m_ptr != nullptr && !Py_IsConstant(m_ptr)) [[likely]] {
             PyCriticalSection_Begin(&m_critical_section, m_ptr);
@@ -107,7 +107,7 @@ public:
     scoped_critical_section& operator=(scoped_critical_section&&) = delete;
 
 private:
-#ifdef Py_GIL_DISABLED
+#if defined(Py_GIL_DISABLED)
     PyObject* m_ptr{nullptr};
     PyCriticalSection m_critical_section{};
 #endif
@@ -117,7 +117,7 @@ class scoped_critical_section2 {
 public:
     scoped_critical_section2() = delete;
 
-#ifdef Py_GIL_DISABLED
+#if defined(Py_GIL_DISABLED)
     explicit scoped_critical_section2(const py::handle& handle1, const py::handle& handle2)
         : m_ptr1{handle1.ptr()}, m_ptr2{handle2.ptr()} {
         if (m_ptr1 != nullptr && !Py_IsConstant(m_ptr1)) [[likely]] {
@@ -154,7 +154,7 @@ public:
     scoped_critical_section2& operator=(scoped_critical_section2&&) = delete;
 
 private:
-#ifdef Py_GIL_DISABLED
+#if defined(Py_GIL_DISABLED)
     PyObject* m_ptr1{nullptr};
     PyObject* m_ptr2{nullptr};
     PyCriticalSection m_critical_section{};
@@ -162,18 +162,18 @@ private:
 #endif
 };
 
-#ifdef Py_GIL_DISABLED
+#if defined(Py_GIL_DISABLED)
 
-#define EVALUATE_WITH_LOCK_HELD(expression, handle)                                                \
-    (((void)scoped_critical_section{(handle)}), (expression))
+#    define EVALUATE_WITH_LOCK_HELD(expression, handle)                                            \
+        (((void)scoped_critical_section{(handle)}), (expression))
 
-#define EVALUATE_WITH_LOCK_HELD2(expression, handle1, handle2)                                     \
-    (((void)scoped_critical_section2{(handle1), (handle2)}), (expression))
+#    define EVALUATE_WITH_LOCK_HELD2(expression, handle1, handle2)                                 \
+        (((void)scoped_critical_section2{(handle1), (handle2)}), (expression))
 
 #else
 
-#define EVALUATE_WITH_LOCK_HELD(expression, handle) (expression)
-#define EVALUATE_WITH_LOCK_HELD2(expression, handle1, handle2) (expression)
+#    define EVALUATE_WITH_LOCK_HELD(expression, handle) (expression)
+#    define EVALUATE_WITH_LOCK_HELD2(expression, handle1, handle2) (expression)
 
 #endif
 
