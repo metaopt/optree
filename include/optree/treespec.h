@@ -432,6 +432,9 @@ private:
     // Used in tp_traverse for GC support.
     static int PyTpTraverse(PyObject *self_base, visitproc visit, void *arg);
 
+    // Used in tp_clear for GC support.
+    static int PyTpClear(PyObject *self_base);
+
     // A set of namespaces that preserve the insertion order of the dictionary keys during
     // flattening.
     static inline std::unordered_set<std::string> sm_is_dict_insertion_ordered{};
@@ -466,7 +469,7 @@ public:
     friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
 
 private:
-    const py::object m_root;
+    py::object m_root;
     std::vector<std::pair<py::object, ssize_t>> m_agenda;
     const std::optional<py::function> m_leaf_predicate;
     const bool m_none_is_leaf;
@@ -481,6 +484,9 @@ private:
 
     // Used in tp_traverse for GC support.
     static int PyTpTraverse(PyObject *self_base, visitproc visit, void *arg);
+
+    // Used in tp_clear for GC support.
+    static int PyTpClear(PyObject *self_base);
 };
 
 }  // namespace optree
