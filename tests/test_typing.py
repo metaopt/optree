@@ -25,6 +25,7 @@ from collections import namedtuple
 import pytest
 
 import optree
+import optree._C
 from helpers import (
     CustomNamedTupleSubclass,
     CustomTuple,
@@ -34,7 +35,6 @@ from helpers import (
     getrefcount,
     skipif_pypy,
 )
-from optree._C import PYBIND11_HAS_NATIVE_ENUM
 
 
 class FakeNamedTuple(tuple):
@@ -70,7 +70,7 @@ class FakeStructSequence(tuple):
 
 
 def test_pytreekind_enum():
-    if PYBIND11_HAS_NATIVE_ENUM:
+    if optree._C.PYBIND11_HAS_NATIVE_ENUM:
         all_kinds = list(optree.PyTreeKind)
         assert len(all_kinds) == optree.PyTreeKind.NUM_KINDS
         assert issubclass(optree.PyTreeKind, enum.IntEnum)

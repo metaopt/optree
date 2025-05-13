@@ -19,7 +19,14 @@ from operator import itemgetter
 
 import pytest
 
+import optree._C
 from optree.utils import safe_zip, total_order_sorted, unzip2
+
+
+def test_relpath_from_project_root():
+    assert optree._C.__doc__.replace('\\', '/') == (
+        r'Optimized PyTree Utilities. (C extension module built from src/optree.cpp)'
+    )
 
 
 def test_total_order_sorted():

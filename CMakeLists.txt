@@ -130,9 +130,6 @@ if(MSVC AND NOT "$ENV{VSCMD_ARG_TGT_ARCH}" STREQUAL "")
     message(STATUS "Use VSCMD_ARG_TGT_ARCH: \"$ENV{VSCMD_ARG_TGT_ARCH}\"")
 endif()
 
-string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_PATH_PREFIX_SIZE)
-add_definitions("-DSOURCE_PATH_PREFIX_SIZE=${SOURCE_PATH_PREFIX_SIZE}")
-
 function(system)
     set(options STRIP)
     set(oneValueArgs OUTPUT_VARIABLE ERROR_VARIABLE WORKING_DIRECTORY)
@@ -272,7 +269,20 @@ if(SETUPTOOLS_EXT_SUFFIX)
         set(PYTHON_MODULE_EXTENSION "$ENV{SETUPTOOLS_EXT_SUFFIX}")
     endif()
 endif()
-message(STATUS "Use PYTHON_MODULE_EXTENSION: \"${PYTHON_MODULE_EXTENSION}\"")
+
+foreach(
+    varname IN ITEMS
+    Python_INCLUDE_DIR
+    Python_INCLUDE_DIRS
+    Python_LIBRARY
+    Python_LIBRARIES
+    PYTHON_MODULE_DEBUG_POSTFIX
+    PYTHON_MODULE_EXTENSION
+    PYTHON_IS_DEBUG
+    SETUPTOOLS_EXT_SUFFIX
+)
+    message(STATUS "Use ${varname}: \"${${varname}}\"")
+endforeach()
 
 include_directories("${CMAKE_SOURCE_DIR}/include")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src")
