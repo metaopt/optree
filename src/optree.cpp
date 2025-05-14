@@ -284,6 +284,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
                 auto* const type = &heap_type->ht_type;
                 type->tp_flags |= Py_TPFLAGS_HAVE_GC;
                 type->tp_traverse = &PyTreeSpec::PyTpTraverse;
+                type->tp_clear = &PyTreeSpec::PyTpClear;
             }),
             // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
             py::module_local());
@@ -481,6 +482,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
                 auto* const type = &heap_type->ht_type;
                 type->tp_flags |= Py_TPFLAGS_HAVE_GC;
                 type->tp_traverse = &PyTreeIter::PyTpTraverse;
+                type->tp_clear = &PyTreeIter::PyTpClear;
             }),
             // NOLINTEND[readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while]
             py::module_local());
