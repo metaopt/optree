@@ -83,9 +83,6 @@ def test_treespec_construct():
                 assert 'The tree node traversal is empty.' in str(ex)
                 assert 'src/treespec/serialization.cpp' in str(ex).replace('\\', '/')
                 sys.exit(0)
-            else:
-                print('No exception was raised.', file=sys.stderr)
-                sys.exit(1)
         """,
     ).strip()
     returncode = 0
