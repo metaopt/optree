@@ -2815,6 +2815,22 @@ def test_tree_replace_nones():
 
 
 @parametrize(
+    sentinel=[None, object()],
+)
+def test_tree_partition(sentinel):
+    left, right = optree.tree_partition(
+        lambda x: x > 10,
+        {'x': 7, 'y': (42, 64)},
+        sentinel=sentinel,
+    )
+    left_true = {'x': sentinel, 'y': (42, 64)}
+    right_true = {'x': 7, 'y': (sentinel, sentinel)}
+
+    assert left == left_true
+    assert right == right_true
+
+
+@parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],

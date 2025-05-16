@@ -69,6 +69,7 @@ __all__ = [
     'tree_map_with_accessor',
     'tree_map_with_accessor_',
     'tree_replace_nones',
+    'tree_partition',
     'tree_transpose',
     'tree_transpose_map',
     'tree_transpose_map_with_path',
@@ -1045,6 +1046,65 @@ def tree_replace_nones(sentinel: Any, tree: PyTree[T] | None, /, namespace: str 
         lambda x: x if x is not None else sentinel,
         tree,
         none_is_leaf=True,
+        namespace=namespace,
+    )
+
+
+def tree_partition(
+    predicate: Callable[..., bool],
+    tree: PyTree[T],
+    /,
+    sentinel: Any = None,
+    is_leaf: Callable[[T], bool] | None = None,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> PyTree:  # tuple[PyTree, PyTree]
+    """Partition a tree into a left and right part given a predicate (left: predicate(leaf)->True, right: predicate(leaf)->False).
+
+    See also :func:`tree_transpose_map`.
+
+    >>> left, right = tree_partition(lambda x: x > 10, {'x': 7, 'y': (42, 64)})
+    >>> left
+    {'x': None, 'y': (42, 64)}
+    >>> right
+    {'x': 7, 'y': (None, None)}
+
+    Instead of :data:`None` one can also use a different sentinel value:
+
+    >>> sentinel = object()
+    >>> left, right = tree_partition(lambda x: x > 10, {'x': 7, 'y': (42, 64)}, sentinel=sentinel)
+    >>> left
+    {'x': <object object at 0x102f48bc0>, 'y': (42, 64)}
+    >>> right
+    {'x': 7, 'y': (<object object at 0x102f48bc0>, <object object at 0x102f48bc0>)}
+
+
+    Args:
+        predicate (callable): A function that takes a tree as argument, and splits/partitions it based on the predicates return value.
+        tree (pytree): A pytree to be split, with each leaf providing the first positional
+            argument to function ``predicate``.
+        sentinel (Any): A sentinel value to retain the tree structure. (default: :data:`None`)
+        is_leaf (callable, optional): An optionally specified function that will be called at each
+            flattening step. It should return a boolean, with :data:`True` stopping the traversal
+            and the whole subtree being treated as a leaf, and :data:`False` indicating the
+            flattening should traverse the current object.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+
+    Returns:
+        Two pytrees with the same structure as ``tree`` but with orthogonal leaves based on the ``predicate`` function.
+        The first pytree contains all leaves where ``predicate`` evaluates to ``True``, the second for ``False``.
+    """
+    return tree_transpose_map(
+        lambda x: (x, sentinel) if predicate(x) else (sentinel, x),  # type: ignore
+        tree,
+        inner_treespec=tree_structure((0, 0)),  # type: ignore[arg-type]
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
 
