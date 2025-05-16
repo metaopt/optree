@@ -46,6 +46,7 @@ Tree Manipulation Functions
     tree_map_with_accessor
     tree_map_with_accessor_
     tree_replace_nones
+    tree_partition
     tree_transpose
     tree_transpose_map
     tree_transpose_map_with_path
@@ -79,6 +80,7 @@ Tree Manipulation Functions
 .. autofunction:: tree_map_with_accessor
 .. autofunction:: tree_map_with_accessor_
 .. autofunction:: tree_replace_nones
+.. autofunction:: tree_partition
 .. autofunction:: tree_transpose
 .. autofunction:: tree_transpose_map
 .. autofunction:: tree_transpose_map_with_path

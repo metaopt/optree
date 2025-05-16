@@ -1056,10 +1056,11 @@ def tree_partition(
     /,
     sentinel: Any = None,
     is_leaf: Callable[[T], bool] | None = None,
+    *,
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTree:  # tuple[PyTree, PyTree]
-    """Partition a tree into a left and right part given a predicate (left: predicate(leaf)->True, right: predicate(leaf)->False).
+    """Partition a tree into a left and right part given a predicate (left: predicate->True, right: predicate->False).
 
     See also :func:`tree_transpose_map`.
 
@@ -1080,7 +1081,8 @@ def tree_partition(
 
 
     Args:
-        predicate (callable): A function that takes a tree as argument, and splits/partitions it based on the predicates return value.
+        predicate (callable): A function that takes a tree as argument, and splits/partitions
+            it based on the predicates return value.
         tree (pytree): A pytree to be split, with each leaf providing the first positional
             argument to function ``predicate``.
         sentinel (Any): A sentinel value to retain the tree structure. (default: :data:`None`)

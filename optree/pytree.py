@@ -55,6 +55,7 @@ from optree.ops import tree_map_with_path as map_with_path
 from optree.ops import tree_map_with_path_ as map_with_path_
 from optree.ops import tree_max as max  # pylint: disable=redefined-builtin
 from optree.ops import tree_min as min  # pylint: disable=redefined-builtin
+from optree.ops import tree_partition as partition
 from optree.ops import tree_paths as paths
 from optree.ops import tree_reduce as reduce
 from optree.ops import tree_replace_nones as replace_nones
@@ -89,6 +90,7 @@ __all__ = [
     'map_with_accessor',
     'map_with_accessor_',
     'replace_nones',
+    'partition',
     'transpose',
     'transpose_map',
     'transpose_map_with_path',
