@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use `pybind11::native_enum` to create enum class `PyTreeKind` if available by [@XuehaiPan](https://github.com/XuehaiPan) in [#214](https://github.com/metaopt/optree/pull/214).
 - Enable `pybind11::smart_holder` to create class `PyTreeSpec` and `PyTreeIter` if available by [@XuehaiPan](https://github.com/XuehaiPan) in [#217](https://github.com/metaopt/optree/pull/217).
 - Implement optional `tp_clear` for class `PyTreeSpec` and `PyTreeIter` by [@XuehaiPan](https://github.com/XuehaiPan) in [#218](https://github.com/metaopt/optree/pull/218).
+- Add function `tree_partition` by [@pfackeldey](https://github.com/pfackeldey) in [#222](https://github.com/metaopt/optree/pull/222).
 
 ### Changed
 
