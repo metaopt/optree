@@ -1021,7 +1021,12 @@ def tree_map_with_accessor_(
     return tree
 
 
-def tree_replace_nones(sentinel: Any, tree: PyTree[T] | None, /, namespace: str = '') -> PyTree[T]:
+def tree_replace_nones(
+    sentinel: S,
+    tree: PyTree[T | None],
+    /,
+    namespace: str = '',
+) -> PyTree[T | S]:
     """Replace :data:`None` in ``tree`` with ``sentinel``.
 
     See also :func:`tree_flatten` and :func:`tree_map`.
@@ -1041,13 +1046,38 @@ def tree_replace_nones(sentinel: Any, tree: PyTree[T] | None, /, namespace: str 
         A new pytree with the same structure as ``tree`` but with :data:`None` replaced.
     """
     if tree is None:
-        return sentinel
+        return sentinel  # type: ignore[unreachable]
     return tree_map(
         lambda x: x if x is not None else sentinel,
         tree,
         none_is_leaf=True,
         namespace=namespace,
     )
+
+
+@overload
+def tree_partition(
+    predicate: Callable[[T], bool],
+    tree: PyTree[T],
+    /,
+    is_leaf: Callable[[T], bool] | None = None,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> tuple[PyTree[T | None], PyTree[T | None]]: ...
+
+
+@overload
+def tree_partition(
+    predicate: Callable[[T], bool],
+    tree: PyTree[T],
+    /,
+    is_leaf: Callable[[T], bool] | None = None,
+    *,
+    fillvalue: S,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> tuple[PyTree[T | S], PyTree[T | S]]: ...
 
 
 def tree_partition(
