@@ -6,6 +6,15 @@ PyTree Operations
 .. automodule:: optree.pytree
     :no-members:
 
+Re-export PyTree Utilities as a Sub-module
+------------------------------------------
+
+.. autosummary::
+
+    reexport
+
+.. autofunction:: reexport
+
 Tree Operations
 ---------------
 
