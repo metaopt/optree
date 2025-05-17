@@ -1051,16 +1051,16 @@ def tree_replace_nones(sentinel: Any, tree: PyTree[T] | None, /, namespace: str 
 
 
 def tree_partition(
-    predicate: Callable[..., bool],
+    predicate: Callable[[T], bool],
     tree: PyTree[T],
     /,
-    sentinel: Any = None,
     is_leaf: Callable[[T], bool] | None = None,
     *,
+    fillvalue: S = None,  # type: ignore[assignment]
     none_is_leaf: bool = False,
     namespace: str = '',
-) -> PyTree:  # tuple[PyTree, PyTree]
-    """Partition a tree into a left and right part given a predicate (left: predicate->True, right: predicate->False).
+) -> tuple[PyTree[T | S], PyTree[T | S]]:
+    """Partition a tree into the left and right part by the given predicate function.
 
     See also :func:`tree_transpose_map`.
 
@@ -1070,26 +1070,26 @@ def tree_partition(
     >>> right
     {'x': 7, 'y': (None, None)}
 
-    Instead of :data:`None` one can also use a different sentinel value:
+    Instead of :data:`None`, one can also use a different sentinel value:
 
     >>> sentinel = object()
-    >>> left, right = tree_partition(lambda x: x > 10, {'x': 7, 'y': (42, 64)}, sentinel=sentinel)
-    >>> left
-    {'x': <object object at 0x102f48bc0>, 'y': (42, 64)}
-    >>> right
-    {'x': 7, 'y': (<object object at 0x102f48bc0>, <object object at 0x102f48bc0>)}
-
+    >>> left, right = tree_partition(lambda x: x > 10, {'x': 7, 'y': (42, 64)}, fillvalue=sentinel)
+    >>> left  # doctest: +ELLIPSIS
+    {'x': <object object at ...>, 'y': (42, 64)}
+    >>> right  # doctest: +ELLIPSIS
+    {'x': 7, 'y': (<object object at ...>, <object object at ...>)}
 
     Args:
-        predicate (callable): A function that takes a tree as argument, and splits/partitions
-            it based on the predicates return value.
+        predicate (callable): A function that takes a leaf value as argument, and splits/partitions
+            it into the left or right tree based on the predicates return value.
         tree (pytree): A pytree to be split, with each leaf providing the first positional
             argument to function ``predicate``.
-        sentinel (Any): A sentinel value to retain the tree structure. (default: :data:`None`)
         is_leaf (callable, optional): An optionally specified function that will be called at each
             flattening step. It should return a boolean, with :data:`True` stopping the traversal
             and the whole subtree being treated as a leaf, and :data:`False` indicating the
             flattening should traverse the current object.
+        fillvalue (object, optional): A sentinel value to retain the tree structure.
+            (default: :data:`None`)
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
             :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
             treespec rather than in the leaves list and :data:`None` will be remain in the result
@@ -1098,13 +1098,15 @@ def tree_partition(
             (default: :const:`''`, i.e., the global namespace)
 
     Returns:
-        Two pytrees with the same structure as ``tree`` but with orthogonal leaves based on the ``predicate`` function.
-        The first pytree contains all leaves where ``predicate`` evaluates to ``True``, the second for ``False``.
+        Two pytrees with the same structure as ``tree`` but with orthogonal leaves based on the
+        ``predicate`` function. The first pytree contains all leaves where ``predicate`` evaluates
+        to ``True``, the second for ``False``. The removed nodes in both trees are filled with
+        ``fillvalue`` to keep the original tree structure.
     """
     return tree_transpose_map(
-        lambda x: (x, sentinel) if predicate(x) else (sentinel, x),  # type: ignore
+        lambda x: (x, fillvalue) if predicate(x) else (fillvalue, x),  # type: ignore[arg-type,return-value]
         tree,
-        inner_treespec=tree_structure((0, 0)),  # type: ignore[arg-type]
+        inner_treespec=tree_structure((0, 0), none_is_leaf=none_is_leaf),  # type: ignore[arg-type]
         is_leaf=is_leaf,
         none_is_leaf=none_is_leaf,
         namespace=namespace,

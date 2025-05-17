@@ -2815,19 +2815,18 @@ def test_tree_replace_nones():
 
 
 @parametrize(
-    sentinel=[None, object()],
+    sentinel=[None, object(), (), (1, 2, 3), [1, (2, 3)]],
+    none_is_leaf=[False, True],
 )
-def test_tree_partition(sentinel):
+def test_tree_partition(sentinel, none_is_leaf):
     left, right = optree.tree_partition(
         lambda x: x > 10,
         {'x': 7, 'y': (42, 64)},
-        sentinel=sentinel,
+        fillvalue=sentinel,
+        none_is_leaf=none_is_leaf,
     )
-    left_true = {'x': sentinel, 'y': (42, 64)}
-    right_true = {'x': 7, 'y': (sentinel, sentinel)}
-
-    assert left == left_true
-    assert right == right_true
+    assert left == {'x': sentinel, 'y': (42, 64)}
+    assert right == {'x': 7, 'y': (sentinel, sentinel)}
 
 
 @parametrize(
