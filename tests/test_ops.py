@@ -2815,6 +2815,21 @@ def test_tree_replace_nones():
 
 
 @parametrize(
+    fillvalue=[None, object(), (), (1, 2, 3), [1, (2, 3)]],
+    none_is_leaf=[False, True],
+)
+def test_tree_partition(fillvalue, none_is_leaf):
+    left, right = optree.tree_partition(
+        lambda x: x > 10,
+        {'x': 7, 'y': (42, 64)},
+        fillvalue=fillvalue,
+        none_is_leaf=none_is_leaf,
+    )
+    assert left == {'x': fillvalue, 'y': (42, 64)}
+    assert right == {'x': 7, 'y': (fillvalue, fillvalue)}
+
+
+@parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
     namespace=['', 'undefined', 'namespace'],

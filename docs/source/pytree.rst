@@ -32,6 +32,7 @@ detailed documentation.
     map_with_accessor
     map_with_accessor_
     replace_nones
+    partition
     transpose
     transpose_map
     transpose_map_with_path

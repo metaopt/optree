@@ -25,6 +25,7 @@ deque
 doctest
 dtype
 eq
+fillvalue
 fmt
 forwardref
 frozenset

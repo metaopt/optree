@@ -26,9 +26,11 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import builtins
 import os
 import pathlib
 import sys
+import typing
 
 
 HERE = pathlib.Path(__file__).absolute().parent
@@ -186,13 +188,14 @@ always_use_bars_union = True
 typehints_use_signature = False
 typehints_use_signature_return = False
 
+# Workaround for missing `typing` name in globals
+builtins.typing = typing
+
 
 def typehints_formatter(annotation, config=None):
-    from typing import Union
-
     if (
-        isinstance(annotation, type(Union[int, str]))
-        and annotation.__origin__ is Union
+        isinstance(annotation, type(typing.Union[int, str]))
+        and annotation.__origin__ is typing.Union
         and hasattr(annotation, '__pytree_args__')
     ):
         param, name = annotation.__pytree_args__
