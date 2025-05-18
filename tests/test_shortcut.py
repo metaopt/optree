@@ -17,10 +17,12 @@ import importlib
 import re
 import sys
 import types
+from collections import UserList
 
 import pytest
 
 import optree
+from helpers import GLOBAL_NAMESPACE
 
 
 def test_pytree_reexports():
@@ -63,7 +65,11 @@ def test_treespec_reexports():
         assert getattr(optree.treespec, name) is getattr(optree, f'treespec_{name}')
 
 
-def test_pytree_reexport_with_invalid_module():
+def test_pytree_reexport_with_invalid_argument():
+    with pytest.raises(TypeError, match=r'The namespace must be a string'):
+        optree.pytree.reexport(namespace=123)
+    optree.pytree.reexport(namespace='', module='some_module1')
+    optree.pytree.reexport(namespace=GLOBAL_NAMESPACE, module='some_module2')
     with pytest.raises(ValueError, match=r'invalid module name'):
         optree.pytree.reexport(namespace='some-namespace', module='')
     with pytest.raises(ValueError, match=r'invalid module name'):
@@ -78,7 +84,91 @@ def test_pytree_reexport_with_invalid_module():
         optree.pytree.reexport(namespace='some-namespace', module=' abc')
 
 
-def test_pytree_reexport_with_empty_module():
+def check_reexported_module(*, reexported, module, namespace):
+    assert reexported.__name__ == module
+    assert reexported.dataclasses.__name__ == f'{module}.dataclasses'
+    assert reexported.functools.__name__ == f'{module}.functools'
+    for mod in (reexported, reexported.dataclasses, reexported.functools):
+        assert mod.__name__ in sys.modules
+        assert mod is sys.modules[mod.__name__]
+        assert importlib.import_module(mod.__name__) is mod
+        assert type(mod) is optree.pytree.ReexportedModule
+
+    assert 'dataclasses' not in reexported.__all__
+    assert 'functools' not in reexported.__all__
+    assert '__version__' not in reexported.__all__
+    assert 'reexport' not in reexported.__all__
+    assert 'dataclasses' in dir(reexported)
+    assert 'functools' in dir(reexported)
+    assert '__version__' in dir(reexported)
+    assert 'reexport' not in dir(reexported)
+    assert reexported.__version__ == optree.__version__
+    assert reexported.PyTreeSpec is optree.PyTreeSpec
+    assert reexported.PyTreeKind is optree.PyTreeKind
+    assert reexported.PyTreeEntry is optree.PyTreeEntry
+
+    with pytest.raises(AttributeError, match=r'has no attribute'):
+        _ = reexported.not_exist
+
+    for mod in (reexported, reexported.dataclasses, reexported.functools):
+        assert set(mod.__all__).issubset(dir(mod))
+        for name in dir(mod):
+            _ = getattr(mod, name)
+
+    assert reexported.functools.partial is optree.functools.partial
+
+    @reexported.dataclasses.dataclass
+    class MyDataClass:
+        x: int
+        y: int
+        z: int
+
+    class MyList(UserList):
+        pass
+
+    reexported.register_node(
+        MyList,
+        lambda x: (reversed(x), None),
+        lambda _, x: MyList(reversed(x)),
+    )
+
+    def check_roundtrip(tree):
+        leaves, treespec = optree.tree_flatten(tree)
+        assert optree.tree_unflatten(treespec, leaves) == tree
+        leaves, treespec = optree.tree_flatten(tree, namespace=namespace)
+        assert optree.tree_unflatten(treespec, leaves) == tree
+        leaves, treespec = reexported.flatten(tree)
+        assert reexported.unflatten(treespec, leaves) == tree
+        leaves, treespec = reexported.flatten(tree, namespace='')
+        assert reexported.unflatten(treespec, leaves) == tree
+
+    assert optree.tree_leaves(MyDataClass(1, 2, 3)) == [MyDataClass(1, 2, 3)]
+    assert optree.tree_leaves(MyDataClass(1, 2, 3), namespace=namespace) == [1, 2, 3]
+    assert reexported.leaves(MyDataClass(1, 2, 3)) == [1, 2, 3]
+    assert reexported.leaves(MyDataClass(1, 2, 3), namespace='') == [MyDataClass(1, 2, 3)]
+    check_roundtrip(MyDataClass(1, 2, 3))
+    assert reexported.functools.reduce(lambda x, y: x + y, MyDataClass(1, 2, 3)) == 6
+
+    assert optree.tree_leaves(MyList([1, 2, 3, 4])) == [MyList([1, 2, 3, 4])]
+    assert optree.tree_leaves(MyList([1, 2, 3, 4]), namespace=namespace) == [4, 3, 2, 1]
+    assert reexported.leaves(MyList([1, 2, 3, 4])) == [4, 3, 2, 1]
+    assert reexported.leaves(MyList([1, 2, 3, 4]), namespace='') == [MyList([1, 2, 3, 4])]
+    check_roundtrip(MyList([1, 2, 3, 4]))
+    assert reexported.functools.reduce(lambda x, y: x + y, MyList([1, 2, 3, 4])) == 10
+
+    registrations = reexported.register_node.get()
+    global_registrations = optree.register_pytree_node.get()
+    registry = registrations[MyDataClass]
+    assert registrations == optree.register_pytree_node.get(namespace=namespace)
+    assert global_registrations == reexported.register_node.get(namespace='')
+    assert len(registrations) == len(global_registrations) + 2
+    assert registry == optree.register_pytree_node.get(MyDataClass, namespace=namespace)
+    assert optree.register_pytree_node.get(MyDataClass) is None
+    assert registry == reexported.register_node.get(MyDataClass)
+    assert reexported.register_node.get(MyDataClass, namespace='') is None
+
+
+def test_pytree_reexport_without_module():
     assert importlib.import_module('test_shortcut') is sys.modules[__name__]
 
     assert f'{__name__}.pytree' not in sys.modules
@@ -93,31 +183,11 @@ def test_pytree_reexport_with_empty_module():
         import test_shortcut.pytree.functools  # noqa: F401
 
     pytree1 = optree.pytree.reexport(namespace='pytree1')
-    assert f'{__name__}.pytree' in sys.modules
-    assert f'{__name__}.pytree.dataclasses' in sys.modules
-    assert f'{__name__}.pytree.functools' in sys.modules
-    assert pytree1 is sys.modules[f'{__name__}.pytree']
-    assert pytree1.dataclasses is sys.modules[f'{__name__}.pytree.dataclasses']
-    assert pytree1.functools is sys.modules[f'{__name__}.pytree.functools']
-    assert pytree1.__name__ == f'{__name__}.pytree'
-    assert pytree1.dataclasses.__name__ == f'{__name__}.pytree.dataclasses'
-    assert pytree1.functools.__name__ == f'{__name__}.pytree.functools'
-    assert type(pytree1) is optree.pytree.ReexportedModule
-    assert type(pytree1.dataclasses) is optree.pytree.ReexportedModule
-    assert type(pytree1.functools) is optree.pytree.ReexportedModule
-    assert 'dataclasses' not in pytree1.__all__
-    assert 'functools' not in pytree1.__all__
-    assert '__version__' not in pytree1.__all__
-    assert 'reexport' not in pytree1.__all__
-    assert 'dataclasses' in dir(pytree1)
-    assert 'functools' in dir(pytree1)
-    assert '__version__' in dir(pytree1)
-    assert 'reexport' not in dir(pytree1)
-    assert pytree1.__version__ == optree.__version__
-
-    assert importlib.import_module('test_shortcut.pytree') is pytree1
-    assert importlib.import_module('test_shortcut.pytree.dataclasses') is pytree1.dataclasses
-    assert importlib.import_module('test_shortcut.pytree.functools') is pytree1.functools
+    check_reexported_module(
+        reexported=pytree1,
+        module=f'{__name__}.pytree',
+        namespace='pytree1',
+    )
 
     with pytest.raises(ValueError, match=re.escape(f"module '{__name__}.pytree' already exists")):
         optree.pytree.reexport(namespace='pytree2')
@@ -139,31 +209,11 @@ def test_pytree_reexport_with_module():
         import some_package.pytree_mod.functools  # noqa: F401
 
     pytree3 = optree.pytree.reexport(namespace='pytree3', module='some_package.pytree_mod')
-    assert 'some_package.pytree_mod' in sys.modules
-    assert 'some_package.pytree_mod.dataclasses' in sys.modules
-    assert 'some_package.pytree_mod.functools' in sys.modules
-    assert pytree3 is sys.modules['some_package.pytree_mod']
-    assert pytree3.dataclasses is sys.modules['some_package.pytree_mod.dataclasses']
-    assert pytree3.functools is sys.modules['some_package.pytree_mod.functools']
-    assert pytree3.__name__ == 'some_package.pytree_mod'
-    assert pytree3.dataclasses.__name__ == 'some_package.pytree_mod.dataclasses'
-    assert pytree3.functools.__name__ == 'some_package.pytree_mod.functools'
-    assert type(pytree3) is optree.pytree.ReexportedModule
-    assert type(pytree3.dataclasses) is optree.pytree.ReexportedModule
-    assert type(pytree3.functools) is optree.pytree.ReexportedModule
-    assert 'dataclasses' not in pytree3.__all__
-    assert 'functools' not in pytree3.__all__
-    assert '__version__' not in pytree3.__all__
-    assert 'reexport' not in pytree3.__all__
-    assert 'dataclasses' in dir(pytree3)
-    assert 'functools' in dir(pytree3)
-    assert '__version__' in dir(pytree3)
-    assert 'reexport' not in dir(pytree3)
-    assert pytree3.__version__ == optree.__version__
-
-    assert importlib.import_module('some_package.pytree_mod') is pytree3
-    assert importlib.import_module('some_package.pytree_mod.dataclasses') is pytree3.dataclasses
-    assert importlib.import_module('some_package.pytree_mod.functools') is pytree3.functools
+    check_reexported_module(
+        reexported=pytree3,
+        module='some_package.pytree_mod',
+        namespace='pytree3',
+    )
 
     with pytest.raises(
         ValueError,

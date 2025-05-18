@@ -156,7 +156,7 @@ class ReexportedModule(_ModuleType):
         extra_members: dict[str, Any] | None = None,
     ) -> None:
         doc = doc or (
-            f'Re-exports :mod:`{original.__name__}` as `:mod:`{name}` '
+            f'Re-exports :mod:`{original.__name__}` as :mod:`{name}` '
             f'with namespace :const:`{namespace!r}`.'
         )
         super().__init__(name, doc)
@@ -193,12 +193,9 @@ class ReexportedModule(_ModuleType):
         if name in self.__all_set:
             attr = getattr(self.__original, name)
             if _inspect.isfunction(attr):
-                func = self.__reexport__(attr)
-                setattr(self, name, func)
-                return func
-            if _inspect.isclass(attr):
-                setattr(self, name, attr)
-                return attr
+                attr = self.__reexport__(attr)
+            setattr(self, name, attr)
+            return attr
         raise AttributeError(f'module {self.__name__!r} has no attribute {name!r}')
 
     def __reexport__(self, func: Callable[_P, _T], /) -> Callable[_P, _T]:
@@ -219,7 +216,7 @@ class ReexportedModule(_ModuleType):
             ) -> _T:
                 return func(*args, namespace=namespace, **kwargs)  # type: ignore[arg-type]
 
-            if func.__doc__:
+            if func.__doc__:  # pragma: no branch
                 wrapped.__doc__ = func.__doc__.replace(
                     "(default: :const:`''`, i.e., the global namespace)",
                     f'(default: :const:`{self.__namespace!r}`)',
@@ -328,6 +325,14 @@ else:
         Returns:
             The re-exported module.
         """
+        # pylint: disable-next=import-outside-toplevel
+        from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
+
+        if namespace is GLOBAL_NAMESPACE:
+            namespace = ''
+        elif not isinstance(namespace, str):
+            raise TypeError(f'The namespace must be a string, got {namespace!r}.')
+
         if module is None:
             try:
                 # pylint: disable-next=protected-access
