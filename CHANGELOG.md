@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Enforce naming convention of packages with singular and plural: `optree.{accessor,integration}` -> `optree.{accessors,integrations}` by [@XuehaiPan](https://github.com/XuehaiPan) in [#209](https://github.com/metaopt/optree/pull/209).
 - Allow creating dataclass types in the global namespace by [@XuehaiPan](https://github.com/XuehaiPan) in [#212](https://github.com/metaopt/optree/pull/212).
+- Migrate to `setuptools>=77` for PEP-639 by [@XuehaiPan](https://github.com/XuehaiPan) in [#208](https://github.com/metaopt/optree/pull/208).
 
 ### Fixed
 
