@@ -142,7 +142,6 @@ if _TYPE_CHECKING:
 class ReexportedModule(_ModuleType):
     """A module that re-exports another module or object."""
 
-    __all__: list[str]
     __doc__: str
 
     def __init__(
@@ -162,10 +161,10 @@ class ReexportedModule(_ModuleType):
         )
         super().__init__(name, doc)
 
-        if __all__ is None:
+        if __all__ is None:  # pragma: no branch
             __all__ = {n for n in original.__all__ if n != 'reexport'}
         __all__ = set(__all__)
-        if __dir__ is None:
+        if __dir__ is None:  # pragma: no branch
             __dir__ = {n for n in original.__dir__() if not n.startswith('_') and n != 'reexport'}
         __dir__ = set(__dir__).intersection(__all__)
 
@@ -176,15 +175,20 @@ class ReexportedModule(_ModuleType):
 
         self.__namespace = namespace
         self.__original = original
-        self.__all__ = sorted(__all__)
+        self.__all_set = __all__
+        self.__all = tuple(sorted(__all__))
         self.__dir = sorted(__dir__)
+
+    @property
+    def __all__(self) -> tuple[str, ...]:
+        return self.__all
 
     def __dir__(self) -> list[str]:
         return self.__dir.copy()
 
     def __getattr__(self, name: str, /) -> Any:
         """Get an attribute from the re-exported module or object."""
-        if name in self.__all__:
+        if name in self.__all_set:
             attr = getattr(self.__original, name)
             if _inspect.isfunction(attr):
                 func = self.__reexport__(attr)
@@ -332,7 +336,7 @@ else:
                 except (AttributeError, ValueError):
                     caller_module = '__main__'
             module = f'{caller_module}.pytree'
-        if not _all(part.isidentifier() for part in module.split('.')):
+        if not module or not _all(part.isidentifier() for part in module.split('.')):
             raise ValueError(f'invalid module name: {module!r}')
 
         for module_name in (module, f'{module}.dataclasses', f'{module}.functools'):
@@ -359,8 +363,7 @@ else:
                 'functools': reexported_functools,
             },
         )
-        if module != '':
-            _sys.modules[module] = mod
-            _sys.modules[f'{module}.dataclasses'] = reexported_dataclasses
-            _sys.modules[f'{module}.functools'] = reexported_functools
+        _sys.modules[module] = mod
+        _sys.modules[f'{module}.dataclasses'] = reexported_dataclasses
+        _sys.modules[f'{module}.functools'] = reexported_functools
         return mod
