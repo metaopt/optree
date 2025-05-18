@@ -140,7 +140,7 @@ if _TYPE_CHECKING:
 
 
 class ReexportedModule(_ModuleType):
-    """A module that re-exports another module or object."""
+    """A module that re-exports APIs from another module."""
 
     __doc__: str
 
@@ -176,18 +176,20 @@ class ReexportedModule(_ModuleType):
         self.__namespace = namespace
         self.__original = original
         self.__all_set = __all__
-        self.__all = tuple(sorted(__all__))
+        self.__all = sorted(__all__)
         self.__dir = sorted(__dir__)
 
     @property
-    def __all__(self) -> tuple[str, ...]:
+    def __all__(self) -> list[str]:
+        """Return the list of attributes available in this module."""
         return self.__all
 
     def __dir__(self) -> list[str]:
+        """Return the list of attributes available in this module."""
         return self.__dir.copy()
 
     def __getattr__(self, name: str, /) -> Any:
-        """Get an attribute from the re-exported module or object."""
+        """Get an attribute from the re-exported module."""
         if name in self.__all_set:
             attr = getattr(self.__original, name)
             if _inspect.isfunction(attr):
@@ -200,6 +202,7 @@ class ReexportedModule(_ModuleType):
         raise AttributeError(f'module {self.__name__!r} has no attribute {name!r}')
 
     def __reexport__(self, func: Callable[_P, _T], /) -> Callable[_P, _T]:
+        """Re-export a function with the default namespace."""
         sig = _inspect.signature(func)
         if 'namespace' not in sig.parameters:
 

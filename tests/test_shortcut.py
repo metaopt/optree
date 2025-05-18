@@ -65,20 +65,22 @@ def test_treespec_reexports():
 
 def test_pytree_reexport_with_invalid_module():
     with pytest.raises(ValueError, match=r'invalid module name'):
-        optree.pytree.reexport(namespace='some-namespace', module='123')
+        optree.pytree.reexport(namespace='some-namespace', module='')
     with pytest.raises(ValueError, match=r'invalid module name'):
-        optree.pytree.reexport(namespace='some-namespace', module='abc.123')
+        optree.pytree.reexport(namespace='some-namespace', module='123abc')
+    with pytest.raises(ValueError, match=r'invalid module name'):
+        optree.pytree.reexport(namespace='some-namespace', module='abc.123def')
     with pytest.raises(ValueError, match=r'invalid module name'):
         optree.pytree.reexport(namespace='some-namespace', module='abc-def')
     with pytest.raises(ValueError, match=r'invalid module name'):
         optree.pytree.reexport(namespace='some-namespace', module=' ')
     with pytest.raises(ValueError, match=r'invalid module name'):
         optree.pytree.reexport(namespace='some-namespace', module=' abc')
-    with pytest.raises(ValueError, match=r'invalid module name'):
-        optree.pytree.reexport(namespace='some-namespace', module='')
 
 
 def test_pytree_reexport_with_empty_module():
+    assert importlib.import_module('test_shortcut') is sys.modules[__name__]
+
     assert f'{__name__}.pytree' not in sys.modules
     assert f'{__name__}.pytree.dataclasses' not in sys.modules
     assert f'{__name__}.pytree.functools' not in sys.modules
