@@ -110,7 +110,7 @@ test-command = '''make -C "{project}" test PYTHON=python PYTESTOPTS="--no-cov --
 
 [tool.mypy]
 python_version = "3.9"
-exclude = ['^tests/.*\.py$']
+exclude = ['^tests/.*\.py$', '^third-party/.*$', '^(venv|\.venv)/.*$']
 pretty = true
 show_column_numbers = true
 show_error_codes = true
@@ -134,7 +134,7 @@ no_site_packages = true
 [tool.pylint]
 main.py-version = "3.9"
 main.extension-pkg-allow-list = ["optree._C"]
-main.ignore-paths = ["^_C/$", "^tests/$"]
+main.ignore-paths = ["^_C/$", "^tests/$", "^third-party/$"]
 basic.good-names = []
 design.max-args = 7
 format.max-line-length = 120
