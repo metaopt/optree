@@ -108,7 +108,7 @@ def test_max_depth():
     dict_should_be_sorted=[False, True],
     dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_round_trip(
+def test_roundtrip(
     tree,
     none_is_leaf,
     namespace,
@@ -131,7 +131,7 @@ def test_round_trip(
     dict_should_be_sorted=[False, True],
     dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_round_trip_with_flatten_up_to(
+def test_roundtrip_with_flatten_up_to(
     tree,
     none_is_leaf,
     namespace,
@@ -684,7 +684,7 @@ def test_paths_and_accessors_with_is_leaf(
     dict_should_be_sorted=[False, True],
     dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_round_trip_is_leaf(
+def test_roundtrip_is_leaf(
     tree,
     is_leaf,
     none_is_leaf,

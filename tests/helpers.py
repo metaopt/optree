@@ -17,12 +17,14 @@
 
 import contextlib
 import dataclasses
+import functools
 import gc
 import itertools
 import platform
 import sys
 import sysconfig
 import time
+import types
 from collections import OrderedDict, UserDict, defaultdict, deque, namedtuple
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -30,11 +32,29 @@ from typing import Any, NamedTuple
 import pytest
 
 import optree
+import optree._C
 from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
 
 
 TEST_ROOT = Path(__file__).absolute().parent
 
+
+if sysconfig.get_config_var('Py_DEBUG') is None:
+    Py_DEBUG = hasattr(sys, 'gettotalrefcount')
+else:
+    Py_DEBUG = bool(int(sysconfig.get_config_var('Py_DEBUG') or '0'))
+assert Py_DEBUG == optree._C.Py_DEBUG
+skipif_pydebug = pytest.mark.skipif(
+    Py_DEBUG,
+    reason='Py_DEBUG is enabled which causes too much overhead',
+)
+
+Py_GIL_DISABLED = bool(int(sysconfig.get_config_var('Py_GIL_DISABLED') or '0'))
+assert Py_GIL_DISABLED == optree._C.Py_GIL_DISABLED
+skipif_freethreading = pytest.mark.skipif(
+    Py_GIL_DISABLED,
+    reason='Py_GIL_DISABLED is set',
+)
 
 PYPY = platform.python_implementation() == 'PyPy'
 skipif_pypy = pytest.mark.skipif(
@@ -42,7 +62,7 @@ skipif_pypy = pytest.mark.skipif(
     reason='PyPy does not support weakref and refcount correctly',
 )
 
-Py_GIL_DISABLED = sysconfig.get_config_var('Py_GIL_DISABLED') is not None
+
 NUM_GC_REPEAT = 10 if Py_GIL_DISABLED else 5
 
 
@@ -60,8 +80,13 @@ def parametrize(**argvalues):
     arguments = list(argvalues)
     argvalues = list(itertools.product(*tuple(map(argvalues.get, arguments))))
 
+    def represent(value):
+        if isinstance(value, types.FunctionType):
+            return f"<function '{value.__module__}.{value.__qualname__}'>"
+        return repr(value)
+
     ids = tuple(
-        '-'.join(f'{arg}({value!r})' for arg, value in zip(arguments, values))
+        '-'.join(f'{arg}({represent(value)})' for arg, value in zip(arguments, values))
         for values in argvalues
     )
 
@@ -69,15 +94,34 @@ def parametrize(**argvalues):
 
 
 @contextlib.contextmanager
-def recursionlimit(limit):
-    gc_collect()
-    old_limit = sys.getrecursionlimit()
-    sys.setrecursionlimit(min(old_limit, limit))
+def systrace(function):
+    old_trace = sys.gettrace()
+    sys.settrace(function)
     try:
         yield
     finally:
-        sys.setrecursionlimit(old_limit)
-        gc_collect()
+        sys.settrace(old_trace)
+
+
+@contextlib.contextmanager
+def recursionlimit(limit):
+    gc_collect()
+    with systrace(None):
+        old_limit = sys.getrecursionlimit()
+        sys.setrecursionlimit(min(old_limit, limit))
+        try:
+            yield
+        finally:
+            sys.setrecursionlimit(old_limit)
+
+
+def disable_systrace(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with systrace(None):
+            return func(*args, **kwargs)
+
+    return wrapper
 
 
 MISSING = object()

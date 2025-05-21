@@ -43,6 +43,7 @@ from helpers import (
     TREES,
     MyAnotherDict,
     MyDict,
+    disable_systrace,
     gc_collect,
     parametrize,
     recursionlimit,
@@ -55,6 +56,7 @@ from helpers import (
     reason='Only run on x86_64 and AMD64 architectures',
 )
 @skipif_pypy
+@disable_systrace
 def test_treespec_construct():
     with pytest.raises(TypeError, match=re.escape('No constructor defined!')):
         optree.PyTreeSpec()
@@ -248,6 +250,7 @@ def test_treespec_with_empty_dict_string_representation():
     assert str(optree.tree_structure({})) == r'PyTreeSpec({})'
 
 
+@disable_systrace
 def test_treespec_self_referential():
     class Holder:
         def __init__(self, value):
@@ -303,18 +306,19 @@ def test_treespec_self_referential():
     assert hash(other) == hash(other)
     assert hash(treespec) == hash(other)
 
+    gc_collect()
     if not PYPY:
         with recursionlimit(64):
             with pytest.raises(RecursionError):
                 assert treespec != other
 
-    wr = weakref.ref(treespec)
-    del treespec, key, other
-    gc_collect()
-    if not PYPY:
+        wr = weakref.ref(treespec)
+        del treespec, key, other
+        gc_collect()
         assert wr() is None
 
 
+@disable_systrace
 def test_treeiter_self_referential():
     sentinel = object()
 
@@ -485,7 +489,7 @@ def test_treespec_with_namespace():
     dict_should_be_sorted=[False, True],
     dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_treespec_pickle_round_trip(
+def test_treespec_pickle_roundtrip(
     tree,
     none_is_leaf,
     namespace,

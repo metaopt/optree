@@ -31,6 +31,7 @@ from helpers import (
     CustomTuple,
     Py_GIL_DISABLED,
     Vector2D,
+    disable_systrace,
     gc_collect,
     getrefcount,
     skipif_pypy,
@@ -161,6 +162,7 @@ def test_is_namedtuple():
 
 
 @skipif_pypy
+@disable_systrace
 def test_is_namedtuple_cache():
     Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
 
@@ -285,6 +287,7 @@ def test_namedtuple_fields():
 
 
 @skipif_pypy
+@disable_systrace
 def test_namedtuple_fields_cache():
     Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
 
@@ -412,6 +415,7 @@ def test_is_structseq():
 
 
 @skipif_pypy
+@disable_systrace
 def test_is_structseq_cache():
     Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
 
@@ -576,6 +580,7 @@ def test_structseq_fields():
 
 
 @skipif_pypy
+@disable_systrace
 def test_structseq_fields_cache():
     Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
 

@@ -42,7 +42,7 @@ dummy_partial_func = functools.partial(dummy_func, a=1)
     dict_should_be_sorted=[False, True],
     dict_session_namespace=['', 'undefined', 'namespace'],
 )
-def test_partial_round_trip(
+def test_partial_roundtrip(
     tree,
     none_is_leaf,
     namespace,
