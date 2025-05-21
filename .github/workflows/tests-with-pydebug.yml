@@ -62,7 +62,7 @@ jobs:
           - python-version: "3.12"
             python-abiflags: "td"
       fail-fast: false
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - name: Checkout
         uses: actions/checkout@v4
