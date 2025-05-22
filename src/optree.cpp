@@ -61,6 +61,16 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
     BUILDTIME_METADATA["PYPY_VERSION_NUM"] = py::int_(PYPY_VERSION_NUM);
     BUILDTIME_METADATA["PYPY_VERSION_HEX"] = py::int_(PYPY_VERSION_NUM);
 #endif
+#if defined(Py_DEBUG)
+    BUILDTIME_METADATA["Py_DEBUG"] = py::bool_(true);
+#else
+    BUILDTIME_METADATA["Py_DEBUG"] = py::bool_(false);
+#endif
+#if defined(Py_GIL_DISABLED)
+    BUILDTIME_METADATA["Py_GIL_DISABLED"] = py::bool_(true);
+#else
+    BUILDTIME_METADATA["Py_GIL_DISABLED"] = py::bool_(false);
+#endif
     BUILDTIME_METADATA["PYBIND11_VERSION_HEX"] = py::int_(PYBIND11_VERSION_HEX);
     BUILDTIME_METADATA["PYBIND11_INTERNALS_VERSION"] = py::int_(PYBIND11_INTERNALS_VERSION);
 #if defined(PYBIND11_HAS_NATIVE_ENUM)

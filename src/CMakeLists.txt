@@ -28,7 +28,7 @@ set(
     treespec/gc.cpp
 )
 
-pybind11_add_module(_C MODULE THIN_LTO "${optree_csrc}")
+pybind11_add_module(_C MODULE "${optree_csrc}")
 
 if(DEFINED Python_EXTRA_LIBRARIES)
     target_link_libraries(_C PRIVATE ${Python_EXTRA_LIBRARIES})

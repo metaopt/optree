@@ -88,8 +88,6 @@ class OptionalModuleConfigurer(CoveragePlugin):
             before.update(v)
             config.set_option(k, sorted(before))
 
-        config.set_option('report:fail_under', 0.0)
-
     def _package_pragmas(self) -> list[str]:
         importable_modules = set(filter(is_importable, self._optional_modules))
         unimportable_modules = set(self._optional_modules).difference(importable_modules)

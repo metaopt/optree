@@ -25,7 +25,14 @@ import pytest
 
 import optree
 import optree._C
-from helpers import GLOBAL_NAMESPACE, PYPY, Py_GIL_DISABLED, gc_collect, skipif_pypy
+from helpers import (
+    GLOBAL_NAMESPACE,
+    PYPY,
+    Py_GIL_DISABLED,
+    disable_systrace,
+    gc_collect,
+    skipif_pypy,
+)
 
 
 def test_register_pytree_node_class_with_no_namespace():
@@ -854,6 +861,7 @@ def test_unregister_pytree_node_namedtuple():
 
 
 @skipif_pypy
+@disable_systrace
 def test_unregister_pytree_node_no_reference_leak():  # noqa: C901
     @optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
     class MyList1(UserList):
