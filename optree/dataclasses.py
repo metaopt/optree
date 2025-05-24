@@ -62,11 +62,12 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import functools
 import inspect
 import sys
 import types
 from dataclasses import *  # noqa: F401,F403,RUF100 # pylint: disable=wildcard-import,unused-wildcard-import
-from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Callable, Literal, Protocol, TypeVar, overload
 from typing_extensions import dataclass_transform  # Python 3.11+
 
 
@@ -98,6 +99,7 @@ def field(
     compare: bool = True,
     metadata: dict[Any, Any] | None = None,
     kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
+    doc: str | None = None,  # Python 3.14+
     pytree_node: bool | None = None,
 ) -> _T: ...
 
@@ -112,6 +114,7 @@ def field(
     compare: bool = True,
     metadata: dict[Any, Any] | None = None,
     kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
+    doc: str | None = None,  # Python 3.14+
     pytree_node: bool | None = None,
 ) -> _T: ...
 
@@ -125,6 +128,7 @@ def field(
     compare: bool = True,
     metadata: dict[Any, Any] | None = None,
     kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
+    doc: str | None = None,  # Python 3.14+
     pytree_node: bool | None = None,
 ) -> Any: ...
 
@@ -139,6 +143,7 @@ def field(  # noqa: D417 # pylint: disable=function-redefined
     compare: bool = True,
     metadata: dict[Any, Any] | None = None,
     kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
+    doc: str | None = None,  # Python 3.14+
     pytree_node: bool | None = None,
 ) -> Any:
     """Field factory for :func:`dataclass`.
@@ -185,6 +190,11 @@ def field(  # noqa: D417 # pylint: disable=function-redefined
         kwargs['kw_only'] = kw_only
     elif kw_only is not dataclasses.MISSING:  # pragma: <3.10 cover
         raise TypeError("field() got an unexpected keyword argument 'kw_only'")
+
+    if sys.version_info >= (3, 14):  # pragma: >=3.14 cover
+        kwargs['doc'] = doc
+    elif doc is not None:  # pragma: <3.14 cover
+        raise TypeError("field() got an unexpected keyword argument 'doc'")
 
     if not init and pytree_node:
         raise TypeError(
@@ -354,6 +364,26 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-
     )
 
 
+class _DataclassDecorator(Protocol[_TypeT]):  # pylint: disable=too-few-public-methods
+    def __call__(  # pylint: disable=arguments-differ
+        self,
+        cls: _TypeT,
+        /,
+        *,
+        init: bool = True,
+        repr: bool = True,  # pylint: disable=redefined-builtin
+        eq: bool = True,
+        order: bool = False,
+        unsafe_hash: bool = False,
+        frozen: bool = False,
+        match_args: bool = True,
+        kw_only: bool = False,
+        slots: bool = False,
+        weakref_slot: bool = False,
+    ) -> _TypeT:
+        raise NotImplementedError
+
+
 # pylint: disable-next=function-redefined,too-many-locals,too-many-branches
 def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
     cls_name: str,
@@ -373,8 +403,9 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
     slots: bool = False,  # Python 3.10+
     weakref_slot: bool = False,  # Python 3.11+
     module: str | None = None,  # Python 3.12+
+    decorator: _DataclassDecorator[_TypeT] = dataclasses.dataclass,  # type: ignore[assignment] # Python 3.14+
     namespace: str,  # the PyTree registration namespace
-) -> type:
+) -> _TypeT:
     """Make a new dynamically created dataclass with PyTree integration.
 
     The dataclass name will be ``cls_name``. ``fields`` is an iterable of either (name), (name, type),
@@ -456,12 +487,23 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
     elif module is not None:  # pragma: <3.12 cover
         raise TypeError("make_dataclass() got an unexpected keyword argument 'module'")
 
-    cls = dataclasses.make_dataclass(
+    registered_by_decorator = False
+    if sys.version_info >= (3, 14):  # pragma: >=3.14 cover
+        if decorator in (dataclasses.dataclass, dataclass):
+            decorator = functools.partial(dataclass, namespace=namespace)
+            registered_by_decorator = True
+        make_dataclass_kwargs['decorator'] = decorator
+    elif decorator is not dataclasses.dataclass:  # pragma: <3.14 cover
+        raise TypeError("make_dataclass() got an unexpected keyword argument 'decorator'")
+
+    cls: _TypeT = dataclasses.make_dataclass(  # type: ignore[assignment]
         cls_name,
         fields=fields,
         **dataclass_kwargs,  # type: ignore[arg-type]
         **make_dataclass_kwargs,  # type: ignore[arg-type]
     )
-    dataclass_kwargs.pop('slots', None)  # already defined in `make_dataclass()`
-    dataclass_kwargs.pop('weakref_slot', None)  # already used in `make_dataclass()`
-    return dataclass(cls, **dataclass_kwargs, namespace=namespace)  # type: ignore[call-overload]
+    if not registered_by_decorator:  # pragma: <3.14 cover
+        dataclass_kwargs.pop('slots', None)  # already defined in `make_dataclass()`
+        dataclass_kwargs.pop('weakref_slot', None)  # already used in `make_dataclass()`
+        cls = dataclass(cls, **dataclass_kwargs, namespace=namespace)  # type: ignore[call-overload]
+    return cls

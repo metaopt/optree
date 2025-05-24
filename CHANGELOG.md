@@ -19,16 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enable `pybind11::smart_holder` to create class `PyTreeSpec` and `PyTreeIter` if available by [@XuehaiPan](https://github.com/XuehaiPan) in [#217](https://github.com/metaopt/optree/pull/217).
 - Implement optional `tp_clear` for class `PyTreeSpec` and `PyTreeIter` by [@XuehaiPan](https://github.com/XuehaiPan) in [#218](https://github.com/metaopt/optree/pull/218).
 - Add function `tree_partition` by [@pfackeldey](https://github.com/pfackeldey) in [#222](https://github.com/metaopt/optree/pull/222).
+- Add Python 3.14 and Python 3.14t support by [@XuehaiPan](https://github.com/XuehaiPan) in [#216](https://github.com/metaopt/optree/pull/216).
 
 ### Changed
 
 - Enforce naming convention of packages with singular and plural: `optree.{accessor,integration}` -> `optree.{accessors,integrations}` by [@XuehaiPan](https://github.com/XuehaiPan) in [#209](https://github.com/metaopt/optree/pull/209).
 - Allow creating dataclass types in the global namespace by [@XuehaiPan](https://github.com/XuehaiPan) in [#212](https://github.com/metaopt/optree/pull/212).
 - Migrate to `setuptools>=77` for PEP-639 by [@XuehaiPan](https://github.com/XuehaiPan) in [#208](https://github.com/metaopt/optree/pull/208).
+- Update minimal version of `typing-extensions` to 4.6.0 for `typing_extensions.TypeAliasType` by [@XuehaiPan](https://github.com/XuehaiPan) in [#216](https://github.com/metaopt/optree/pull/216).
 
 ### Fixed
 
 - Never call `PyType_Ready` twice and use `PyType_Modified` instead by [@XuehaiPan](https://github.com/XuehaiPan) in [#214](https://github.com/metaopt/optree/pull/214).
+- Fix `optree.typing.PyTree[T]` for Python 3.14 due to immutable `UnionType` by [@XuehaiPan](https://github.com/XuehaiPan) in [#216](https://github.com/metaopt/optree/pull/216).
 
 ### Removed
 

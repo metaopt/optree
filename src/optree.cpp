@@ -83,6 +83,11 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
 #else
     BUILDTIME_METADATA["PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT"] = py::bool_(false);
 #endif
+#if defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT)
+    BUILDTIME_METADATA["PYBIND11_HAS_SUBINTERPRETER_SUPPORT"] = py::bool_(true);
+#else
+    BUILDTIME_METADATA["PYBIND11_HAS_SUBINTERPRETER_SUPPORT"] = py::bool_(false);
+#endif
 #if defined(_GLIBCXX_USE_CXX11_ABI)
     BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] =
         // NOLINTNEXTLINE[modernize-use-bool-literals]
@@ -236,7 +241,7 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
              py::arg("obj"),
              py::pos_only());
 
-#if PYBIND11_VERSION_HEX >= 0x020E00F0  // pybind11 2.14.0
+#if PYBIND11_VERSION_HEX >= 0x03000000  // pybind11 3.0.0.dev0
 #    define def_method_pos_only(...) def(__VA_ARGS__ __VA_OPT__(, ) py::pos_only())
 #else
 #    define def_method_pos_only(...) def(__VA_ARGS__)
