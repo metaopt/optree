@@ -59,6 +59,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -250,6 +252,9 @@ jobs:
           )
           make test PYTESTOPTS="${PYTESTOPTS[*]}"
           if [[ -n "$(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp")" ]]; then
+            echo "::error::Coredump files found, indicating a crash during tests." >&2
+            echo "Coredump files:" >&2
+            ls -alh $(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp") >&2
             exit 1
           fi
 
