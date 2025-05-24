@@ -37,6 +37,9 @@ env:
   pybind11_VERSION: "stable"  # to be updated
   PYENV_ROOT: "~/.pyenv"  # to be updated
   COLUMNS: "100"
+  XDG_CACHE_HOME: "${{ github.workspace }}/.cache"
+  PIP_CACHE_DIR: "${{ github.workspace }}/.cache/pip"
+  PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
 
 jobs:
   test:
@@ -66,6 +69,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up pyenv (Unix)
         id: setup-pyenv-unix
@@ -134,7 +139,8 @@ jobs:
           fi
           echo "PYTHON_VERSION=${PYTHON_VERSION}" | tee -a "${GITHUB_ENV}"
 
-      - uses: actions/cache@v4
+      - name: Set up pyenv cache
+        uses: actions/cache@v4
         id: pyenv-cache
         with:
           path: ${{ env.PYENV_ROOT }}
@@ -199,6 +205,14 @@ jobs:
           pyenv versions
           pyenv global "$(pyenv versions | grep -F '${{ env.PYTHON_VERSION }}' | tr -d ' ')"
           pyenv rehash
+
+      - name: Set up pip cache
+        id: pip-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.PIP_CACHE_DIR }}
+          key: ${{ runner.os }}-pip-${{ github.workflow }}-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ hashFiles('pyproject.toml', '**/requirements.txt') }}
 
       - name: Set up Environment
         shell: bash
@@ -319,6 +333,9 @@ jobs:
           )
           make test PYTESTOPTS="${PYTESTOPTS[*]}"
           if [[ -n "$(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp")" ]]; then
+            echo "::error::Coredump files found, indicating a crash during tests." >&2
+            echo "Coredump files:" >&2
+            ls -alh $(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp") >&2
             exit 1
           fi
 
