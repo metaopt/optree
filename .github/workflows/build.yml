@@ -53,6 +53,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -180,12 +182,14 @@ jobs:
         run: |
           if [[ '${{ env.ALLOW_PRERELEASES }}' != 'true' &&
                 '${{ env.ALLOW_PRERELEASES }}' != 'false' ]]; then
-            echo '::error::Expect ALLOW_PRERELEASES ("${{ env.ALLOW_PRERELEASES }}") to be "true" or "false"'
+            echo '::error::Expect ALLOW_PRERELEASES ("${{ env.ALLOW_PRERELEASES }}") to be "true" or "false"' >&2
             exit 1
           fi
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Determine Python version
         shell: bash
@@ -303,6 +307,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         if: startsWith(github.ref, 'refs/tags/')
@@ -329,7 +335,7 @@ jobs:
           PACKAGE_VER="v$(python setup.py --version)"
           RELEASE_TAG="${GITHUB_REF#refs/*/}"
           if [[ "${PACKAGE_VER}" != "${RELEASE_TAG}" ]]; then
-            echo "package ver. (${PACKAGE_VER}) != release tag. (${RELEASE_TAG})"
+            echo "::error::package ver. (${PACKAGE_VER}) != release tag. (${RELEASE_TAG})" >&2
             exit 1
           fi
 
