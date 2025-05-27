@@ -40,7 +40,7 @@ env:
   PYTHON_TAG: "py3"  # to be updated
   PYTHON_VERSION: "3"  # to be updated
   _GLIBCXX_USE_CXX11_ABI: "1"
-  ALLOW_PRERELEASES: "true"
+  ALLOW_PRERELEASES: "false"
 
 jobs:
   build-sdist:
@@ -59,7 +59,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9 - 3.14"
+          python-version: "3.9 - 3.13"
           update-environment: true
 
       - name: Upgrade pip
@@ -105,8 +105,6 @@ jobs:
           - "3.12"
           - "3.13"
           - "3.13t"
-          - "3.14"
-          - "3.14t"
           - "pypy-3.9"
           - "pypy-3.10"
           - "pypy-3.11"
