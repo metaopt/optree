@@ -21,7 +21,7 @@ env:
   PYTHONUNBUFFERED: "1"
   XDG_CACHE_HOME: "${{ github.workspace }}/.cache"
   PIP_CACHE_DIR: "${{ github.workspace }}/.cache/pip"
-  PRE_COMMIT_HOME: "${{ github.workspace }}/.cache/pre-commit"
+  PRE_COMMIT_HOME: "${{ github.workspace }}/.cache/pip/.pre-commit"
   PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
 
 jobs:
@@ -40,15 +40,11 @@ jobs:
         with:
           python-version: "3.13"
           update-environment: true
-
-      - name: Set up pip cache
-        id: pip-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ env.PIP_CACHE_DIR }}
-            ${{ env.PRE_COMMIT_HOME }}
-          key: ${{ runner.os }}-pip-${{ github.workflow }}-${{ hashFiles('pyproject.toml', '.pre-commit-config.yaml', '**/requirements.txt') }}
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            **/requirements.txt
+            .pre-commit-config.yaml
 
       - name: Upgrade pip
         run: |

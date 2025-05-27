@@ -36,8 +36,6 @@ env:
   PYTHON_TAG: "py3"  # to be updated
   pybind11_VERSION: "stable"  # to be updated
   COLUMNS: "100"
-  XDG_CACHE_HOME: "${{ github.workspace }}/.cache"
-  PIP_CACHE_DIR: "${{ github.workspace }}/.cache/pip"
   PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
 
 jobs:
@@ -73,14 +71,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
           update-environment: true
           allow-prereleases: true
-
-      - name: Set up pip cache
-        id: pip-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ env.PIP_CACHE_DIR }}
-          key: ${{ runner.os }}-pip-${{ github.workflow }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', '**/requirements.txt') }}
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            **/requirements.txt
 
       - name: Set up Environment
         shell: bash
