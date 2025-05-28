@@ -54,6 +54,7 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.14"
         python-abiflags: ["d", "td"]
         exclude:
           - python-version: "3.9"

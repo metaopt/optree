@@ -44,8 +44,7 @@ install:
 
 .PHONY: install-editable install-e
 install-editable install-e:
-	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install --upgrade setuptools wheel
+	$(PYTHON) -m pip install --upgrade pip setuptools wheel
 	$(PYTHON) -m pip install --upgrade pybind11 cmake
 	OPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" \
 		CMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
@@ -58,10 +57,9 @@ uninstall:
 
 .PHONY: build
 build:
-	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install --upgrade setuptools wheel build
+	$(PYTHON) -m pip install --upgrade pip setuptools wheel build
 	find $(PROJECT_PATH) -type f -name '*.so' -delete
-	find $(PROJECT_PATH) -type f -name '*.pxd' -delete
+	find $(PROJECT_PATH) -type f -name '*.pyd' -delete
 	rm -rf *.egg-info .eggs
 	$(PYTHON) -m build --verbose
 
@@ -111,7 +109,6 @@ docs-install:
 pytest-install:
 	$(call check_pip_install,pytest)
 	$(call check_pip_install,pytest-cov)
-	$(call check_pip_install,pytest-xdist)
 	$(call check_pip_install,covdefaults)
 	$(call check_pip_install,rich)
 
@@ -260,13 +257,13 @@ lint: python-format ruff pylint mypy doctest clang-format clang-tidy cpplint add
 format: python-format-install ruff-install clang-format-install addlicense-install
 	$(PYTHON) -m ruff format $(PYTHON_FILES)
 	$(PYTHON) -m ruff check --fix --exit-zero .
-	$(CLANG_FORMAT) -style=file -i $(CXX_FILES)
+	clang-format -style=file -i $(CXX_FILES)
 	addlicense -c $(COPYRIGHT) -l apache -y 2022-$(shell date +"%Y") \
 		-ignore tests/coverage.xml $(SOURCE_FOLDERS)
 
 .PHONY: clean-python
 clean-python:
-	find . -type f -name '*.py[cod]' -delete
+	find . -type f -name '*.py[co]' -delete
 	find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
 	find . -depth -type d -name ".ruff_cache" -exec rm -r "{}" +
 	find . -depth -type d -name ".mypy_cache" -exec rm -r "{}" +
@@ -278,7 +275,7 @@ clean-python:
 clean-build:
 	rm -rf build/ dist/ cmake-build/ cmake-build-*/
 	find $(PROJECT_PATH) -type f -name '*.so' -delete
-	find $(PROJECT_PATH) -type f -name '*.pxd' -delete
+	find $(PROJECT_PATH) -type f -name '*.pyd' -delete
 	rm -rf *.egg-info .eggs
 
 .PHONY: clean

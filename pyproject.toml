@@ -26,6 +26,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
     "Operating System :: Microsoft :: Windows",
@@ -36,7 +37,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Utilities",
 ]
-dependencies = ["typing-extensions >= 4.5.0"]
+dependencies = ["typing-extensions >= 4.6.0"]
 dynamic = ["version"]
 
 [project.urls]
@@ -62,7 +63,6 @@ lint = [
 test = [
     "pytest",
     "pytest-cov",
-    "pytest-xdist",
     "covdefaults",
     "rich",
 ]

@@ -40,6 +40,7 @@ env:
   PYTHON_TAG: "py3"  # to be updated
   PYTHON_VERSION: "3"  # to be updated
   _GLIBCXX_USE_CXX11_ABI: "1"
+  ALLOW_PRERELEASES: "false"
 
 jobs:
   build-sdist:
@@ -174,6 +175,15 @@ jobs:
       fail-fast: false
     timeout-minutes: 180
     steps:
+      - name: Sanity check for variables
+        shell: bash
+        run: |
+          if [[ '${{ env.ALLOW_PRERELEASES }}' != 'true' &&
+                '${{ env.ALLOW_PRERELEASES }}' != 'false' ]]; then
+            echo '::error::Expect ALLOW_PRERELEASES ("${{ env.ALLOW_PRERELEASES }}") to be "true" or "false"' >&2
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -192,7 +202,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           update-environment: true
-          allow-prereleases: true
+          allow-prereleases: ${{ env.ALLOW_PRERELEASES == 'true' }}
 
       - name: Set up Environment
         run: |
@@ -236,6 +246,8 @@ jobs:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_ARCHS: ${{ matrix.archs }}
           CIBW_ARCHS_MACOS: ${{ matrix.archs }} universal2
+          CIBW_ENABLE: pypy cpython-freethreading ${{ env.ALLOW_PRERELEASES == 'true' && 'cpython-prerelease' || '' }}
+          CIBW_ALLOW_EMPTY: ${{ env.ALLOW_PRERELEASES }}
         with:
           package-dir: .
           output-dir: wheelhouse
@@ -245,7 +257,7 @@ jobs:
         with:
           name: wheels-${{ env.PYTHON_TAG }}-${{ runner.os }}-${{ matrix.archs }}
           path: wheelhouse/*.whl
-          if-no-files-found: error
+          if-no-files-found: ${{ env.ALLOW_PRERELEASES == 'true' && 'warn' || 'error' }}
 
   list-artifacts:
     name: List artifacts
@@ -300,7 +312,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9 - 3.13"
+          python-version: "3.9 - 3.14"
           update-environment: true
 
       - name: Upgrade pip
@@ -337,7 +349,9 @@ jobs:
         run: ls -lh dist/*
 
       - name: Publish to TestPyPI
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        if: |
+          (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') &&
+          env.ALLOW_PRERELEASES == 'false'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
@@ -348,7 +362,9 @@ jobs:
           skip-existing: true
 
       - name: Publish to PyPI
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        if: |
+          (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') &&
+          env.ALLOW_PRERELEASES == 'false'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
