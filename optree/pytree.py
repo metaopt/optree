@@ -146,6 +146,7 @@ class ReexportedModule(_ModuleType):
 
     def __init__(
         self,
+        /,
         name: str,
         *,
         namespace: str,
@@ -180,11 +181,11 @@ class ReexportedModule(_ModuleType):
         self.__dir = sorted(__dir__)
 
     @property
-    def __all__(self) -> list[str]:
+    def __all__(self, /) -> list[str]:
         """Return the list of attributes available in this module."""
         return self.__all
 
-    def __dir__(self) -> list[str]:
+    def __dir__(self, /) -> list[str]:
         """Return the list of attributes available in this module."""
         return self.__dir.copy()
 
@@ -317,8 +318,8 @@ else:
             #   ([1, 2, 3, 4.0], PyTreeSpec({'a': *, 'b': *, 'c': CustomTreeNode(Bar[()], [*, *])}, namespace='foo'))
 
         Args:
-            namespace (str): The namespace to re-export from.
-            module (str, optional): The name of the module to re-export.
+            namespace (str): The namespace to use in the re-exported module.
+            module (str, optional): The name of the re-exported module.
                 If not provided, defaults to ``<caller_module>.pytree``. The caller module is determined
                 by inspecting the stack frame.
 

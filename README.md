@@ -111,6 +111,23 @@ True
 {'b': [9], 'a': [1, 4]}
 ```
 
+To flatten [`dict`](https://docs.python.org/3/library/stdtypes.html#dict) and [`collections.defaultdict`](https://docs.python.org/3/library/collections.html#collections.defaultdict) objects with the insertion order preserved, use the `dict_insertion_ordered` context manager:
+
+```python
+>>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+>>> optree.tree_flatten(tree)
+(
+    [1, 2, 3, 4, 5],
+    PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
+)
+>>> with optree.dict_insertion_ordered(True, namespace='some-namespace'):
+...     optree.tree_flatten(tree, namespace='some-namespace')
+(
+    [2, 3, 4, 1, 5],
+    PyTreeSpec({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}, namespace='some-namespace')
+)
+```
+
 > [!TIP]
 >
 > Since OpTree v0.14.1, a new namespace `optree.pytree` is introduced as aliases for `optree.tree_*` functions. The following examples are equivalent to the above:
@@ -131,15 +148,36 @@ True
 > >>> pt.map(lambda x: x**2, {'b': [3], 'a': [1, 2]})
 > {'b': [9], 'a': [1, 4]}
 > ```
+>
+> Since OpTree v0.16.0, a re-export API `optree.pytree.reexport(...)` is available to create a new module that exports all the `optree.pytree` APIs with a given namespace.
+> This is useful for downstream libraries to create their own pytree utilities without passing the `namespace` argument explicitly.
+>
+> ```python
+> # foo/__init__.py
+> import optree
+> pytree = optree.pytree.reexport(namespace='foo')
+>
+> # foo/bar.py
+> from foo import pytree
+>
+> @pytree.dataclasses.dataclass
+> class Bar:
+>     a: int
+>     b: float
+>
+> print(pytree.flatten({'a': 1, 'b': 2, 'c': Bar(3, 4.0)}))
+> # Output:
+> #   ([1, 2, 3, 4.0], PyTreeSpec({'a': *, 'b': *, 'c': CustomTreeNode(Bar[()], [*, *])}, namespace='foo'))
+> ```
 
 ### Tree Nodes and Leaves
 
-A tree is a collection of non-leaf nodes and leaf nodes, where the leaf nodes have no children to flatten.
-`optree.tree_flatten(...)` will flatten the tree and return a list of leaf nodes while the non-leaf nodes will store in the tree specification.
+A tree is a collection of non-leaf nodes and leaf nodes, where the leaf nodes are opaque objects having no children to flatten.
+`optree.tree_flatten(...)` will flatten the tree and return a list of leaf nodes while the non-leaf nodes will store in the tree structure specification.
 
 #### Built-in PyTree Node Types
 
-OpTree out-of-box supports the following Python container types in the registry:
+OpTree out-of-box supports the following Python container types in the global registry:
 
 - [`tuple`](https://docs.python.org/3/library/stdtypes.html#tuple)
 - [`list`](https://docs.python.org/3/library/stdtypes.html#list)
@@ -151,7 +189,8 @@ OpTree out-of-box supports the following Python container types in the registry:
 - [`PyStructSequence`](https://docs.python.org/3/c-api/tuple.html#struct-sequence-objects) types created by C API [`PyStructSequence_NewType`](https://docs.python.org/3/c-api/tuple.html#c.PyStructSequence_NewType)
 
 which are considered non-leaf nodes in the tree.
-Python objects that the type is not registered will be treated as leaf nodes.
+
+Python objects that their type is not registered will be treated as leaf nodes.
 The registry lookup uses the `is` operator to determine whether the type is matched.
 So subclasses will need to explicitly register in the registry, otherwise, an object of that type will be considered a leaf.
 The [`NoneType`](https://docs.python.org/3/library/constants.html#None) is a special case discussed in section [`None` is non-leaf Node vs. `None` is Leaf](#none-is-non-leaf-node-vs-none-is-leaf).
@@ -513,7 +552,7 @@ While flattening a tree, it will remain in the tree structure definitions rather
 
 OpTree provides a keyword argument `none_is_leaf` to determine whether to consider the `None` object as a leaf, like other opaque objects.
 If `none_is_leaf=True`, the `None` object will be placed in the leaves list.
-Otherwise, the `None` object will remain in the tree specification (structure).
+Otherwise, the `None` object will remain in the tree structure specification.
 
 ```python
 >>> import torch
@@ -571,6 +610,23 @@ False
 ([1, 2, 3], PyTreeSpec(OrderedDict({'a': [*, *], 'b': [*]})))
 >>> optree.tree_flatten(OrderedDict([('b', [3]), ('a', [1, 2])]))
 ([3, 1, 2], PyTreeSpec(OrderedDict({'b': [*], 'a': [*, *]})))
+```
+
+To flatten [`builtins.dict`](https://docs.python.org/3/library/stdtypes.html#dict) and [`collections.defaultdict`](https://docs.python.org/3/library/collections.html#collections.defaultdict) objects with the insertion order preserved, use the `dict_insertion_ordered` context manager:
+
+```python
+>>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
+>>> optree.tree_flatten(tree)
+(
+    [1, 2, 3, 4, 5],
+    PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
+)
+>>> with optree.dict_insertion_ordered(True, namespace='some-namespace'):
+...     optree.tree_flatten(tree, namespace='some-namespace')
+(
+    [2, 3, 4, 1, 5],
+    PyTreeSpec({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}, namespace='some-namespace')
+)
 ```
 
 **Since OpTree v0.9.0, the key order of the reconstructed output dictionaries from `tree_unflatten` is guaranteed to be consistent with the key order of the input dictionaries in `tree_flatten`.**
