@@ -299,11 +299,14 @@ else:
         ([1, 2], PyTreeSpec({'a': *, 'b': *}))
 
         This function is useful for downstream libraries that want to re-export the pytree utilities
-        with their own namespace::
+        with their own namespace:
+
+        .. code-block:: python
 
             # foo/__init__.py
             import optree
             pytree = optree.pytree.reexport(namespace='foo')
+            del optree
 
             # foo/bar.py
             from foo import pytree
@@ -313,9 +316,20 @@ else:
                 a: int
                 b: float
 
-            print(pytree.flatten({'a': 1, 'b': 2, 'c': Bar(3, 4.0)}))
-            # Output:
-            #   ([1, 2, 3, 4.0], PyTreeSpec({'a': *, 'b': *, 'c': CustomTreeNode(Bar[()], [*, *])}, namespace='foo'))
+            # User code
+            In [1]: import foo
+
+            In [2]: foo.pytree.flatten({'a': 1, 'b': 2, 'c': foo.bar.Bar(3, 4.0)}))
+            Out[2]:
+            (
+                [1, 2, 3, 4.0],
+                PyTreeSpec({'a': *, 'b': *, 'c': CustomTreeNode(Bar[()], [*, *])}, namespace='foo')
+            )
+
+            In [3]: foo.pytree.functools.reduce(lambda x, y: x * y, {'a': 1, 'b': 2, 'c': foo.bar.Bar(3, 4.0)}))
+            Out[3]: 24.0
+
+        .. versionadded:: 0.16.0
 
         Args:
             namespace (str): The namespace to use in the re-exported module.

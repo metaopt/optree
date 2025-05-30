@@ -156,6 +156,7 @@ To flatten [`dict`](https://docs.python.org/3/library/stdtypes.html#dict) and [`
 > # foo/__init__.py
 > import optree
 > pytree = optree.pytree.reexport(namespace='foo')
+> del optree
 >
 > # foo/bar.py
 > from foo import pytree
@@ -165,9 +166,18 @@ To flatten [`dict`](https://docs.python.org/3/library/stdtypes.html#dict) and [`
 >     a: int
 >     b: float
 >
-> print(pytree.flatten({'a': 1, 'b': 2, 'c': Bar(3, 4.0)}))
-> # Output:
-> #   ([1, 2, 3, 4.0], PyTreeSpec({'a': *, 'b': *, 'c': CustomTreeNode(Bar[()], [*, *])}, namespace='foo'))
+> # User code
+> In [1]: import foo
+>
+> In [2]: foo.pytree.flatten({'a': 1, 'b': 2, 'c': foo.bar.Bar(3, 4.0)}))
+> Out[2]:
+> (
+>     [1, 2, 3, 4.0],
+>     PyTreeSpec({'a': *, 'b': *, 'c': CustomTreeNode(Bar[()], [*, *])}, namespace='foo')
+> )
+>
+> In [3]: foo.pytree.functools.reduce(lambda x, y: x * y, {'a': 1, 'b': 2, 'c': foo.bar.Bar(3, 4.0)}))
+> Out[3]: 24.0
 > ```
 
 ### Tree Nodes and Leaves

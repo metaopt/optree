@@ -474,7 +474,9 @@ def register_pytree_node_class(  # noqa: C901
         ValueError: If the type is already registered in the registry.
 
     This function is a thin wrapper around :func:`register_pytree_node`, and provides a
-    class-oriented interface::
+    class-oriented interface:
+
+    .. code-block:: python
 
         @register_pytree_node_class(namespace='foo')
         class Special:

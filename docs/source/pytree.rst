@@ -1,5 +1,5 @@
-PyTree Operations
-=================
+Simplified PyTree Utilities
+===========================
 
 .. currentmodule:: optree.pytree
 
