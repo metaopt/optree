@@ -15,13 +15,16 @@
 
 import os
 import random
-import threading
+import sys
 
 
-thread = threading.Thread(target=object)  # no-op
-thread.start()
-thread.join()
-del threading, thread
+if not sys.platform.startswith(('emscripten', 'wasi')):
+    import threading
+
+    thread = threading.Thread(target=object)  # no-op
+    thread.start()
+    thread.join()
+    del threading, thread
 
 
 os.environ['PYTHONHASHSEED'] = '0'

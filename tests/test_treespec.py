@@ -24,7 +24,6 @@ import re
 import signal
 import subprocess
 import sys
-import sysconfig
 import tempfile
 import textwrap
 import weakref
@@ -43,11 +42,13 @@ from helpers import (
     TREES,
     MyAnotherDict,
     MyDict,
+    Py_DEBUG,
     disable_systrace,
     gc_collect,
     parametrize,
     recursionlimit,
     skipif_pypy,
+    skipif_wasm,
 )
 
 
@@ -55,6 +56,7 @@ from helpers import (
     platform.machine().lower() not in ('x86_64', 'amd64'),
     reason='Only run on x86_64 and AMD64 architectures',
 )
+@skipif_wasm
 @skipif_pypy
 @disable_systrace
 def test_treespec_construct():
@@ -521,12 +523,9 @@ class Foo:
         self.y = y
 
 
+@skipif_wasm
 def test_treespec_pickle_missing_registration():
-    if (
-        sys.version_info[:2] == (3, 11)
-        and platform.system() == 'Windows'
-        and sysconfig.get_config_vars().get('EXT_SUFFIX', '').startswith('_d')
-    ):
+    if sys.version_info[:2] == (3, 11) and platform.system() == 'Windows' and Py_DEBUG:
         pytest.skip('Python 3.11 on Windows has a bug during PyStructSequence type deallocation.')
 
     optree.register_pytree_node(

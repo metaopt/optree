@@ -115,8 +115,8 @@ __all__ = [
     'prefix_errors',
 ]
 
-MAX_RECURSION_DEPTH: int = _C.MAX_RECURSION_DEPTH  # 1000
-"""Maximum recursion depth for pytree traversal. It is 1000.
+MAX_RECURSION_DEPTH: int = _C.MAX_RECURSION_DEPTH
+"""Maximum recursion depth for pytree traversal.
 
 This limit prevents infinite recursion from causing an overflow of the C stack
 and crashing Python.
