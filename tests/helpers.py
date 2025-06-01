@@ -72,8 +72,8 @@ skipif_wasm = pytest.mark.skipif(
 NUM_GC_REPEAT = 10 if Py_GIL_DISABLED else 5
 
 
-def gc_collect():
-    for _ in range(NUM_GC_REPEAT):
+def gc_collect(repeat=NUM_GC_REPEAT):
+    for _ in range(repeat):
         gc.collect()
 
 
@@ -111,8 +111,8 @@ def systrace(function):
 
 @contextlib.contextmanager
 def recursionlimit(limit):
-    gc_collect()
     with systrace(None):
+        gc_collect()
         old_limit = sys.getrecursionlimit()
         sys.setrecursionlimit(min(old_limit, limit))
         try:
