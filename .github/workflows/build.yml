@@ -152,7 +152,6 @@ jobs:
             archs: "auto32"
           - python-version: "pypy-3.11"
             archs: "auto32"
-
           # Exclude archs of other platforms
           - runner: ubuntu-latest
             archs: "ARM64"
@@ -172,6 +171,10 @@ jobs:
             archs: "ppc64le"
           - runner: windows-latest
             archs: "s390x"
+        include:
+          - runner: ubuntu-latest
+            python-version: "3.12"
+            archs: "wasm32"
       fail-fast: false
     timeout-minutes: 180
     steps:
@@ -233,6 +236,9 @@ jobs:
           fi
           echo "PYTHON_TAG=${PYTHON_TAG}" | tee -a "${GITHUB_ENV}"
           echo "CIBW_BUILD=${PYTHON_TAG}-*" | tee -a "${GITHUB_ENV}"
+          if [[ "${{ matrix.archs }}" == wasm* ]]; then
+            echo "CIBW_PLATFORM=pyodide" | tee -a "${GITHUB_ENV}"
+          fi
 
       - name: Set up QEMU
         if: runner.os == 'Linux'
@@ -285,6 +291,10 @@ jobs:
 
       - name: List distributions
         run: ls -lh dist/*
+
+      - name: Remove PyPI unsupported files
+        run: |
+          rm -f dist/*wasm*.whl
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
