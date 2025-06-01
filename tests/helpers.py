@@ -62,6 +62,12 @@ skipif_pypy = pytest.mark.skipif(
     reason='PyPy does not support weakref and refcount correctly',
 )
 
+WASM = sys.platform.startswith(('emscripten', 'wasi'))
+skipif_wasm = pytest.mark.skipif(
+    WASM,
+    reason='WASM does not support threading and multiprocessing and has limited stack size',
+)
+
 
 NUM_GC_REPEAT = 10 if Py_GIL_DISABLED else 5
 

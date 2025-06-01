@@ -34,9 +34,11 @@ from helpers import (
     SysFloatInfoType,
     assert_equal_type_and_value,
     parametrize,
+    skipif_wasm,
 )
 
 
+@skipif_wasm
 def test_warn_deprecated_import():
     env = {
         key: value

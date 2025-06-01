@@ -29,6 +29,7 @@ from helpers import (
     GLOBAL_NAMESPACE,
     PYPY,
     TREES,
+    WASM,
     Py_DEBUG,
     Py_GIL_DISABLED,
     disable_systrace,
@@ -38,7 +39,7 @@ from helpers import (
 )
 
 
-if PYPY:
+if PYPY or WASM:
     pytest.skip('Test for CPython only', allow_module_level=True)
 
 

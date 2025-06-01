@@ -48,9 +48,11 @@ from helpers import (
     is_tuple,
     never,
     parametrize,
+    skipif_wasm,
 )
 
 
+@skipif_wasm
 def test_import_no_warnings():
     env = {
         key: value

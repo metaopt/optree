@@ -17,7 +17,6 @@ limitations under the License.
 
 #pragma once
 
-#include <algorithm>      // std::min
 #include <memory>         // std::unique_ptr
 #include <optional>       // std::optional, std::nullopt
 #include <string>         // std::string
@@ -41,17 +40,12 @@ using size_t = py::size_t;
 using ssize_t = py::ssize_t;
 
 // The maximum depth of a pytree.
-#if !defined(Py_C_RECURSION_LIMIT)
-#    if !defined(Py_DEBUG)
-#        define Py_C_RECURSION_LIMIT 1000
-#    else
-#        define Py_C_RECURSION_LIMIT 500
-#    endif
-#endif
-#if !defined(PYPY_VERSION) && !(defined(MS_WINDOWS) && defined(Py_DEBUG))
-constexpr ssize_t MAX_RECURSION_DEPTH = std::min(1000, Py_C_RECURSION_LIMIT);
+#if defined(Py_DEBUG) || defined(PYPY_VERSION) ||                                                  \
+    (defined(__wasm__) || defined(__wasm32__) || defined(__wasm64__) || defined(__wasi__) ||       \
+     defined(__EMSCRIPTEN__))
+constexpr ssize_t MAX_RECURSION_DEPTH = 500;
 #else
-constexpr ssize_t MAX_RECURSION_DEPTH = std::min(500, Py_C_RECURSION_LIMIT);
+constexpr ssize_t MAX_RECURSION_DEPTH = 1000;
 #endif
 
 // Test whether the given object is a leaf node.
