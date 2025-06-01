@@ -52,6 +52,9 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
                 std::string(__FILE_RELPATH_FROM_PROJECT_ROOT__) + ")";
     mod.attr("Py_TPFLAGS_BASETYPE") = py::int_(Py_TPFLAGS_BASETYPE);
 
+    // NOLINTNEXTLINE[bugprone-macro-parentheses]
+#define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))
+
     // Meta information during build
     py::dict BUILDTIME_METADATA{};
     BUILDTIME_METADATA["PY_VERSION"] = py::str(PY_VERSION);
@@ -61,40 +64,43 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
     BUILDTIME_METADATA["PYPY_VERSION_NUM"] = py::int_(PYPY_VERSION_NUM);
     BUILDTIME_METADATA["PYPY_VERSION_HEX"] = py::int_(PYPY_VERSION_NUM);
 #endif
-#if defined(Py_DEBUG)
+#if defined(Py_DEBUG) && NONZERO_OR_EMPTY(Py_DEBUG)
     BUILDTIME_METADATA["Py_DEBUG"] = py::bool_(true);
 #else
     BUILDTIME_METADATA["Py_DEBUG"] = py::bool_(false);
 #endif
-#if defined(Py_GIL_DISABLED)
+#if defined(Py_GIL_DISABLED) && NONZERO_OR_EMPTY(Py_GIL_DISABLED)
     BUILDTIME_METADATA["Py_GIL_DISABLED"] = py::bool_(true);
 #else
     BUILDTIME_METADATA["Py_GIL_DISABLED"] = py::bool_(false);
 #endif
     BUILDTIME_METADATA["PYBIND11_VERSION_HEX"] = py::int_(PYBIND11_VERSION_HEX);
     BUILDTIME_METADATA["PYBIND11_INTERNALS_VERSION"] = py::int_(PYBIND11_INTERNALS_VERSION);
-#if defined(PYBIND11_HAS_NATIVE_ENUM)
+#if defined(PYBIND11_HAS_NATIVE_ENUM) && NONZERO_OR_EMPTY(PYBIND11_HAS_NATIVE_ENUM)
     BUILDTIME_METADATA["PYBIND11_HAS_NATIVE_ENUM"] = py::bool_(true);
 #else
     BUILDTIME_METADATA["PYBIND11_HAS_NATIVE_ENUM"] = py::bool_(false);
 #endif
-#if defined(PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT)
+#if defined(PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT) &&                                   \
+    NONZERO_OR_EMPTY(PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT)
     BUILDTIME_METADATA["PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT"] = py::bool_(true);
 #else
     BUILDTIME_METADATA["PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT"] = py::bool_(false);
 #endif
-#if defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT)
+#if defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                                \
+    NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT)
     BUILDTIME_METADATA["PYBIND11_HAS_SUBINTERPRETER_SUPPORT"] = py::bool_(true);
 #else
     BUILDTIME_METADATA["PYBIND11_HAS_SUBINTERPRETER_SUPPORT"] = py::bool_(false);
 #endif
-#if defined(_GLIBCXX_USE_CXX11_ABI)
-    BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] =
-        // NOLINTNEXTLINE[modernize-use-bool-literals]
-        py::bool_(static_cast<bool>(_GLIBCXX_USE_CXX11_ABI));
+#if defined(_GLIBCXX_USE_CXX11_ABI) && NONZERO_OR_EMPTY(_GLIBCXX_USE_CXX11_ABI)
+    BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] = py::bool_(true);
 #else
     BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] = py::bool_(false);
 #endif
+
+#undef NONZERO_OR_EMPTY
+
     mod.attr("BUILDTIME_METADATA") = std::move(BUILDTIME_METADATA);
     py::exec(
         R"py(
