@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- Handle `pybind11` macro defined as 0 instead of non-exist by [@XuehaiPan](https://github.com/XuehaiPan) in [#227](https://github.com/metaopt/optree/pull/227).
 
 ### Removed
 

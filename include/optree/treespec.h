@@ -40,7 +40,7 @@ using size_t = py::size_t;
 using ssize_t = py::ssize_t;
 
 // The maximum depth of a pytree.
-#if defined(MS_WINDOWS) || defined(Py_DEBUG) || defined(PYPY_VERSION) ||                           \
+#if defined(Py_DEBUG) || defined(PYPY_VERSION) || defined(MS_WINDOWS) ||                           \
     (defined(__wasm__) || defined(__wasm32__) || defined(__wasm64__) || defined(__wasi__) ||       \
      defined(__EMSCRIPTEN__))
 constexpr ssize_t MAX_RECURSION_DEPTH = 500;
