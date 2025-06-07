@@ -87,8 +87,7 @@ include-package-data = true
 include = ["optree", "optree.*"]
 
 [tool.setuptools.package-data]
-extension = ["*.so", "*.pyd"]
-typing = ["*.pyi", "*.typed"]
+optree = ["*.so", "*.pyd", "*.pyi", "*.typed"]
 
 # Wheel builder ################################################################
 # Reference: https://cibuildwheel.readthedocs.io
