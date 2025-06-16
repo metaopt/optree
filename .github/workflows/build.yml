@@ -112,7 +112,6 @@ jobs:
           - "3.12"
           - "3.13"
           - "3.13t"
-          - "pypy-3.9"
           - "pypy-3.10"
           - "pypy-3.11"
         archs:
@@ -127,17 +126,11 @@ jobs:
           - "ARM64"
         exclude:
           - runner: ubuntu-latest
-            python-version: "pypy-3.9"
-            archs: "ppc64le"
-          - runner: ubuntu-latest
             python-version: "pypy-3.10"
             archs: "ppc64le"
           - runner: ubuntu-latest
             python-version: "pypy-3.11"
             archs: "ppc64le"
-          - runner: ubuntu-latest
-            python-version: "pypy-3.9"
-            archs: "s390x"
           - runner: ubuntu-latest
             python-version: "pypy-3.10"
             archs: "s390x"
@@ -145,16 +138,11 @@ jobs:
             python-version: "pypy-3.11"
             archs: "s390x"
           - runner: windows-latest
-            python-version: "pypy-3.9"
-            archs: "ARM64"
-          - runner: windows-latest
             python-version: "pypy-3.10"
             archs: "ARM64"
           - runner: windows-latest
             python-version: "pypy-3.11"
             archs: "ARM64"
-          - python-version: "pypy-3.9"
-            archs: "auto32"
           - python-version: "pypy-3.10"
             archs: "auto32"
           - python-version: "pypy-3.11"
