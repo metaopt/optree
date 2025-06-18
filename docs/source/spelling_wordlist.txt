@@ -8,6 +8,7 @@ arity
 bool
 boolean
 broadcasted
+cancelled
 classmethod
 cls
 cmake

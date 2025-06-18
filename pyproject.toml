@@ -152,6 +152,7 @@ typecheck.generated-members = ["numpy.*", "torch.*"]
 max-line-length = 500
 
 [tool.codespell]
+builtin = "clear,rare,en-GB_to_en-US"
 ignore-words = "docs/source/spelling_wordlist.txt"
 
 [tool.ruff]
