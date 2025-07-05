@@ -18,7 +18,8 @@ build:
   jobs:
     post_install:
       - python -m pip install --upgrade pip setuptools
-      - python -m pip install --no-build-isolation --editable .[docs]
+      - python -m pip install --upgrade --requirement docs/requirements.txt
+      - python -m pip install --no-build-isolation --verbose --editable '.[docs]'
 
 # Optionally declare the Python requirements required to build your docs
 conda:

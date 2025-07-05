@@ -34,7 +34,6 @@ dependencies:
   # Build toolchain
   - cmake >= 3.18
   - make
-  - cxx-compiler
   - pybind11 >= 2.13.1
 
   # Documentation

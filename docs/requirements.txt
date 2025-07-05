@@ -9,6 +9,8 @@ sphinxcontrib-bibtex
 sphinx-autodoc-typehints
 docutils
 
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 jax[cpu] >= 0.4.6
 numpy
 torch

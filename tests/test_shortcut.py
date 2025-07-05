@@ -14,6 +14,7 @@
 # ==============================================================================
 
 import importlib
+import operator
 import re
 import sys
 import types
@@ -147,14 +148,14 @@ def check_reexported_module(*, reexported, module, namespace):
     assert reexported.leaves(MyDataClass(1, 2, 3)) == [1, 2, 3]
     assert reexported.leaves(MyDataClass(1, 2, 3), namespace='') == [MyDataClass(1, 2, 3)]
     check_roundtrip(MyDataClass(1, 2, 3))
-    assert reexported.functools.reduce(lambda x, y: x + y, MyDataClass(1, 2, 3)) == 6
+    assert reexported.functools.reduce(operator.add, MyDataClass(1, 2, 3)) == 6
 
     assert optree.tree_leaves(MyList([1, 2, 3, 4])) == [MyList([1, 2, 3, 4])]
     assert optree.tree_leaves(MyList([1, 2, 3, 4]), namespace=namespace) == [4, 3, 2, 1]
     assert reexported.leaves(MyList([1, 2, 3, 4])) == [4, 3, 2, 1]
     assert reexported.leaves(MyList([1, 2, 3, 4]), namespace='') == [MyList([1, 2, 3, 4])]
     check_roundtrip(MyList([1, 2, 3, 4]))
-    assert reexported.functools.reduce(lambda x, y: x + y, MyList([1, 2, 3, 4])) == 10
+    assert reexported.functools.reduce(operator.add, MyList([1, 2, 3, 4])) == 10
 
     registrations = reexported.register_node.get()
     global_registrations = optree.register_pytree_node.get()
