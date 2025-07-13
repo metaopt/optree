@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--
+- Build wheels against `pybind11` 3.0.0 by [@XuehaiPan](https://github.com/XuehaiPan) in [#231](https://github.com/metaopt/optree/pull/231).
 
 ### Fixed
 
