@@ -86,6 +86,7 @@ def cmake_context(
             [cmake, '--version'],
             stderr=subprocess.STDOUT,
             text=True,
+            encoding='utf-8',
         ).strip()
     except (OSError, subprocess.CalledProcessError):
         print(
@@ -100,6 +101,7 @@ def cmake_context(
                 [cmake, '--version'],
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding='utf-8',
             ).strip()
 
     if verbose and output:
@@ -129,9 +131,7 @@ class CMakeExtension(Extension):
         minimum_version: Version | str | None = None,
         verbose: bool = False,
     ) -> str | None:
-        cmake = os.getenv('CMAKE_COMMAND') or os.getenv('CMAKE_EXECUTABLE')
-        if not cmake:
-            cmake = shutil.which('cmake')
+        cmake = os.getenv('CMAKE_COMMAND') or os.getenv('CMAKE_EXECUTABLE') or shutil.which('cmake')
         if cmake and minimum_version is not None:
             with cmake_context(cmake, verbose=verbose):
                 try:
@@ -140,6 +140,7 @@ class CMakeExtension(Extension):
                             [cmake, '-E', 'capabilities'],
                             stderr=subprocess.DEVNULL,
                             text=True,
+                            encoding='utf-8',
                         ),
                     )
                 except (OSError, subprocess.CalledProcessError, json.JSONDecodeError):
@@ -197,7 +198,7 @@ class cmake_build_ext(build_ext):  # noqa: N801
                     'win-arm64': 'ARM64',
                 }.get(self.plat_name)
             if cmake_generator_platform:
-                cmake_args += [f'-A={cmake_generator_platform}']
+                cmake_args[:] = [f'-A={cmake_generator_platform}', *cmake_args]
 
         # Python interpreter and include/library directories
         cmake_args += [

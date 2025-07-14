@@ -97,6 +97,7 @@ def test_warn_deprecated_import():
                 [sys.executable, '-c', script],
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding='utf-8',
                 cwd=TEST_ROOT,
                 env=env,
             )

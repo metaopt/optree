@@ -66,6 +66,7 @@ def test_import_no_warnings():
             [sys.executable, '-Walways', '-Werror', '-c', 'import optree'],
             stderr=subprocess.STDOUT,
             text=True,
+            encoding='utf-8',
             cwd=TEST_ROOT,
             env=env,
         )

@@ -571,6 +571,7 @@ def test_treespec_pickle_missing_registration():
             capture_output=True,
             check=True,
             text=True,
+            encoding='utf-8',
             cwd=TEST_ROOT,
             env=env,
         )
