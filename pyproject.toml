@@ -96,11 +96,14 @@ archs = ["native"]
 enable = ["pypy", "cpython-freethreading"]
 skip = "*musllinux*"
 build-frontend = "build"
-environment = { PYTHONUNBUFFERED = "1", COLUMNS = "100" }
+environment = { PYTHONUNBUFFERED = "1" }
 environment-pass = [
     "CMAKE_CXX_STANDARD",
     "OPTREE_CXX_WERROR",
     "_GLIBCXX_USE_CXX11_ABI",
+    "COLUMNS",
+    "FORCE_COLOR",
+    "CLICOLOR_FORCE",
 ]
 test-extras = ["test"]
 test-command = '''make -C "{project}" test PYTHON=python PYTESTOPTS="--no-cov --quiet --exitfirst"'''
