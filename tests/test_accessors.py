@@ -34,11 +34,13 @@ from helpers import (
     SysFloatInfoType,
     assert_equal_type_and_value,
     parametrize,
+    skipif_ios,
     skipif_wasm,
 )
 
 
 @skipif_wasm
+@skipif_ios
 def test_warn_deprecated_import():
     env = {
         key: value

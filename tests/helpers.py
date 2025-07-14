@@ -62,6 +62,12 @@ skipif_pypy = pytest.mark.skipif(
     reason='PyPy does not support weakref and refcount correctly',
 )
 
+IOS = sys.platform.startswith(('ios', 'iphoneos', 'iphonesimulator'))
+skipif_ios = pytest.mark.skipif(
+    IOS,
+    reason='iOS does not support subprocesses',
+)
+
 WASM = sys.platform.startswith(('emscripten', 'wasi'))
 skipif_wasm = pytest.mark.skipif(
     WASM,
