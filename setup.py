@@ -183,8 +183,8 @@ class cmake_build_ext(build_ext):  # noqa: N801
             cmake_args.append(f'-DPython_EXTRA_LIBRARIES={";".join(self.libraries)}')
 
         # Cross-compilation support
-        if platform.system() == 'Darwin':
-            # macOS - respect ARCHFLAGS if set
+        if platform.system() in ('Darwin', 'iOS'):
+            # macOS/iOS - respect ARCHFLAGS if set
             archs = re.findall(r'-arch\s+(\S+)', os.getenv('ARCHFLAGS', ''))
             if archs:
                 cmake_args.append(f'-DCMAKE_OSX_ARCHITECTURES={";".join(archs)}')

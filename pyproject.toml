@@ -105,8 +105,10 @@ environment-pass = [
     "FORCE_COLOR",
     "CLICOLOR_FORCE",
 ]
+xbuild-tools = ["cmake"]
 test-extras = ["test"]
-test-command = '''make -C "{project}" test PYTHON=python PYTESTOPTS="--no-cov --quiet --exitfirst"'''
+test-sources = ["pyproject.toml", "tests"]
+test-command = '''python -m pytest --showlocals --no-cov --exitfirst tests'''
 
 # Linter tools #################################################################
 
