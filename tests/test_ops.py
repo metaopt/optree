@@ -48,11 +48,13 @@ from helpers import (
     is_tuple,
     never,
     parametrize,
+    skipif_ios,
     skipif_wasm,
 )
 
 
 @skipif_wasm
+@skipif_ios
 def test_import_no_warnings():
     env = {
         key: value
@@ -64,6 +66,7 @@ def test_import_no_warnings():
             [sys.executable, '-Walways', '-Werror', '-c', 'import optree'],
             stderr=subprocess.STDOUT,
             text=True,
+            encoding='utf-8',
             cwd=TEST_ROOT,
             env=env,
         )

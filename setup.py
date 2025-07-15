@@ -86,6 +86,7 @@ def cmake_context(
             [cmake, '--version'],
             stderr=subprocess.STDOUT,
             text=True,
+            encoding='utf-8',
         ).strip()
     except (OSError, subprocess.CalledProcessError):
         print(
@@ -100,6 +101,7 @@ def cmake_context(
                 [cmake, '--version'],
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding='utf-8',
             ).strip()
 
     if verbose and output:
@@ -129,9 +131,7 @@ class CMakeExtension(Extension):
         minimum_version: Version | str | None = None,
         verbose: bool = False,
     ) -> str | None:
-        cmake = os.getenv('CMAKE_COMMAND') or os.getenv('CMAKE_EXECUTABLE')
-        if not cmake:
-            cmake = shutil.which('cmake')
+        cmake = os.getenv('CMAKE_COMMAND') or os.getenv('CMAKE_EXECUTABLE') or shutil.which('cmake')
         if cmake and minimum_version is not None:
             with cmake_context(cmake, verbose=verbose):
                 try:
@@ -140,6 +140,7 @@ class CMakeExtension(Extension):
                             [cmake, '-E', 'capabilities'],
                             stderr=subprocess.DEVNULL,
                             text=True,
+                            encoding='utf-8',
                         ),
                     )
                 except (OSError, subprocess.CalledProcessError, json.JSONDecodeError):
@@ -172,22 +173,20 @@ class cmake_build_ext(build_ext):  # noqa: N801
             f'-DCMAKE_BUILD_TYPE={config}',
             f'-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{config.upper()}={ext_path.parent}',
             f'-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_{config.upper()}={build_temp}',
-            f'-DPython_EXECUTABLE={sys.executable}',
-            f'-DPython_INCLUDE_DIR={sysconfig.get_path("platinclude")}',
         ]
-        if self.include_dirs:
-            cmake_args.append(f'-DPython_EXTRA_INCLUDE_DIRS={";".join(self.include_dirs)}')
-        if self.library_dirs:
-            cmake_args.append(f'-DPython_EXTRA_LIBRARY_DIRS={";".join(self.library_dirs)}')
-        if self.libraries:
-            cmake_args.append(f'-DPython_EXTRA_LIBRARIES={";".join(self.libraries)}')
 
         # Cross-compilation support
+        cmake_system_name = os.getenv('CMAKE_SYSTEM_NAME')
+        if cmake_system_name:
+            cmake_args += [f'-DCMAKE_SYSTEM_NAME={cmake_system_name}']
+        cmake_osx_sysroot = os.getenv('CMAKE_OSX_SYSROOT')
+        if cmake_osx_sysroot:
+            cmake_args += [f'-DCMAKE_OSX_SYSROOT={cmake_osx_sysroot}']
         if platform.system() == 'Darwin':
             # macOS - respect ARCHFLAGS if set
             archs = re.findall(r'-arch\s+(\S+)', os.getenv('ARCHFLAGS', ''))
             if archs:
-                cmake_args.append(f'-DCMAKE_OSX_ARCHITECTURES={";".join(archs)}')
+                cmake_args += [f'-DCMAKE_OSX_ARCHITECTURES={";".join(archs)}']
         elif platform.system() == 'Windows':
             # Windows - set correct CMAKE_GENERATOR_PLATFORM
             cmake_generator_platform = os.getenv('CMAKE_GENERATOR_PLATFORM')
@@ -199,24 +198,35 @@ class cmake_build_ext(build_ext):  # noqa: N801
                     'win-arm64': 'ARM64',
                 }.get(self.plat_name)
             if cmake_generator_platform:
-                cmake_args.append(f'-A={cmake_generator_platform}')
+                cmake_args[:] = [f'-A={cmake_generator_platform}', *cmake_args]
+
+        # Python interpreter and include/library directories
+        cmake_args += [
+            f'-DPython_EXECUTABLE={sys.executable}',
+            f'-DPython_INCLUDE_DIR={sysconfig.get_path("platinclude")}',
+        ]
+        if self.include_dirs:
+            cmake_args += [f'-DPython_EXTRA_INCLUDE_DIRS={";".join(self.include_dirs)}']
+        if self.library_dirs:
+            cmake_args += [f'-DPython_EXTRA_LIBRARY_DIRS={";".join(self.library_dirs)}']
+        if self.libraries:
+            cmake_args += [f'-DPython_EXTRA_LIBRARIES={";".join(self.libraries)}']
 
         pybind11_dir = os.getenv('pybind11_DIR', '')  # noqa: SIM112
         if pybind11_dir:
-            cmake_args.append(f'-Dpybind11_DIR={pybind11_dir}')
+            cmake_args += [f'-Dpybind11_DIR={pybind11_dir}']
         else:
             with contextlib.suppress(ImportError):
                 import pybind11  # pylint: disable=import-outside-toplevel
 
-                cmake_args.append(f'-Dpybind11_DIR={pybind11.get_cmake_dir()}')
+                cmake_args += [f'-Dpybind11_DIR={pybind11.get_cmake_dir()}']
 
         build_args = ['--config', config]
         if 'CMAKE_BUILD_PARALLEL_LEVEL' not in os.environ and bool(getattr(self, 'parallel', 0)):
-            build_args.extend(['--parallel', str(self.parallel)])
+            build_args += ['--parallel', str(self.parallel)]
         else:
-            build_args.append('--parallel')
-
-        build_args.extend(['--target', ext.target, '--'])
+            build_args += ['--parallel']
+        build_args += ['--target', ext.target, '--']
 
         self.mkpath(str(build_temp))
         with cmake_context(cmake, dry_run=self.dry_run, verbose=True):

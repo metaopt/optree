@@ -45,6 +45,9 @@ env:
   PYTHON_TAG: "py3"  # to be updated
   PYTHON_VERSION: "3"  # to be updated
   _GLIBCXX_USE_CXX11_ABI: "1"
+  COLUMNS: "100"
+  FORCE_COLOR: "1"
+  CLICOLOR_FORCE: "1"
   ALLOW_PRERELEASES: "false"
 
 jobs:
@@ -167,6 +170,12 @@ jobs:
           - runner: windows-latest
             archs: "s390x"
         include:
+          - runner: macos-latest
+            python-version: "3.13"
+            archs: "arm64_iphoneos"
+          - runner: macos-latest
+            python-version: "3.13"
+            archs: "arm64_iphonesimulator"
           - runner: ubuntu-latest
             python-version: "3.12"
             archs: "wasm32"
@@ -203,8 +212,12 @@ jobs:
           allow-prereleases: ${{ env.ALLOW_PRERELEASES == 'true' }}
 
       - name: Set up Environment
+        shell: bash
         run: |
           python -m pip install --upgrade pip setuptools
+          if [[ "${{ runner.os }}" == 'macOS' ]]; then
+            brew update --quiet && brew install --formula cmake
+          fi
 
       - name: Set __release__
         if: |
@@ -231,7 +244,9 @@ jobs:
           fi
           echo "PYTHON_TAG=${PYTHON_TAG}" | tee -a "${GITHUB_ENV}"
           echo "CIBW_BUILD=${PYTHON_TAG}-*" | tee -a "${GITHUB_ENV}"
-          if [[ "${{ matrix.archs }}" == wasm* ]]; then
+          if [[ "${{ matrix.archs }}" == *iphone* ]]; then
+            echo "CIBW_PLATFORM=ios" | tee -a "${GITHUB_ENV}"
+          elif [[ "${{ matrix.archs }}" == wasm* ]]; then
             echo "CIBW_PLATFORM=pyodide" | tee -a "${GITHUB_ENV}"
           fi
 

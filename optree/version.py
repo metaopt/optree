@@ -38,6 +38,7 @@ if not __release__:
                 cwd=root_dir,
                 stderr=subprocess.DEVNULL,
                 text=True,
+                encoding='utf-8',
             )
             .strip()
             .lstrip('v')
