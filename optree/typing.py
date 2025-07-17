@@ -61,7 +61,7 @@ from typing_extensions import (
     TypeAlias,  # Python 3.10+
     TypeAliasType,  # Python 3.12+
 )
-from weakref import WeakKeyDictionary  # pylint: disable=wrong-import-order
+from weakref import WeakKeyDictionary
 
 import optree._C as _C
 from optree._C import PyTreeKind, PyTreeSpec
