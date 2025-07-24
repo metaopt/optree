@@ -68,7 +68,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9 - 3.13"
+          python-version: "3.9 - 3.14"
           update-environment: true
 
       - name: Upgrade pip
@@ -115,6 +115,8 @@ jobs:
           - "3.12"
           - "3.13"
           - "3.13t"
+          - "3.14"
+          - "3.14t"
           - "pypy-3.10"
           - "pypy-3.11"
         archs:
@@ -209,7 +211,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           update-environment: true
-          allow-prereleases: ${{ env.ALLOW_PRERELEASES == 'true' }}
+          allow-prereleases: true
 
       - name: Set up Environment
         shell: bash
@@ -257,7 +259,7 @@ jobs:
           platforms: all
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.0
+        uses: pypa/cibuildwheel@v3.1
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_ARCHS: ${{ matrix.archs }}
