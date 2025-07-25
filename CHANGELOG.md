@@ -13,6 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+-
+
+### Changed
+
+-
+
+### Fixed
+
+-
+
+### Removed
+
+-
+
+------
+
+## [0.17.0] - 2025-07-25
+
+### Added
+
 - Add WASM support by [@XuehaiPan](https://github.com/XuehaiPan) in [#226](https://github.com/metaopt/optree/pull/226).
 - Bump `cibuildwheel` from 2.23 to 3.0 by [@dependabot](https://docs.github.com/en/code-security/dependabot) in [#228](https://github.com/metaopt/optree/pull/228).
 - Add iOS support by [@XuehaiPan](https://github.com/XuehaiPan) in [#232](https://github.com/metaopt/optree/pull/232).
@@ -448,7 +468,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/metaopt/optree/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/metaopt/optree/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/metaopt/optree/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/metaopt/optree/compare/v0.14.0...v0.14.1
