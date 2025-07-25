@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add WASM support by [@XuehaiPan](https://github.com/XuehaiPan) in [#226](https://github.com/metaopt/optree/pull/226).
 - Bump `cibuildwheel` from 2.23 to 3.0 by [@dependabot](https://docs.github.com/en/code-security/dependabot) in [#228](https://github.com/metaopt/optree/pull/228).
 - Add iOS support by [@XuehaiPan](https://github.com/XuehaiPan) in [#232](https://github.com/metaopt/optree/pull/232).
+- Build Python 3.14 and 3.14t wheels in CI by [@XuehaiPan](https://github.com/XuehaiPan) in [#233](https://github.com/metaopt/optree/pull/233).
 
 ### Changed
 

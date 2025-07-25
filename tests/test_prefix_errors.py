@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-# pylint: disable=missing-function-docstring,invalid-name,wrong-import-order
+# pylint: disable=missing-function-docstring,invalid-name
 
 import random
 import re

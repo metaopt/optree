@@ -127,7 +127,7 @@ test-command = '''python -m pytest --showlocals --no-cov --exitfirst tests'''
 
 [tool.mypy]
 python_version = "3.9"
-exclude = ['^tests/.*\.py$', '^third-party/.*$', '^(venv|\.venv)/.*$']
+exclude = ['^tests/.*\.py$', '^(third|3rd)[_\-]?party/.*$', '^\.?venv/.*$']
 pretty = true
 show_column_numbers = true
 show_error_codes = true
@@ -151,17 +151,18 @@ no_site_packages = true
 [tool.pylint]
 main.py-version = "3.9"
 main.extension-pkg-allow-list = ["optree._C"]
-main.ignore-paths = ["^_C/$", "^tests/$", "^third-party/$"]
+main.ignore-paths = ['^tests/$', '^(third|3rd)[_\-]?party/$']
 basic.good-names = []
 design.max-args = 7
 format.max-line-length = 120
-"messages control".disable = [
-    "duplicate-code",
+messages-control.disable = [
     "consider-using-from-import",
+    "duplicate-code",
     "unpacking-non-sequence",
     "unsubscriptable-object",
+    "wrong-import-order",
 ]
-"messages control".enable = ["c-extension-no-member"]
+messages-control.enable = ["c-extension-no-member"]
 spelling.spelling-dict = "en_US"
 spelling.spelling-private-dict-file = "docs/source/spelling_wordlist.txt"
 typecheck.generated-members = ["numpy.*", "torch.*"]
