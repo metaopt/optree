@@ -144,6 +144,12 @@ jobs:
             python-version: "pypy-3.11"
             archs: "s390x"
           - runner: windows-latest
+            python-version: "3.9"
+            archs: "ARM64"
+          - runner: windows-latest
+            python-version: "3.10"
+            archs: "ARM64"
+          - runner: windows-latest
             python-version: "pypy-3.10"
             archs: "ARM64"
           - runner: windows-latest
