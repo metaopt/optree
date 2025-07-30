@@ -96,7 +96,7 @@ archs = ["native"]
 enable = ["pypy", "cpython-freethreading"]
 skip = "*musllinux*"
 build-frontend = "build"
-environment = { PYTHONUNBUFFERED = "1" }
+environment = { PYTHONDEVMODE = "1", PYTHONUNBUFFERED = "1" }
 environment-pass = [
     "CMAKE_CXX_STANDARD",
     "OPTREE_CXX_WERROR",
@@ -107,21 +107,24 @@ environment-pass = [
 ]
 xbuild-tools = ["cmake"]
 test-extras = ["test"]
-test-command = '''make -C "{project}" test PYTHON=python PYTESTOPTS="--no-cov --quiet --exitfirst"'''
+test-sources = ["pyproject.toml", "tests"]
+test-command = [
+    '''python -m pytest --version''',
+    '''python -Walways -Werror -c "import optree"''',
+    '''python -Walways -Werror -c "import rich, optree._C; rich.inspect(optree._C, value=True, methods=True)"''',
+    '''python -m pytest -Walways --color=yes --showlocals --no-cov --exitfirst tests''',
+]
+ios.test-command = '''python -m pytest -Walways --color=yes --showlocals --no-cov --exitfirst tests'''
 
 [[tool.cibuildwheel.overrides]]
 select = "*iphoneos*"
 inherit.environment = "append"
 environment = { CMAKE_SYSTEM_NAME = "iOS", CMAKE_OSX_SYSROOT = "iphoneos" }
-test-sources = ["pyproject.toml", "tests"]
-test-command = '''python -m pytest --showlocals --no-cov --exitfirst tests'''
 
 [[tool.cibuildwheel.overrides]]
 select = "*iphonesimulator*"
 inherit.environment = "append"
 environment = { CMAKE_SYSTEM_NAME = "iOS", CMAKE_OSX_SYSROOT = "iphonesimulator" }
-test-sources = ["pyproject.toml", "tests"]
-test-command = '''python -m pytest --showlocals --no-cov --exitfirst tests'''
 
 # Linter tools #################################################################
 
