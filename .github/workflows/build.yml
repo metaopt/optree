@@ -183,7 +183,13 @@ jobs:
             python-version: "3.13"
             archs: "arm64_iphoneos"
           - runner: macos-latest
+            python-version: "3.13t"
+            archs: "arm64_iphoneos"
+          - runner: macos-latest
             python-version: "3.13"
+            archs: "arm64_iphonesimulator"
+          - runner: macos-latest
+            python-version: "3.13t"
             archs: "arm64_iphonesimulator"
           - runner: ubuntu-latest
             python-version: "3.12"
