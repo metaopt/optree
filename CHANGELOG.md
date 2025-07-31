@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
+- Use ARM-based GHA runners to build ARM wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#234](https://github.com/metaopt/optree/pull/234).
 
 ### Changed
 
@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
--
+- Remove CPython 3.9/3.10 wheels for Windows ARM64 due to unavailability of official Python distribution by [@XuehaiPan](https://github.com/XuehaiPan) in [#234](https://github.com/metaopt/optree/pull/234).
 
 ------
 
