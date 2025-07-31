@@ -99,6 +99,8 @@ build-frontend = "build"
 environment = { PYTHONDEVMODE = "1", PYTHONUNBUFFERED = "1" }
 environment-pass = [
     "CMAKE_CXX_STANDARD",
+    "CMAKE_SYSTEM_NAME",
+    "CMAKE_OSX_SYSROOT",
     "OPTREE_CXX_WERROR",
     "_GLIBCXX_USE_CXX11_ABI",
     "COLUMNS",
@@ -115,16 +117,6 @@ test-command = [
     '''python -m pytest -Walways --color=yes --showlocals --no-cov --exitfirst tests''',
 ]
 ios.test-command = '''python -m pytest -Walways --color=yes --showlocals --no-cov --exitfirst tests'''
-
-[[tool.cibuildwheel.overrides]]
-select = "*iphoneos*"
-inherit.environment = "append"
-environment = { CMAKE_SYSTEM_NAME = "iOS", CMAKE_OSX_SYSROOT = "iphoneos" }
-
-[[tool.cibuildwheel.overrides]]
-select = "*iphonesimulator*"
-inherit.environment = "append"
-environment = { CMAKE_SYSTEM_NAME = "iOS", CMAKE_OSX_SYSROOT = "iphonesimulator" }
 
 # Linter tools #################################################################
 

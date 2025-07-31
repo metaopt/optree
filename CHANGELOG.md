@@ -13,8 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Use ARM-based GHA runner to build ARM wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#234](https://github.com/metaopt/optree/pull/234).
-- Add CPython 3.13t wheel for iOS by [@XuehaiPan](https://github.com/XuehaiPan) in [#234](https://github.com/metaopt/optree/pull/234).
+- Use ARM-based GHA runners to build ARM wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#234](https://github.com/metaopt/optree/pull/234).
 
 ### Changed
 
