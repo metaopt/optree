@@ -108,6 +108,8 @@ environment-pass = [
     "CLICOLOR_FORCE",
 ]
 xbuild-tools = ["cmake"]
+before-build = "env"
+windows.before-build = "set"
 test-extras = ["test"]
 test-sources = ["pyproject.toml", "tests"]
 test-command = [
