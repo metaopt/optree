@@ -49,7 +49,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     GetCxxModule(mod);
 
     mod.doc() = "Optimized PyTree Utilities. (C extension module built from " +
-                std::string(__FILE_RELPATH_FROM_PROJECT_ROOT__) + ")";
+                std::string(RelpathFromProjectRoot()) + ")";
     mod.attr("Py_TPFLAGS_BASETYPE") = py::int_(Py_TPFLAGS_BASETYPE);
 
     // Meta information during build
