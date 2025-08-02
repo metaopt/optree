@@ -19,7 +19,7 @@ limitations under the License.
 
 #include <exception>      // std::rethrow_exception, std::current_exception
 #include <string>         // std::string
-#include <type_traits>    // std::enable_if_t, std::is_base_of_v
+#include <type_traits>    // std::is_base_of_v
 #include <unordered_map>  // std::unordered_map
 #include <utility>        // std::move, std::pair, std::make_pair
 
@@ -105,15 +105,19 @@ inline Py_ALWAYS_INLINE py::ssize_t DictGetSize(const py::handle &dict) {
 #endif
 }
 
-template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, T>>>
-inline Py_ALWAYS_INLINE T TupleGetItemAs(const py::handle &tuple, const py::ssize_t &index) {
+template <typename T>
+inline Py_ALWAYS_INLINE T TupleGetItemAs(const py::handle &tuple, const py::ssize_t &index)
+    requires(std::is_base_of_v<py::object, T>)
+{
     return py::reinterpret_borrow<T>(PyTuple_GET_ITEM(tuple.ptr(), index));
 }
 inline Py_ALWAYS_INLINE py::object TupleGetItem(const py::handle &tuple, const py::ssize_t &index) {
     return TupleGetItemAs<py::object>(tuple, index);
 }
-template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, T>>>
-inline Py_ALWAYS_INLINE T ListGetItemAs(const py::handle &list, const py::ssize_t &index) {
+template <typename T>
+inline Py_ALWAYS_INLINE T ListGetItemAs(const py::handle &list, const py::ssize_t &index)
+    requires(std::is_base_of_v<py::object, T>)
+{
 #if PY_VERSION_HEX >= 0x030D00A4  // Python 3.13.0a4
     PyObject * const item = PyList_GetItemRef(list.ptr(), index);
     if (item == nullptr) [[unlikely]] {
@@ -127,8 +131,10 @@ inline Py_ALWAYS_INLINE T ListGetItemAs(const py::handle &list, const py::ssize_
 inline Py_ALWAYS_INLINE py::object ListGetItem(const py::handle &list, const py::ssize_t &index) {
     return ListGetItemAs<py::object>(list, index);
 }
-template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, T>>>
-inline Py_ALWAYS_INLINE T DictGetItemAs(const py::handle &dict, const py::handle &key) {
+template <typename T>
+inline Py_ALWAYS_INLINE T DictGetItemAs(const py::handle &dict, const py::handle &key)
+    requires(std::is_base_of_v<py::object, T>)
+{
 #if PY_VERSION_HEX >= 0x030D00A1  // Python 3.13.0a1
     PyObject *value = nullptr;
     if (PyDict_GetItemRef(dict.ptr(), key.ptr(), &value) < 0) [[unlikely]] {
