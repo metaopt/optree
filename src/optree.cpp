@@ -17,6 +17,7 @@ limitations under the License.
 
 #include "optree/optree.h"
 
+#include <format>      // std::format
 #include <functional>  // std::{not_,}equal_to, std::less{,_equal}, std::greater{,_equal}
 #include <memory>      // std::unique_ptr
 #include <optional>    // std::optional, std::nullopt
@@ -34,7 +35,7 @@ limitations under the License.
 namespace optree {
 
 py::module_ GetCxxModule(const std::optional<py::module_>& module) {
-    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::module_> storage;
+    constinit static py::gil_safe_call_once_and_store<py::module_> storage;
     return storage
         .call_once_and_store_result([&module]() -> py::module_ {
             EXPECT_TRUE(module, "The module must be provided.");
@@ -48,8 +49,8 @@ void BuildModule(py::module_& mod) {  // NOLINT[runtime/references]
 
     GetCxxModule(mod);
 
-    mod.doc() = "Optimized PyTree Utilities. (C extension module built from " +
-                std::string(__FILE_RELPATH_FROM_PROJECT_ROOT__) + ")";
+    mod.doc() = std::format("Optimized PyTree Utilities. (C extension module built from {})",
+                            RelpathFromProjectRoot());
     mod.attr("Py_TPFLAGS_BASETYPE") = py::int_(Py_TPFLAGS_BASETYPE);
 
     // NOLINTNEXTLINE[bugprone-macro-parentheses]

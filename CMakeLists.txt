@@ -39,8 +39,8 @@ endif()
 if(NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 20)  # for likely/unlikely attributes
 endif()
-if (CMAKE_CXX_STANDARD VERSION_LESS 17)
-    message(FATAL_ERROR "C++17 or higher is required")
+if (CMAKE_CXX_STANDARD VERSION_LESS 20)
+    message(FATAL_ERROR "C++20 or higher is required")
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "Use C++ standard: C++${CMAKE_CXX_STANDARD}")
@@ -281,7 +281,9 @@ foreach(
     PYTHON_IS_DEBUG
     SETUPTOOLS_EXT_SUFFIX
 )
-    message(STATUS "Use ${varname}: \"${${varname}}\"")
+    if(NOT "${${varname}}" STREQUAL "")
+        message(STATUS "Use ${varname}: \"${${varname}}\"")
+    endif()
 endforeach()
 
 include_directories("${CMAKE_SOURCE_DIR}/include")
