@@ -16,6 +16,7 @@ limitations under the License.
 */
 
 #include <optional>   // std::optional
+#include <span>       // std::span
 #include <sstream>    // std::ostringstream
 #include <stdexcept>  // std::runtime_error
 #include <utility>    // std::move
@@ -235,8 +236,8 @@ py::object PyTreeSpec::WalkImpl(const py::iterable &leaves,
                 } else [[unlikely]] {
                     const py::object out =
                         MakeNode(node,
-                                 node.arity > 0 ? &agenda[size - node.arity] : nullptr,
-                                 node.arity);
+                                 node.arity > 0 ? std::span(&agenda[size - node.arity], node.arity)
+                                                : std::span<py::object>{});
                     agenda.resize(size - node.arity);
                     agenda.emplace_back(
                         f_node ? EVALUATE_WITH_LOCK_HELD2((*f_node)(out), out, *f_node) : out);
