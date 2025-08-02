@@ -15,8 +15,8 @@ limitations under the License.
 ================================================================================
 */
 
+#include <format>   // std::format
 #include <span>     // std::span
-#include <sstream>  // std::ostringstream
 #include <utility>  // std::move
 
 #include "optree/optree.h"
@@ -36,10 +36,10 @@ py::object PyTreeSpec::UnflattenImpl(const Span &leaves) const {
         switch (node.kind) {
             case PyTreeKind::Leaf: {
                 if (it == leaves.end()) [[unlikely]] {
-                    std::ostringstream oss{};
-                    oss << "Too few leaves for PyTreeSpec; expected: " << GetNumLeaves()
-                        << ", got: " << num_leaves << ".";
-                    throw py::value_error(oss.str());
+                    throw py::value_error(
+                        std::format("Too few leaves for PyTreeSpec; expected: {}, got: {}.",
+                                    GetNumLeaves(),
+                                    num_leaves));
                 }
                 agenda.emplace_back(py::reinterpret_borrow<py::object>(*it));
                 ++it;
@@ -73,9 +73,8 @@ py::object PyTreeSpec::UnflattenImpl(const Span &leaves) const {
         }
     }
     if (it != leaves.end()) [[unlikely]] {
-        std::ostringstream oss{};
-        oss << "Too many leaves for PyTreeSpec; expected: " << GetNumLeaves() << ".";
-        throw py::value_error(oss.str());
+        throw py::value_error(
+            std::format("Too many leaves for PyTreeSpec; expected: {}.", GetNumLeaves()));
     }
     EXPECT_EQ(agenda.size(), 1U, "PyTreeSpec traversal did not yield a singleton.");
     return agenda.back();

@@ -18,8 +18,8 @@ limitations under the License.
 #pragma once
 
 #include <cstddef>          // std::size_t
+#include <format>           // std::format
 #include <source_location>  // std::source_location
-#include <sstream>          // std::ostringstream
 #include <stdexcept>        // std::logic_error
 #include <string>           // std::string, std::char_traits, std::to_string
 #include <string_view>      // std::string_view
@@ -49,14 +49,14 @@ public:
     explicit InternalError(
         const std::string_view &message,
         const std::source_location &source_location = std::source_location::current())
-        : std::logic_error{[&message, &source_location]() -> std::string {
-              std::ostringstream oss{};
-              oss << message << " (in function `" << source_location.function_name() << "` at file "
-                  << RelpathFromProjectRoot(source_location) << ":" << source_location.line() << ":"
-                  << source_location.column() << ")\n\n"
-                  << "Please file a bug report at https://github.com/metaopt/optree/issues.";
-              return oss.str();
-          }()} {}
+        : std::logic_error{
+              std::format("{} (in function `{}` at file {}:{}:{})\n\n"
+                          "Please file a bug report at https://github.com/metaopt/optree/issues.",
+                          message,
+                          source_location.function_name(),
+                          RelpathFromProjectRoot(source_location),
+                          source_location.line(),
+                          source_location.column())} {}
 };
 
 }  // namespace optree
