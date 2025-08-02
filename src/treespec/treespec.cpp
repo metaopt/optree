@@ -15,7 +15,7 @@ limitations under the License.
 ================================================================================
 */
 
-#include <algorithm>  // std::copy, std::reverse
+#include <algorithm>  // std::ranges::copy, std::ranges::reverse
 #include <iterator>   // std::back_inserter
 #include <memory>     // std::unique_ptr, std::make_unique
 #include <optional>   // std::optional
@@ -204,16 +204,16 @@ namespace optree {
     ssize_t other_cur = other_pos - 1;
 
     if (root.kind == PyTreeKind::Leaf) [[likely]] {
-        std::copy(other_traversal.crend() - (other_pos + 1),
-                  other_traversal.crend() - (other_pos - other_root.num_nodes + 1),
-                  std::back_inserter(nodes));
+        std::ranges::copy(other_traversal.crend() - (other_pos + 1),
+                          other_traversal.crend() - (other_pos - other_root.num_nodes + 1),
+                          std::back_inserter(nodes));
         other_cur -= other_root.num_nodes - 1;
         return {pos - cur, other_pos - other_cur, other_root.num_nodes, other_root.num_leaves};
     }
     if (other_root.kind == PyTreeKind::Leaf) [[likely]] {
-        std::copy(traversal.crend() - (pos + 1),
-                  traversal.crend() - (pos - root.num_nodes + 1),
-                  std::back_inserter(nodes));
+        std::ranges::copy(traversal.crend() - (pos + 1),
+                          traversal.crend() - (pos - root.num_nodes + 1),
+                          std::back_inserter(nodes));
         cur -= root.num_nodes - 1;
         return {pos - cur, other_pos - other_cur, root.num_nodes, root.num_leaves};
     }
@@ -303,7 +303,7 @@ namespace optree {
                 other_curs.emplace_back(other_cur);
                 other_cur -= other_traversal.at(other_cur).num_nodes;
             }
-            std::reverse(other_curs.begin(), other_curs.end());
+            std::ranges::reverse(other_curs);
             const ssize_t last_other_cur = other_cur;
             for (ssize_t i = root.arity - 1; i >= 0; --i) {
                 const py::object key = ListGetItem(expected_keys, i);
@@ -433,7 +433,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec
                                     num_nodes - 1,
                                     other.m_traversal,
                                     other_num_nodes - 1);
-    std::reverse(treespec->m_traversal.begin(), treespec->m_traversal.end());
+    std::ranges::reverse(treespec->m_traversal);
     EXPECT_EQ(num_nodes_walked,
               num_nodes,
               "`pos != 0` at end of PyTreeSpec::BroadcastToCommonSuffix() "
@@ -462,7 +462,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
         return std::make_unique<PyTreeSpec>(*this);
     }
 
-    const auto transform =
+    const auto transform_node =
         [this, &f_node, &f_leaf](const Node &node) -> std::unique_ptr<PyTreeSpec> {
         auto nodespec = GetOneLevel(node);
 
@@ -487,7 +487,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
     ssize_t num_extra_nodes = 0;
     auto pending_num_leaves_nodes = reserved_vector<std::pair<ssize_t, ssize_t>>(4);
     for (const Node &node : m_traversal) {
-        auto transformed = transform(node);
+        auto transformed = transform_node(node);
         if (transformed->m_none_is_leaf != m_none_is_leaf) [[unlikely]] {
             std::ostringstream oss{};
             oss << "Expected the PyTreeSpec transform function returns "
@@ -540,9 +540,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
             }
             pending_num_leaves_nodes.emplace_back(subroot.num_leaves, subroot.num_nodes);
         } else [[unlikely]] {
-            std::copy(transformed->m_traversal.cbegin(),
-                      transformed->m_traversal.cend(),
-                      std::back_inserter(treespec->m_traversal));
+            std::ranges::copy(transformed->m_traversal, std::back_inserter(treespec->m_traversal));
             const ssize_t num_leaves = transformed->GetNumLeaves();
             const ssize_t num_nodes = transformed->GetNumNodes();
             num_extra_leaves += num_leaves - 1;
@@ -603,9 +601,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec &inner) const {
     const ssize_t num_inner_nodes = inner.GetNumNodes();
     for (const Node &node : m_traversal) {
         if (node.kind == PyTreeKind::Leaf) [[likely]] {
-            std::copy(inner.m_traversal.cbegin(),
-                      inner.m_traversal.cend(),
-                      std::back_inserter(treespec->m_traversal));
+            std::ranges::copy(inner.m_traversal, std::back_inserter(treespec->m_traversal));
         } else [[unlikely]] {
             Node new_node{node};
             new_node.num_leaves = node.num_leaves * num_inner_leaves;
@@ -712,7 +708,7 @@ std::vector<py::tuple> PyTreeSpec::Paths() const {
     }
     auto stack = reserved_vector<py::handle>(4);
     const ssize_t num_nodes_walked = PathsImpl(paths, stack, num_nodes - 1, 0);
-    std::reverse(paths.begin(), paths.end());
+    std::ranges::reverse(paths);
     EXPECT_EQ(num_nodes_walked, num_nodes, "`pos != 0` at end of PyTreeSpec::Paths().");
     EXPECT_EQ(py::ssize_t_cast(paths.size()), num_leaves, "PyTreeSpec::Paths() mismatched leaves.");
     return paths;
@@ -819,7 +815,7 @@ std::vector<py::object> PyTreeSpec::Accessors() const {
     const ssize_t num_nodes = GetNumNodes();
     auto stack = reserved_vector<py::object>(4);
     const ssize_t num_nodes_walked = AccessorsImpl(accessors, stack, num_nodes - 1, 0);
-    std::reverse(accessors.begin(), accessors.end());
+    std::ranges::reverse(accessors);
     EXPECT_EQ(num_nodes_walked, num_nodes, "`pos != 0` at end of PyTreeSpec::Accessors().");
     EXPECT_EQ(py::ssize_t_cast(accessors.size()),
               num_leaves,
@@ -924,9 +920,9 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
         children[i]->m_namespace = m_namespace;
         const Node &node = m_traversal.at(pos - 1);
         EXPECT_GE(pos, node.num_nodes, "PyTreeSpec::Children() walked off start of array.");
-        std::copy(m_traversal.cbegin() + pos - node.num_nodes,
-                  m_traversal.cbegin() + pos,
-                  std::back_inserter(children[i]->m_traversal));
+        std::ranges::copy(m_traversal.cbegin() + (pos - node.num_nodes),
+                          m_traversal.cbegin() + pos,
+                          std::back_inserter(children[i]->m_traversal));
         children[i]->m_traversal.shrink_to_fit();
         PYTREESPEC_SANITY_CHECK(*children[i]);
         pos -= node.num_nodes;
@@ -958,9 +954,9 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
     child->m_namespace = m_namespace;
     const Node &node = m_traversal.at(pos - 1);
     EXPECT_GE(pos, node.num_nodes, "PyTreeSpec::Child() walked off start of array.");
-    std::copy(m_traversal.cbegin() + pos - node.num_nodes,
-              m_traversal.cbegin() + pos,
-              std::back_inserter(child->m_traversal));
+    std::ranges::copy(m_traversal.cbegin() + (pos - node.num_nodes),
+                      m_traversal.cbegin() + pos,
+                      std::back_inserter(child->m_traversal));
     child->m_traversal.shrink_to_fit();
     PYTREESPEC_SANITY_CHECK(*child);
     return child;
