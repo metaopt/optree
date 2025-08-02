@@ -34,7 +34,7 @@ limitations under the License.
 namespace optree {
 
 py::module_ GetCxxModule(const std::optional<py::module_>& module) {
-    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::module_> storage;
+    constinit static py::gil_safe_call_once_and_store<py::module_> storage;
     return storage
         .call_once_and_store_result([&module]() -> py::module_ {
             EXPECT_TRUE(module, "The module must be provided.");

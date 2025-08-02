@@ -136,7 +136,7 @@ namespace optree {
         case PyTreeKind::Tuple:
         case PyTreeKind::List:
         case PyTreeKind::Deque: {
-            PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+            constinit static py::gil_safe_call_once_and_store<py::object> storage;
             return storage
                 .call_once_and_store_result(
                     []() -> py::object { return py::getattr(GetCxxModule(), "SequenceEntry"); })
@@ -146,7 +146,7 @@ namespace optree {
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
         case PyTreeKind::DefaultDict: {
-            PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+            constinit static py::gil_safe_call_once_and_store<py::object> storage;
             return storage
                 .call_once_and_store_result(
                     []() -> py::object { return py::getattr(GetCxxModule(), "MappingEntry"); })
@@ -154,7 +154,7 @@ namespace optree {
         }
 
         case PyTreeKind::NamedTuple: {
-            PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+            constinit static py::gil_safe_call_once_and_store<py::object> storage;
             return storage
                 .call_once_and_store_result(
                     []() -> py::object { return py::getattr(GetCxxModule(), "NamedTupleEntry"); })
@@ -162,7 +162,7 @@ namespace optree {
         }
 
         case PyTreeKind::StructSequence: {
-            PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+            constinit static py::gil_safe_call_once_and_store<py::object> storage;
             return storage
                 .call_once_and_store_result([]() -> py::object {
                     return py::getattr(GetCxxModule(), "StructSequenceEntry");
@@ -722,7 +722,7 @@ ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,  // NOLINT[misc-no-recursion]
                                   Stack& stack,
                                   const ssize_t& pos,
                                   const ssize_t& depth) const {
-    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+    constinit static py::gil_safe_call_once_and_store<py::object> storage;
     const py::object& PyTreeAccessor = storage
                                            .call_once_and_store_result([]() -> py::object {
                                                return py::getattr(GetCxxModule(), "PyTreeAccessor");

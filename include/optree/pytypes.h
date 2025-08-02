@@ -68,7 +68,7 @@ constexpr py::ssize_t MAX_TYPE_CACHE_SIZE = 4096;
 #define PyDeque_Type (reinterpret_cast<PyTypeObject*>(PyDequeTypeObject.ptr()))
 
 inline const py::object& ImportOrderedDict() {
-    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+    constinit static py::gil_safe_call_once_and_store<py::object> storage;
     return storage
         .call_once_and_store_result([]() -> py::object {
             return py::getattr(py::module_::import("collections"), "OrderedDict");
@@ -76,7 +76,7 @@ inline const py::object& ImportOrderedDict() {
         .get_stored();
 }
 inline const py::object& ImportDefaultDict() {
-    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+    constinit static py::gil_safe_call_once_and_store<py::object> storage;
     return storage
         .call_once_and_store_result([]() -> py::object {
             return py::getattr(py::module_::import("collections"), "defaultdict");
@@ -84,7 +84,7 @@ inline const py::object& ImportDefaultDict() {
         .get_stored();
 }
 inline const py::object& ImportDeque() {
-    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
+    constinit static py::gil_safe_call_once_and_store<py::object> storage;
     return storage
         .call_once_and_store_result(
             []() -> py::object { return py::getattr(py::module_::import("collections"), "deque"); })

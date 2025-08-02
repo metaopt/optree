@@ -60,7 +60,7 @@ inline constexpr Py_ALWAYS_INLINE bool Py_IsConstant(PyObject* x) noexcept {
 #define Py_Declare_ID(name)                                                                        \
     namespace {                                                                                    \
     inline PyObject* Py_ID_##name() {                                                              \
-        PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyObject*> storage;             \
+        constinit static py::gil_safe_call_once_and_store<PyObject*> storage;                      \
         return storage                                                                             \
             .call_once_and_store_result([]() -> PyObject* {                                        \
                 PyObject* const ptr = PyUnicode_InternFromString(#name);                           \

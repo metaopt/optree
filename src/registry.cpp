@@ -29,7 +29,7 @@ namespace optree {
 
 template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton() {
-    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyTreeTypeRegistry> storage;
+    constinit static py::gil_safe_call_once_and_store<PyTreeTypeRegistry> storage;
     return &(storage
                  .call_once_and_store_result([]() -> PyTreeTypeRegistry {
                      PyTreeTypeRegistry registry{};
