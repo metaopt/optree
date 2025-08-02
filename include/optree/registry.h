@@ -169,8 +169,8 @@ public:
 
         const auto interpid = GetCurrentPyInterpreterID();
         const auto &namespaces = sm_dict_insertion_ordered_namespaces;
-        return (namespaces.find({interpid, registry_namespace}) != namespaces.end()) ||
-               (inherit_global_namespace && namespaces.find({interpid, ""}) != namespaces.end());
+        return namespaces.contains({interpid, registry_namespace}) ||
+               (inherit_global_namespace && namespaces.contains({interpid, ""}));
     }
 
     // Set the namespace to preserve the insertion order of the dictionary keys during flattening.
