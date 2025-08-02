@@ -15,6 +15,7 @@ limitations under the License.
 ================================================================================
 */
 
+#include <span>     // std::span
 #include <sstream>  // std::ostringstream
 #include <utility>  // std::move
 
@@ -57,9 +58,10 @@ py::object PyTreeSpec::UnflattenImpl(const Span &leaves) const {
             case PyTreeKind::StructSequence:
             case PyTreeKind::Custom: {
                 const ssize_t size = py::ssize_t_cast(agenda.size());
-                py::object out = MakeNode(node,
-                                          node.arity > 0 ? &agenda[size - node.arity] : nullptr,
-                                          node.arity);
+                py::object out =
+                    MakeNode(node,
+                             node.arity > 0 ? std::span(&agenda[size - node.arity], node.arity)
+                                            : std::span<py::object>{});
                 agenda.resize(size - node.arity);
                 agenda.emplace_back(std::move(out));
                 break;

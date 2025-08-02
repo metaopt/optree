@@ -19,6 +19,7 @@ limitations under the License.
 
 #include <memory>    // std::unique_ptr
 #include <optional>  // std::optional, std::nullopt
+#include <span>      // std::span
 #include <string>    // std::string
 #include <thread>    // std::thread::id
 #include <tuple>     // std::tuple
@@ -310,11 +311,9 @@ private:
     // Return the string representation of a node kind.
     [[nodiscard]] static std::string NodeKindToString(const Node &node);
 
-    // Manufacture an instance of a node given its children.
-    [[nodiscard]] static py::object MakeNode(
-        const Node &node,
-        const py::object children[],  // NOLINT[hicpp-avoid-c-arrays]
-        const size_t &num_children);
+    // Helper that manufactures an instance of a node given its children.
+    [[nodiscard]] static py::object MakeNode(const Node &node,
+                                             const std::span<py::object> &children);
 
     // Identify the path entry class for a node.
     [[nodiscard]] static py::object GetPathEntryType(const Node &node);

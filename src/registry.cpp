@@ -89,7 +89,7 @@ template <bool NoneIsLeaf>
                                                  const std::string &registry_namespace) {
     auto &registry = GetSingleton<NoneIsLeaf>();
 
-    if (registry.m_builtins_types.find(cls) != registry.m_builtins_types.end()) [[unlikely]] {
+    if (registry.m_builtins_types.contains(cls)) [[unlikely]] {
         throw py::value_error("PyTree type " + PyRepr(cls) +
                               " is a built-in type and cannot be re-registered.");
     }
@@ -184,7 +184,7 @@ template <bool NoneIsLeaf>
     const std::string &registry_namespace) {
     auto &registry = GetSingleton<NoneIsLeaf>();
 
-    if (registry.m_builtins_types.find(cls) != registry.m_builtins_types.end()) [[unlikely]] {
+    if (registry.m_builtins_types.contains(cls)) [[unlikely]] {
         throw py::value_error("PyTree type " + PyRepr(cls) +
                               " is a built-in type and cannot be unregistered.");
     }
@@ -339,9 +339,8 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     {
         const scoped_write_lock lock{sm_mutex};
 
-        EXPECT_NE(sm_alive_interpids.find(interpid),
-                  sm_alive_interpids.end(),
-                  "The current interpreter ID should be present in the alive interpreters set.");
+        EXPECT_TRUE(sm_alive_interpids.contains(interpid),
+                    "The current interpreter ID should be present in the alive interpreters set.");
         sm_alive_interpids.erase(interpid);
 
         {
@@ -371,14 +370,14 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 
 #if defined(Py_DEBUG)
         for (const auto &cls : registry1.m_builtins_types) {
-            EXPECT_NE(registry1.m_registrations.find(cls), registry1.m_registrations.end());
-            EXPECT_NE(registry2.m_builtins_types.find(cls), registry2.m_builtins_types.end());
+            EXPECT_TRUE(registry1.m_registrations.contains(cls));
+            EXPECT_TRUE(registry2.m_builtins_types.contains(cls));
         }
         for (const auto &cls : registry2.m_builtins_types) {
             if (cls.is(PyNoneTypeObject)) [[unlikely]] {
-                EXPECT_EQ(registry2.m_registrations.find(cls), registry2.m_registrations.end());
+                EXPECT_FALSE(registry2.m_registrations.contains(cls));
             } else [[likely]] {
-                EXPECT_NE(registry2.m_registrations.find(cls), registry2.m_registrations.end());
+                EXPECT_TRUE(registry2.m_registrations.contains(cls));
             }
         }
         for (const auto &[cls2, registration2] : registry2.m_registrations) {
