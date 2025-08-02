@@ -28,10 +28,10 @@ limitations under the License.
 
 namespace optree {
 
-template <bool NoneIsLeaf, bool DictShouldBeSorted, typename Span>
+template <bool NoneIsLeaf, bool DictShouldBeSorted, typename LeafVector>
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
-                                 Span& leaves,
+                                 LeafVector& leaves,
                                  const ssize_t& depth,
                                  const std::optional<py::function>& leaf_predicate,
                                  const std::string& registry_namespace) {
@@ -271,13 +271,13 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
 
 template <bool NoneIsLeaf,
           bool DictShouldBeSorted,
-          typename LeafSpan,
-          typename PathSpan,
+          typename LeafVector,
+          typename PathVector,
           typename Stack>
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
-                                         LeafSpan& leaves,
-                                         PathSpan& paths,
+                                         LeafVector& leaves,
+                                         PathVector& paths,
                                          Stack& stack,
                                          const ssize_t& depth,
                                          const std::optional<py::function>& leaf_predicate,

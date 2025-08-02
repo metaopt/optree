@@ -19,6 +19,7 @@ limitations under the License.
 
 #include <memory>         // std::unique_ptr
 #include <optional>       // std::optional, std::nullopt
+#include <span>           // std::span
 #include <string>         // std::string
 #include <thread>         // std::thread::id
 #include <tuple>          // std::tuple
@@ -273,10 +274,8 @@ public:
         const bool &inherit_global_namespace = true) {
         const scoped_read_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
 
-        return (sm_is_dict_insertion_ordered.find(registry_namespace) !=
-                sm_is_dict_insertion_ordered.end()) ||
-               (inherit_global_namespace &&
-                sm_is_dict_insertion_ordered.find("") != sm_is_dict_insertion_ordered.end());
+        return (sm_is_dict_insertion_ordered.contains(registry_namespace)) ||
+               (inherit_global_namespace && sm_is_dict_insertion_ordered.contains(""));
     }
 
     // Set the namespace to preserve the insertion order of the dictionary keys during flattening.
@@ -345,9 +344,7 @@ private:
     static std::string NodeKindToString(const Node &node);
 
     // Helper that manufactures an instance of a node given its children.
-    static py::object MakeNode(const Node &node,
-                               const py::object children[],  // NOLINT[hicpp-avoid-c-arrays]
-                               const size_t &num_children);
+    static py::object MakeNode(const Node &node, const std::span<py::object> &children);
 
     // Helper that identifies the path entry class for a node.
     static py::object GetPathEntryType(const Node &node);
@@ -359,9 +356,9 @@ private:
                      const bool &none_is_leaf,
                      const std::string &registry_namespace);
 
-    template <bool NoneIsLeaf, bool DictShouldBeSorted, typename Span>
+    template <bool NoneIsLeaf, bool DictShouldBeSorted, typename Vector>
     bool FlattenIntoImpl(const py::handle &handle,
-                         Span &leaves,  // NOLINT[runtime/references]
+                         Vector &leaves,  // NOLINT[runtime/references]
                          const ssize_t &depth,
                          const std::optional<py::function> &leaf_predicate,
                          const std::string &registry_namespace);
@@ -376,13 +373,13 @@ private:
 
     template <bool NoneIsLeaf,
               bool DictShouldBeSorted,
-              typename LeafSpan,
-              typename PathSpan,
+              typename LeafVector,
+              typename PathVector,
               typename Stack>
     bool FlattenIntoWithPathImpl(const py::handle &handle,
-                                 LeafSpan &leaves,  // NOLINT[runtime/references]
-                                 PathSpan &paths,   // NOLINT[runtime/references]
-                                 Stack &stack,      // NOLINT[runtime/references]
+                                 LeafVector &leaves,  // NOLINT[runtime/references]
+                                 PathVector &paths,   // NOLINT[runtime/references]
+                                 Stack &stack,        // NOLINT[runtime/references]
                                  const ssize_t &depth,
                                  const std::optional<py::function> &leaf_predicate,
                                  const std::string &registry_namespace);
@@ -403,15 +400,15 @@ private:
         const std::optional<py::function> &f_node = std::nullopt,
         const std::optional<py::function> &f_leaf = std::nullopt) const;
 
-    template <typename Span, typename Stack>
-    [[nodiscard]] ssize_t PathsImpl(Span &paths,   // NOLINT[runtime/references]
-                                    Stack &stack,  // NOLINT[runtime/references]
+    template <typename PathVector, typename Stack>
+    [[nodiscard]] ssize_t PathsImpl(PathVector &paths,  // NOLINT[runtime/references]
+                                    Stack &stack,       // NOLINT[runtime/references]
                                     const ssize_t &pos,
                                     const ssize_t &depth) const;
 
-    template <typename Span, typename Stack>
-    [[nodiscard]] ssize_t AccessorsImpl(Span &accessors,  // NOLINT[runtime/references]
-                                        Stack &stack,     // NOLINT[runtime/references]
+    template <typename AccessorVector, typename Stack>
+    [[nodiscard]] ssize_t AccessorsImpl(AccessorVector &accessors,  // NOLINT[runtime/references]
+                                        Stack &stack,               // NOLINT[runtime/references]
                                         const ssize_t &pos,
                                         const ssize_t &depth) const;
 
