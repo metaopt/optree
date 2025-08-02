@@ -19,6 +19,7 @@ limitations under the License.
 #include <iterator>   // std::back_inserter
 #include <memory>     // std::unique_ptr, std::make_unique
 #include <optional>   // std::optional
+#include <span>       // std::span
 #include <sstream>    // std::ostringstream
 #include <string>     // std::string
 #include <tuple>      // std::tuple
@@ -32,10 +33,9 @@ namespace optree {
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ py::object PyTreeSpec::MakeNode(const Node &node,
                                            // NOLINTNEXTLINE[cppcoreguidelines-avoid-c-arrays]
-                                           const py::object children[],
-                                           const size_t &num_children) {
-    EXPECT_EQ(py::ssize_t_cast(num_children), node.arity, "Node arity did not match.");
-    EXPECT_TRUE(children != nullptr || num_children == 0, "Node children is null.");
+                                           const std::span<py::object> &children) {
+    EXPECT_EQ(py::ssize_t_cast(children.size()), node.arity, "Node arity did not match.");
+    EXPECT_TRUE(children.data() != nullptr || children.empty(), "Node children is null.");
 
     switch (node.kind) {
         case PyTreeKind::Leaf:
@@ -714,8 +714,8 @@ std::vector<py::tuple> PyTreeSpec::Paths() const {
     return paths;
 }
 
-template <typename Span, typename Stack>
-ssize_t PyTreeSpec::AccessorsImpl(Span &accessors,  // NOLINT[misc-no-recursion]
+template <typename AccessorVector, typename Stack>
+ssize_t PyTreeSpec::AccessorsImpl(AccessorVector &accessors,  // NOLINT[misc-no-recursion]
                                   Stack &stack,
                                   const ssize_t &pos,
                                   const ssize_t &depth) const {
