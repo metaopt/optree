@@ -111,11 +111,9 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
                 return f'0x{self:08X}'
 
         BUILDTIME_METADATA.update(
-            **{
-                name: HexInt(value)
-                for name, value in BUILDTIME_METADATA.items()
-                if name.endswith('_HEX') and isinstance(value, int)
-            },
+            (name, HexInt(value))
+            for name, value in BUILDTIME_METADATA.items()
+            if name.endswith('_HEX') and isinstance(value, int)
         )
 
         BUILDTIME_METADATA = types.MappingProxyType(BUILDTIME_METADATA)
@@ -277,10 +275,8 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 #endif
     auto * const PyTreeKind_Type = reinterpret_cast<PyTypeObject *>(PyTreeKindTypeObject.ptr());
     PyTreeKind_Type->tp_name = "optree.PyTreeKind";
-    py::setattr(PyTreeKindTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
-    py::setattr(PyTreeKindTypeObject.ptr(),
-                "NUM_KINDS",
-                py::int_(py::ssize_t(PyTreeKind::NumKinds)));
+    py::setattr(PyTreeKindTypeObject, Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeKindTypeObject, "NUM_KINDS", py::int_(py::ssize_t(PyTreeKind::NumKinds)));
 
     auto PyTreeSpecTypeObject =
 #if defined(PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT)
@@ -303,7 +299,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             py::module_local());
     auto * const PyTreeSpec_Type = reinterpret_cast<PyTypeObject *>(PyTreeSpecTypeObject.ptr());
     PyTreeSpec_Type->tp_name = "optree.PyTreeSpec";
-    py::setattr(PyTreeSpecTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeSpecTypeObject, Py_Get_ID(__module__), Py_Get_ID(optree));
 
     PyTreeSpecTypeObject
         .def("unflatten",
@@ -501,7 +497,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             py::module_local());
     auto * const PyTreeIter_Type = reinterpret_cast<PyTypeObject *>(PyTreeIterTypeObject.ptr());
     PyTreeIter_Type->tp_name = "optree.PyTreeIter";
-    py::setattr(PyTreeIterTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeIterTypeObject, Py_Get_ID(__module__), Py_Get_ID(optree));
 
     PyTreeIterTypeObject
         .def(py::init<py::object, std::optional<py::function>, bool, std::string>(),
