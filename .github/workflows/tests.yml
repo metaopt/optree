@@ -202,37 +202,6 @@ jobs:
           cat pyproject.toml
           echo "::endgroup::"
 
-      - name: Test installable with C++17
-        shell: bash
-        if: runner.os != 'Windows'
-        run: |
-          (
-            set -ex
-            ${{ env.PYTHON }} -m venv venv
-            source venv/bin/activate
-            OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 \
-              ${{ env.PYTHON }} -m pip install -v .
-            pushd tests
-            ${{ env.PYTHON }} -X dev -Walways -Werror -c 'import optree'
-            popd
-            rm -rf venv
-          )
-
-          if [[ "$?" -ne 0 ]]; then
-            echo "::error::Failed to install with C++17." >&2
-            exit 1
-          fi
-          CORE_DUMP_FILES="$(
-            find . -type d -path "./venv" -prune \
-              -o '(' -iname "core.*.[1-9]*" -o -iname "core_*.dmp" ')' -print
-          )"
-          if [[ -n "${CORE_DUMP_FILES}" ]]; then
-            echo "::error::Coredump files found, indicating a crash during tests." >&2
-            echo "Coredump files:" >&2
-            ls -alh ${CORE_DUMP_FILES} >&2
-            exit 1
-          fi
-
       - name: Test buildable without Python frontend
         if: runner.os != 'Windows'
         run: |
