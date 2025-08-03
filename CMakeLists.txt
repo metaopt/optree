@@ -272,6 +272,11 @@ endif()
 
 foreach(
     varname IN ITEMS
+    CMAKE_SYSTEM_NAME
+    CMAKE_GENERATOR_PLATFORM
+    CMAKE_OSX_SYSROOT
+    CMAKE_OSX_DEPLOYMENT_TARGET
+    CMAKE_OSX_ARCHITECTURES
     Python_INCLUDE_DIR
     Python_INCLUDE_DIRS
     Python_LIBRARY
@@ -281,7 +286,9 @@ foreach(
     PYTHON_IS_DEBUG
     SETUPTOOLS_EXT_SUFFIX
 )
-    message(STATUS "Use ${varname}: \"${${varname}}\"")
+    if(NOT "${${varname}}" STREQUAL "")
+        message(STATUS "Use ${varname}: \"${${varname}}\"")
+    endif()
 endforeach()
 
 include_directories("${CMAKE_SOURCE_DIR}/include")
