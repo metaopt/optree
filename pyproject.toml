@@ -101,6 +101,7 @@ environment-pass = [
     "CMAKE_CXX_STANDARD",
     "CMAKE_SYSTEM_NAME",
     "CMAKE_OSX_SYSROOT",
+    "ANDROID_API_LEVEL",
     "OPTREE_CXX_WERROR",
     "_GLIBCXX_USE_CXX11_ABI",
     "COLUMNS",
