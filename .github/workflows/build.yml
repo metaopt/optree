@@ -186,6 +186,9 @@ jobs:
             python-version: "3.13"
             archs: "arm64_iphonesimulator"
           - runner: ubuntu-latest
+            python-version: "3.13"
+            archs: "arm64_v8a"
+          - runner: ubuntu-latest
             python-version: "3.12"
             archs: "wasm32"
       fail-fast: false
@@ -255,9 +258,8 @@ jobs:
           echo "CIBW_BUILD=${PYTHON_TAG}-*" | tee -a "${GITHUB_ENV}"
           if [[ "${{ matrix.archs }}" == *iphone* ]]; then
             echo "CIBW_PLATFORM=ios" | tee -a "${GITHUB_ENV}"
-            echo "CMAKE_SYSTEM_NAME=iOS" | tee -a "${GITHUB_ENV}"
-            CMAKE_OSX_SYSROOT="${{ matrix.archs }}"
-            echo "CMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT##*_}" | tee -a "${GITHUB_ENV}"
+          elif [[ "${{ matrix.archs }}" == *arm*v8a* ]]; then
+            echo "CIBW_PLATFORM=android" | tee -a "${GITHUB_ENV}"
           elif [[ "${{ matrix.archs }}" == wasm* ]]; then
             echo "CIBW_PLATFORM=pyodide" | tee -a "${GITHUB_ENV}"
           fi

@@ -176,12 +176,13 @@ class cmake_build_ext(build_ext):  # noqa: N801
         ]
 
         # Cross-compilation support
-        cmake_system_name = os.getenv('CMAKE_SYSTEM_NAME')
-        if cmake_system_name:
-            cmake_args += [f'-DCMAKE_SYSTEM_NAME={cmake_system_name}']
-        cmake_osx_sysroot = os.getenv('CMAKE_OSX_SYSROOT')
-        if cmake_osx_sysroot:
-            cmake_args += [f'-DCMAKE_OSX_SYSROOT={cmake_osx_sysroot}']
+        for cmake_varname in (
+            'CMAKE_SYSTEM_NAME',
+            'CMAKE_OSX_SYSROOT',
+        ):
+            cmake_varvalue = os.getenv(cmake_varname)
+            if cmake_varvalue:
+                cmake_args += [f'-D{cmake_varname}={cmake_varvalue}']
         if platform.system() == 'Darwin':
             # macOS - respect ARCHFLAGS if set
             archs = re.findall(r'-arch\s+(\S+)', os.getenv('ARCHFLAGS', ''))

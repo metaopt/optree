@@ -658,7 +658,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& tree) const {
                     }
                     std::ostringstream oss{};
                     oss << "dictionary key mismatch; expected key(s): " << PyRepr(expected_keys)
-                        << ", got key(s): " + PyRepr(keys) << key_difference_sstream.str() << "; ";
+                        << ", got key(s): " << PyRepr(keys) << key_difference_sstream.str() << "; ";
                     if (node.kind == PyTreeKind::Dict) [[likely]] {
                         oss << "dict";
                     } else if (node.kind == PyTreeKind::OrderedDict) [[likely]] {

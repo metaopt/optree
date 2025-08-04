@@ -291,7 +291,8 @@ namespace optree {
                 }
                 std::ostringstream oss{};
                 oss << "dictionary key mismatch; expected key(s): " << PyRepr(expected_keys)
-                    << ", got key(s): " + PyRepr(other_keys) << key_difference_sstream.str() << ".";
+                    << ", got key(s): " << PyRepr(other_keys) << key_difference_sstream.str()
+                    << ".";
                 throw py::value_error(oss.str());
             }
 

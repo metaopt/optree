@@ -99,8 +99,6 @@ build-frontend = "build"
 environment = { PYTHONDEVMODE = "1", PYTHONUNBUFFERED = "1" }
 environment-pass = [
     "CMAKE_CXX_STANDARD",
-    "CMAKE_SYSTEM_NAME",
-    "CMAKE_OSX_SYSROOT",
     "OPTREE_CXX_WERROR",
     "_GLIBCXX_USE_CXX11_ABI",
     "COLUMNS",
@@ -108,7 +106,7 @@ environment-pass = [
     "CLICOLOR_FORCE",
 ]
 xbuild-tools = ["cmake"]
-before-build = "env"
+before-build = "env | sort"
 windows.before-build = "set"
 test-extras = ["test"]
 test-sources = ["pyproject.toml", "tests"]
@@ -118,7 +116,23 @@ test-command = [
     '''python -Walways -Werror -c "import rich, optree._C; rich.inspect(optree._C, value=True, methods=True)"''',
     '''python -m pytest -Walways --color=yes --showlocals --no-cov --exitfirst tests''',
 ]
-ios.test-command = '''python -m pytest -Walways --color=yes --showlocals --no-cov --exitfirst tests'''
+
+[tool.cibuildwheel.ios]
+environment = { PYTHONDEVMODE = "1", PYTHONUNBUFFERED = "1", CMAKE_SYSTEM_NAME = "iOS" }
+test-command = '''python -m pytest -Walways --color=yes --showlocals --no-cov --exitfirst tests'''
+
+[tool.cibuildwheel.android]
+environment = { PYTHONDEVMODE = "1", PYTHONUNBUFFERED = "1", ANDROID_API_LEVEL = "24" }
+
+[[tool.cibuildwheel.overrides]]
+select = "*iphoneos*"
+inherit.environment = "append"
+environment = { CMAKE_OSX_SYSROOT = "iphoneos" }
+
+[[tool.cibuildwheel.overrides]]
+select = "*iphonesimulator*"
+inherit.environment = "append"
+environment = { CMAKE_OSX_SYSROOT = "iphonesimulator" }
 
 # Linter tools #################################################################
 
