@@ -36,6 +36,7 @@ env:
   CMAKE_BUILD_TYPE: "Debug"
   OPTREE_CXX_WERROR: "ON"
   _GLIBCXX_USE_CXX11_ABI: "1"
+  MACOSX_DEPLOYMENT_TARGET: "15.0"
   PYTHONUNBUFFERED: "1"
   PYTHON: "python"  # to be updated
   PYTHON_TAG: "py3"  # to be updated
@@ -55,7 +56,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        runner: [ubuntu-latest, macos-latest, windows-latest]
+        runner: [ubuntu-latest, macos-15, windows-latest]
         python-version:
           - "3.9"
           - "3.10"
