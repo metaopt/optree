@@ -117,12 +117,12 @@ test-command = [
     '''python -m pytest -Walways --color=yes --showlocals --no-cov --exitfirst tests''',
 ]
 
+[tool.cibuildwheel.android]
+environment = { PYTHONDEVMODE = "1", PYTHONUNBUFFERED = "1", ANDROID_API_LEVEL = "24" }
+
 [tool.cibuildwheel.ios]
 environment = { PYTHONDEVMODE = "1", PYTHONUNBUFFERED = "1", CMAKE_SYSTEM_NAME = "iOS" }
 test-command = '''python -m pytest -Walways --color=yes --showlocals --no-cov --exitfirst tests'''
-
-[tool.cibuildwheel.android]
-environment = { PYTHONDEVMODE = "1", PYTHONUNBUFFERED = "1", ANDROID_API_LEVEL = "24" }
 
 [[tool.cibuildwheel.overrides]]
 select = "*iphoneos*"

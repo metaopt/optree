@@ -116,13 +116,13 @@ std::string PyTreeSpec::ToStringImpl() const {
                     sstream << "{";
                 }
                 bool first = true;
-                auto child_iter = agenda.cend() - node.arity;
+                auto child_it = agenda.cend() - node.arity;
                 for (const py::handle& key : node.node_data) {
                     if (!first) [[likely]] {
                         sstream << ", ";
                     }
-                    sstream << PyRepr(key) << ": " << *child_iter;
-                    ++child_iter;
+                    sstream << PyRepr(key) << ": " << *child_it;
+                    ++child_it;
                     first = false;
                 }
                 if (node.kind == PyTreeKind::Dict || node.arity > 0) [[likely]] {
@@ -144,13 +144,13 @@ std::string PyTreeSpec::ToStringImpl() const {
                     PyStr(EVALUATE_WITH_LOCK_HELD(py::getattr(type, Py_Get_ID(__name__)), type));
                 sstream << kind << "(";
                 bool first = true;
-                auto child_iter = agenda.cend() - node.arity;
+                auto child_it = agenda.cend() - node.arity;
                 for (const py::handle& field : fields) {
                     if (!first) [[likely]] {
                         sstream << ", ";
                     }
-                    sstream << PyStr(field) << "=" << *child_iter;
-                    ++child_iter;
+                    sstream << PyStr(field) << "=" << *child_it;
+                    ++child_it;
                     first = false;
                 }
                 sstream << ")";
@@ -209,13 +209,13 @@ std::string PyTreeSpec::ToStringImpl() const {
                     EVALUATE_WITH_LOCK_HELD(py::getattr(type, Py_Get_ID(__qualname__)), type);
                 sstream << PyStr(qualname) << "(";
                 bool first = true;
-                auto child_iter = agenda.cend() - node.arity;
+                auto child_it = agenda.cend() - node.arity;
                 for (const py::handle& field : fields) {
                     if (!first) [[likely]] {
                         sstream << ", ";
                     }
-                    sstream << PyStr(field) << "=" << *child_iter;
-                    ++child_iter;
+                    sstream << PyStr(field) << "=" << *child_it;
+                    ++child_it;
                     first = false;
                 }
                 sstream << ")";

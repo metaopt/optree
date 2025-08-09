@@ -627,8 +627,8 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner) const {
     return treespec;
 }
 
-template <typename Span, typename Stack>
-ssize_t PyTreeSpec::PathsImpl(Span& paths,  // NOLINT[misc-no-recursion]
+template <typename PathVector, typename Stack>
+ssize_t PyTreeSpec::PathsImpl(PathVector& paths,  // NOLINT[misc-no-recursion]
                               Stack& stack,
                               const ssize_t& pos,
                               const ssize_t& depth) const {

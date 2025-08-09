@@ -176,18 +176,21 @@ class cmake_build_ext(build_ext):  # noqa: N801
         ]
 
         # Cross-compilation support
-        for cmake_varname in (
-            'CMAKE_SYSTEM_NAME',
-            'CMAKE_OSX_SYSROOT',
-        ):
-            cmake_varvalue = os.getenv(cmake_varname)
-            if cmake_varvalue:
-                cmake_args += [f'-D{cmake_varname}={cmake_varvalue}']
-        if platform.system() == 'Darwin':
+        cmake_vars = {
+            varname: os.getenv(varname)
+            for varname in (
+                'CMAKE_SYSTEM_NAME',
+                'CMAKE_OSX_SYSROOT',
+                'CMAKE_OSX_DEPLOYMENT_TARGET',
+                'CMAKE_OSX_ARCHITECTURES',
+            )
+            if os.getenv(varname)
+        }
+        if platform.system() == 'Darwin' and 'CMAKE_OSX_ARCHITECTURES' not in cmake_vars:
             # macOS - respect ARCHFLAGS if set
             archs = re.findall(r'-arch\s+(\S+)', os.getenv('ARCHFLAGS', ''))
             if archs:
-                cmake_args += [f'-DCMAKE_OSX_ARCHITECTURES={";".join(archs)}']
+                cmake_vars['CMAKE_OSX_ARCHITECTURES'] = ';'.join(archs)
         elif platform.system() == 'Windows':
             # Windows - set correct CMAKE_GENERATOR_PLATFORM
             cmake_generator_platform = os.getenv('CMAKE_GENERATOR_PLATFORM')
@@ -200,6 +203,7 @@ class cmake_build_ext(build_ext):  # noqa: N801
                 }.get(self.plat_name)
             if cmake_generator_platform:
                 cmake_args[:] = [f'-A={cmake_generator_platform}', *cmake_args]
+        cmake_args += [f'-D{varname}={varvalue}' for varname, varvalue in cmake_vars.items()]
 
         # Python interpreter and include/library directories
         cmake_args += [

@@ -359,9 +359,9 @@ private:
                      const bool &none_is_leaf,
                      const std::string &registry_namespace);
 
-    template <bool NoneIsLeaf, bool DictShouldBeSorted, typename Span>
+    template <bool NoneIsLeaf, bool DictShouldBeSorted, typename Vector>
     bool FlattenIntoImpl(const py::handle &handle,
-                         Span &leaves,  // NOLINT[runtime/references]
+                         Vector &leaves,  // NOLINT[runtime/references]
                          const ssize_t &depth,
                          const std::optional<py::function> &leaf_predicate,
                          const std::string &registry_namespace);
@@ -376,13 +376,13 @@ private:
 
     template <bool NoneIsLeaf,
               bool DictShouldBeSorted,
-              typename LeafSpan,
-              typename PathSpan,
+              typename LeafVector,
+              typename PathVector,
               typename Stack>
     bool FlattenIntoWithPathImpl(const py::handle &handle,
-                                 LeafSpan &leaves,  // NOLINT[runtime/references]
-                                 PathSpan &paths,   // NOLINT[runtime/references]
-                                 Stack &stack,      // NOLINT[runtime/references]
+                                 LeafVector &leaves,  // NOLINT[runtime/references]
+                                 PathVector &paths,   // NOLINT[runtime/references]
+                                 Stack &stack,        // NOLINT[runtime/references]
                                  const ssize_t &depth,
                                  const std::optional<py::function> &leaf_predicate,
                                  const std::string &registry_namespace);
@@ -403,15 +403,15 @@ private:
         const std::optional<py::function> &f_node = std::nullopt,
         const std::optional<py::function> &f_leaf = std::nullopt) const;
 
-    template <typename Span, typename Stack>
-    [[nodiscard]] ssize_t PathsImpl(Span &paths,   // NOLINT[runtime/references]
-                                    Stack &stack,  // NOLINT[runtime/references]
+    template <typename PathVector, typename Stack>
+    [[nodiscard]] ssize_t PathsImpl(PathVector &paths,  // NOLINT[runtime/references]
+                                    Stack &stack,       // NOLINT[runtime/references]
                                     const ssize_t &pos,
                                     const ssize_t &depth) const;
 
-    template <typename Span, typename Stack>
-    [[nodiscard]] ssize_t AccessorsImpl(Span &accessors,  // NOLINT[runtime/references]
-                                        Stack &stack,     // NOLINT[runtime/references]
+    template <typename AccessorVector, typename Stack>
+    [[nodiscard]] ssize_t AccessorsImpl(AccessorVector &accessors,  // NOLINT[runtime/references]
+                                        Stack &stack,               // NOLINT[runtime/references]
                                         const ssize_t &pos,
                                         const ssize_t &depth) const;
 
