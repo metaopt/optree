@@ -9,7 +9,9 @@ body:
       label: Required prerequisites
       description: Make sure you've completed the following steps before submitting your issue -- thank you!
       options:
-        - label: I have searched the [Issue Tracker](https://github.com/metaopt/optree/issues) that this hasn't already been reported. (comment there if it has.)
+        - label: >-
+            I have searched the [Issue Tracker](https://github.com/metaopt/optree/issues)
+            that this hasn't already been reported. (comment there if it has.)
           required: true
 
   - type: textarea

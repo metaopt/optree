@@ -6,8 +6,9 @@ assignees: [XuehaiPan]
 body:
   - type: markdown
     attributes:
-      value: |
-        Please do your best to make the issue as easy to act on as possible, and only submit here if there is clearly a problem with OpTree.
+      value: >-
+        Please do your best to make the issue as easy to act on as possible,
+        and only submit here if there is clearly a problem with OpTree.
 
   - type: checkboxes
     id: steps
@@ -17,14 +18,18 @@ body:
       options:
         - label: I have read the documentation <https://optree.readthedocs.io>.
           required: true
-        - label: I have searched the [Issue Tracker](https://github.com/metaopt/optree/issues) that this hasn't already been reported. (comment there if it has.)
+        - label: >-
+            I have searched the [Issue Tracker](https://github.com/metaopt/optree/issues)
+            that this hasn't already been reported. (comment there if it has.)
           required: true
 
   - type: input
     id: version
     attributes:
       label: What version of OpTree are you using?
-      description: Run command `python3 -c 'print(__import__("optree").__version__)'` in your shell and paste the output here.
+      description: >-
+        Run command `python3 -c 'print(__import__("optree").__version__)'` in your shell
+        and paste the output here.
       placeholder: E.g., 0.5.0
     validations:
       required: true
