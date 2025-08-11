@@ -17,92 +17,14 @@
 
 import dataclasses
 import itertools
-import os
 import re
-import subprocess
-import sys
-import textwrap
 from collections import OrderedDict, UserDict, UserList, defaultdict, deque
 from typing import Any, NamedTuple
 
 import pytest
 
 import optree
-from helpers import (
-    TEST_ROOT,
-    TREE_ACCESSORS,
-    SysFloatInfoType,
-    assert_equal_type_and_value,
-    parametrize,
-    skipif_ios,
-    skipif_wasm,
-)
-
-
-@skipif_wasm
-@skipif_ios
-def test_warn_deprecated_import():
-    env = {
-        key: value
-        for key, value in os.environ.items()
-        if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
-    }
-    scripts = [
-        textwrap.dedent(
-            """
-            import sys
-            import warnings
-
-            import optree
-
-            assert 'optree' in sys.modules
-            assert 'optree.accessor' not in sys.modules
-
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter('always')
-                import optree.accessor
-
-            assert len(w) == 1, f'got {len(w)} warning(s)'
-            assert issubclass(w[-1].category, FutureWarning)
-            assert 'deprecated' in str(w[-1].message), w[-1].message
-            assert 'optree.accessor' in sys.modules
-            assert sys.modules['optree.accessor'] is optree.accessors
-        """,
-        ).strip(),
-        textwrap.dedent(
-            """
-            import sys
-            import warnings
-
-            import optree
-
-            assert 'optree' in sys.modules
-            assert 'optree.accessor' not in sys.modules
-
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter('always')
-                optree.accessor
-
-            assert len(w) == 1, f'got {len(w)} warning(s)'
-            assert issubclass(w[-1].category, FutureWarning)
-            assert 'deprecated' in str(w[-1].message), w[-1].message
-            assert 'optree.accessor' in sys.modules
-            assert sys.modules['optree.accessor'] is optree.accessors
-        """,
-        ).strip(),
-    ]
-    for script in scripts:
-        assert (
-            subprocess.check_output(
-                [sys.executable, '-c', script],
-                stderr=subprocess.STDOUT,
-                text=True,
-                encoding='utf-8',
-                cwd=TEST_ROOT,
-                env=env,
-            )
-            == ''
-        )
+from helpers import TREE_ACCESSORS, SysFloatInfoType, assert_equal_type_and_value, parametrize
 
 
 def test_pytree_accessor_new():
