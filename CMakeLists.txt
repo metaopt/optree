@@ -39,8 +39,8 @@ endif()
 if(NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 20)  # for likely/unlikely attributes
 endif()
-if (CMAKE_CXX_STANDARD VERSION_LESS 17)
-    message(FATAL_ERROR "C++17 or higher is required")
+if (CMAKE_CXX_STANDARD VERSION_LESS 20)
+    message(FATAL_ERROR "C++20 or higher is required")
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "Use C++ standard: C++${CMAKE_CXX_STANDARD}")
@@ -66,7 +66,8 @@ if(MSVC)
         " /EHsc /bigobj"
         " /Zc:preprocessor"
         " /experimental:external /external:anglebrackets /external:W0"
-        " /Wall /Wv:19.40"  # Visual Studio 2022 version 17.10
+        # https://learn.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warnings-by-compiler-version
+        " /Wall /Wv:19.43"  # Visual Studio 2022 version 17.13
         # Suppress following warnings
         " /wd4127"  # conditional expression is constant
         " /wd4365"  # conversion from 'type_1' to 'type_2', signed/unsigned mismatch

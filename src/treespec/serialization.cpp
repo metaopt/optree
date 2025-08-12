@@ -265,7 +265,7 @@ std::string PyTreeSpec::ToString() const {
     const ThreadedIdentity ident{this, std::this_thread::get_id()};
     {
         const scoped_read_lock_guard lock{mutex};
-        if (running.find(ident) != running.end()) [[unlikely]] {
+        if (running.contains(ident)) [[unlikely]] {
             return "...";
         }
     }
@@ -297,7 +297,7 @@ py::object PyTreeSpec::ToPickleable() const {
     ssize_t i = 0;
     for (const auto& node : m_traversal) {
         const scoped_critical_section2 cs{
-            node.custom != nullptr ? py::handle{node.custom->type.ptr()} : py::handle{},
+            node.custom != nullptr ? py::handle{node.custom->type} : py::handle{},
             node.node_data};
         TupleSetItem(node_states,
                      i++,
