@@ -88,7 +88,7 @@ jobs:
 
       - name: clang-tidy
         run: |
-          make clang-tidy CMAKE_CXX_STANDARD=17
+          make clang-tidy CMAKE_CXX_STANDARD=20
 
       - name: cpplint
         run: |
