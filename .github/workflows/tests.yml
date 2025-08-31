@@ -121,7 +121,7 @@ jobs:
           if [[ "${{ runner.os }}" == 'Linux' ]]; then
             sudo apt-get update -qq && sudo apt-get install -yqq cmake
           elif [[ "${{ runner.os }}" == 'macOS' ]]; then
-            brew update --quiet && brew install --formula cmake
+            brew update && (brew list --formula cmake || brew install --formula cmake)
           elif [[ "${{ runner.os }}" == 'Windows' ]]; then
             choco install cmake cmake.install --force --yes
           fi
@@ -303,7 +303,7 @@ jobs:
               BACKTRACE_COMMAND="gdb --exec ${{ env.PYTHON }} --core '{}' -ex 'bt -full' -ex 'q'"
             elif [[ "${{ runner.os }}" == 'macOS' ]]; then
               echo "::group::Install LLDB"
-              brew update --quiet && brew install --formula llvm --quiet
+              brew update && (brew list --formula llvm || brew install --formula llvm)
               echo "::endgroup::"
               BACKTRACE_COMMAND="lldb --file ${{ env.PYTHON }} --core '{}' -o 'bt all' -o 'q'"
             elif [[ "${{ runner.os }}" == 'Windows' ]]; then
