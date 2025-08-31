@@ -27,7 +27,7 @@ limitations under the License.
 
 namespace optree {
 
-/*static*/ std::string PyTreeSpec::NodeKindToString(const Node& node) {
+/*static*/ std::string PyTreeSpec::NodeKindToString(const Node &node) {
     switch (node.kind) {
         case PyTreeKind::Leaf:
             return "leaf type";
@@ -60,7 +60,7 @@ namespace optree {
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 std::string PyTreeSpec::ToStringImpl() const {
     auto agenda = reserved_vector<std::string>(4);
-    for (const Node& node : m_traversal) {
+    for (const Node &node : m_traversal) {
         EXPECT_GE(py::ssize_t_cast(agenda.size()), node.arity, "Too few elements for container.");
 
         std::ostringstream children_sstream{};
@@ -117,7 +117,7 @@ std::string PyTreeSpec::ToStringImpl() const {
                 }
                 bool first = true;
                 auto child_it = agenda.cend() - node.arity;
-                for (const py::handle& key : node.node_data) {
+                for (const py::handle &key : node.node_data) {
                     if (!first) [[likely]] {
                         sstream << ", ";
                     }
@@ -145,7 +145,7 @@ std::string PyTreeSpec::ToStringImpl() const {
                 sstream << kind << "(";
                 bool first = true;
                 auto child_it = agenda.cend() - node.arity;
-                for (const py::handle& field : fields) {
+                for (const py::handle &field : fields) {
                     if (!first) [[likely]] {
                         sstream << ", ";
                     }
@@ -168,7 +168,7 @@ std::string PyTreeSpec::ToStringImpl() const {
                 sstream << "defaultdict(" << PyRepr(default_factory) << ", {";
                 bool first = true;
                 auto child_it = agenda.cend() - node.arity;
-                for (const py::handle& key : keys) {
+                for (const py::handle &key : keys) {
                     if (!first) [[likely]] {
                         sstream << ", ";
                     }
@@ -210,7 +210,7 @@ std::string PyTreeSpec::ToStringImpl() const {
                 sstream << PyStr(qualname) << "(";
                 bool first = true;
                 auto child_it = agenda.cend() - node.arity;
-                for (const py::handle& field : fields) {
+                for (const py::handle &field : fields) {
                     if (!first) [[likely]] {
                         sstream << ", ";
                     }
@@ -295,7 +295,7 @@ py::object PyTreeSpec::ToPickleable() const {
 
     const py::tuple node_states{GetNumNodes()};
     ssize_t i = 0;
-    for (const auto& node : m_traversal) {
+    for (const auto &node : m_traversal) {
         const scoped_critical_section2 cs{
             node.custom != nullptr ? py::handle{node.custom->type.ptr()} : py::handle{},
             node.node_data};
@@ -315,7 +315,7 @@ py::object PyTreeSpec::ToPickleable() const {
 
 // NOLINTBEGIN[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPickleable(const py::object& pickleable) {
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPickleable(const py::object &pickleable) {
     const auto state = thread_safe_cast<py::tuple>(pickleable);
     if (state.size() != 3) [[unlikely]] {
         throw std::runtime_error("Malformed pickled PyTreeSpec.");
@@ -326,9 +326,9 @@ py::object PyTreeSpec::ToPickleable() const {
     out->m_none_is_leaf = none_is_leaf = thread_safe_cast<bool>(state[1]);
     out->m_namespace = registry_namespace = thread_safe_cast<std::string>(state[2]);
     const auto node_states = thread_safe_cast<py::tuple>(state[0]);
-    for (const auto& item : node_states) {
+    for (const auto &item : node_states) {
         const auto t = thread_safe_cast<py::tuple>(item);
-        Node& node = out->m_traversal.emplace_back();
+        Node &node = out->m_traversal.emplace_back();
         node.kind = static_cast<PyTreeKind>(thread_safe_cast<ssize_t>(t[0]));
         if (t.size() != 7) [[unlikely]] {
             if (t.size() == 8) [[likely]] {

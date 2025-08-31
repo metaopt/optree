@@ -28,14 +28,14 @@ limitations under the License.
 namespace optree {
 
 template <bool NoneIsLeaf>
-/*static*/ PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton() {
+/*static*/ PyTreeTypeRegistry *PyTreeTypeRegistry::Singleton() {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyTreeTypeRegistry> storage;
     return &(storage
                  .call_once_and_store_result([]() -> PyTreeTypeRegistry {
                      PyTreeTypeRegistry registry{};
 
-                     const auto add_builtin_type = [&registry](const py::object& cls,
-                                                               const PyTreeKind& kind) -> void {
+                     const auto add_builtin_type = [&registry](const py::object &cls,
+                                                               const PyTreeKind &kind) -> void {
                          auto registration =
                              std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
                          registration->kind = kind;
@@ -62,21 +62,21 @@ template <bool NoneIsLeaf>
                  .get_stored());
 }
 
-template PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
-template PyTreeTypeRegistry* PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
+template PyTreeTypeRegistry *PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
+template PyTreeTypeRegistry *PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
 
 template <bool NoneIsLeaf>
-/*static*/ void PyTreeTypeRegistry::RegisterImpl(const py::object& cls,
-                                                 const py::function& flatten_func,
-                                                 const py::function& unflatten_func,
-                                                 const py::object& path_entry_type,
-                                                 const std::string& registry_namespace) {
+/*static*/ void PyTreeTypeRegistry::RegisterImpl(const py::object &cls,
+                                                 const py::function &flatten_func,
+                                                 const py::function &unflatten_func,
+                                                 const py::object &path_entry_type,
+                                                 const std::string &registry_namespace) {
     if (sm_builtins_types.find(cls) != sm_builtins_types.end()) [[unlikely]] {
         throw py::value_error("PyTree type " + PyRepr(cls) +
                               " is a built-in type and cannot be re-registered.");
     }
 
-    PyTreeTypeRegistry* const registry = Singleton<NoneIsLeaf>();
+    PyTreeTypeRegistry * const registry = Singleton<NoneIsLeaf>();
     auto registration = std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
     registration->kind = PyTreeKind::Custom;
     registration->type = py::reinterpret_borrow<py::object>(cls);
@@ -138,11 +138,11 @@ template <bool NoneIsLeaf>
     }
 }
 
-/*static*/ void PyTreeTypeRegistry::Register(const py::object& cls,
-                                             const py::function& flatten_func,
-                                             const py::function& unflatten_func,
-                                             const py::object& path_entry_type,
-                                             const std::string& registry_namespace) {
+/*static*/ void PyTreeTypeRegistry::Register(const py::object &cls,
+                                             const py::function &flatten_func,
+                                             const py::function &unflatten_func,
+                                             const py::object &path_entry_type,
+                                             const std::string &registry_namespace) {
     const scoped_write_lock_guard lock{sm_mutex};
 
     RegisterImpl<NONE_IS_NODE>(cls,
@@ -163,14 +163,14 @@ template <bool NoneIsLeaf>
 
 template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::UnregisterImpl(
-    const py::object& cls,
-    const std::string& registry_namespace) {
+    const py::object &cls,
+    const std::string &registry_namespace) {
     if (sm_builtins_types.find(cls) != sm_builtins_types.end()) [[unlikely]] {
         throw py::value_error("PyTree type " + PyRepr(cls) +
                               " is a built-in type and cannot be unregistered.");
     }
 
-    PyTreeTypeRegistry* const registry = Singleton<NoneIsLeaf>();
+    PyTreeTypeRegistry * const registry = Singleton<NoneIsLeaf>();
     if (registry_namespace.empty()) [[unlikely]] {
         const auto it = registry->m_registrations.find(cls);
         if (it == registry->m_registrations.end()) [[unlikely]] {
@@ -214,8 +214,8 @@ template <bool NoneIsLeaf>
     }
 }
 
-/*static*/ void PyTreeTypeRegistry::Unregister(const py::object& cls,
-                                               const std::string& registry_namespace) {
+/*static*/ void PyTreeTypeRegistry::Unregister(const py::object &cls,
+                                               const std::string &registry_namespace) {
     const scoped_write_lock_guard lock{sm_mutex};
 
     const auto registration1 = UnregisterImpl<NONE_IS_NODE>(cls, registry_namespace);
@@ -232,11 +232,11 @@ template <bool NoneIsLeaf>
 
 template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup(
-    const py::object& cls,
-    const std::string& registry_namespace) {
+    const py::object &cls,
+    const std::string &registry_namespace) {
     const scoped_read_lock_guard lock{sm_mutex};
 
-    PyTreeTypeRegistry* const registry = Singleton<NoneIsLeaf>();
+    PyTreeTypeRegistry * const registry = Singleton<NoneIsLeaf>();
     if (!registry_namespace.empty()) [[unlikely]] {
         const auto named_it =
             registry->m_named_registrations.find(std::make_pair(registry_namespace, cls));
@@ -249,17 +249,17 @@ template <bool NoneIsLeaf>
 }
 
 template PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(
-    const py::object&,
-    const std::string&);
+    const py::object &,
+    const std::string &);
 template PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(
-    const py::object&,
-    const std::string&);
+    const py::object &,
+    const std::string &);
 
 template <bool NoneIsLeaf>
 /*static*/ PyTreeKind PyTreeTypeRegistry::GetKind(
-    const py::handle& handle,
-    PyTreeTypeRegistry::RegistrationPtr& custom,  // NOLINT[runtime/references]
-    const std::string& registry_namespace) {
+    const py::handle &handle,
+    PyTreeTypeRegistry::RegistrationPtr &custom,  // NOLINT[runtime/references]
+    const std::string &registry_namespace) {
     const RegistrationPtr registration =
         Lookup<NoneIsLeaf>(py::type::of(handle), registry_namespace);
     if (registration) [[likely]] {
@@ -281,46 +281,46 @@ template <bool NoneIsLeaf>
 }
 
 template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_NODE>(
-    const py::handle&,
-    PyTreeTypeRegistry::RegistrationPtr&,  // NOLINT[runtime/references]
-    const std::string&);
+    const py::handle &,
+    PyTreeTypeRegistry::RegistrationPtr &,  // NOLINT[runtime/references]
+    const std::string &);
 template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
-    const py::handle&,
-    PyTreeTypeRegistry::RegistrationPtr&,  // NOLINT[runtime/references]
-    const std::string&);
+    const py::handle &,
+    PyTreeTypeRegistry::RegistrationPtr &,  // NOLINT[runtime/references]
+    const std::string &);
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ void PyTreeTypeRegistry::Clear() {
     const scoped_write_lock_guard lock{sm_mutex};
 
-    PyTreeTypeRegistry* const registry1 = PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
-    PyTreeTypeRegistry* const registry2 = PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
+    PyTreeTypeRegistry * const registry1 = PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
+    PyTreeTypeRegistry * const registry2 = PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
 
     EXPECT_LE(sm_builtins_types.size(), registry1->m_registrations.size());
     EXPECT_EQ(registry1->m_registrations.size(), registry2->m_registrations.size() + 1);
     EXPECT_EQ(registry1->m_named_registrations.size(), registry2->m_named_registrations.size());
 
 #if defined(Py_DEBUG)
-    for (const auto& cls : sm_builtins_types) {
+    for (const auto &cls : sm_builtins_types) {
         EXPECT_NE(registry1->m_registrations.find(cls), registry1->m_registrations.end());
     }
-    for (const auto& entry : registry2->m_registrations) {
+    for (const auto &entry : registry2->m_registrations) {
         const auto it = registry1->m_registrations.find(entry.first);
         EXPECT_NE(it, registry1->m_registrations.end());
 
-        const auto& registration1 = it->second;
-        const auto& registration2 = entry.second;
+        const auto &registration1 = it->second;
+        const auto &registration2 = entry.second;
         EXPECT_TRUE(registration1->type.is(registration2->type));
         EXPECT_TRUE(registration1->flatten_func.is(registration2->flatten_func));
         EXPECT_TRUE(registration1->unflatten_func.is(registration2->unflatten_func));
         EXPECT_TRUE(registration1->path_entry_type.is(registration2->path_entry_type));
     }
-    for (const auto& entry : registry2->m_named_registrations) {
+    for (const auto &entry : registry2->m_named_registrations) {
         const auto it = registry1->m_named_registrations.find(entry.first);
         EXPECT_NE(it, registry1->m_named_registrations.end());
 
-        const auto& registration1 = it->second;
-        const auto& registration2 = entry.second;
+        const auto &registration1 = it->second;
+        const auto &registration2 = entry.second;
         EXPECT_TRUE(registration1->type.is(registration2->type));
         EXPECT_TRUE(registration1->flatten_func.is(registration2->flatten_func));
         EXPECT_TRUE(registration1->unflatten_func.is(registration2->unflatten_func));
@@ -328,13 +328,13 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     }
 #endif
 
-    for (const auto& entry : registry1->m_registrations) {
+    for (const auto &entry : registry1->m_registrations) {
         entry.second->type.dec_ref();
         entry.second->flatten_func.dec_ref();
         entry.second->unflatten_func.dec_ref();
         entry.second->path_entry_type.dec_ref();
     }
-    for (const auto& entry : registry1->m_named_registrations) {
+    for (const auto &entry : registry1->m_named_registrations) {
         entry.second->type.dec_ref();
         entry.second->flatten_func.dec_ref();
         entry.second->unflatten_func.dec_ref();

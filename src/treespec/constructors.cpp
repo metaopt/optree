@@ -28,8 +28,8 @@ limitations under the License.
 
 namespace optree {
 
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeLeaf(const bool& none_is_leaf,
-                                                            const std::string& /*unused*/) {
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeLeaf(const bool &none_is_leaf,
+                                                            const std::string & /*unused*/) {
     auto out = std::make_unique<PyTreeSpec>();
     out->m_traversal.emplace_back(Node{
         .kind = PyTreeKind::Leaf,
@@ -43,8 +43,8 @@ namespace optree {
     return out;
 }
 
-/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeNone(const bool& none_is_leaf,
-                                                            const std::string& /*unused*/) {
+/*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeNone(const bool &none_is_leaf,
+                                                            const std::string & /*unused*/) {
     if (none_is_leaf) [[unlikely]] {
         return MakeLeaf(none_is_leaf);
     }
@@ -64,7 +64,7 @@ namespace optree {
 template <bool NoneIsLeaf>
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeFromCollectionImpl(
-    const py::handle& handle,
+    const py::handle &handle,
     std::string registry_namespace) {
     auto children = reserved_vector<py::object>(4);
     auto treespecs = reserved_vector<PyTreeSpec>(4);
@@ -73,9 +73,9 @@ template <bool NoneIsLeaf>
     node.kind = PyTreeTypeRegistry::GetKind<NoneIsLeaf>(handle, node.custom, registry_namespace);
 
     const auto verify_children = [&handle, &node, &registry_namespace](
-                                     const std::vector<py::object>& children,
-                                     std::vector<PyTreeSpec>& treespecs) -> void {
-        for (const py::object& child : children) {
+                                     const std::vector<py::object> &children,
+                                     std::vector<PyTreeSpec> &treespecs) -> void {
+        for (const py::object &child : children) {
             if (!py::isinstance<PyTreeSpec>(child)) [[unlikely]] {
                 std::ostringstream oss{};
                 oss << "Expected a(n) " << NodeKindToString(node) << " of PyTreeSpec(s), got "
@@ -86,7 +86,7 @@ template <bool NoneIsLeaf>
         }
 
         std::string common_registry_namespace{};
-        for (const PyTreeSpec& treespec : treespecs) {
+        for (const PyTreeSpec &treespec : treespecs) {
             PYTREESPEC_SANITY_CHECK(treespec);
             if (treespec.m_none_is_leaf != NoneIsLeaf) [[unlikely]] {
                 throw py::value_error(NoneIsLeaf
@@ -174,7 +174,7 @@ template <bool NoneIsLeaf>
                         TotalOrderSort(keys);
                     }
                 }
-                for (const py::handle& key : keys) {
+                for (const py::handle &key : keys) {
                     children.emplace_back(DictGetItem(dict, key));
                 }
             }
@@ -230,7 +230,7 @@ template <bool NoneIsLeaf>
             {
                 auto children_iterable = thread_safe_cast<py::iterable>(TupleGetItem(out, 0));
                 const scoped_critical_section cs{children_iterable};
-                for (const py::handle& child : children_iterable) {
+                for (const py::handle &child : children_iterable) {
                     ++node.arity;
                     children.emplace_back(py::reinterpret_borrow<py::object>(child));
                 }
@@ -261,7 +261,7 @@ template <bool NoneIsLeaf>
 
     auto out = std::make_unique<PyTreeSpec>();
     ssize_t num_leaves = ((node.kind == PyTreeKind::Leaf) ? 1 : 0);
-    for (const PyTreeSpec& treespec : treespecs) {
+    for (const PyTreeSpec &treespec : treespecs) {
         std::copy(treespec.m_traversal.cbegin(),
                   treespec.m_traversal.cend(),
                   std::back_inserter(out->m_traversal));
@@ -278,9 +278,9 @@ template <bool NoneIsLeaf>
 }
 
 /*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeFromCollection(
-    const py::object& object,
-    const bool& none_is_leaf,
-    const std::string& registry_namespace) {
+    const py::object &object,
+    const bool &none_is_leaf,
+    const std::string &registry_namespace) {
     if (none_is_leaf) [[unlikely]] {
         return MakeFromCollectionImpl<NONE_IS_LEAF>(object, registry_namespace);
     } else [[likely]] {

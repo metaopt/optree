@@ -23,11 +23,11 @@ limitations under the License.
 namespace optree {
 
 template <typename Span>
-py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
+py::object PyTreeSpec::UnflattenImpl(const Span &leaves) const {
     auto agenda = reserved_vector<py::object>(4);
     auto it = leaves.begin();
     ssize_t num_leaves = 0;
-    for (const Node& node : m_traversal) {
+    for (const Node &node : m_traversal) {
         EXPECT_GE(py::ssize_t_cast(agenda.size()),
                   node.arity,
                   "Too few elements for PyTreeSpec node.");
@@ -79,7 +79,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span& leaves) const {
     return agenda.back();
 }
 
-py::object PyTreeSpec::Unflatten(const py::iterable& leaves) const {
+py::object PyTreeSpec::Unflatten(const py::iterable &leaves) const {
     PYTREESPEC_SANITY_CHECK(*this);
 
     const scoped_critical_section cs{leaves};

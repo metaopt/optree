@@ -17,6 +17,7 @@ BinPackArguments: false
 BinPackParameters: false
 BreakBeforeTernaryOperators: true
 CommentPragmas: 'NOLINT(NEXTLINE|BEGIN|END)?\[.*\]'
+DerivePointerAlignment: false
 FixNamespaceComments: true
 IncludeBlocks: Regroup
 IncludeCategories:
@@ -39,6 +40,7 @@ IndentPPDirectives: AfterHash
 InsertBraces: true
 InsertTrailingCommas: Wrapped
 LambdaBodyIndentation: Signature
+LineEnding: DeriveLF
 MacroBlockBegin: '^Py_BEGIN_(ALLOW_THREADS|CRITICAL_SECTION(2)?(_MUT)?)$'
 MacroBlockEnd: '^Py_END_(ALLOW_THREADS|CRITICAL_SECTION(2)?(_MUT)?)$'
 PackConstructorInitializers: NextLine

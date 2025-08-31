@@ -38,14 +38,14 @@ limitations under the License.
 
 namespace py = pybind11;
 
-inline Py_ALWAYS_INLINE std::string PyStr(const py::handle& object) {
+inline Py_ALWAYS_INLINE std::string PyStr(const py::handle &object) {
     return EVALUATE_WITH_LOCK_HELD(static_cast<std::string>(py::str(object)), object);
 }
-inline Py_ALWAYS_INLINE std::string PyStr(const std::string& string) { return string; }
-inline Py_ALWAYS_INLINE std::string PyRepr(const py::handle& object) {
+inline Py_ALWAYS_INLINE std::string PyStr(const std::string &string) { return string; }
+inline Py_ALWAYS_INLINE std::string PyRepr(const py::handle &object) {
     return EVALUATE_WITH_LOCK_HELD(static_cast<std::string>(py::repr(object)), object);
 }
-inline Py_ALWAYS_INLINE std::string PyRepr(const std::string& string) {
+inline Py_ALWAYS_INLINE std::string PyRepr(const std::string &string) {
     return static_cast<std::string>(py::repr(py::str(string)));
 }
 
@@ -53,21 +53,21 @@ inline Py_ALWAYS_INLINE std::string PyRepr(const std::string& string) {
 constexpr py::ssize_t MAX_TYPE_CACHE_SIZE = 4096;
 
 #define PyNoneTypeObject                                                                           \
-    (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(Py_TYPE(Py_None))))
+    (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject *>(Py_TYPE(Py_None))))
 #define PyTupleTypeObject                                                                          \
-    (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyTuple_Type)))
+    (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject *>(&PyTuple_Type)))
 #define PyListTypeObject                                                                           \
-    (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyList_Type)))
+    (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject *>(&PyList_Type)))
 #define PyDictTypeObject                                                                           \
-    (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject*>(&PyDict_Type)))
+    (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject *>(&PyDict_Type)))
 #define PyOrderedDictTypeObject (ImportOrderedDict())
 #define PyDefaultDictTypeObject (ImportDefaultDict())
 #define PyDequeTypeObject (ImportDeque())
-#define PyOrderedDict_Type (reinterpret_cast<PyTypeObject*>(PyOrderedDictTypeObject.ptr()))
-#define PyDefaultDict_Type (reinterpret_cast<PyTypeObject*>(PyDefaultDictTypeObject.ptr()))
-#define PyDeque_Type (reinterpret_cast<PyTypeObject*>(PyDequeTypeObject.ptr()))
+#define PyOrderedDict_Type (reinterpret_cast<PyTypeObject *>(PyOrderedDictTypeObject.ptr()))
+#define PyDefaultDict_Type (reinterpret_cast<PyTypeObject *>(PyDefaultDictTypeObject.ptr()))
+#define PyDeque_Type (reinterpret_cast<PyTypeObject *>(PyDequeTypeObject.ptr()))
 
-inline const py::object& ImportOrderedDict() {
+inline const py::object &ImportOrderedDict() {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
     return storage
         .call_once_and_store_result([]() -> py::object {
@@ -75,7 +75,7 @@ inline const py::object& ImportOrderedDict() {
         })
         .get_stored();
 }
-inline const py::object& ImportDefaultDict() {
+inline const py::object &ImportDefaultDict() {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
     return storage
         .call_once_and_store_result([]() -> py::object {
@@ -83,7 +83,7 @@ inline const py::object& ImportDefaultDict() {
         })
         .get_stored();
 }
-inline const py::object& ImportDeque() {
+inline const py::object &ImportDeque() {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
     return storage
         .call_once_and_store_result(
@@ -91,13 +91,13 @@ inline const py::object& ImportDeque() {
         .get_stored();
 }
 
-inline Py_ALWAYS_INLINE py::ssize_t TupleGetSize(const py::handle& tuple) {
+inline Py_ALWAYS_INLINE py::ssize_t TupleGetSize(const py::handle &tuple) {
     return PyTuple_GET_SIZE(tuple.ptr());
 }
-inline Py_ALWAYS_INLINE py::ssize_t ListGetSize(const py::handle& list) {
+inline Py_ALWAYS_INLINE py::ssize_t ListGetSize(const py::handle &list) {
     return PyList_GET_SIZE(list.ptr());
 }
-inline Py_ALWAYS_INLINE py::ssize_t DictGetSize(const py::handle& dict) {
+inline Py_ALWAYS_INLINE py::ssize_t DictGetSize(const py::handle &dict) {
 #if defined(PyDict_GET_SIZE)
     return PyDict_GET_SIZE(dict.ptr());
 #else
@@ -106,16 +106,16 @@ inline Py_ALWAYS_INLINE py::ssize_t DictGetSize(const py::handle& dict) {
 }
 
 template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, T>>>
-inline Py_ALWAYS_INLINE T TupleGetItemAs(const py::handle& tuple, const py::ssize_t& index) {
+inline Py_ALWAYS_INLINE T TupleGetItemAs(const py::handle &tuple, const py::ssize_t &index) {
     return py::reinterpret_borrow<T>(PyTuple_GET_ITEM(tuple.ptr(), index));
 }
-inline Py_ALWAYS_INLINE py::object TupleGetItem(const py::handle& tuple, const py::ssize_t& index) {
+inline Py_ALWAYS_INLINE py::object TupleGetItem(const py::handle &tuple, const py::ssize_t &index) {
     return TupleGetItemAs<py::object>(tuple, index);
 }
 template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, T>>>
-inline Py_ALWAYS_INLINE T ListGetItemAs(const py::handle& list, const py::ssize_t& index) {
+inline Py_ALWAYS_INLINE T ListGetItemAs(const py::handle &list, const py::ssize_t &index) {
 #if PY_VERSION_HEX >= 0x030D00A4  // Python 3.13.0a4
-    PyObject* const item = PyList_GetItemRef(list.ptr(), index);
+    PyObject * const item = PyList_GetItemRef(list.ptr(), index);
     if (item == nullptr) [[unlikely]] {
         throw py::error_already_set();
     }
@@ -124,13 +124,13 @@ inline Py_ALWAYS_INLINE T ListGetItemAs(const py::handle& list, const py::ssize_
     return py::reinterpret_borrow<T>(PyList_GET_ITEM(list.ptr(), index));
 #endif
 }
-inline Py_ALWAYS_INLINE py::object ListGetItem(const py::handle& list, const py::ssize_t& index) {
+inline Py_ALWAYS_INLINE py::object ListGetItem(const py::handle &list, const py::ssize_t &index) {
     return ListGetItemAs<py::object>(list, index);
 }
 template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, T>>>
-inline Py_ALWAYS_INLINE T DictGetItemAs(const py::handle& dict, const py::handle& key) {
+inline Py_ALWAYS_INLINE T DictGetItemAs(const py::handle &dict, const py::handle &key) {
 #if PY_VERSION_HEX >= 0x030D00A1  // Python 3.13.0a1
-    PyObject* value = nullptr;
+    PyObject *value = nullptr;
     if (PyDict_GetItemRef(dict.ptr(), key.ptr(), &value) < 0) [[unlikely]] {
         throw py::error_already_set();
     }
@@ -143,59 +143,59 @@ inline Py_ALWAYS_INLINE T DictGetItemAs(const py::handle& dict, const py::handle
     return py::reinterpret_borrow<T>(PyDict_GetItem(dict.ptr(), key.ptr()));
 #endif
 }
-inline Py_ALWAYS_INLINE py::object DictGetItem(const py::handle& dict, const py::handle& key) {
+inline Py_ALWAYS_INLINE py::object DictGetItem(const py::handle &dict, const py::handle &key) {
     return DictGetItemAs<py::object>(dict, key);
 }
 
-inline Py_ALWAYS_INLINE void TupleSetItem(const py::handle& tuple,
-                                          const py::ssize_t& index,
-                                          const py::handle& value) {
+inline Py_ALWAYS_INLINE void TupleSetItem(const py::handle &tuple,
+                                          const py::ssize_t &index,
+                                          const py::handle &value) {
     PyTuple_SET_ITEM(tuple.ptr(), index, value.inc_ref().ptr());
 }
-inline Py_ALWAYS_INLINE void ListSetItem(const py::handle& list,
-                                         const py::ssize_t& index,
-                                         const py::handle& value) {
+inline Py_ALWAYS_INLINE void ListSetItem(const py::handle &list,
+                                         const py::ssize_t &index,
+                                         const py::handle &value) {
     PyList_SET_ITEM(list.ptr(), index, value.inc_ref().ptr());
 }
-inline Py_ALWAYS_INLINE void DictSetItem(const py::handle& dict,
-                                         const py::handle& key,
-                                         const py::handle& value) {
+inline Py_ALWAYS_INLINE void DictSetItem(const py::handle &dict,
+                                         const py::handle &key,
+                                         const py::handle &value) {
     if (PyDict_SetItem(dict.ptr(), key.ptr(), value.ptr()) < 0) [[unlikely]] {
         throw py::error_already_set();
     }
 }
 
-inline Py_ALWAYS_INLINE void AssertExactList(const py::handle& object) {
+inline Py_ALWAYS_INLINE void AssertExactList(const py::handle &object) {
     if (!PyList_CheckExact(object.ptr())) [[unlikely]] {
         throw py::value_error("Expected an instance of list, got " + PyRepr(object) + ".");
     }
 }
-inline Py_ALWAYS_INLINE void AssertExactTuple(const py::handle& object) {
+inline Py_ALWAYS_INLINE void AssertExactTuple(const py::handle &object) {
     if (!PyTuple_CheckExact(object.ptr())) [[unlikely]] {
         throw py::value_error("Expected an instance of tuple, got " + PyRepr(object) + ".");
     }
 }
-inline Py_ALWAYS_INLINE void AssertExactDict(const py::handle& object) {
+inline Py_ALWAYS_INLINE void AssertExactDict(const py::handle &object) {
     if (!PyDict_CheckExact(object.ptr())) [[unlikely]] {
         throw py::value_error("Expected an instance of dict, got " + PyRepr(object) + ".");
     }
 }
 
-inline Py_ALWAYS_INLINE void AssertExactOrderedDict(const py::handle& object) {
+inline Py_ALWAYS_INLINE void AssertExactOrderedDict(const py::handle &object) {
     if (!py::type::handle_of(object).is(PyOrderedDictTypeObject)) [[unlikely]] {
         throw py::value_error("Expected an instance of collections.OrderedDict, got " +
                               PyRepr(object) + ".");
     }
 }
 
-inline Py_ALWAYS_INLINE void AssertExactDefaultDict(const py::handle& object) {
+inline Py_ALWAYS_INLINE void AssertExactDefaultDict(const py::handle &object) {
     if (!py::type::handle_of(object).is(PyDefaultDictTypeObject)) [[unlikely]] {
         throw py::value_error("Expected an instance of collections.defaultdict, got " +
                               PyRepr(object) + ".");
     }
 }
 
-inline Py_ALWAYS_INLINE void AssertExactStandardDict(const py::handle& object) {
+inline Py_ALWAYS_INLINE void AssertExactStandardDict(const py::handle &object) {
     if (!(PyDict_CheckExact(object.ptr()) ||
           py::type::handle_of(object).is(PyOrderedDictTypeObject) ||
           py::type::handle_of(object).is(PyDefaultDictTypeObject))) [[unlikely]] {
@@ -206,7 +206,7 @@ inline Py_ALWAYS_INLINE void AssertExactStandardDict(const py::handle& object) {
     }
 }
 
-inline Py_ALWAYS_INLINE void AssertExactDeque(const py::handle& object) {
+inline Py_ALWAYS_INLINE void AssertExactDeque(const py::handle &object) {
     if (!py::type::handle_of(object).is(PyDequeTypeObject)) [[unlikely]] {
         throw py::value_error("Expected an instance of collections.deque, got " + PyRepr(object) +
                               ".");
@@ -214,15 +214,15 @@ inline Py_ALWAYS_INLINE void AssertExactDeque(const py::handle& object) {
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-inline bool IsNamedTupleClassImpl(const py::handle& type) {
+inline bool IsNamedTupleClassImpl(const py::handle &type) {
     // We can only identify namedtuples heuristically, here by the presence of a _fields attribute.
-    if (PyType_FastSubclass(reinterpret_cast<PyTypeObject*>(type.ptr()), Py_TPFLAGS_TUPLE_SUBCLASS))
-        [[unlikely]] {
-        if (PyObject* const _fields = PyObject_GetAttr(type.ptr(), Py_Get_ID(_fields)))
+    if (PyType_FastSubclass(reinterpret_cast<PyTypeObject *>(type.ptr()),
+                            Py_TPFLAGS_TUPLE_SUBCLASS)) [[unlikely]] {
+        if (PyObject * const _fields = PyObject_GetAttr(type.ptr(), Py_Get_ID(_fields)))
             [[unlikely]] {
             bool fields_ok = static_cast<bool>(PyTuple_CheckExact(_fields));
             if (fields_ok) [[likely]] {
-                for (const auto& field : py::reinterpret_borrow<py::tuple>(_fields)) {
+                for (const auto &field : py::reinterpret_borrow<py::tuple>(_fields)) {
                     if (!static_cast<bool>(PyUnicode_CheckExact(field.ptr()))) [[unlikely]] {
                         fields_ok = false;
                         break;
@@ -232,8 +232,8 @@ inline bool IsNamedTupleClassImpl(const py::handle& type) {
             Py_DECREF(_fields);
             if (fields_ok) [[likely]] {
                 // NOLINTNEXTLINE[readability-use-anyofallof]
-                for (PyObject* const name : {Py_Get_ID(_make), Py_Get_ID(_asdict)}) {
-                    if (PyObject* const attr = PyObject_GetAttr(type.ptr(), name)) [[likely]] {
+                for (PyObject * const name : {Py_Get_ID(_make), Py_Get_ID(_asdict)}) {
+                    if (PyObject * const attr = PyObject_GetAttr(type.ptr(), name)) [[likely]] {
                         const bool result = static_cast<bool>(PyCallable_Check(attr));
                         Py_DECREF(attr);
                         if (!result) [[unlikely]] {
@@ -252,7 +252,7 @@ inline bool IsNamedTupleClassImpl(const py::handle& type) {
     }
     return false;
 }
-inline bool IsNamedTupleClass(const py::handle& type) {
+inline bool IsNamedTupleClass(const py::handle &type) {
     if (!PyType_Check(type.ptr())) [[unlikely]] {
         return false;
     }
@@ -283,20 +283,20 @@ inline bool IsNamedTupleClass(const py::handle& type) {
     }
     return result;
 }
-inline Py_ALWAYS_INLINE bool IsNamedTupleInstance(const py::handle& object) {
+inline Py_ALWAYS_INLINE bool IsNamedTupleInstance(const py::handle &object) {
     return IsNamedTupleClass(py::type::handle_of(object));
 }
-inline Py_ALWAYS_INLINE bool IsNamedTuple(const py::handle& object) {
+inline Py_ALWAYS_INLINE bool IsNamedTuple(const py::handle &object) {
     const py::handle type = (PyType_Check(object.ptr()) ? object : py::type::handle_of(object));
     return IsNamedTupleClass(type);
 }
-inline Py_ALWAYS_INLINE void AssertExactNamedTuple(const py::handle& object) {
+inline Py_ALWAYS_INLINE void AssertExactNamedTuple(const py::handle &object) {
     if (!IsNamedTupleInstance(object)) [[unlikely]] {
         throw py::value_error("Expected an instance of collections.namedtuple, got " +
                               PyRepr(object) + ".");
     }
 }
-inline py::tuple NamedTupleGetFields(const py::handle& object) {
+inline py::tuple NamedTupleGetFields(const py::handle &object) {
     py::handle type;
     if (PyType_Check(object.ptr())) [[unlikely]] {
         type = object;
@@ -314,20 +314,20 @@ inline py::tuple NamedTupleGetFields(const py::handle& object) {
     return EVALUATE_WITH_LOCK_HELD(py::getattr(type, Py_Get_ID(_fields)), type);
 }
 
-inline bool IsStructSequenceClassImpl(const py::handle& type) {
+inline bool IsStructSequenceClassImpl(const py::handle &type) {
     // We can only identify PyStructSequences heuristically, here by the presence of
     // n_fields, n_sequence_fields, n_unnamed_fields attributes.
-    auto* const type_object = reinterpret_cast<PyTypeObject*>(type.ptr());
+    auto * const type_object = reinterpret_cast<PyTypeObject *>(type.ptr());
     if (PyType_FastSubclass(type_object, Py_TPFLAGS_TUPLE_SUBCLASS) &&
         type_object->tp_bases != nullptr &&
         static_cast<bool>(PyTuple_CheckExact(type_object->tp_bases)) &&
         PyTuple_GET_SIZE(type_object->tp_bases) == 1 &&
-        PyTuple_GET_ITEM(type_object->tp_bases, 0) == reinterpret_cast<PyObject*>(&PyTuple_Type))
+        PyTuple_GET_ITEM(type_object->tp_bases, 0) == reinterpret_cast<PyObject *>(&PyTuple_Type))
         [[unlikely]] {
         // NOLINTNEXTLINE[readability-use-anyofallof]
-        for (PyObject* const name :
+        for (PyObject * const name :
              {Py_Get_ID(n_fields), Py_Get_ID(n_sequence_fields), Py_Get_ID(n_unnamed_fields)}) {
-            if (PyObject* const attr = PyObject_GetAttr(type.ptr(), name)) [[unlikely]] {
+            if (PyObject * const attr = PyObject_GetAttr(type.ptr(), name)) [[unlikely]] {
                 const bool result = static_cast<bool>(PyLong_CheckExact(attr));
                 Py_DECREF(attr);
                 if (!result) [[unlikely]] {
@@ -341,7 +341,7 @@ inline bool IsStructSequenceClassImpl(const py::handle& type) {
 #if defined(PYPY_VERSION)
         try {
             py::exec("class _(cls): pass", py::dict(py::arg("cls") = type));
-        } catch (py::error_already_set& ex) {
+        } catch (py::error_already_set &ex) {
             if (ex.matches(PyExc_AssertionError) || ex.matches(PyExc_TypeError)) [[likely]] {
                 PyErr_Clear();
                 return true;
@@ -355,7 +355,7 @@ inline bool IsStructSequenceClassImpl(const py::handle& type) {
     }
     return false;
 }
-inline bool IsStructSequenceClass(const py::handle& type) {
+inline bool IsStructSequenceClass(const py::handle &type) {
     if (!PyType_Check(type.ptr())) [[unlikely]] {
         return false;
     }
@@ -386,20 +386,20 @@ inline bool IsStructSequenceClass(const py::handle& type) {
     }
     return result;
 }
-inline Py_ALWAYS_INLINE bool IsStructSequenceInstance(const py::handle& object) {
+inline Py_ALWAYS_INLINE bool IsStructSequenceInstance(const py::handle &object) {
     return IsStructSequenceClass(py::type::handle_of(object));
 }
-inline Py_ALWAYS_INLINE bool IsStructSequence(const py::handle& object) {
+inline Py_ALWAYS_INLINE bool IsStructSequence(const py::handle &object) {
     const py::handle type = (PyType_Check(object.ptr()) ? object : py::type::handle_of(object));
     return IsStructSequenceClass(type);
 }
-inline Py_ALWAYS_INLINE void AssertExactStructSequence(const py::handle& object) {
+inline Py_ALWAYS_INLINE void AssertExactStructSequence(const py::handle &object) {
     if (!IsStructSequenceInstance(object)) [[unlikely]] {
         throw py::value_error("Expected an instance of PyStructSequence type, got " +
                               PyRepr(object) + ".");
     }
 }
-inline py::tuple StructSequenceGetFieldsImpl(const py::handle& type) {
+inline py::tuple StructSequenceGetFieldsImpl(const py::handle &type) {
 #if defined(PYPY_VERSION)
     py::list fields{};
     py::exec(
@@ -419,7 +419,7 @@ inline py::tuple StructSequenceGetFieldsImpl(const py::handle& type) {
 #else
     const auto n_sequence_fields = thread_safe_cast<py::ssize_t>(
         EVALUATE_WITH_LOCK_HELD(py::getattr(type, Py_Get_ID(n_sequence_fields)), type));
-    const auto* const members = reinterpret_cast<PyTypeObject*>(type.ptr())->tp_members;
+    const auto * const members = reinterpret_cast<PyTypeObject *>(type.ptr())->tp_members;
     py::tuple fields{n_sequence_fields};
     for (py::ssize_t i = 0; i < n_sequence_fields; ++i) {
         // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
@@ -428,7 +428,7 @@ inline py::tuple StructSequenceGetFieldsImpl(const py::handle& type) {
     return fields;
 #endif
 }
-inline py::tuple StructSequenceGetFields(const py::handle& object) {
+inline py::tuple StructSequenceGetFields(const py::handle &object) {
     py::handle type;
     if (PyType_Check(object.ptr())) [[unlikely]] {
         type = object;
@@ -475,19 +475,19 @@ inline py::tuple StructSequenceGetFields(const py::handle& object) {
     return fields;
 }
 
-inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
+inline void TotalOrderSort(py::list &list) {  // NOLINT[runtime/references]
     try {
         // Sort directly if possible.
         if (static_cast<bool>(EVALUATE_WITH_LOCK_HELD(PyList_Sort(list.ptr()), list)))
             [[unlikely]] {
             throw py::error_already_set();
         }
-    } catch (py::error_already_set& ex1) {
+    } catch (py::error_already_set &ex1) {
         if (ex1.matches(PyExc_TypeError)) [[likely]] {
             // Found incomparable keys (e.g. `int` vs. `str`, or user-defined types).
             try {
                 // Sort with `(f'{obj.__class__.__module__}.{obj.__class__.__qualname__}', obj)`
-                const auto sort_key_fn = py::cpp_function([](const py::object& obj) -> py::tuple {
+                const auto sort_key_fn = py::cpp_function([](const py::object &obj) -> py::tuple {
                     const py::handle cls = py::type::handle_of(obj);
                     const py::str qualname{EVALUATE_WITH_LOCK_HELD(
                         PyStr(py::getattr(cls, Py_Get_ID(__module__))) + "." +
@@ -499,7 +499,7 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
                     const scoped_critical_section cs{list};
                     py::getattr(list, Py_Get_ID(sort))(py::arg("key") = sort_key_fn);
                 }
-            } catch (py::error_already_set& ex2) {
+            } catch (py::error_already_set &ex2) {
                 if (ex2.matches(PyExc_TypeError)) [[likely]] {
                     // Found incomparable user-defined key types.
                     // The keys remain in the insertion order.
@@ -514,18 +514,18 @@ inline void TotalOrderSort(py::list& list) {  // NOLINT[runtime/references]
     }
 }
 
-inline Py_ALWAYS_INLINE py::list DictKeys(const py::dict& dict) {
+inline Py_ALWAYS_INLINE py::list DictKeys(const py::dict &dict) {
     const scoped_critical_section cs{dict};
     return py::reinterpret_steal<py::list>(PyDict_Keys(dict.ptr()));
 }
 
-inline py::list SortedDictKeys(const py::dict& dict) {
+inline py::list SortedDictKeys(const py::dict &dict) {
     py::list keys = DictKeys(dict);
     TotalOrderSort(keys);
     return keys;
 }
 
-inline bool DictKeysEqual(const py::list& /*unique*/ keys, const py::dict& dict) {
+inline bool DictKeysEqual(const py::list & /*unique*/ keys, const py::dict &dict) {
     const scoped_critical_section2 cs{keys, dict};
     const py::ssize_t list_len = ListGetSize(keys);
     const py::ssize_t dict_len = DictGetSize(dict);
@@ -545,8 +545,8 @@ inline bool DictKeysEqual(const py::list& /*unique*/ keys, const py::dict& dict)
     return true;
 }
 
-inline std::pair<py::list, py::list> DictKeysDifference(const py::list& /*unique*/ keys,
-                                                        const py::dict& dict) {
+inline std::pair<py::list, py::list> DictKeysDifference(const py::list & /*unique*/ keys,
+                                                        const py::dict &dict) {
     const py::set expected_keys = EVALUATE_WITH_LOCK_HELD(py::set{keys}, keys);
     const py::set got_keys = EVALUATE_WITH_LOCK_HELD(py::set{dict}, dict);
     py::list missing_keys{expected_keys - got_keys};

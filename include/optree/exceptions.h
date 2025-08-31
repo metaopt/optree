@@ -33,15 +33,15 @@ static_assert(CURRENT_FILE_PATH_SIZE >= CURRENT_FILE_RELPATH_FROM_PROJECT_ROOT_S
 constexpr std::size_t SOURCE_PATH_PREFIX_SIZE =
     CURRENT_FILE_PATH_SIZE - CURRENT_FILE_RELPATH_FROM_PROJECT_ROOT_SIZE;
 // NOLINTNEXTLINE[bugprone-reserved-identifier]
-#define __FILE_RELPATH_FROM_PROJECT_ROOT__ ((const char*)&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
+#define __FILE_RELPATH_FROM_PROJECT_ROOT__ ((const char *)&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
 
 class InternalError : public std::logic_error {
 public:
-    explicit InternalError(const std::string& message) noexcept(noexcept(std::logic_error{message}))
+    explicit InternalError(const std::string &message) noexcept(noexcept(std::logic_error{message}))
         : std::logic_error{message} {}
-    explicit InternalError(const std::string& message,
-                           const std::string& file,
-                           const std::size_t& lineno,
+    explicit InternalError(const std::string &message,
+                           const std::string &file,
+                           const std::size_t &lineno,
                            const std::optional<std::string> function =
                                std::nullopt) noexcept(noexcept(std::logic_error{message}))
         : InternalError([&message, &file, &lineno, &function]() -> std::string {

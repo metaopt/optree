@@ -34,10 +34,10 @@ public:
     pymutex() noexcept = default;
     ~pymutex() noexcept = default;
 
-    pymutex(const pymutex&) = delete;
-    pymutex& operator=(const pymutex&) = delete;
-    pymutex(pymutex&&) = delete;
-    pymutex& operator=(pymutex&&) = delete;
+    pymutex(const pymutex &) = delete;
+    pymutex &operator=(const pymutex &) = delete;
+    pymutex(pymutex &&) = delete;
+    pymutex &operator=(pymutex &&) = delete;
 
     void lock() { PyMutex_Lock(&mutex); }
     void unlock() { PyMutex_Unlock(&mutex); }
@@ -85,7 +85,7 @@ public:
     scoped_critical_section() = delete;
 
 #if defined(Py_GIL_DISABLED)
-    explicit scoped_critical_section(const py::handle& handle) : m_ptr{handle.ptr()} {
+    explicit scoped_critical_section(const py::handle &handle) : m_ptr{handle.ptr()} {
         if (m_ptr != nullptr && !Py_IsConstant(m_ptr)) [[likely]] {
             PyCriticalSection_Begin(&m_critical_section, m_ptr);
         }
@@ -97,18 +97,18 @@ public:
         }
     }
 #else
-    explicit scoped_critical_section(const py::handle& /*unused*/) noexcept {}
+    explicit scoped_critical_section(const py::handle & /*unused*/) noexcept {}
     ~scoped_critical_section() noexcept = default;
 #endif
 
-    scoped_critical_section(const scoped_critical_section&) = delete;
-    scoped_critical_section& operator=(const scoped_critical_section&) = delete;
-    scoped_critical_section(scoped_critical_section&&) = delete;
-    scoped_critical_section& operator=(scoped_critical_section&&) = delete;
+    scoped_critical_section(const scoped_critical_section &) = delete;
+    scoped_critical_section &operator=(const scoped_critical_section &) = delete;
+    scoped_critical_section(scoped_critical_section &&) = delete;
+    scoped_critical_section &operator=(scoped_critical_section &&) = delete;
 
 private:
 #if defined(Py_GIL_DISABLED)
-    PyObject* m_ptr{nullptr};
+    PyObject *m_ptr{nullptr};
     PyCriticalSection m_critical_section{};
 #endif
 };
@@ -118,7 +118,7 @@ public:
     scoped_critical_section2() = delete;
 
 #if defined(Py_GIL_DISABLED)
-    explicit scoped_critical_section2(const py::handle& handle1, const py::handle& handle2)
+    explicit scoped_critical_section2(const py::handle &handle1, const py::handle &handle2)
         : m_ptr1{handle1.ptr()}, m_ptr2{handle2.ptr()} {
         if (m_ptr1 != nullptr && !Py_IsConstant(m_ptr1)) [[likely]] {
             if (m_ptr2 != nullptr && !Py_IsConstant(m_ptr2)) [[likely]] {
@@ -143,20 +143,20 @@ public:
         }
     }
 #else
-    explicit scoped_critical_section2(const py::handle& /*unused*/,
-                                      const py::handle& /*unused*/) noexcept {}
+    explicit scoped_critical_section2(const py::handle & /*unused*/,
+                                      const py::handle & /*unused*/) noexcept {}
     ~scoped_critical_section2() noexcept = default;
 #endif
 
-    scoped_critical_section2(const scoped_critical_section2&) = delete;
-    scoped_critical_section2& operator=(const scoped_critical_section2&) = delete;
-    scoped_critical_section2(scoped_critical_section2&&) = delete;
-    scoped_critical_section2& operator=(scoped_critical_section2&&) = delete;
+    scoped_critical_section2(const scoped_critical_section2 &) = delete;
+    scoped_critical_section2 &operator=(const scoped_critical_section2 &) = delete;
+    scoped_critical_section2(scoped_critical_section2 &&) = delete;
+    scoped_critical_section2 &operator=(scoped_critical_section2 &&) = delete;
 
 private:
 #if defined(Py_GIL_DISABLED)
-    PyObject* m_ptr1{nullptr};
-    PyObject* m_ptr2{nullptr};
+    PyObject *m_ptr1{nullptr};
+    PyObject *m_ptr2{nullptr};
     PyCriticalSection m_critical_section{};
     PyCriticalSection2 m_critical_section2{};
 #endif
@@ -178,6 +178,6 @@ private:
 #endif
 
 template <typename T>
-inline Py_ALWAYS_INLINE T thread_safe_cast(const py::handle& handle) {
+inline Py_ALWAYS_INLINE T thread_safe_cast(const py::handle &handle) {
     return EVALUATE_WITH_LOCK_HELD(py::cast<T>(handle), handle);
 }

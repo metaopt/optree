@@ -30,11 +30,11 @@ namespace optree {
 
 template <bool NoneIsLeaf, bool DictShouldBeSorted, typename LeafVector>
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
-                                 LeafVector& leaves,
-                                 const ssize_t& depth,
-                                 const std::optional<py::function>& leaf_predicate,
-                                 const std::string& registry_namespace) {
+bool PyTreeSpec::FlattenIntoImpl(const py::handle &handle,
+                                 LeafVector &leaves,
+                                 const ssize_t &depth,
+                                 const std::optional<py::function> &leaf_predicate,
+                                 const std::string &registry_namespace) {
     if (depth > MAX_RECURSION_DEPTH) [[unlikely]] {
         PyErr_SetString(PyExc_RecursionError,
                         "Maximum recursion depth exceeded during flattening the tree.");
@@ -57,7 +57,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
         const auto recurse =
             // NOLINTNEXTLINE[misc-no-recursion]
             [this, &found_custom, &leaf_predicate, &registry_namespace, &leaves, &depth](
-                const py::handle& child) -> void {
+                const py::handle &child) -> void {
             found_custom |= FlattenIntoImpl<NoneIsLeaf, DictShouldBeSorted>(child,
                                                                             leaves,
                                                                             depth + 1,
@@ -111,7 +111,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                             TotalOrderSort(keys);
                         }
                     }
-                    for (const py::handle& key : keys) {
+                    for (const py::handle &key : keys) {
                         recurse(DictGetItem(dict, key));
                     }
                 }
@@ -165,7 +165,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
                 {
                     auto children = thread_safe_cast<py::iterable>(TupleGetItem(out, 0));
                     const scoped_critical_section cs{children};
-                    for (const py::handle& child : children) {
+                    for (const py::handle &child : children) {
                         ++node.arity;
                         recurse(child);
                     }
@@ -199,11 +199,11 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle& handle,
     return found_custom;
 }
 
-bool PyTreeSpec::FlattenInto(const py::handle& handle,
-                             std::vector<py::object>& leaves,
-                             const std::optional<py::function>& leaf_predicate,
-                             const bool& none_is_leaf,
-                             const std::string& registry_namespace) {
+bool PyTreeSpec::FlattenInto(const py::handle &handle,
+                             std::vector<py::object> &leaves,
+                             const std::optional<py::function> &leaf_predicate,
+                             const bool &none_is_leaf,
+                             const std::string &registry_namespace) {
     bool found_custom = false;
     bool is_dict_insertion_ordered = false;
     bool is_dict_insertion_ordered_in_current_namespace = false;
@@ -253,10 +253,10 @@ bool PyTreeSpec::FlattenInto(const py::handle& handle,
 }
 
 /*static*/ std::pair<std::vector<py::object>, std::unique_ptr<PyTreeSpec>> PyTreeSpec::Flatten(
-    const py::object& tree,
-    const std::optional<py::function>& leaf_predicate,
-    const bool& none_is_leaf,
-    const std::string& registry_namespace) {
+    const py::object &tree,
+    const std::optional<py::function> &leaf_predicate,
+    const bool &none_is_leaf,
+    const std::string &registry_namespace) {
     auto leaves = reserved_vector<py::object>(4);
     auto treespec = std::make_unique<PyTreeSpec>();
     treespec->m_none_is_leaf = none_is_leaf;
@@ -275,13 +275,13 @@ template <bool NoneIsLeaf,
           typename PathVector,
           typename Stack>
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
-                                         LeafVector& leaves,
-                                         PathVector& paths,
-                                         Stack& stack,
-                                         const ssize_t& depth,
-                                         const std::optional<py::function>& leaf_predicate,
-                                         const std::string& registry_namespace) {
+bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle &handle,
+                                         LeafVector &leaves,
+                                         PathVector &paths,
+                                         Stack &stack,
+                                         const ssize_t &depth,
+                                         const std::optional<py::function> &leaf_predicate,
+                                         const std::string &registry_namespace) {
     if (depth > MAX_RECURSION_DEPTH) [[unlikely]] {
         PyErr_SetString(PyExc_RecursionError,
                         "Maximum recursion depth exceeded during flattening the tree.");
@@ -314,7 +314,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                               &leaves,
                               &paths,
                               &stack,
-                              &depth](const py::handle& child, const py::handle& entry) -> void {
+                              &depth](const py::handle &child, const py::handle &entry) -> void {
             stack.emplace_back(entry);
             found_custom |=
                 FlattenIntoWithPathImpl<NoneIsLeaf, DictShouldBeSorted>(child,
@@ -376,7 +376,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                         TotalOrderSort(keys);
                     }
                 }
-                for (const py::handle& key : keys) {
+                for (const py::handle &key : keys) {
                     recurse(DictGetItem(dict, key), key);
                 }
                 if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
@@ -434,7 +434,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                 if (node_entries.is_none()) [[unlikely]] {
                     auto children = thread_safe_cast<py::iterable>(TupleGetItem(out, 0));
                     const scoped_critical_section cs{children};
-                    for (const py::handle& child : children) {
+                    for (const py::handle &child : children) {
                         recurse(child, py::int_(node.arity++));
                     }
                 } else [[likely]] {
@@ -443,7 +443,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
                     ssize_t num_children = 0;
                     auto children = thread_safe_cast<py::iterable>(TupleGetItem(out, 0));
                     const scoped_critical_section cs{children};
-                    for (const py::handle& child : children) {
+                    for (const py::handle &child : children) {
                         if (num_children >= node.arity) [[unlikely]] {
                             throw std::runtime_error(
                                 "PyTree custom flatten function for type " +
@@ -475,12 +475,12 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle& handle,
     return found_custom;
 }
 
-bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
-                                     std::vector<py::object>& leaves,
-                                     std::vector<py::tuple>& paths,
-                                     const std::optional<py::function>& leaf_predicate,
-                                     const bool& none_is_leaf,
-                                     const std::string& registry_namespace) {
+bool PyTreeSpec::FlattenIntoWithPath(const py::handle &handle,
+                                     std::vector<py::object> &leaves,
+                                     std::vector<py::tuple> &paths,
+                                     const std::optional<py::function> &leaf_predicate,
+                                     const bool &none_is_leaf,
+                                     const std::string &registry_namespace) {
     bool found_custom = false;
     bool is_dict_insertion_ordered = false;
     bool is_dict_insertion_ordered_in_current_namespace = false;
@@ -539,10 +539,10 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle& handle,
 }
 
 /*static*/ std::tuple<std::vector<py::tuple>, std::vector<py::object>, std::unique_ptr<PyTreeSpec>>
-PyTreeSpec::FlattenWithPath(const py::object& tree,
-                            const std::optional<py::function>& leaf_predicate,
-                            const bool& none_is_leaf,
-                            const std::string& registry_namespace) {
+PyTreeSpec::FlattenWithPath(const py::object &tree,
+                            const std::optional<py::function> &leaf_predicate,
+                            const bool &none_is_leaf,
+                            const std::string &registry_namespace) {
     auto leaves = reserved_vector<py::object>(4);
     auto paths = reserved_vector<py::tuple>(4);
     auto treespec = std::make_unique<PyTreeSpec>();
@@ -561,7 +561,7 @@ PyTreeSpec::FlattenWithPath(const py::object& tree,
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-py::list PyTreeSpec::FlattenUpTo(const py::object& tree) const {
+py::list PyTreeSpec::FlattenUpTo(const py::object &tree) const {
     PYTREESPEC_SANITY_CHECK(*this);
 
     auto agenda = reserved_vector<py::object>(4);
@@ -578,7 +578,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& tree) const {
                 << ", got: " << PyRepr(tree) << ".";
             throw py::value_error(oss.str());
         }
-        const Node& node = *it;
+        const Node &node = *it;
         const py::object object = std::move(agenda.back());
         agenda.pop_back();
         ++it;
@@ -669,7 +669,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& tree) const {
                     oss << ": " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());
                 }
-                for (const py::handle& key : expected_keys) {
+                for (const py::handle &key : expected_keys) {
                     agenda.emplace_back(DictGetItem(dict, key));
                 }
                 break;
@@ -777,7 +777,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& tree) const {
                 {
                     auto children = thread_safe_cast<py::iterable>(TupleGetItem(out, 0));
                     const scoped_critical_section cs{children};
-                    for (const py::handle& child : children) {
+                    for (const py::handle &child : children) {
                         ++arity;
                         agenda.emplace_back(py::reinterpret_borrow<py::object>(child));
                     }
@@ -806,9 +806,9 @@ py::list PyTreeSpec::FlattenUpTo(const py::object& tree) const {
 }
 
 template <bool NoneIsLeaf>
-bool IsLeafImpl(const py::handle& handle,
-                const std::optional<py::function>& leaf_predicate,
-                const std::string& registry_namespace) {
+bool IsLeafImpl(const py::handle &handle,
+                const std::optional<py::function> &leaf_predicate,
+                const std::string &registry_namespace) {
     if (leaf_predicate &&
         EVALUATE_WITH_LOCK_HELD2(thread_safe_cast<bool>((*leaf_predicate)(handle)),
                                  handle,
@@ -820,10 +820,10 @@ bool IsLeafImpl(const py::handle& handle,
            PyTreeKind::Leaf;
 }
 
-bool IsLeaf(const py::object& object,
-            const std::optional<py::function>& leaf_predicate,
-            const bool& none_is_leaf,
-            const std::string& registry_namespace) {
+bool IsLeaf(const py::object &object,
+            const std::optional<py::function> &leaf_predicate,
+            const bool &none_is_leaf,
+            const std::string &registry_namespace) {
     if (none_is_leaf) [[unlikely]] {
         return IsLeafImpl<NONE_IS_LEAF>(object, leaf_predicate, registry_namespace);
     } else [[likely]] {
@@ -832,11 +832,11 @@ bool IsLeaf(const py::object& object,
 }
 
 template <bool NoneIsLeaf>
-bool AllLeavesImpl(const py::iterable& iterable,
-                   const std::optional<py::function>& leaf_predicate,
-                   const std::string& registry_namespace) {
+bool AllLeavesImpl(const py::iterable &iterable,
+                   const std::optional<py::function> &leaf_predicate,
+                   const std::string &registry_namespace) {
     PyTreeTypeRegistry::RegistrationPtr custom{nullptr};
-    for (const py::handle& handle : iterable) {
+    for (const py::handle &handle : iterable) {
         if (leaf_predicate &&
             EVALUATE_WITH_LOCK_HELD2(thread_safe_cast<bool>((*leaf_predicate)(handle)),
                                      handle,
@@ -851,10 +851,10 @@ bool AllLeavesImpl(const py::iterable& iterable,
     return true;
 }
 
-bool AllLeaves(const py::iterable& iterable,
-               const std::optional<py::function>& leaf_predicate,
-               const bool& none_is_leaf,
-               const std::string& registry_namespace) {
+bool AllLeaves(const py::iterable &iterable,
+               const std::optional<py::function> &leaf_predicate,
+               const bool &none_is_leaf,
+               const std::string &registry_namespace) {
     const scoped_critical_section cs{iterable};
     if (none_is_leaf) [[unlikely]] {
         return AllLeavesImpl<NONE_IS_LEAF>(iterable, leaf_predicate, registry_namespace);

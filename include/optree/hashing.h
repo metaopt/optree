@@ -31,15 +31,15 @@ namespace py = pybind11;
 // boost::hash_combine
 template <class T>
 inline constexpr Py_ALWAYS_INLINE void HashCombine(
-    py::size_t& seed,  // NOLINT[runtime/references]
-    const T& v) noexcept(noexcept(std::hash<T>{}(v))) {
+    py::size_t &seed,  // NOLINT[runtime/references]
+    const T &v) noexcept(noexcept(std::hash<T>{}(v))) {
     // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
     seed ^= (std::hash<T>{}(v) + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 }
 template <class T>
 inline constexpr Py_ALWAYS_INLINE void HashCombine(
-    py::ssize_t& seed,  // NOLINT[runtime/references]
-    const T& v) noexcept(noexcept(std::hash<T>{}(v))) {
+    py::ssize_t &seed,  // NOLINT[runtime/references]
+    const T &v) noexcept(noexcept(std::hash<T>{}(v))) {
     // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
     seed ^= (std::hash<T>{}(v) + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 }
@@ -47,32 +47,32 @@ inline constexpr Py_ALWAYS_INLINE void HashCombine(
 template <>
 struct std::equal_to<py::handle> {
     using is_transparent = void;
-    inline Py_ALWAYS_INLINE bool operator()(const py::handle& lhs,
-                                            const py::handle& rhs) const noexcept {
+    inline Py_ALWAYS_INLINE bool operator()(const py::handle &lhs,
+                                            const py::handle &rhs) const noexcept {
         return lhs.is(rhs);
     }
 };
 template <>
 struct std::not_equal_to<py::handle> {
     using is_transparent = void;
-    inline Py_ALWAYS_INLINE bool operator()(const py::handle& lhs,
-                                            const py::handle& rhs) const noexcept {
+    inline Py_ALWAYS_INLINE bool operator()(const py::handle &lhs,
+                                            const py::handle &rhs) const noexcept {
         return !lhs.is(rhs);
     }
 };
 template <>
 struct std::hash<py::handle> {
     using is_transparent = void;
-    inline Py_ALWAYS_INLINE std::size_t operator()(const py::handle& obj) const noexcept {
-        return std::hash<PyObject*>{}(obj.ptr());
+    inline Py_ALWAYS_INLINE std::size_t operator()(const py::handle &obj) const noexcept {
+        return std::hash<PyObject *>{}(obj.ptr());
     }
 };
 
 template <>
 struct std::equal_to<std::pair<std::string, py::handle>> {
     using is_transparent = void;
-    inline constexpr Py_ALWAYS_INLINE bool operator()(const std::pair<std::string, py::handle>& lhs,
-                                                      const std::pair<std::string, py::handle>& rhs)
+    inline constexpr Py_ALWAYS_INLINE bool operator()(const std::pair<std::string, py::handle> &lhs,
+                                                      const std::pair<std::string, py::handle> &rhs)
         const noexcept(noexcept(std::equal_to<std::string>{}(lhs.first, rhs.first))) {
         return std::equal_to<std::string>{}(lhs.first, rhs.first) &&
                std::equal_to<py::handle>{}(lhs.second, rhs.second);
@@ -81,8 +81,8 @@ struct std::equal_to<std::pair<std::string, py::handle>> {
 template <>
 struct std::not_equal_to<std::pair<std::string, py::handle>> {
     using is_transparent = void;
-    inline constexpr Py_ALWAYS_INLINE bool operator()(const std::pair<std::string, py::handle>& lhs,
-                                                      const std::pair<std::string, py::handle>& rhs)
+    inline constexpr Py_ALWAYS_INLINE bool operator()(const std::pair<std::string, py::handle> &lhs,
+                                                      const std::pair<std::string, py::handle> &rhs)
         const noexcept(noexcept(std::not_equal_to<std::string>{}(lhs.first, rhs.first))) {
         return std::not_equal_to<std::string>{}(lhs.first, rhs.first) ||
                std::not_equal_to<py::handle>{}(lhs.second, rhs.second);
@@ -91,7 +91,7 @@ struct std::not_equal_to<std::pair<std::string, py::handle>> {
 template <class T, class U>
 struct std::hash<std::pair<T, U>> {
     using is_transparent = void;
-    inline constexpr Py_ALWAYS_INLINE std::size_t operator()(const std::pair<T, U>& p) const
+    inline constexpr Py_ALWAYS_INLINE std::size_t operator()(const std::pair<T, U> &p) const
         noexcept(noexcept(std::hash<T>{}(p.first)) && noexcept(std::hash<U>{}(p.second))) {
         std::size_t seed = 0;
         HashCombine(seed, p.first);

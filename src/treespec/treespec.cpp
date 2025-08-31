@@ -30,10 +30,10 @@ limitations under the License.
 namespace optree {
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-/*static*/ py::object PyTreeSpec::MakeNode(const Node& node,
+/*static*/ py::object PyTreeSpec::MakeNode(const Node &node,
                                            // NOLINTNEXTLINE[cppcoreguidelines-avoid-c-arrays]
                                            const py::object children[],
-                                           const size_t& num_children) {
+                                           const size_t &num_children) {
     EXPECT_EQ(py::ssize_t_cast(num_children), node.arity, "Node arity did not match.");
     EXPECT_TRUE(children != nullptr || num_children == 0, "Node children is null.");
 
@@ -126,7 +126,7 @@ namespace optree {
     }
 }
 
-/*static*/ py::object PyTreeSpec::GetPathEntryType(const Node& node) {
+/*static*/ py::object PyTreeSpec::GetPathEntryType(const Node &node) {
     switch (node.kind) {
         case PyTreeKind::Leaf:
         case PyTreeKind::None: {
@@ -184,13 +184,13 @@ namespace optree {
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ std::tuple<ssize_t, ssize_t, ssize_t, ssize_t> PyTreeSpec::BroadcastToCommonSuffixImpl(
-    std::vector<Node>& nodes,
-    const std::vector<Node>& traversal,
-    const ssize_t& pos,
-    const std::vector<Node>& other_traversal,
-    const ssize_t& other_pos) {
-    const Node& root = traversal.at(pos);
-    const Node& other_root = other_traversal.at(other_pos);
+    std::vector<Node> &nodes,
+    const std::vector<Node> &traversal,
+    const ssize_t &pos,
+    const std::vector<Node> &other_traversal,
+    const ssize_t &other_pos) {
+    const Node &root = traversal.at(pos);
+    const Node &other_root = other_traversal.at(other_pos);
     EXPECT_GE(pos + 1,
               root.num_nodes,
               "PyTreeSpec::BroadcastToCommonSuffix() walked off start of array "
@@ -401,7 +401,7 @@ namespace optree {
             nodes[start_num_nodes].num_leaves};
 }
 
-std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec& other) const {
+std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec &other) const {
     PYTREESPEC_SANITY_CHECK(*this);
     PYTREESPEC_SANITY_CHECK(other);
 
@@ -454,8 +454,8 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::function>& f_node,
-                                                  const std::optional<py::function>& f_leaf) const {
+std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::function> &f_node,
+                                                  const std::optional<py::function> &f_leaf) const {
     PYTREESPEC_SANITY_CHECK(*this);
 
     if (!f_node && !f_leaf) [[unlikely]] {
@@ -463,10 +463,10 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
     }
 
     const auto transform =
-        [this, &f_node, &f_leaf](const Node& node) -> std::unique_ptr<PyTreeSpec> {
+        [this, &f_node, &f_leaf](const Node &node) -> std::unique_ptr<PyTreeSpec> {
         auto nodespec = GetOneLevel(node);
 
-        const auto& func = (node.kind == PyTreeKind::Leaf ? f_leaf : f_node);
+        const auto &func = (node.kind == PyTreeKind::Leaf ? f_leaf : f_node);
         if (!func) [[likely]] {
             return nodespec;
         }
@@ -478,7 +478,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
                 << PyRepr(out) << " (input: " << GetOneLevel(node)->ToString() << ").";
             throw py::type_error(oss.str());
         }
-        return std::make_unique<PyTreeSpec>(thread_safe_cast<PyTreeSpec&>(out));
+        return std::make_unique<PyTreeSpec>(thread_safe_cast<PyTreeSpec &>(out));
     };
 
     auto treespec = std::make_unique<PyTreeSpec>();
@@ -486,7 +486,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
     ssize_t num_extra_leaves = 0;
     ssize_t num_extra_nodes = 0;
     auto pending_num_leaves_nodes = reserved_vector<std::pair<ssize_t, ssize_t>>(4);
-    for (const Node& node : m_traversal) {
+    for (const Node &node : m_traversal) {
         auto transformed = transform(node);
         if (transformed->m_none_is_leaf != m_none_is_leaf) [[unlikely]] {
             std::ostringstream oss{};
@@ -526,14 +526,14 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
                     << ").";
                 throw py::value_error(oss.str());
             }
-            auto& subroot = treespec->m_traversal.emplace_back(transformed->m_traversal.back());
+            auto &subroot = treespec->m_traversal.emplace_back(transformed->m_traversal.back());
             EXPECT_GE(py::ssize_t_cast(pending_num_leaves_nodes.size()),
                       node.arity,
                       "PyTreeSpec::Transform() walked off start of array.");
             subroot.num_leaves = 0;
             subroot.num_nodes = 1;
             for (ssize_t i = 0; i < node.arity; ++i) {
-                const auto& [num_leaves, num_nodes] = pending_num_leaves_nodes.back();
+                const auto &[num_leaves, num_nodes] = pending_num_leaves_nodes.back();
                 pending_num_leaves_nodes.pop_back();
                 subroot.num_leaves += num_leaves;
                 subroot.num_nodes += num_nodes;
@@ -554,7 +554,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
               1,
               "PyTreeSpec::Transform() did not yield a singleton.");
 
-    const auto& root = treespec->m_traversal.back();
+    const auto &root = treespec->m_traversal.back();
     EXPECT_EQ(root.num_leaves,
               GetNumLeaves() + num_extra_leaves,
               "Number of transformed tree leaves mismatch.");
@@ -574,7 +574,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
     return treespec;
 }
 
-std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner) const {
+std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec &inner) const {
     PYTREESPEC_SANITY_CHECK(*this);
     PYTREESPEC_SANITY_CHECK(inner);
 
@@ -601,7 +601,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner) const {
     const ssize_t num_outer_nodes = GetNumNodes();
     const ssize_t num_inner_leaves = inner.GetNumLeaves();
     const ssize_t num_inner_nodes = inner.GetNumNodes();
-    for (const Node& node : m_traversal) {
+    for (const Node &node : m_traversal) {
         if (node.kind == PyTreeKind::Leaf) [[likely]] {
             std::copy(inner.m_traversal.cbegin(),
                       inner.m_traversal.cend(),
@@ -615,7 +615,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner) const {
         }
     }
 
-    const auto& root = treespec->m_traversal.back();
+    const auto &root = treespec->m_traversal.back();
     EXPECT_EQ(root.num_leaves,
               num_outer_leaves * num_inner_leaves,
               "Number of composed tree leaves mismatch.");
@@ -628,17 +628,17 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec& inner) const {
 }
 
 template <typename PathVector, typename Stack>
-ssize_t PyTreeSpec::PathsImpl(PathVector& paths,  // NOLINT[misc-no-recursion]
-                              Stack& stack,
-                              const ssize_t& pos,
-                              const ssize_t& depth) const {
-    const Node& root = m_traversal.at(pos);
+ssize_t PyTreeSpec::PathsImpl(PathVector &paths,  // NOLINT[misc-no-recursion]
+                              Stack &stack,
+                              const ssize_t &pos,
+                              const ssize_t &depth) const {
+    const Node &root = m_traversal.at(pos);
     EXPECT_GE(pos + 1, root.num_nodes, "PyTreeSpec::Paths() walked off start of array.");
 
     ssize_t cur = pos - 1;
     // NOLINTNEXTLINE[misc-no-recursion]
-    const auto recurse = [this, &paths, &stack, &depth](const ssize_t& cur,
-                                                        const py::handle& entry) -> ssize_t {
+    const auto recurse = [this, &paths, &stack, &depth](const ssize_t &cur,
+                                                        const py::handle &entry) -> ssize_t {
         stack.emplace_back(entry);
         const ssize_t num_nodes = PathsImpl(paths, stack, cur, depth + 1);
         stack.pop_back();
@@ -719,28 +719,28 @@ std::vector<py::tuple> PyTreeSpec::Paths() const {
 }
 
 template <typename Span, typename Stack>
-ssize_t PyTreeSpec::AccessorsImpl(Span& accessors,  // NOLINT[misc-no-recursion]
-                                  Stack& stack,
-                                  const ssize_t& pos,
-                                  const ssize_t& depth) const {
+ssize_t PyTreeSpec::AccessorsImpl(Span &accessors,  // NOLINT[misc-no-recursion]
+                                  Stack &stack,
+                                  const ssize_t &pos,
+                                  const ssize_t &depth) const {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
-    const py::object& PyTreeAccessor = storage
+    const py::object &PyTreeAccessor = storage
                                            .call_once_and_store_result([]() -> py::object {
                                                return py::getattr(GetCxxModule(), "PyTreeAccessor");
                                            })
                                            .get_stored();
 
-    const Node& root = m_traversal.at(pos);
+    const Node &root = m_traversal.at(pos);
     EXPECT_GE(pos + 1, root.num_nodes, "PyTreeSpec::TypedPaths() walked off start of array.");
 
     ssize_t cur = pos - 1;
     const py::object node_type = GetType(root);
-    const PyTreeKind& node_kind = root.kind;
+    const PyTreeKind &node_kind = root.kind;
     // NOLINTNEXTLINE[misc-no-recursion]
     const auto recurse = [this, &node_type, &node_kind, &accessors, &stack, &depth](
-                             const ssize_t& cur,
-                             const py::handle& entry,
-                             const py::handle& path_entry_type) -> ssize_t {
+                             const ssize_t &cur,
+                             const py::handle &entry,
+                             const py::handle &path_entry_type) -> ssize_t {
         stack.emplace_back(EVALUATE_WITH_LOCK_HELD2(path_entry_type(entry, node_type, node_kind),
                                                     path_entry_type,
                                                     node_type));
@@ -830,7 +830,7 @@ std::vector<py::object> PyTreeSpec::Accessors() const {
 py::list PyTreeSpec::Entries() const {
     PYTREESPEC_SANITY_CHECK(*this);
 
-    const Node& root = m_traversal.back();
+    const Node &root = m_traversal.back();
     if (root.node_entries) [[unlikely]] {
         return py::list{root.node_entries};
     }
@@ -872,7 +872,7 @@ py::list PyTreeSpec::Entries() const {
 py::object PyTreeSpec::Entry(ssize_t index) const {
     PYTREESPEC_SANITY_CHECK(*this);
 
-    const Node& root = m_traversal.back();
+    const Node &root = m_traversal.back();
     if (index < -root.arity || index >= root.arity) [[unlikely]] {
         throw py::index_error("PyTreeSpec::Entry() index out of range.");
     }
@@ -914,7 +914,7 @@ py::object PyTreeSpec::Entry(ssize_t index) const {
 std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
     PYTREESPEC_SANITY_CHECK(*this);
 
-    const Node& root = m_traversal.back();
+    const Node &root = m_traversal.back();
     auto children = reserved_vector<std::unique_ptr<PyTreeSpec>>(root.arity);
     children.resize(root.arity);
     ssize_t pos = py::ssize_t_cast(m_traversal.size()) - 1;
@@ -922,7 +922,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
         children[i] = std::make_unique<PyTreeSpec>();
         children[i]->m_none_is_leaf = m_none_is_leaf;
         children[i]->m_namespace = m_namespace;
-        const Node& node = m_traversal.at(pos - 1);
+        const Node &node = m_traversal.at(pos - 1);
         EXPECT_GE(pos, node.num_nodes, "PyTreeSpec::Children() walked off start of array.");
         std::copy(m_traversal.cbegin() + pos - node.num_nodes,
                   m_traversal.cbegin() + pos,
@@ -938,7 +938,7 @@ std::vector<std::unique_ptr<PyTreeSpec>> PyTreeSpec::Children() const {
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
     PYTREESPEC_SANITY_CHECK(*this);
 
-    const Node& root = m_traversal.back();
+    const Node &root = m_traversal.back();
     if (index < -root.arity || index >= root.arity) [[unlikely]] {
         throw py::index_error("PyTreeSpec::Child() index out of range.");
     }
@@ -948,7 +948,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
 
     ssize_t pos = py::ssize_t_cast(m_traversal.size()) - 1;
     for (ssize_t i = root.arity - 1; i > index; --i) {
-        const Node& node = m_traversal.at(pos - 1);
+        const Node &node = m_traversal.at(pos - 1);
         EXPECT_GE(pos, node.num_nodes, "PyTreeSpec::Child() walked off start of array.");
         pos -= node.num_nodes;
     }
@@ -956,7 +956,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
     auto child = std::make_unique<PyTreeSpec>();
     child->m_none_is_leaf = m_none_is_leaf;
     child->m_namespace = m_namespace;
-    const Node& node = m_traversal.at(pos - 1);
+    const Node &node = m_traversal.at(pos - 1);
     EXPECT_GE(pos, node.num_nodes, "PyTreeSpec::Child() walked off start of array.");
     std::copy(m_traversal.cbegin() + pos - node.num_nodes,
               m_traversal.cbegin() + pos,
@@ -966,12 +966,12 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Child(ssize_t index) const {
     return child;
 }
 
-py::object PyTreeSpec::GetType(const std::optional<Node>& node) const {
+py::object PyTreeSpec::GetType(const std::optional<Node> &node) const {
     if (!node) [[likely]] {
         PYTREESPEC_SANITY_CHECK(*this);
     }
 
-    const Node& n = node.value_or(m_traversal.back());
+    const Node &n = node.value_or(m_traversal.back());
     switch (n.kind) {
         case PyTreeKind::Custom:
             EXPECT_NE(n.custom, nullptr, "The custom registration is null.");
@@ -1001,12 +1001,12 @@ py::object PyTreeSpec::GetType(const std::optional<Node>& node) const {
     }
 }
 
-std::unique_ptr<PyTreeSpec> PyTreeSpec::GetOneLevel(const std::optional<Node>& node) const {
+std::unique_ptr<PyTreeSpec> PyTreeSpec::GetOneLevel(const std::optional<Node> &node) const {
     if (!node) [[likely]] {
         PYTREESPEC_SANITY_CHECK(*this);
     }
 
-    const Node& n = node.value_or(m_traversal.back());
+    const Node &n = node.value_or(m_traversal.back());
     auto out = std::make_unique<PyTreeSpec>();
     for (ssize_t i = 0; i < n.arity; ++i) {
         out->m_traversal.emplace_back(Node{
@@ -1016,7 +1016,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::GetOneLevel(const std::optional<Node>& n
             .num_nodes = 1,
         });
     }
-    auto& root = out->m_traversal.emplace_back(n);
+    auto &root = out->m_traversal.emplace_back(n);
     root.num_leaves = (n.kind == PyTreeKind::Leaf ? 1 : n.arity);
     root.num_nodes = n.arity + 1;
     out->m_none_is_leaf = m_none_is_leaf;

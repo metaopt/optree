@@ -52,18 +52,18 @@ namespace py = pybind11;
 #    define Py_IsFalse(x) Py_Is((x), Py_False)
 #endif
 
-inline constexpr Py_ALWAYS_INLINE bool Py_IsConstant(PyObject* x) noexcept {
+inline constexpr Py_ALWAYS_INLINE bool Py_IsConstant(PyObject *x) noexcept {
     return Py_IsNone(x) || Py_IsTrue(x) || Py_IsFalse(x);
 }
 #define Py_IsConstant(x) Py_IsConstant(x)
 
 #define Py_Declare_ID(name)                                                                        \
     namespace {                                                                                    \
-    inline PyObject* Py_ID_##name() {                                                              \
-        PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyObject*> storage;             \
+    inline PyObject *Py_ID_##name() {                                                              \
+        PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyObject *> storage;            \
         return storage                                                                             \
-            .call_once_and_store_result([]() -> PyObject* {                                        \
-                PyObject* const ptr = PyUnicode_InternFromString(#name);                           \
+            .call_once_and_store_result([]() -> PyObject * {                                       \
+                PyObject * const ptr = PyUnicode_InternFromString(#name);                          \
                 if (ptr == nullptr) [[unlikely]] {                                                 \
                     throw py::error_already_set();                                                 \
                 }                                                                                  \

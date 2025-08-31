@@ -31,7 +31,7 @@ ssize_t PyTreeSpec::HashValueImpl() const {
     HashCombine(seed, m_none_is_leaf);
     HashCombine(seed, m_namespace);
 
-    for (const Node& node : m_traversal) {
+    for (const Node &node : m_traversal) {
         HashCombine(seed, node.kind);
         HashCombine(seed, node.arity);
         HashCombine(seed, node.num_leaves);
@@ -40,7 +40,7 @@ ssize_t PyTreeSpec::HashValueImpl() const {
         switch (node.kind) {
             case PyTreeKind::Custom: {
                 // We don't hash node_data of custom node types since they may not hashable.
-                const auto& type = GetType(node);
+                const auto &type = GetType(node);
                 HashCombine(seed, EVALUATE_WITH_LOCK_HELD(py::hash(type), type));
                 break;
             }
@@ -76,7 +76,7 @@ ssize_t PyTreeSpec::HashValueImpl() const {
                 EXPECT_EQ(ListGetSize(keys),
                           node.arity,
                           "Number of keys and entries does not match.");
-                for (const py::handle& key : keys) {
+                for (const py::handle &key : keys) {
                     HashCombine(seed, EVALUATE_WITH_LOCK_HELD(py::hash(key), key));
                 }
                 break;
