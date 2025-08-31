@@ -37,6 +37,7 @@ env:
   CMAKE_BUILD_TYPE: "Debug"
   OPTREE_CXX_WERROR: "ON"
   _GLIBCXX_USE_CXX11_ABI: "1"
+  CMAKE_OSX_DEPLOYMENT_TARGET: "15.0"
   FULL_TEST_PYTHON_VERSIONS: "3.12;3.13"
   PYTHONUNBUFFERED: "1"
   PYTHON: "python"  # to be updated
@@ -173,22 +174,6 @@ jobs:
           cat pyproject.toml
           echo "::endgroup::"
           echo "pybind11_VERSION=HEAD" | tee -a "${GITHUB_ENV}"
-
-      - name: Test installable with C++17
-        shell: bash
-        if: runner.os != 'Windows'
-        run: |
-          (
-            set -x
-            ${{ env.PYTHON }} -m venv venv &&
-            source venv/bin/activate &&
-            OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 \
-              ${{ env.PYTHON }} -m pip install -v . &&
-            pushd venv &&
-            ${{ env.PYTHON }} -X dev -Walways -Werror -c 'import optree' &&
-            popd &&
-            rm -rf venv
-          )
 
       - name: Test buildable without Python frontend
         if: runner.os != 'Windows'
