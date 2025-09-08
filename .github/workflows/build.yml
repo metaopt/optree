@@ -66,7 +66,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.9 - 3.14"
           update-environment: true
@@ -230,7 +230,7 @@ jobs:
           echo "PYTHON_VERSION=${PYTHON_VERSION}" | tee -a "${GITHUB_ENV}"
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           update-environment: true
@@ -354,7 +354,7 @@ jobs:
 
       - name: Set up Python
         if: startsWith(github.ref, 'refs/tags/')
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.9 - 3.14"
           update-environment: true
