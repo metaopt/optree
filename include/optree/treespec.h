@@ -271,7 +271,7 @@ public:
     static inline Py_ALWAYS_INLINE bool IsDictInsertionOrdered(
         const std::string &registry_namespace,
         const bool &inherit_global_namespace = true) {
-        const scoped_read_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
+        const scoped_read_lock lock{sm_is_dict_insertion_ordered_mutex};
 
         return (sm_is_dict_insertion_ordered.find(registry_namespace) !=
                 sm_is_dict_insertion_ordered.end()) ||
@@ -283,7 +283,7 @@ public:
     static inline Py_ALWAYS_INLINE void SetDictInsertionOrdered(
         const bool &mode,
         const std::string &registry_namespace) {
-        const scoped_write_lock_guard lock{sm_is_dict_insertion_ordered_mutex};
+        const scoped_write_lock lock{sm_is_dict_insertion_ordered_mutex};
 
         if (mode) [[likely]] {
             sm_is_dict_insertion_ordered.insert(registry_namespace);

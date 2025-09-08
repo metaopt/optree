@@ -264,26 +264,26 @@ std::string PyTreeSpec::ToString() const {
 
     const ThreadedIdentity ident{this, std::this_thread::get_id()};
     {
-        const scoped_read_lock_guard lock{mutex};
+        const scoped_read_lock lock{mutex};
         if (running.find(ident) != running.end()) [[unlikely]] {
             return "...";
         }
     }
 
     {
-        const scoped_write_lock_guard lock{mutex};
+        const scoped_write_lock lock{mutex};
         running.insert(ident);
     }
     try {
         std::string representation = ToStringImpl();
         {
-            const scoped_write_lock_guard lock{mutex};
+            const scoped_write_lock lock{mutex};
             running.erase(ident);
         }
         return representation;
     } catch (...) {
         {
-            const scoped_write_lock_guard lock{mutex};
+            const scoped_write_lock lock{mutex};
             running.erase(ident);
         }
         std::rethrow_exception(std::current_exception());

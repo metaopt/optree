@@ -261,7 +261,7 @@ inline bool IsNamedTupleClass(const py::handle &type) {
     static read_write_mutex mutex{};
 
     {
-        const scoped_read_lock_guard lock{mutex};
+        const scoped_read_lock lock{mutex};
         const auto it = cache.find(type);
         if (it != cache.end()) [[likely]] {
             return it->second;
@@ -270,11 +270,11 @@ inline bool IsNamedTupleClass(const py::handle &type) {
 
     const bool result = EVALUATE_WITH_LOCK_HELD(IsNamedTupleClassImpl(type), type);
     {
-        const scoped_write_lock_guard lock{mutex};
+        const scoped_write_lock lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
             cache.emplace(type, result);
             (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                                  const scoped_write_lock_guard lock{mutex};
+                                  const scoped_write_lock lock{mutex};
                                   cache.erase(type);
                                   weakref.dec_ref();
                               }))
@@ -364,7 +364,7 @@ inline bool IsStructSequenceClass(const py::handle &type) {
     static read_write_mutex mutex{};
 
     {
-        const scoped_read_lock_guard lock{mutex};
+        const scoped_read_lock lock{mutex};
         const auto it = cache.find(type);
         if (it != cache.end()) [[likely]] {
             return it->second;
@@ -373,11 +373,11 @@ inline bool IsStructSequenceClass(const py::handle &type) {
 
     const bool result = EVALUATE_WITH_LOCK_HELD(IsStructSequenceClassImpl(type), type);
     {
-        const scoped_write_lock_guard lock{mutex};
+        const scoped_write_lock lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
             cache.emplace(type, result);
             (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                                  const scoped_write_lock_guard lock{mutex};
+                                  const scoped_write_lock lock{mutex};
                                   cache.erase(type);
                                   weakref.dec_ref();
                               }))
@@ -447,7 +447,7 @@ inline py::tuple StructSequenceGetFields(const py::handle &object) {
     static read_write_mutex mutex{};
 
     {
-        const scoped_read_lock_guard lock{mutex};
+        const scoped_read_lock lock{mutex};
         const auto it = cache.find(type);
         if (it != cache.end()) [[likely]] {
             return py::reinterpret_borrow<py::tuple>(it->second);
@@ -456,12 +456,12 @@ inline py::tuple StructSequenceGetFields(const py::handle &object) {
 
     const py::tuple fields = EVALUATE_WITH_LOCK_HELD(StructSequenceGetFieldsImpl(type), type);
     {
-        const scoped_write_lock_guard lock{mutex};
+        const scoped_write_lock lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
             cache.emplace(type, fields);
             fields.inc_ref();
             (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                                  const scoped_write_lock_guard lock{mutex};
+                                  const scoped_write_lock lock{mutex};
                                   const auto it = cache.find(type);
                                   if (it != cache.end()) [[likely]] {
                                       it->second.dec_ref();

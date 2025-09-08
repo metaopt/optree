@@ -143,7 +143,7 @@ template <bool NoneIsLeaf>
                                              const py::function &unflatten_func,
                                              const py::object &path_entry_type,
                                              const std::string &registry_namespace) {
-    const scoped_write_lock_guard lock{sm_mutex};
+    const scoped_write_lock lock{sm_mutex};
 
     RegisterImpl<NONE_IS_NODE>(cls,
                                flatten_func,
@@ -216,7 +216,7 @@ template <bool NoneIsLeaf>
 
 /*static*/ void PyTreeTypeRegistry::Unregister(const py::object &cls,
                                                const std::string &registry_namespace) {
-    const scoped_write_lock_guard lock{sm_mutex};
+    const scoped_write_lock lock{sm_mutex};
 
     const auto registration1 = UnregisterImpl<NONE_IS_NODE>(cls, registry_namespace);
     const auto registration2 = UnregisterImpl<NONE_IS_LEAF>(cls, registry_namespace);
@@ -234,7 +234,7 @@ template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup(
     const py::object &cls,
     const std::string &registry_namespace) {
-    const scoped_read_lock_guard lock{sm_mutex};
+    const scoped_read_lock lock{sm_mutex};
 
     PyTreeTypeRegistry * const registry = Singleton<NoneIsLeaf>();
     if (!registry_namespace.empty()) [[unlikely]] {
@@ -291,7 +291,7 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ void PyTreeTypeRegistry::Clear() {
-    const scoped_write_lock_guard lock{sm_mutex};
+    const scoped_write_lock lock{sm_mutex};
 
     PyTreeTypeRegistry * const registry1 = PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
     PyTreeTypeRegistry * const registry2 = PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
