@@ -258,6 +258,7 @@ jobs:
       - name: Set CIBW_BUILD
         shell: bash
         run: |
+          set -x
           PYTHON_TAG="$(
             echo 'import sys; print(
               "{0.name[0]}p{1.major}{1.minor}".format(
@@ -275,6 +276,13 @@ jobs:
             echo "CIBW_PLATFORM=android" | tee -a "${GITHUB_ENV}"
           elif [[ "${{ matrix.archs }}" == *iphone* ]]; then
             echo "CIBW_PLATFORM=ios" | tee -a "${GITHUB_ENV}"
+            if [[ "${{ matrix.archs }}" == *simulator* ]]; then
+              xcrun simctl shutdown all || true
+              xcrun simctl delete unavailable || true
+              xcrun simctl list devices >/dev/null || true
+              xcodebuild -downloadPlatform iOS || true
+              xcrun simctl list devices available || true
+            fi
           elif [[ "${{ matrix.archs }}" == wasm* ]]; then
             echo "CIBW_PLATFORM=pyodide" | tee -a "${GITHUB_ENV}"
           fi
