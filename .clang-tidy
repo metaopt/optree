@@ -23,6 +23,7 @@ Checks: |
   -readability-redundant-inline-specifier,
   -readability-redundant-member-init,
   -readability-identifier-length,
+  -readability-use-concise-preprocessor-directives,
 
 CheckOptions:
   misc-include-cleaner.IgnoreHeaders: 'python.*/.*;pybind11/.*;optree/.*'

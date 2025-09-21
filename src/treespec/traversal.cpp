@@ -163,7 +163,7 @@ py::object PyTreeIter::NextImpl() {
 
 py::object PyTreeIter::Next() {
 #if defined(Py_GIL_DISABLED)
-    const scoped_lock_guard lock{m_mutex};
+    const scoped_lock lock{m_mutex};
 #endif
 
     if (m_none_is_leaf) [[unlikely]] {

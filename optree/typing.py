@@ -483,7 +483,7 @@ class StructSequenceMeta(type):
 # `StructSequence` classes are unsubclassable, so are all decorated with `@final`.
 # pylint: disable-next=invalid-name,missing-class-docstring
 @final
-class StructSequence(tuple[_T_co, ...], metaclass=StructSequenceMeta):  # type: ignore[misc]
+class StructSequence(tuple[_T_co, ...], metaclass=StructSequenceMeta):
     """A generic type stub for CPython's ``PyStructSequence`` type."""
 
     __slots__: ClassVar[tuple[()]] = ()

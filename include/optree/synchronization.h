@@ -17,7 +17,7 @@ limitations under the License.
 
 #pragma once
 
-#include <mutex>  // std::mutex, std::recursive_mutex, std::lock_guard, std::unique_lock
+#include <mutex>  // std::mutex, std::recursive_mutex, std::scoped_lock, std::unique_lock
 
 #include <Python.h>
 
@@ -56,8 +56,8 @@ using recursive_mutex = std::recursive_mutex;
 
 #endif
 
-using scoped_lock_guard = std::lock_guard<mutex>;
-using scoped_recursive_lock_guard = std::lock_guard<recursive_mutex>;
+using scoped_lock = std::scoped_lock<mutex>;
+using scoped_recursive_lock = std::scoped_lock<recursive_mutex>;
 
 #if (defined(__APPLE__) /* header <shared_mutex> is not available on macOS build target */ &&      \
      PY_VERSION_HEX < /* Python 3.12.0 */ 0x030C00F0)
@@ -65,8 +65,8 @@ using scoped_recursive_lock_guard = std::lock_guard<recursive_mutex>;
 #    undef HAVE_READ_WRITE_LOCK
 
 using read_write_mutex = mutex;
-using scoped_read_lock_guard = scoped_lock_guard;
-using scoped_write_lock_guard = scoped_lock_guard;
+using scoped_read_lock = scoped_lock;
+using scoped_write_lock = scoped_lock;
 
 #else
 
@@ -75,8 +75,8 @@ using scoped_write_lock_guard = scoped_lock_guard;
 #    include <shared_mutex>  // std::shared_mutex, std::shared_lock
 
 using read_write_mutex = std::shared_mutex;
-using scoped_read_lock_guard = std::shared_lock<read_write_mutex>;
-using scoped_write_lock_guard = std::unique_lock<read_write_mutex>;
+using scoped_read_lock = std::shared_lock<read_write_mutex>;
+using scoped_write_lock = std::unique_lock<read_write_mutex>;
 
 #endif
 
