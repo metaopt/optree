@@ -1,11 +1,12 @@
 ---
-# NOTE: there must be no spaces before the '-', so put the comma last.
 InheritParentConfig: true
+ExtraArgs: ['-v']
 FormatStyle: file
 UseColor: true
 WarningsAsErrors: '*'
 HeaderFilterRegex: 'optree/.*$'
 
+# NOTE: there must be no spaces before the '-', so put the comma last.
 Checks: |
   bugprone-*,
   -bugprone-easily-swappable-parameters,
