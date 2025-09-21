@@ -192,10 +192,10 @@ jobs:
           - runner: windows-latest
             archs: "s390x"
         include:
-          - runner: macos-latest
+          - runner: macos-26
             python-version: "3.13"
             archs: "arm64_iphoneos"
-          - runner: macos-latest
+          - runner: macos-26
             python-version: "3.13"
             archs: "arm64_iphonesimulator"
           - runner: ubuntu-latest
