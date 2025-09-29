@@ -292,6 +292,7 @@ jobs:
       - name: Enable core dump generation (Windows)
         if: runner.os == 'Windows'
         run: |
+          choco install windowsdriverkit11 --force --yes
           $pwd = Get-Location
           $Env:_NT_SOURCE_PATH = "$pwd;${{ env.PYENV_ROOT }}\pyenv-win\versions\${{ env.PYTHON_VERSION }}"
           $Env:_NT_SYMBOL_PATH = "cache*$pwd\.symcache;$Env:_NT_SOURCE_PATH;srv*https://msdl.microsoft.com/download/symbols"
