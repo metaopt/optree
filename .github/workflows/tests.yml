@@ -115,17 +115,31 @@ jobs:
           )"
           echo "PYTHON_TAG=${PYTHON_TAG}" | tee -a "${GITHUB_ENV}"
 
-          echo "::group::Install CMake"
-          if [[ "${{ runner.os }}" == 'Linux' ]]; then
-            sudo apt-get update -qq && sudo apt-get install -yqq cmake
-          elif [[ "${{ runner.os }}" == 'macOS' ]]; then
-            brew update
-            brew list --formula cmake >/dev/null && brew uninstall --formula cmake || true
-            brew install --formula cmake
-          elif [[ "${{ runner.os }}" == 'Windows' ]]; then
-            choco install cmake cmake.install --force --yes
-          fi
-          echo "::endgroup::"
+      - name: Install System CMake (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -yqq cmake which
+          which -a cmake
+
+      - name: Install System CMake (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew update --quiet --force
+          brew list --formula cmake >/dev/null && brew uninstall --formula cmake || true
+          brew install --formula cmake
+          which -a cmake
+
+      - name: Install System CMake (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install cmake cmake.install --no-progress --force --yes
+          $path = $Env:PATH
+          Write-Output "PATH=$path"
+          Get-Command -All cmake
+          $Env:PATH = ($path.Split(';') | Where-Object {$_ -notmatch '^(\w+:)?\\Strawberry(\\|$)'} ) -join ';'
+          Write-Output "PATH=$Env:PATH"
+          Write-Output "PATH=$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          Get-Command -All cmake
 
       - name: Enable core dump generation (Linux)
         if: runner.os == 'Linux'
@@ -146,7 +160,7 @@ jobs:
       - name: Enable core dump generation (Windows)
         if: runner.os == 'Windows'
         run: |
-          choco install windowsdriverkit11 --force --yes
+          choco install windowsdriverkit11 --no-progress --force --yes
           $pwd = Get-Location
           $Env:_NT_SOURCE_PATH = "$pwd"
           $Env:_NT_SYMBOL_PATH = "cache*$pwd\.symcache;$Env:_NT_SOURCE_PATH;srv*https://msdl.microsoft.com/download/symbols"
@@ -344,7 +358,8 @@ jobs:
               BACKTRACE_COMMAND="gdb --exec ${{ env.PYTHON }} --core '{}' -ex 'bt -full' -ex 'q'"
             elif [[ "${{ runner.os }}" == 'macOS' ]]; then
               echo "::group::Install LLDB"
-              brew update && (brew list --formula llvm >/dev/null || brew install --formula llvm)
+              brew update --quiet --force
+              brew list --formula llvm >/dev/null || brew install --formula llvm
               echo "::endgroup::"
               BACKTRACE_COMMAND="lldb --file ${{ env.PYTHON }} --core '{}' -o 'bt all' -o 'q'"
             elif [[ "${{ runner.os }}" == 'Windows' ]]; then

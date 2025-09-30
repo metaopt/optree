@@ -229,7 +229,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools
           if [[ "${{ runner.os }}" == 'macOS' ]]; then
-            brew update
+            brew update --quiet --force
             brew list --formula cmake >/dev/null && brew uninstall --formula cmake || true
             brew install --formula cmake
           fi
