@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use ARM-based GHA runners to build ARM wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#234](https://github.com/metaopt/optree/pull/234).
 - Add Android support by [@XuehaiPan](https://github.com/XuehaiPan) in [#236](https://github.com/metaopt/optree/pull/236).
 - Add `manylinux-riscv64` wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#243](https://github.com/metaopt/optree/pull/243).
+- Add `cp{313,314}-ios` / `cp{312,313}-pyodide` wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#243](https://github.com/metaopt/optree/pull/243).
 
 ### Changed
 
