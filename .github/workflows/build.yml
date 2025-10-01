@@ -139,6 +139,7 @@ jobs:
           - "aarch64"
           - "ppc64le"
           - "s390x"
+          - "riscv64"
           # Windows
           - "ARM64"
         exclude:
@@ -149,6 +150,9 @@ jobs:
           - runner: ubuntu-latest
             python-version: "pypy-3.11"
             archs: "s390x"
+          - runner: ubuntu-latest
+            python-version: "pypy-3.11"
+            archs: "riscv64"
           - runner: windows-latest
             python-version: "3.9"
             archs: "ARM64"
@@ -172,6 +176,8 @@ jobs:
           - runner: macos-latest
             archs: "s390x"
           - runner: macos-latest
+            archs: "riscv64"
+          - runner: macos-latest
             archs: "ARM64"
           - runner: windows-latest
             archs: "aarch64"
@@ -179,16 +185,22 @@ jobs:
             archs: "ppc64le"
           - runner: windows-latest
             archs: "s390x"
+          - runner: windows-latest
+            archs: "riscv64"
         include:
+          # iOS
           - runner: macos-26
             python-version: "3.13"
             archs: "arm64_iphoneos"
+          # iOS Simulator
           - runner: macos-26
             python-version: "3.13"
             archs: "arm64_iphonesimulator"
+          # Android
           - runner: ubuntu-latest
             python-version: "3.13"
             archs: "arm64_v8a"
+          # Pyodide
           - runner: ubuntu-latest
             python-version: "3.12"
             archs: "wasm32"
