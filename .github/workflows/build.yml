@@ -192,9 +192,15 @@ jobs:
           - runner: macos-26
             python-version: "3.13"
             archs: "arm64_iphoneos"
+          - runner: macos-26
+            python-version: "3.14"
+            archs: "arm64_iphoneos"
           # iOS Simulator
           - runner: macos-26
             python-version: "3.13"
+            archs: "arm64_iphonesimulator"
+          - runner: macos-26
+            python-version: "3.14"
             archs: "arm64_iphonesimulator"
           # Android
           - runner: ubuntu-latest
@@ -203,6 +209,9 @@ jobs:
           # Pyodide
           - runner: ubuntu-latest
             python-version: "3.12"
+            archs: "wasm32"
+          - runner: ubuntu-latest
+            python-version: "3.13"
             archs: "wasm32"
       fail-fast: false
     timeout-minutes: 180
