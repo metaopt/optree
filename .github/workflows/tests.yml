@@ -64,8 +64,6 @@ jobs:
           - "3.13t"
           - "3.14"
           - "3.14t"
-          - "pypy-3.9"
-          - "pypy-3.10"
           - "pypy-3.11"
       fail-fast: false
     timeout-minutes: 90
@@ -117,17 +115,31 @@ jobs:
           )"
           echo "PYTHON_TAG=${PYTHON_TAG}" | tee -a "${GITHUB_ENV}"
 
-          echo "::group::Install CMake"
-          if [[ "${{ runner.os }}" == 'Linux' ]]; then
-            sudo apt-get update -qq && sudo apt-get install -yqq cmake
-          elif [[ "${{ runner.os }}" == 'macOS' ]]; then
-            brew update
-            brew list --formula cmake >/dev/null && brew uninstall --formula cmake || true
-            brew install --formula cmake
-          elif [[ "${{ runner.os }}" == 'Windows' ]]; then
-            choco install cmake cmake.install --force --yes
-          fi
-          echo "::endgroup::"
+      - name: Install System CMake (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -yqq cmake which
+          which -a cmake
+
+      - name: Install System CMake (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew update --quiet --force
+          brew list --formula cmake >/dev/null && brew uninstall --formula cmake || true
+          brew install --formula cmake
+          which -a cmake
+
+      - name: Install System CMake (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install cmake cmake.install --no-progress --force --yes
+          $path = $Env:PATH
+          Write-Output "PATH=$path"
+          Get-Command -All cmake
+          $Env:PATH = ($path.Split(';') | Where-Object {$_ -notmatch '^(\w+:)?\\Strawberry(\\|$)'} ) -join ';'
+          Write-Output "PATH=$Env:PATH"
+          Write-Output "PATH=$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          Get-Command -All cmake
 
       - name: Enable core dump generation (Linux)
         if: runner.os == 'Linux'
@@ -148,6 +160,7 @@ jobs:
       - name: Enable core dump generation (Windows)
         if: runner.os == 'Windows'
         run: |
+          choco install windowsdriverkit11 --no-progress --force --yes
           $pwd = Get-Location
           $Env:_NT_SOURCE_PATH = "$pwd"
           $Env:_NT_SYMBOL_PATH = "cache*$pwd\.symcache;$Env:_NT_SOURCE_PATH;srv*https://msdl.microsoft.com/download/symbols"
@@ -181,25 +194,35 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           (
-            set -x
-            ${{ env.PYTHON }} -m venv venv &&
-            source venv/bin/activate &&
+            set -ex
+            ${{ env.PYTHON }} -m venv venv
+            source venv/bin/activate
             OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 \
-              ${{ env.PYTHON }} -m pip install -v . &&
-            pushd venv &&
-            ${{ env.PYTHON }} -X dev -Walways -Werror -c 'import optree' &&
-            popd &&
+              ${{ env.PYTHON }} -m pip install -v .
+            pushd tests
+            ${{ env.PYTHON }} -X dev -Walways -Werror -c 'import optree'
+            popd
             rm -rf venv
           )
+          if [[ "$?" -ne 0 ]]; then
+            echo "::error::Failed to install with C++17." >&2
+            exit 1
+          fi
+          if [[ -n "$(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp")" ]]; then
+            echo "::error::Coredump files found, indicating a crash during tests." >&2
+            echo "Coredump files:" >&2
+            ls -alh $(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp") >&2
+            exit 1
+          fi
 
       - name: Test buildable without Python frontend
         if: runner.os != 'Windows'
         run: |
           (
-            set -x
-            ${{ env.PYTHON }} -m venv venv &&
-            source venv/bin/activate &&
-            make cmake-build && make clean &&
+            set -ex
+            ${{ env.PYTHON }} -m venv venv
+            source venv/bin/activate
+            make cmake-build && make clean
             rm -rf venv
           )
 
@@ -218,20 +241,35 @@ jobs:
         shell: bash
         run: |
           ACTIVATION_SCRIPT="venv/bin/activate"
+          PYTHON_EXE=("${{ env.PYTHON }}")
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
             ACTIVATION_SCRIPT="venv/Scripts/activate"
+            PYTHON_EXE=(
+              cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q"
+              "${{ env.PYTHON }}"
+            )
           fi
           (
-            set -x
-            ${{ env.PYTHON }} -m venv venv &&
-            source "${ACTIVATION_SCRIPT}" &&
-            ${{ env.PYTHON }} -m pip install -v cmake &&
-            ${{ env.PYTHON }} -m pip install -v . &&
-            pushd venv &&
-            ${{ env.PYTHON }} -X dev -Walways -Werror -c 'import optree' &&
-            popd &&
+            set -ex
+            ${{ env.PYTHON }} -m venv venv
+            source "${ACTIVATION_SCRIPT}"
+            ${{ env.PYTHON }} -m pip install -v cmake
+            ${{ env.PYTHON }} -m pip install -v .
+            pushd tests
+            "${PYTHON_EXE[@]}" -X dev -Walways -Werror -c 'import optree'
+            popd
             rm -rf venv
           )
+          if [[ "$?" -ne 0 ]]; then
+            echo "::error::Failed to install with CMake from PyPI." >&2
+            exit 1
+          fi
+          if [[ -n "$(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp")" ]]; then
+            echo "::error::Coredump files found, indicating a crash during tests." >&2
+            echo "Coredump files:" >&2
+            ls -alh $(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp") >&2
+            exit 1
+          fi
 
       - name: Check installable with CMake from PyPI (no system CMake)
         shell: bash
@@ -244,19 +282,34 @@ jobs:
             choco uninstall cmake cmake.install --force --yes || true
           fi
           ACTIVATION_SCRIPT="venv/bin/activate"
+          PYTHON_EXE=("${{ env.PYTHON }}")
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
             ACTIVATION_SCRIPT="venv/Scripts/activate"
+            PYTHON_EXE=(
+              cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q"
+              "${{ env.PYTHON }}"
+            )
           fi
           (
-            set -x
-            ${{ env.PYTHON }} -m venv venv &&
-            source "${ACTIVATION_SCRIPT}" &&
-            ${{ env.PYTHON }} -m pip install -v . &&
-            pushd venv &&
-            ${{ env.PYTHON }} -X dev -Walways -Werror -c 'import optree' &&
-            popd &&
+            set -ex
+            ${{ env.PYTHON }} -m venv venv
+            source "${ACTIVATION_SCRIPT}"
+            ${{ env.PYTHON }} -m pip install -v .
+            pushd tests
+            "${PYTHON_EXE[@]}" -X dev -Walways -Werror -c 'import optree'
+            popd
             rm -rf venv
           )
+          if [[ "$?" -ne 0 ]]; then
+            echo "::error::Failed to install with CMake from PyPI (no system CMake)." >&2
+            exit 1
+          fi
+          if [[ -n "$(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp")" ]]; then
+            echo "::error::Coredump files found, indicating a crash during tests." >&2
+            echo "Coredump files:" >&2
+            ls -alh $(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp") >&2
+            exit 1
+          fi
 
       - name: Test with pytest
         shell: bash
@@ -305,7 +358,8 @@ jobs:
               BACKTRACE_COMMAND="gdb --exec ${{ env.PYTHON }} --core '{}' -ex 'bt -full' -ex 'q'"
             elif [[ "${{ runner.os }}" == 'macOS' ]]; then
               echo "::group::Install LLDB"
-              brew update && (brew list --formula llvm >/dev/null || brew install --formula llvm)
+              brew update --quiet --force
+              brew list --formula llvm >/dev/null || brew install --formula llvm
               echo "::endgroup::"
               BACKTRACE_COMMAND="lldb --file ${{ env.PYTHON }} --core '{}' -o 'bt all' -o 'q'"
             elif [[ "${{ runner.os }}" == 'Windows' ]]; then

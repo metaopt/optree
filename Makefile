@@ -216,7 +216,12 @@ clang-format: clang-format-install
 .PHONY: clang-tidy
 clang-tidy: clang-tidy-install cmake-configure
 	clang-tidy --version
-	clang-tidy --extra-arg="-v" --fix -p=cmake-build-$(CMAKE_BUILD_TYPE_LOWER) $(CXX_FILES)
+	if [[ -x "$(shell command -v run-clang-tidy)" ]]; then \
+		run-clang-tidy -clang-tidy-binary="$(shell command -v clang-tidy)" \
+			-fix -p="cmake-build-$(CMAKE_BUILD_TYPE_LOWER)" $(CXX_FILES); \
+	else \
+		clang-tidy --fix -p="cmake-build-$(CMAKE_BUILD_TYPE_LOWER)" $(CXX_FILES); \
+	fi
 
 .PHONY: cpplint
 cpplint: cpplint-install

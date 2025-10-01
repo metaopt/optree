@@ -130,7 +130,6 @@ jobs:
           - "3.13t"
           - "3.14"
           - "3.14t"
-          - "pypy-3.10"
           - "pypy-3.11"
         archs:
           # Generic
@@ -145,14 +144,8 @@ jobs:
         exclude:
           # Exclude unsupported Python versions
           - runner: ubuntu-latest
-            python-version: "pypy-3.10"
-            archs: "ppc64le"
-          - runner: ubuntu-latest
             python-version: "pypy-3.11"
             archs: "ppc64le"
-          - runner: ubuntu-latest
-            python-version: "pypy-3.10"
-            archs: "s390x"
           - runner: ubuntu-latest
             python-version: "pypy-3.11"
             archs: "s390x"
@@ -163,13 +156,8 @@ jobs:
             python-version: "3.10"
             archs: "ARM64"
           - runner: windows-latest
-            python-version: "pypy-3.10"
-            archs: "ARM64"
-          - runner: windows-latest
             python-version: "pypy-3.11"
             archs: "ARM64"
-          - python-version: "pypy-3.10"
-            archs: "auto32"
           - python-version: "pypy-3.11"
             archs: "auto32"
           # Exclude archs of other platforms
@@ -241,7 +229,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools
           if [[ "${{ runner.os }}" == 'macOS' ]]; then
-            brew update
+            brew update --quiet --force
             brew list --formula cmake >/dev/null && brew uninstall --formula cmake || true
             brew install --formula cmake
           fi
@@ -294,7 +282,7 @@ jobs:
           platforms: all
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.1
+        uses: pypa/cibuildwheel@v3.2
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_ARCHS: ${{ matrix.archs }}

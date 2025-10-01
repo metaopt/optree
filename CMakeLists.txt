@@ -66,6 +66,7 @@ if(MSVC)
         " /EHsc /bigobj"
         " /Zc:preprocessor"
         " /experimental:external /external:anglebrackets /external:W0"
+        # https://learn.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warnings-by-compiler-version
         " /Wall /Wv:19.45"  # Visual Studio 2022 version 17.15
         # Suppress following warnings
         " /wd4127"  # conditional expression is constant

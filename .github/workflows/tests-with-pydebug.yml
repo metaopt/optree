@@ -104,7 +104,8 @@ jobs:
               libgdbm-dev \
               liblzma-dev
           elif [[ "${{ runner.os }}" == 'macOS' ]]; then
-            brew update && brew install --only-dependencies python@3
+            brew update --quiet --force
+            brew install --only-dependencies python@3
           fi
 
       - name: Set up pyenv (Windows)
@@ -292,6 +293,7 @@ jobs:
       - name: Enable core dump generation (Windows)
         if: runner.os == 'Windows'
         run: |
+          choco install windowsdriverkit11 --no-progress --force --yes
           $pwd = Get-Location
           $Env:_NT_SOURCE_PATH = "$pwd;${{ env.PYENV_ROOT }}\pyenv-win\versions\${{ env.PYTHON_VERSION }}"
           $Env:_NT_SYMBOL_PATH = "cache*$pwd\.symcache;$Env:_NT_SOURCE_PATH;srv*https://msdl.microsoft.com/download/symbols"
@@ -376,7 +378,8 @@ jobs:
               BACKTRACE_COMMAND="gdb --exec ${{ env.PYTHON }} --core '{}' -ex 'bt -full' -ex 'q'"
             elif [[ "${{ runner.os }}" == 'macOS' ]]; then
               echo "::group::Install LLDB"
-              brew update && (brew list --formula llvm >/dev/null || brew install --formula llvm)
+              brew update --quiet --force
+              brew list --formula llvm >/dev/null || brew install --formula llvm
               echo "::endgroup::"
               BACKTRACE_COMMAND="lldb --file ${{ env.PYTHON }} --core '{}' -o 'bt all' -o 'q'"
             elif [[ "${{ runner.os }}" == 'Windows' ]]; then
