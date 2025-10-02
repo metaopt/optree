@@ -27,6 +27,7 @@ import shutil
 import subprocess
 import sys
 import sysconfig
+import textwrap
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -48,7 +49,7 @@ else:
 
 
 HERE = Path(__file__).absolute().parent
-CMAKE_MINIMUM_VERSION = '3.18'
+CMAKE_MINIMUM_VERSION = os.getenv('CMAKE_MINIMUM_VERSION') or '3.18'
 
 
 @contextlib.contextmanager
@@ -68,22 +69,31 @@ def unset_python_path() -> Generator[str | None]:
             os.environ['PYTHONNOUSERSITE'] = python_no_user_site
 
 
+@contextlib.contextmanager
 def cmake_context(
     cmake: os.PathLike[str] | str,
     *,
     dry_run: bool = False,
     verbose: bool = False,
-) -> contextlib.AbstractContextManager[str | None]:
-    if dry_run:
-        return contextlib.nullcontext()
+) -> Generator[str]:
+    cmake = Path(cmake)
+    if not cmake.is_absolute():
+        cmake = Path(shutil.which(cmake) or cmake)
+    cmake_exe = os.fspath(cmake)
 
-    cmake = os.fspath(cmake)
+    if verbose:
+        print(f'-- Using CMake executable: {cmake_exe}', file=sys.stderr)
+
+    if dry_run:
+        yield cmake_exe
+        return
+
     spawn_context = contextlib.nullcontext
     output = ''
     try:
         # System CMake or CMake in the build environment
         output = subprocess.check_output(  # noqa: S603
-            [cmake, '--version'],
+            [cmake_exe, '--version'],
             stderr=subprocess.STDOUT,
             text=True,
             encoding='utf-8',
@@ -98,16 +108,17 @@ def cmake_context(
         with unset_python_path():
             # CMake in the parent virtual environment
             output = subprocess.check_output(  # noqa: S603
-                [cmake, '--version'],
+                [cmake_exe, '--version'],
                 stderr=subprocess.STDOUT,
                 text=True,
                 encoding='utf-8',
             ).strip()
 
     if verbose and output:
-        print(output, file=sys.stderr)
+        print(textwrap.indent(output, prefix='-- > ', predicate=lambda _: True), file=sys.stderr)
 
-    return spawn_context()
+    with spawn_context():
+        yield cmake_exe
 
 
 # pylint: disable-next=too-few-public-methods
@@ -132,25 +143,28 @@ class CMakeExtension(Extension):
         verbose: bool = False,
     ) -> str | None:
         cmake = os.getenv('CMAKE_COMMAND') or os.getenv('CMAKE_EXECUTABLE') or shutil.which('cmake')
-        if cmake and minimum_version is not None:
-            with cmake_context(cmake, verbose=verbose):
-                try:
-                    cmake_capabilities = json.loads(
-                        subprocess.check_output(  # noqa: S603
-                            [cmake, '-E', 'capabilities'],
-                            stderr=subprocess.DEVNULL,
-                            text=True,
-                            encoding='utf-8',
-                        ),
-                    )
-                except (OSError, subprocess.CalledProcessError, json.JSONDecodeError):
-                    cmake_capabilities = {}
-            cmake_version = Version(cmake_capabilities.get('version', {}).get('string', '0.0.0'))
-            if isinstance(minimum_version, str):
-                minimum_version = Version(minimum_version)
-            if cmake_version < minimum_version:
-                cmake = None
-        return cmake
+        if not cmake:
+            return None
+
+        if minimum_version is None:
+            minimum_version = '0.0.0'
+
+        with cmake_context(cmake, verbose=verbose) as cmake_exe:
+            try:
+                cmake_capabilities = json.loads(
+                    subprocess.check_output(  # noqa: S603
+                        [cmake_exe, '-E', 'capabilities'],
+                        stderr=subprocess.DEVNULL,
+                        text=True,
+                        encoding='utf-8',
+                    ),
+                )
+            except (OSError, subprocess.CalledProcessError, json.JSONDecodeError):
+                cmake_capabilities = {}
+            cmake_version = cmake_capabilities.get('version', {}).get('string', '0.0.0')
+            if Version(cmake_version) < Version(minimum_version):
+                return None
+            return cmake_exe
 
 
 # pylint: disable-next=invalid-name
@@ -234,9 +248,9 @@ class cmake_build_ext(build_ext):  # noqa: N801
         build_args += ['--target', ext.target, '--']
 
         self.mkpath(str(build_temp))
-        with cmake_context(cmake, dry_run=self.dry_run, verbose=True):
-            self.spawn([cmake, '-S', str(ext.source_dir), '-B', str(build_temp), *cmake_args])
-            self.spawn([cmake, '--build', str(build_temp), *build_args])
+        with cmake_context(cmake, dry_run=self.dry_run, verbose=True) as cmake_exe:
+            self.spawn([cmake_exe, '-S', str(ext.source_dir), '-B', str(build_temp), *cmake_args])
+            self.spawn([cmake_exe, '--build', str(build_temp), *build_args])
 
 
 @contextlib.contextmanager
