@@ -90,7 +90,7 @@ include = ["optree", "optree.*"]
 optree = ["*.so", "*.pyd", "*.pyi", "*.typed"]
 
 # Wheel builder ################################################################
-# Reference: https://cibuildwheel.readthedocs.io
+# Reference: https://cibuildwheel.pypa.io
 [tool.cibuildwheel]
 archs = ["native"]
 enable = ["pypy", "cpython-freethreading"]
@@ -98,6 +98,7 @@ skip = "*musllinux*"
 build-frontend = "build"
 environment = { PYTHONDEVMODE = "1", PYTHONUNBUFFERED = "1" }
 environment-pass = [
+    "CMAKE_MINIMUM_VERSION",
     "CMAKE_CXX_STANDARD",
     "OPTREE_CXX_WERROR",
     "_GLIBCXX_USE_CXX11_ABI",
