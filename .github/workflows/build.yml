@@ -207,6 +207,9 @@ jobs:
           - runner: ubuntu-latest
             python-version: "3.13"
             archs: "arm64_v8a"
+          - runner: ubuntu-latest
+            python-version: "3.14"
+            archs: "arm64_v8a"
           # Pyodide
           - runner: ubuntu-latest
             python-version: "3.12"
