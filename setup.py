@@ -30,7 +30,7 @@ import sysconfig
 import textwrap
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TextIO
 
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
@@ -50,6 +50,10 @@ else:
 
 HERE = Path(__file__).absolute().parent
 CMAKE_MINIMUM_VERSION = os.getenv('CMAKE_MINIMUM_VERSION') or '3.18'
+
+
+def eprint(*args: Any, file: TextIO = sys.stderr, flush: bool = True, **kwargs: Any) -> None:
+    print(*args, file=file, flush=flush, **kwargs)
 
 
 @contextlib.contextmanager
@@ -82,7 +86,7 @@ def cmake_context(
     cmake_exe = os.fspath(cmake)
 
     if verbose:
-        print(f'-- Using CMake executable: {cmake_exe}', file=sys.stderr)
+        eprint(f'-- Using CMake executable: {cmake_exe}')
 
     if dry_run:
         yield cmake_exe
@@ -99,10 +103,9 @@ def cmake_context(
             encoding='utf-8',
         ).strip()
     except (OSError, subprocess.CalledProcessError):
-        print(
+        eprint(
             f'Could not run `{cmake}` directly. '
             'Unset the `PYTHONPATH` environment variable in the build environment.',
-            file=sys.stderr,
         )
         spawn_context = unset_python_path  # type: ignore[assignment]
         with unset_python_path():
@@ -115,7 +118,7 @@ def cmake_context(
             ).strip()
 
     if verbose and output:
-        print(textwrap.indent(output, prefix='-- > ', predicate=lambda _: True), file=sys.stderr)
+        eprint(textwrap.indent(output, prefix='-- > ', predicate=bool))
 
     with spawn_context():
         yield cmake_exe

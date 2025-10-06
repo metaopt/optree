@@ -176,12 +176,14 @@ def test_pytree_reexport_without_module():
     assert f'{__name__}.pytree.dataclasses' not in sys.modules
     assert f'{__name__}.pytree.functools' not in sys.modules
 
+    _ = None
     with pytest.raises(ModuleNotFoundError, match=r'No module named'):
-        import test_shortcut.pytree
+        import test_shortcut.pytree as _
     with pytest.raises(ModuleNotFoundError, match=r'No module named'):
-        import test_shortcut.pytree.dataclasses
+        import test_shortcut.pytree.dataclasses as _
     with pytest.raises(ModuleNotFoundError, match=r'No module named'):
-        import test_shortcut.pytree.functools  # noqa: F401
+        import test_shortcut.pytree.functools as _
+    del _
 
     pytree1 = optree.pytree.reexport(namespace='pytree1')
     check_reexported_module(
@@ -202,12 +204,14 @@ def test_pytree_reexport_with_module():
 
     sys.modules['some_package'] = types.ModuleType('some_package')
 
+    _ = None
     with pytest.raises(ModuleNotFoundError, match=r'No module named'):
-        import some_package.pytree_mod
+        import some_package.pytree_mod as _
     with pytest.raises(ModuleNotFoundError, match=r'No module named'):
-        import some_package.pytree_mod.dataclasses
+        import some_package.pytree_mod.dataclasses as _
     with pytest.raises(ModuleNotFoundError, match=r'No module named'):
-        import some_package.pytree_mod.functools  # noqa: F401
+        import some_package.pytree_mod.functools as _
+    del _
 
     pytree3 = optree.pytree.reexport(namespace='pytree3', module='some_package.pytree_mod')
     check_reexported_module(
