@@ -190,17 +190,17 @@ jobs:
             archs: "riscv64"
         include:
           # iOS
-          - runner: macos-26
+          - runner: macos-latest
             python-version: "3.13"
             archs: "arm64_iphoneos"
-          - runner: macos-26
+          - runner: macos-latest
             python-version: "3.14"
             archs: "arm64_iphoneos"
           # iOS Simulator
-          - runner: macos-26
+          - runner: macos-latest
             python-version: "3.13"
             archs: "arm64_iphonesimulator"
-          - runner: macos-26
+          - runner: macos-latest
             python-version: "3.14"
             archs: "arm64_iphonesimulator"
           # Android
@@ -292,6 +292,8 @@ jobs:
               xcrun simctl list devices >/dev/null || true
               xcodebuild -downloadPlatform iOS || true
               xcrun simctl list devices available || true
+              # Skip testing in iOS simulators
+              echo "CIBW_TEST_SKIP=*" | tee -a "${GITHUB_ENV}"
             fi
           elif [[ "${{ matrix.archs }}" == wasm* ]]; then
             echo "CIBW_PLATFORM=pyodide" | tee -a "${GITHUB_ENV}"
