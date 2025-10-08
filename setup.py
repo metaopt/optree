@@ -197,9 +197,9 @@ class cmake_build_ext(build_ext):  # noqa: N801
         eprint(f'-- CMake source directory: {ext.source_dir}')
         eprint(f'-- Extension output path: {ext_path}')
         eprint(f'-- Extension build directory: {build_temp}')
+        eprint(f'-- Extension platform: {self.plat_name} (Python: {sysconfig.get_platform()})')
         eprint(f'-- Python executable: {sys.executable} ({sys.version.splitlines()[0]})')
-        eprint(f'-- Python platform: {self.plat_name} ({sysconfig.get_platform()})')
-        eprint('-- Python sysconfig: {')
+        eprint('-- Python `sysconfig.get_config_vars()`: {')
         keys = (
             'ABIFLAGS',
             'EXT_SUFFIX',
@@ -216,8 +216,9 @@ class cmake_build_ext(build_ext):  # noqa: N801
         for key, value in zip(keys, sysconfig.get_config_vars(*keys)):
             if value is not None:
                 eprint(f'--     {key!r}: {value!r},')
+        eprint('--     ...,')
         eprint('-- }')
-        eprint('-- Python paths: {')
+        eprint('-- Python `sysconfig.get_paths()`: {')
         for key, value in sysconfig.get_paths().items():
             eprint(f'--     {key!r}: {value!r},')
         eprint('-- }')
