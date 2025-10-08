@@ -154,7 +154,7 @@ jobs:
         id: pyenv-cache
         with:
           path: ${{ env.PYENV_ROOT }}
-          key: pyenv-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ env.PYTHON_VERSION }}
+          key: pyenv-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ env.PYTHON_VERSION }}$
 
       - name: Set up Python
         if: steps.pyenv-cache.outputs.cache-hit != 'true'

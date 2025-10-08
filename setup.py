@@ -172,13 +172,13 @@ class CMakeExtension(Extension):
 
 # pylint: disable-next=invalid-name
 class cmake_build_ext(build_ext):  # noqa: N801
-    # pylint: disable-next=too-many-branches
+    # pylint: disable-next=too-many-locals,too-many-branches,too-many-statements
     def build_extension(self, ext: Extension) -> None:  # noqa: C901
         if not isinstance(ext, CMakeExtension):
             super().build_extension(ext)
             return
 
-        cmake = ext.cmake_executable()
+        cmake = ext.cmake_executable(minimum_version=CMAKE_MINIMUM_VERSION, verbose=self.debug)
         if cmake is None:
             raise RuntimeError('Cannot find CMake executable.')
 
@@ -191,6 +191,36 @@ class cmake_build_ext(build_ext):  # noqa: N801
             f'-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{config.upper()}={ext_path.parent}',
             f'-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_{config.upper()}={build_temp}',
         ]
+
+        # Print debug information
+        eprint(f'-- Building CMake extension: {ext.name} ({config})')
+        eprint(f'-- CMake source directory: {ext.source_dir}')
+        eprint(f'-- Extension output path: {ext_path}')
+        eprint(f'-- Extension build directory: {build_temp}')
+        eprint(f'-- Python executable: {sys.executable} ({sys.version.splitlines()[0]})')
+        eprint(f'-- Python platform: {self.plat_name} ({sysconfig.get_platform()})')
+        eprint('-- Python sysconfig: {')
+        keys = (
+            'ABIFLAGS',
+            'EXT_SUFFIX',
+            'INCLUDEDIR',
+            'INCLUDEPY',
+            'LIBDEST',
+            'LIBDIR',
+            'LIBPYTHON',
+            'LIBRARY_DEPS',
+            'LIBRARY',
+            'LIBS',
+            'SOABI',
+        )
+        for key, value in zip(keys, sysconfig.get_config_vars(*keys)):
+            if value is not None:
+                eprint(f'--     {key!r}: {value!r},')
+        eprint('-- }')
+        eprint('-- Python paths: {')
+        for key, value in sysconfig.get_paths().items():
+            eprint(f'--     {key!r}: {value!r},')
+        eprint('-- }')
 
         # Cross-compilation support
         cmake_vars = {
