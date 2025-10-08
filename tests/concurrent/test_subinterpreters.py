@@ -12,3 +12,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+
+import atexit
+import sys
+
+import pytest
+
+from helpers import (
+    PYPY,
+    WASM,
+    Py_DEBUG,
+    Py_GIL_DISABLED,
+)
+
+
+if PYPY or WASM or sys.version_info < (3, 14):
+    pytest.skip('Test for CPython 3.14+ only', allow_module_level=True)
+
+
+from concurrent.futures import InterpreterPoolExecutor
+
+
+if Py_GIL_DISABLED and not Py_DEBUG:
+    NUM_WORKERS = 32
+    NUM_FUTURES = 128
+else:
+    NUM_WORKERS = 4
+    NUM_FUTURES = 16
+
+
+EXECUTOR = InterpreterPoolExecutor(max_workers=NUM_WORKERS)
+atexit.register(EXECUTOR.shutdown)
+
+
+def run(func, /, *args, **kwargs):
+    future = EXECUTOR.submit(func, *args, **kwargs)
+    exception = future.exception()
+    if exception is not None:
+        raise exception
+    return future.result()
