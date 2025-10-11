@@ -45,6 +45,8 @@ env:
   PYTHON_TAG: "py3" # to be updated
   PYTHON_VERSION: "3" # to be updated
   _GLIBCXX_USE_CXX11_ABI: "1"
+  MACOSX_DEPLOYMENT_TARGET: "15.0"
+  IPHONEOS_DEPLOYMENT_TARGET: "16.3"
   COLUMNS: "100"
   FORCE_COLOR: "1"
   CLICOLOR_FORCE: "1"
@@ -156,9 +158,9 @@ jobs:
             target: { runner: macos-latest, archs: "arm64_iphoneos" }
           # iOS Simulator
           - python-version: "3.13"
-            target: { runner: macos-latest, archs: "arm64_iphonesimulator" }
+            target: { runner: macos-26, archs: "arm64_iphonesimulator" }
           - python-version: "3.14"
-            target: { runner: macos-latest, archs: "arm64_iphonesimulator" }
+            target: { runner: macos-26, archs: "arm64_iphonesimulator" }
           # Android
           - python-version: "3.13"
             target: { runner: ubuntu-latest, archs: "arm64_v8a" }
@@ -245,8 +247,6 @@ jobs:
               xcrun simctl list devices >/dev/null || true
               xcodebuild -downloadPlatform iOS || true
               xcrun simctl list devices available || true
-              # Skip testing in iOS simulators
-              echo "CIBW_TEST_SKIP=*" | tee -a "${GITHUB_ENV}"
             fi
           elif [[ "${{ matrix.target.archs }}" == wasm* ]]; then
             echo "CIBW_PLATFORM=pyodide" | tee -a "${GITHUB_ENV}"
