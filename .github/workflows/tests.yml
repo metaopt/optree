@@ -39,9 +39,9 @@ env:
   _GLIBCXX_USE_CXX11_ABI: "1"
   FULL_TEST_PYTHON_VERSIONS: "3.12;3.13"
   PYTHONUNBUFFERED: "1"
-  PYTHON: "python"  # to be updated
-  PYTHON_TAG: "py3"  # to be updated
-  pybind11_VERSION: "stable"  # to be updated
+  PYTHON: "python" # to be updated
+  PYTHON_TAG: "py3" # to be updated
+  pybind11_VERSION: "stable" # to be updated
   COLUMNS: "100"
   FORCE_COLOR: "1"
   CLICOLOR_FORCE: "1"

@@ -42,8 +42,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  PYTHON_TAG: "py3"  # to be updated
-  PYTHON_VERSION: "3"  # to be updated
+  PYTHON_TAG: "py3" # to be updated
+  PYTHON_VERSION: "3" # to be updated
   _GLIBCXX_USE_CXX11_ABI: "1"
   COLUMNS: "100"
   FORCE_COLOR: "1"
@@ -100,28 +100,28 @@ jobs:
 
   build-wheels:
     name: >-
-      Build wheels for Python ${{ matrix.python-version }} on
-      ${{
-        (matrix.archs == 'ARM64' && 'windows-11-arm') ||
-        (matrix.archs == 'aarch64' && 'ubuntu-24.04-arm') ||
-        matrix.runner
-      }}
-      (${{ matrix.archs }})
+      Build wheels for Python ${{ matrix.python-version }}
+      on ${{ matrix.target.runner }} (${{ matrix.target.archs }})
     if: |
       github.repository_owner == 'metaopt' &&
       (github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')) &&
       (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     # https://docs.github.com/en/actions/reference/runners/github-hosted-runners
-    runs-on: >-
-      ${{
-        (matrix.archs == 'ARM64' && 'windows-11-arm') ||
-        (matrix.archs == 'aarch64' && 'ubuntu-24.04-arm') ||
-        matrix.runner
-      }}
+    runs-on: ${{ matrix.target.runner }}
     strategy:
       matrix:
         # Reference: https://cibuildwheel.pypa.io
-        runner: [ubuntu-latest, macos-latest, windows-latest]
+        target:
+          - { runner: ubuntu-latest, archs: "auto64" }
+          - { runner: ubuntu-latest, archs: "auto32" }
+          - { runner: ubuntu-24.04-arm, archs: "aarch64" }
+          - { runner: ubuntu-latest, archs: "ppc64le" }
+          - { runner: ubuntu-latest, archs: "s390x" }
+          - { runner: ubuntu-latest, archs: "riscv64" }
+          - { runner: macos-latest, archs: "auto64 universal2" }
+          - { runner: windows-latest, archs: "auto64" }
+          - { runner: windows-latest, archs: "auto32" }
+          - { runner: windows-11-arm, archs: "ARM64" }
         python-version:
           - "3.9"
           - "3.10"
@@ -132,88 +132,41 @@ jobs:
           - "3.14"
           - "3.14t"
           - "pypy-3.11"
-        archs:
-          # Generic
-          - "auto64"
-          - "auto32"
-          # Linux
-          - "aarch64"
-          - "ppc64le"
-          - "s390x"
-          - "riscv64"
-          # Windows
-          - "ARM64"
         exclude:
           # Exclude unsupported Python versions
-          - runner: ubuntu-latest
-            python-version: "pypy-3.11"
-            archs: "ppc64le"
-          - runner: ubuntu-latest
-            python-version: "pypy-3.11"
-            archs: "s390x"
-          - runner: ubuntu-latest
-            python-version: "pypy-3.11"
-            archs: "riscv64"
-          - runner: windows-latest
-            python-version: "3.9"
-            archs: "ARM64"
-          - runner: windows-latest
-            python-version: "3.10"
-            archs: "ARM64"
-          - runner: windows-latest
-            python-version: "pypy-3.11"
-            archs: "ARM64"
+          - python-version: "3.9"
+            target: { archs: "ARM64" }
+          - python-version: "3.10"
+            target: { archs: "ARM64" }
           - python-version: "pypy-3.11"
-            archs: "auto32"
-          # Exclude archs of other platforms
-          - runner: ubuntu-latest
-            archs: "ARM64"
-          - runner: macos-latest
-            archs: "auto32"
-          - runner: macos-latest
-            archs: "aarch64"
-          - runner: macos-latest
-            archs: "ppc64le"
-          - runner: macos-latest
-            archs: "s390x"
-          - runner: macos-latest
-            archs: "riscv64"
-          - runner: macos-latest
-            archs: "ARM64"
-          - runner: windows-latest
-            archs: "aarch64"
-          - runner: windows-latest
-            archs: "ppc64le"
-          - runner: windows-latest
-            archs: "s390x"
-          - runner: windows-latest
-            archs: "riscv64"
+            target: { archs: "auto32" }
+          - python-version: "pypy-3.11"
+            target: { archs: "ppc64le" }
+          - python-version: "pypy-3.11"
+            target: { archs: "s390x" }
+          - python-version: "pypy-3.11"
+            target: { archs: "riscv64" }
+          - python-version: "pypy-3.11"
+            target: { archs: "ARM64" }
         include:
           # iOS
-          - runner: macos-latest
-            python-version: "3.13"
-            archs: "arm64_iphoneos"
-          - runner: macos-latest
-            python-version: "3.14"
-            archs: "arm64_iphoneos"
+          - python-version: "3.13"
+            target: { runner: macos-latest, archs: "arm64_iphoneos" }
+          - python-version: "3.14"
+            target: { runner: macos-latest, archs: "arm64_iphoneos" }
           # iOS Simulator
-          - runner: macos-latest
-            python-version: "3.13"
-            archs: "arm64_iphonesimulator"
-          - runner: macos-latest
-            python-version: "3.14"
-            archs: "arm64_iphonesimulator"
+          - python-version: "3.13"
+            target: { runner: macos-latest, archs: "arm64_iphonesimulator" }
+          - python-version: "3.14"
+            target: { runner: macos-latest, archs: "arm64_iphonesimulator" }
           # Android
-          - runner: ubuntu-latest
-            python-version: "3.13"
-            archs: "arm64_v8a"
+          - python-version: "3.13"
+            target: { runner: ubuntu-latest, archs: "arm64_v8a" }
           # Pyodide
-          - runner: ubuntu-latest
-            python-version: "3.12"
-            archs: "wasm32"
-          - runner: ubuntu-latest
-            python-version: "3.13"
-            archs: "wasm32"
+          - python-version: "3.12"
+            target: { runner: ubuntu-latest, archs: "wasm32" }
+          - python-version: "3.13"
+            target: { runner: ubuntu-latest, archs: "wasm32" }
       fail-fast: false
     timeout-minutes: 180
     steps:
@@ -282,11 +235,11 @@ jobs:
           fi
           echo "PYTHON_TAG=${PYTHON_TAG}" | tee -a "${GITHUB_ENV}"
           echo "CIBW_BUILD=${PYTHON_TAG}-*" | tee -a "${GITHUB_ENV}"
-          if [[ "${{ matrix.archs }}" == *arm*v8a* ]]; then
+          if [[ "${{ matrix.target.archs }}" == *arm*v8a* ]]; then
             echo "CIBW_PLATFORM=android" | tee -a "${GITHUB_ENV}"
-          elif [[ "${{ matrix.archs }}" == *iphone* ]]; then
+          elif [[ "${{ matrix.target.archs }}" == *iphone* ]]; then
             echo "CIBW_PLATFORM=ios" | tee -a "${GITHUB_ENV}"
-            if [[ "${{ matrix.archs }}" == *simulator* ]]; then
+            if [[ "${{ matrix.target.archs }}" == *simulator* ]]; then
               xcrun simctl shutdown all || true
               xcrun simctl delete unavailable || true
               xcrun simctl list devices >/dev/null || true
@@ -295,7 +248,7 @@ jobs:
               # Skip testing in iOS simulators
               echo "CIBW_TEST_SKIP=*" | tee -a "${GITHUB_ENV}"
             fi
-          elif [[ "${{ matrix.archs }}" == wasm* ]]; then
+          elif [[ "${{ matrix.target.archs }}" == wasm* ]]; then
             echo "CIBW_PLATFORM=pyodide" | tee -a "${GITHUB_ENV}"
           fi
 
@@ -309,8 +262,7 @@ jobs:
         uses: pypa/cibuildwheel@v3.2
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
-          CIBW_ARCHS: ${{ matrix.archs }}
-          CIBW_ARCHS_MACOS: ${{ matrix.archs }} universal2
+          CIBW_ARCHS: ${{ matrix.target.archs }}
           CIBW_ENABLE: pypy cpython-freethreading ${{ env.ALLOW_PRERELEASES == 'true' && 'cpython-prerelease' || '' }}
           CIBW_ALLOW_EMPTY: ${{ env.ALLOW_PRERELEASES }}
         with:
@@ -320,7 +272,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ env.PYTHON_TAG }}-${{ runner.os }}-${{ matrix.archs }}
+          name: wheels-${{ env.PYTHON_TAG }}-${{ runner.os }}-${{ matrix.target.archs }}
           path: wheelhouse/*.whl
           if-no-files-found: ${{ env.ALLOW_PRERELEASES == 'true' && 'warn' || 'error' }}
 
