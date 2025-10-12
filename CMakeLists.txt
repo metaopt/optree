@@ -189,6 +189,10 @@ system(
 message(STATUS "Use Python version: ${Python_VERSION}")
 message(STATUS "Use Python executable: \"${Python_EXECUTABLE}\"")
 
+if (DEFINED Python_ROOT_DIR)
+    message(STATUS "Use Python_ROOT_DIR: \"${Python_ROOT_DIR}\"")
+endif()
+
 if(NOT DEFINED Python_INCLUDE_DIR)
     message(STATUS "Auto detecting Python include directory...")
     system(
@@ -295,6 +299,7 @@ foreach(
     CMAKE_OSX_SYSROOT
     CMAKE_OSX_DEPLOYMENT_TARGET
     CMAKE_OSX_ARCHITECTURES
+    Python_ROOT_DIR
     Python_INCLUDE_DIR
     Python_INCLUDE_DIRS
     Python_LIBRARY

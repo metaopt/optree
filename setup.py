@@ -200,20 +200,24 @@ class cmake_build_ext(build_ext):  # noqa: N801
         eprint(f'-- Extension platform: {self.plat_name} (Python: {sysconfig.get_platform()})')
         eprint(f'-- Python executable: {sys.executable} ({sys.version.splitlines()[0]})')
         eprint('-- Python `sysconfig.get_config_vars()`: {')
-        keys = (
-            'ABIFLAGS',
-            'EXT_SUFFIX',
-            'INCLUDEDIR',
-            'INCLUDEPY',
-            'LIBDEST',
-            'LIBDIR',
-            'LIBPYTHON',
-            'LIBRARY_DEPS',
-            'LIBRARY',
-            'LIBS',
-            'SOABI',
-        )
-        for key, value in zip(keys, sysconfig.get_config_vars(*keys)):
+        sysconfig_vars = sysconfig.get_config_vars()
+        for key in sorted(
+            {
+                'ABIFLAGS',
+                'EXT_SUFFIX',
+                'INCLUDEDIR',
+                'INCLUDEPY',
+                'LIBDEST',
+                'LIBDIR',
+                'LIBPYTHON',
+                'LIBRARY_DEPS',
+                'LIBRARY',
+                'LIBS',
+                'SOABI',
+                *(k for k in sysconfig_vars if k == k.lower()),
+            },
+        ):
+            value = sysconfig_vars.get(key)
             if value is not None:
                 eprint(f'--     {key!r}: {value!r},')
         eprint('--     ...,')
@@ -269,6 +273,9 @@ class cmake_build_ext(build_ext):  # noqa: N801
             f'-DPython_EXECUTABLE={sys.executable}',
             f'-DPython_INCLUDE_DIR={sysconfig.get_path("platinclude")}',
         ]
+        python_root_dir = os.getenv('Python_ROOT_DIR') or sysconfig_vars.get('installed_platbase')  # noqa: SIM112
+        if python_root_dir is not None:
+            cmake_args += [f'-DPython_ROOT_DIR={python_root_dir}']
         if self.include_dirs:
             cmake_args += [f'-DPython_EXTRA_INCLUDE_DIRS={";".join(self.include_dirs)}']
         if self.library_dirs:

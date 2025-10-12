@@ -118,7 +118,7 @@ jobs:
           - { runner: ubuntu-latest, archs: "ppc64le" }
           - { runner: ubuntu-latest, archs: "s390x" }
           - { runner: ubuntu-latest, archs: "riscv64" }
-          - { runner: macos-latest, archs: "auto64 universal2" }
+          - { runner: macos-latest, archs: "auto64" }
           - { runner: windows-latest, archs: "auto64" }
           - { runner: windows-latest, archs: "auto32" }
           - { runner: windows-11-arm, archs: "ARM64" }
@@ -265,6 +265,7 @@ jobs:
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_ARCHS: ${{ matrix.target.archs }}
+          CIBW_ARCHS_MACOS: ${{ matrix.target.archs }} universal2
           CIBW_ENABLE: pypy cpython-freethreading${{ env.ALLOW_PRERELEASES == 'true' && ' cpython-prerelease' || '' }}
           CIBW_ALLOW_EMPTY: ${{ env.ALLOW_PRERELEASES }}
         with:
