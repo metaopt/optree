@@ -15,6 +15,7 @@
 """Integration with NumPy."""
 
 # pragma: numpy cover file
+# pylint: disable=import-error
 
 from __future__ import annotations
 
@@ -24,8 +25,8 @@ import warnings
 from typing import Any, Callable
 from typing_extensions import TypeAlias  # Python 3.10+
 
-import numpy as np  # pylint: disable=import-error
-from numpy.typing import ArrayLike  # pylint: disable=import-error
+import numpy as np
+from numpy.typing import ArrayLike
 
 from optree.ops import tree_flatten, tree_unflatten
 from optree.typing import PyTreeSpec, PyTreeTypeVar
@@ -35,7 +36,9 @@ from optree.utils import safe_zip
 __all__ = ['ArrayLikeTree', 'ArrayTree', 'tree_ravel']
 
 
+# pylint: disable-next=invalid-name
 ArrayLikeTree: TypeAlias = PyTreeTypeVar('ArrayLikeTree', ArrayLike)  # type: ignore[valid-type]
+# pylint: disable-next=invalid-name
 ArrayTree: TypeAlias = PyTreeTypeVar('ArrayTree', np.ndarray)  # type: ignore[valid-type]
 
 

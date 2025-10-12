@@ -32,6 +32,7 @@
 """Integration with JAX."""
 
 # pragma: jax cover file
+# pylint: disable=import-error
 
 from __future__ import annotations
 
@@ -43,10 +44,10 @@ from types import FunctionType
 from typing import Any, Callable
 from typing_extensions import TypeAlias  # Python 3.10+
 
-import jax.numpy as jnp  # pylint: disable=import-error
-from jax import Array, lax  # pylint: disable=import-error
-from jax._src import dtypes  # pylint: disable=import-error
-from jax.typing import ArrayLike  # pylint: disable=import-error
+import jax.numpy as jnp
+from jax import Array, lax
+from jax._src import dtypes
+from jax.typing import ArrayLike
 
 from optree.ops import tree_flatten, tree_unflatten
 from optree.typing import PyTreeSpec, PyTreeTypeVar
@@ -56,7 +57,9 @@ from optree.utils import safe_zip, total_order_sorted
 __all__ = ['ArrayLikeTree', 'ArrayTree', 'tree_ravel']
 
 
+# pylint: disable-next=invalid-name
 ArrayLikeTree: TypeAlias = PyTreeTypeVar('ArrayLikeTree', ArrayLike)  # type: ignore[valid-type]
+# pylint: disable-next=invalid-name
 ArrayTree: TypeAlias = PyTreeTypeVar('ArrayTree', Array)  # type: ignore[valid-type]
 
 

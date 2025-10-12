@@ -502,7 +502,7 @@ class StructSequence(tuple[_T_co, ...], metaclass=StructSequenceMeta):
         raise NotImplementedError
 
 
-structseq: TypeAlias = StructSequence  # noqa: PYI042
+structseq: TypeAlias = StructSequence  # noqa: PYI042 # pylint: disable=invalid-name
 
 del StructSequenceMeta
 
@@ -521,7 +521,7 @@ def is_structseq_instance(obj: object, /) -> bool:
 
 
 # Set if the type allows subclassing (see CPython's Include/object.h)
-Py_TPFLAGS_BASETYPE: int = _C.Py_TPFLAGS_BASETYPE  # (1UL << 10)
+Py_TPFLAGS_BASETYPE: int = _C.Py_TPFLAGS_BASETYPE  # (1UL << 10)  # pylint: disable=invalid-name
 
 
 @_override_with_(_C.is_structseq_class)
