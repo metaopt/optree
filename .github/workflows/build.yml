@@ -265,14 +265,15 @@ jobs:
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_ARCHS: ${{ matrix.target.archs }}
-          CIBW_ENABLE: pypy cpython-freethreading ${{ env.ALLOW_PRERELEASES == 'true' && 'cpython-prerelease' || '' }}
+          CIBW_ENABLE: pypy cpython-freethreading${{ env.ALLOW_PRERELEASES == 'true' && ' cpython-prerelease' || '' }}
           CIBW_ALLOW_EMPTY: ${{ env.ALLOW_PRERELEASES }}
         with:
           package-dir: .
           output-dir: wheelhouse
           config-file: "{package}/pyproject.toml"
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ env.PYTHON_TAG }}-${{ runner.os }}-${{ matrix.target.archs }}
           path: wheelhouse/*.whl
@@ -314,6 +315,7 @@ jobs:
           if-no-files-found: error
 
   publish:
+    name: Publish to PyPI
     runs-on: ubuntu-latest
     needs: [list-artifacts]
     if: |

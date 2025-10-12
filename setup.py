@@ -222,6 +222,17 @@ class cmake_build_ext(build_ext):  # noqa: N801
         for key, value in sysconfig.get_paths().items():
             eprint(f'--     {key!r}: {value!r},')
         eprint('-- }')
+        if self.debug or os.getenv('CI') or os.getenv('CIBUILDWHEEL'):
+            eprint('-- Python `os.environ`: {')
+            for key, value in sorted(os.environ.items()):
+                key_lowercase = key.lower()
+                if any(
+                    substring in key_lowercase
+                    for substring in ('secret', 'token', 'key', 'password', 'proxy')
+                ):
+                    value = '***'
+                eprint(f'--     {key!r}: {value!r},')
+            eprint('-- }')
 
         # Cross-compilation support
         cmake_vars = {
