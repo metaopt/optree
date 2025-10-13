@@ -151,19 +151,19 @@ jobs:
         include:
           # iOS
           - python-version: "3.13"
-            target: { runner: macos-latest, archs: "arm64_iphoneos" }
+            target: { runner: macos-26, archs: "arm64_iphoneos" }
           - python-version: "3.14"
-            target: { runner: macos-latest, archs: "arm64_iphoneos" }
+            target: { runner: macos-26, archs: "arm64_iphoneos" }
           # iOS Simulator
           - python-version: "3.13"
-            target: { runner: macos-latest, archs: "arm64_iphonesimulator" }
+            target: { runner: macos-26, archs: "arm64_iphonesimulator" }
           - python-version: "3.14"
-            target: { runner: macos-latest, archs: "arm64_iphonesimulator" }
+            target: { runner: macos-26, archs: "arm64_iphonesimulator" }
           # Android
           - python-version: "3.13"
-            target: { runner: macos-latest, archs: "arm64_v8a" }
+            target: { runner: macos-26, archs: "arm64_v8a" }
           - python-version: "3.14"
-            target: { runner: macos-latest, archs: "arm64_v8a" }
+            target: { runner: macos-26, archs: "arm64_v8a" }
           # Pyodide
           - python-version: "3.12"
             target: { runner: ubuntu-latest, archs: "wasm32" }
