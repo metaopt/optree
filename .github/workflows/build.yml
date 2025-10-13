@@ -239,8 +239,6 @@ jobs:
           echo "CIBW_BUILD=${PYTHON_TAG}-*" | tee -a "${GITHUB_ENV}"
           if [[ "${{ matrix.target.archs }}" == *arm*v8a* ]]; then
             echo "CIBW_PLATFORM=android" | tee -a "${GITHUB_ENV}"
-            # Skip testing on Android
-            echo "CIBW_TEST_SKIP=*" | tee -a "${GITHUB_ENV}"
           elif [[ "${{ matrix.target.archs }}" == *iphone* ]]; then
             echo "CIBW_PLATFORM=ios" | tee -a "${GITHUB_ENV}"
             if [[ "${{ matrix.target.archs }}" == *simulator* ]]; then
@@ -249,8 +247,6 @@ jobs:
               xcrun simctl list devices >/dev/null || true
               xcodebuild -downloadPlatform iOS || true
               xcrun simctl list devices available || true
-              # Skip testing in iOS simulators
-              echo "CIBW_TEST_SKIP=*" | tee -a "${GITHUB_ENV}"
             fi
           elif [[ "${{ matrix.target.archs }}" == wasm* ]]; then
             echo "CIBW_PLATFORM=pyodide" | tee -a "${GITHUB_ENV}"
