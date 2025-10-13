@@ -118,7 +118,7 @@ jobs:
           - { runner: ubuntu-latest, archs: "ppc64le" }
           - { runner: ubuntu-latest, archs: "s390x" }
           - { runner: ubuntu-latest, archs: "riscv64" }
-          - { runner: macos-latest, archs: "auto64 universal2" }
+          - { runner: macos-latest, archs: "auto64" }
           - { runner: windows-latest, archs: "auto64" }
           - { runner: windows-latest, archs: "auto32" }
           - { runner: windows-11-arm, archs: "ARM64" }
@@ -161,7 +161,9 @@ jobs:
             target: { runner: macos-latest, archs: "arm64_iphonesimulator" }
           # Android
           - python-version: "3.13"
-            target: { runner: ubuntu-latest, archs: "arm64_v8a" }
+            target: { runner: macos-latest, archs: "arm64_v8a" }
+          - python-version: "3.14"
+            target: { runner: macos-latest, archs: "arm64_v8a" }
           # Pyodide
           - python-version: "3.12"
             target: { runner: ubuntu-latest, archs: "wasm32" }
@@ -237,6 +239,8 @@ jobs:
           echo "CIBW_BUILD=${PYTHON_TAG}-*" | tee -a "${GITHUB_ENV}"
           if [[ "${{ matrix.target.archs }}" == *arm*v8a* ]]; then
             echo "CIBW_PLATFORM=android" | tee -a "${GITHUB_ENV}"
+            # Skip testing on Android
+            echo "CIBW_TEST_SKIP=*" | tee -a "${GITHUB_ENV}"
           elif [[ "${{ matrix.target.archs }}" == *iphone* ]]; then
             echo "CIBW_PLATFORM=ios" | tee -a "${GITHUB_ENV}"
             if [[ "${{ matrix.target.archs }}" == *simulator* ]]; then
@@ -263,14 +267,16 @@ jobs:
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_ARCHS: ${{ matrix.target.archs }}
-          CIBW_ENABLE: pypy cpython-freethreading ${{ env.ALLOW_PRERELEASES == 'true' && 'cpython-prerelease' || '' }}
+          CIBW_ARCHS_MACOS: ${{ matrix.target.archs }} universal2
+          CIBW_ENABLE: pypy cpython-freethreading${{ env.ALLOW_PRERELEASES == 'true' && ' cpython-prerelease' || '' }}
           CIBW_ALLOW_EMPTY: ${{ env.ALLOW_PRERELEASES }}
         with:
           package-dir: .
           output-dir: wheelhouse
           config-file: "{package}/pyproject.toml"
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ env.PYTHON_TAG }}-${{ runner.os }}-${{ matrix.target.archs }}
           path: wheelhouse/*.whl
@@ -312,6 +318,7 @@ jobs:
           if-no-files-found: error
 
   publish:
+    name: Publish to PyPI
     runs-on: ubuntu-latest
     needs: [list-artifacts]
     if: |

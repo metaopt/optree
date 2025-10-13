@@ -189,6 +189,10 @@ system(
 message(STATUS "Use Python version: ${Python_VERSION}")
 message(STATUS "Use Python executable: \"${Python_EXECUTABLE}\"")
 
+if (DEFINED Python_ROOT_DIR)
+    message(STATUS "Use Python_ROOT_DIR: \"${Python_ROOT_DIR}\"")
+endif()
+
 if(NOT DEFINED Python_INCLUDE_DIR)
     message(STATUS "Auto detecting Python include directory...")
     system(
@@ -201,6 +205,23 @@ if("${Python_INCLUDE_DIR}" STREQUAL "")
     message(FATAL_ERROR "Python include directory not found")
 else()
     message(STATUS "Detected Python include directory: \"${Python_INCLUDE_DIR}\"")
+    if (NOT EXISTS "${Python_INCLUDE_DIR}/Python.h")
+        message(WARNING "Python.h not found in \"${Python_INCLUDE_DIR}\"")
+        if (DEFINED Python_EXTRA_INCLUDE_DIRS)
+            message(STATUS "Looking for Python.h in Python_EXTRA_INCLUDE_DIRS: "
+                           "\"${Python_EXTRA_INCLUDE_DIRS}\"")
+            foreach(Python_EXTRA_INCLUDE_DIR IN LISTS Python_EXTRA_INCLUDE_DIRS)
+                if (EXISTS "${Python_EXTRA_INCLUDE_DIR}/Python.h")
+                    set(Python_INCLUDE_DIR "${Python_EXTRA_INCLUDE_DIR}")
+                    message(STATUS "Detected Python.h in \"${Python_INCLUDE_DIR}\"")
+                    break()
+                endif()
+            endforeach()
+            if (NOT EXISTS "${Python_INCLUDE_DIR}/Python.h")
+                message(WARNING "Python.h not found in Python_EXTRA_INCLUDE_DIRS")
+            endif()
+        endif()
+    endif()
     include_directories("${Python_INCLUDE_DIR}")
 endif()
 
@@ -278,6 +299,7 @@ foreach(
     CMAKE_OSX_SYSROOT
     CMAKE_OSX_DEPLOYMENT_TARGET
     CMAKE_OSX_ARCHITECTURES
+    Python_ROOT_DIR
     Python_INCLUDE_DIR
     Python_INCLUDE_DIRS
     Python_LIBRARY

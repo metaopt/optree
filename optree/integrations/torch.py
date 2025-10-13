@@ -15,6 +15,7 @@
 """Integration with PyTorch."""
 
 # pragma: torch cover file
+# pylint: disable=import-error
 
 from __future__ import annotations
 
@@ -23,7 +24,7 @@ import warnings
 from typing import Any, Callable
 from typing_extensions import TypeAlias  # Python 3.10+
 
-import torch  # pylint: disable=import-error
+import torch
 
 from optree.ops import tree_flatten, tree_unflatten
 from optree.typing import PyTreeSpec, PyTreeTypeVar
@@ -33,6 +34,7 @@ from optree.utils import safe_zip
 __all__ = ['TensorTree', 'tree_ravel']
 
 
+# pylint: disable-next=invalid-name
 TensorTree: TypeAlias = PyTreeTypeVar('TensorTree', torch.Tensor)  # type: ignore[valid-type]
 
 
