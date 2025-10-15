@@ -725,8 +725,8 @@ def _defaultdict_flatten(
     tuple[Callable[[], VT] | None, list[KT]],
     tuple[KT, ...],
 ]:
-    values, keys, entries = _dict_flatten(dct)
-    return values, (dct.default_factory, keys), entries
+    values, dict_metadata, entries = _dict_flatten(dct)
+    return values, (dct.default_factory, dict_metadata), entries
 
 
 def _defaultdict_unflatten(
@@ -734,8 +734,8 @@ def _defaultdict_unflatten(
     values: Iterable[VT],
     /,
 ) -> defaultdict[KT, VT]:
-    default_factory, keys = metadata
-    return defaultdict(default_factory, _dict_unflatten(keys, values))
+    default_factory, dict_metadata = metadata
+    return defaultdict(default_factory, _dict_unflatten(dict_metadata, values))
 
 
 def _defaultdict_insertion_ordered_flatten(
