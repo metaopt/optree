@@ -334,7 +334,7 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         run: |
-          find . -type f -name '*.py[cod]' -delete
+          find . -type f -name '*.py[co]' -delete
           find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
           if git status --ignored --porcelain | grep -qvE '/$'; then
             ls -alh $(git status --ignored --porcelain | grep -vE '/$' | grep -oE '\S+$')
@@ -361,7 +361,7 @@ jobs:
               brew update --quiet --force
               brew list --formula llvm >/dev/null || brew install --formula llvm
               echo "::endgroup::"
-              BACKTRACE_COMMAND="lldb --file ${{ env.PYTHON }} --core '{}' -o 'bt all' -o 'q'"
+              BACKTRACE_COMMAND="$(brew --prefix llvm)/bin/lldb --file ${{ env.PYTHON }} --core '{}' -o 'bt all' -o 'q'"
             elif [[ "${{ runner.os }}" == 'Windows' ]]; then
               BACKTRACE_COMMAND="cdb -z '{}' -c \"!py; !analyze -vv; .ecxr; kP; q\""
             fi
@@ -378,6 +378,7 @@ jobs:
                 echo '::endgroup::';
               " ';'
             fi
+            echo "::warning::Coredump files found, see backtraces above for details." >&2
           fi
 
       - name: Upload coverage to Codecov
