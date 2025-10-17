@@ -112,16 +112,16 @@ jobs:
       matrix:
         # Reference: https://cibuildwheel.pypa.io
         target:
-          - { runner: ubuntu-latest, archs: "auto64" }
-          - { runner: ubuntu-latest, archs: "auto32" }
-          - { runner: ubuntu-24.04-arm, archs: "aarch64" }
-          - { runner: ubuntu-latest, archs: "ppc64le" }
-          - { runner: ubuntu-latest, archs: "s390x" }
-          - { runner: ubuntu-latest, archs: "riscv64" }
-          - { runner: macos-latest, archs: "auto64" }
-          - { runner: windows-latest, archs: "auto64" }
-          - { runner: windows-latest, archs: "auto32" }
-          - { runner: windows-11-arm, archs: "ARM64" }
+          - { runner: ubuntu-latest, platform: linux, archs: "auto64" }
+          - { runner: ubuntu-latest, platform: linux, archs: "auto32" }
+          - { runner: ubuntu-24.04-arm, platform: linux, archs: "aarch64" }
+          - { runner: ubuntu-latest, platform: linux, archs: "ppc64le" }
+          - { runner: ubuntu-latest, platform: linux, archs: "s390x" }
+          - { runner: ubuntu-latest, platform: linux, archs: "riscv64" }
+          - { runner: macos-latest, platform: macos, archs: "auto64" }
+          - { runner: windows-latest, platform: windows, archs: "auto64" }
+          - { runner: windows-latest, platform: windows, archs: "auto32" }
+          - { runner: windows-11-arm, platform: windows, archs: "ARM64" }
         python-version:
           - "3.9"
           - "3.10"
@@ -151,24 +151,48 @@ jobs:
         include:
           # iOS
           - python-version: "3.13"
-            target: { runner: macos-26, archs: "arm64_iphoneos" }
+            target:
+              runner: macos-26
+              platform: ios
+              archs: "arm64_iphoneos"
           - python-version: "3.14"
-            target: { runner: macos-26, archs: "arm64_iphoneos" }
+            target:
+              runner: macos-26
+              platform: ios
+              archs: "arm64_iphoneos"
           # iOS Simulator
           - python-version: "3.13"
-            target: { runner: macos-26, archs: "arm64_iphonesimulator" }
+            target:
+              runner: macos-26
+              platform: ios
+              archs: "arm64_iphonesimulator"
           - python-version: "3.14"
-            target: { runner: macos-26, archs: "arm64_iphonesimulator" }
+            target:
+              runner: macos-26
+              platform: ios
+              archs: "arm64_iphonesimulator"
           # Android
           - python-version: "3.13"
-            target: { runner: macos-26, archs: "arm64_v8a" }
+            target:
+              runner: macos-26
+              platform: android
+              archs: "arm64_v8a"
           - python-version: "3.14"
-            target: { runner: macos-26, archs: "arm64_v8a" }
+            target:
+              runner: macos-26
+              platform: android
+              archs: "arm64_v8a"
           # Pyodide
           - python-version: "3.12"
-            target: { runner: ubuntu-latest, archs: "wasm32" }
+            target:
+              runner: ubuntu-latest
+              platform: pyodide
+              archs: "wasm32"
           - python-version: "3.13"
-            target: { runner: ubuntu-latest, archs: "wasm32" }
+            target:
+              runner: ubuntu-latest
+              platform: pyodide
+              archs: "wasm32"
       fail-fast: false
     timeout-minutes: 180
     steps:
@@ -237,19 +261,13 @@ jobs:
           fi
           echo "PYTHON_TAG=${PYTHON_TAG}" | tee -a "${GITHUB_ENV}"
           echo "CIBW_BUILD=${PYTHON_TAG}-*" | tee -a "${GITHUB_ENV}"
-          if [[ "${{ matrix.target.archs }}" == *arm*v8a* ]]; then
-            echo "CIBW_PLATFORM=android" | tee -a "${GITHUB_ENV}"
-          elif [[ "${{ matrix.target.archs }}" == *iphone* ]]; then
-            echo "CIBW_PLATFORM=ios" | tee -a "${GITHUB_ENV}"
-            if [[ "${{ matrix.target.archs }}" == *simulator* ]]; then
-              xcrun simctl shutdown all || true
-              xcrun simctl delete unavailable || true
-              xcrun simctl list devices >/dev/null || true
-              xcodebuild -downloadPlatform iOS || true
-              xcrun simctl list devices available || true
-            fi
-          elif [[ "${{ matrix.target.archs }}" == wasm* ]]; then
-            echo "CIBW_PLATFORM=pyodide" | tee -a "${GITHUB_ENV}"
+          if [[ "${{ matrix.target.platform }}" == 'ios' &&
+                "${{ matrix.target.archs }}" == *simulator* ]]; then
+            xcrun simctl shutdown all || true
+            xcrun simctl delete unavailable || true
+            xcrun simctl list devices >/dev/null || true
+            xcodebuild -downloadPlatform iOS || true
+            xcrun simctl list devices available || true
           fi
 
       - name: Set up QEMU
@@ -262,6 +280,7 @@ jobs:
         uses: pypa/cibuildwheel@v3.2
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
+          CIBW_PLATFORM: ${{ matrix.target.platform }}
           CIBW_ARCHS: ${{ matrix.target.archs }}
           CIBW_ARCHS_MACOS: ${{ matrix.target.archs }} universal2
           CIBW_ENABLE: pypy cpython-freethreading${{ env.ALLOW_PRERELEASES == 'true' && ' cpython-prerelease' || '' }}
