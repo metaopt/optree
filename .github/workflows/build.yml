@@ -101,7 +101,7 @@ jobs:
   build-wheels:
     name: >-
       Build wheels for Python ${{ matrix.python-version }}
-      on ${{ matrix.target.runner }} (${{ matrix.target.archs }})
+      on ${{ matrix.target.runner }} (${{ matrix.target.platform }} / ${{ matrix.target.archs }})
     if: |
       github.repository_owner == 'metaopt' &&
       (github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')) &&
@@ -303,7 +303,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ env.PYTHON_TAG }}-${{ runner.os }}-${{ matrix.target.archs }}
+          name: wheels-${{ env.PYTHON_TAG }}-${{ runner.os }}-${{ matrix.target.platform }}-${{ matrix.target.archs }}
           path: wheelhouse/*.whl
           if-no-files-found: ${{ env.ALLOW_PRERELEASES == 'true' && 'warn' || 'error' }}
 
