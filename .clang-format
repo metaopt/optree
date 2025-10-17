@@ -14,7 +14,7 @@ AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortIfStatementsOnASingleLine: Never
 BinPackArguments: false
-BinPackParameters: false
+BinPackParameters: OnePerLine
 BreakBeforeTernaryOperators: true
 CommentPragmas: 'NOLINT(NEXTLINE|BEGIN|END)?\[.*\]'
 DerivePointerAlignment: false
@@ -29,7 +29,7 @@ IncludeCategories:
     CaseSensitive: true
   - Regex: '^<[[:alnum:]_/]+(\.h)?>$'
     Priority: 1
-  - Regex: '^"optree/'
+  - Regex: '^"torch/'
     Priority: 4
     CaseSensitive: true
   - Regex: ".*"
@@ -53,7 +53,9 @@ RemoveParentheses: ReturnStatement
 RemoveSemicolon: true
 SeparateDefinitionBlocks: Leave
 SkipMacroDefinitionBody: false
-SortIncludes: CaseSensitive
+SortIncludes:
+  Enabled: true
+  IgnoreCase: false
 SpaceAroundPointerQualifiers: Both
 StatementAttributeLikeMacros:
   - Py_ALWAYS_INLINE
