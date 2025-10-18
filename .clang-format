@@ -29,7 +29,7 @@ IncludeCategories:
     CaseSensitive: true
   - Regex: '^<[[:alnum:]_/]+(\.h)?>$'
     Priority: 1
-  - Regex: '^"torch/'
+  - Regex: '^"optree/'
     Priority: 4
     CaseSensitive: true
   - Regex: ".*"
