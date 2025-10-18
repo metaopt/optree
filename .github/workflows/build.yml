@@ -100,7 +100,8 @@ jobs:
 
   build-wheels:
     name: >-
-      Build wheels for Python ${{ matrix.python-version }}
+      Build wheels for
+      ${{ startsWith(matrix.python-version, 'pypy') && 'PyPy' || 'CPython' }} ${{ matrix.python-version }}
       on ${{ matrix.target.runner }} (${{ matrix.target.platform }} / ${{ matrix.target.archs }})
     if: |
       github.repository_owner == 'metaopt' &&
@@ -294,7 +295,7 @@ jobs:
           CIBW_ARCHS: ${{ matrix.target.archs }}
           CIBW_ARCHS_MACOS: ${{ matrix.target.archs }} universal2
           CIBW_ENABLE: pypy cpython-freethreading${{ env.ALLOW_PRERELEASES == 'true' && ' cpython-prerelease' || '' }}
-          CIBW_ALLOW_EMPTY: ${{ env.ALLOW_PRERELEASES }}
+          CIBW_ALLOW_EMPTY: ${{ env.ALLOW_PRERELEASES == 'true' }}
         with:
           package-dir: .
           output-dir: wheelhouse
@@ -303,7 +304,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ env.PYTHON_TAG }}-${{ runner.os }}-${{ matrix.target.platform }}-${{ matrix.target.archs }}
+          name: wheels-${{ env.PYTHON_TAG }}-${{ matrix.target.platform }}-${{ matrix.target.archs }}
           path: wheelhouse/*.whl
           if-no-files-found: ${{ env.ALLOW_PRERELEASES == 'true' && 'warn' || 'error' }}
 
