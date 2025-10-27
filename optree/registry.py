@@ -725,8 +725,8 @@ def _defaultdict_flatten(
     tuple[Callable[[], VT] | None, list[KT]],
     tuple[KT, ...],
 ]:
-    values, keys, entries = _dict_flatten(dct)
-    return values, (dct.default_factory, keys), entries
+    values, dict_metadata, entries = _dict_flatten(dct)
+    return values, (dct.default_factory, dict_metadata), entries
 
 
 def _defaultdict_unflatten(
@@ -734,8 +734,8 @@ def _defaultdict_unflatten(
     values: Iterable[VT],
     /,
 ) -> defaultdict[KT, VT]:
-    default_factory, keys = metadata
-    return defaultdict(default_factory, _dict_unflatten(keys, values))
+    default_factory, dict_metadata = metadata
+    return defaultdict(default_factory, _dict_unflatten(dict_metadata, values))
 
 
 def _defaultdict_insertion_ordered_flatten(
@@ -746,8 +746,8 @@ def _defaultdict_insertion_ordered_flatten(
     tuple[Callable[[], VT] | None, list[KT]],
     tuple[KT, ...],
 ]:
-    values, keys, entries = _dict_insertion_ordered_flatten(dct)
-    return values, (dct.default_factory, keys), entries
+    values, dict_metadata, entries = _dict_insertion_ordered_flatten(dct)
+    return values, (dct.default_factory, dict_metadata), entries
 
 
 def _defaultdict_insertion_ordered_unflatten(
@@ -755,8 +755,8 @@ def _defaultdict_insertion_ordered_unflatten(
     values: Iterable[VT],
     /,
 ) -> defaultdict[KT, VT]:
-    default_factory, keys = metadata
-    return defaultdict(default_factory, _dict_insertion_ordered_unflatten(keys, values))
+    default_factory, dict_metadata = metadata
+    return defaultdict(default_factory, _dict_insertion_ordered_unflatten(dict_metadata, values))
 
 
 def _deque_flatten(deq: deque[T], /) -> tuple[deque[T], int | None]:

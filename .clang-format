@@ -14,7 +14,7 @@ AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortIfStatementsOnASingleLine: Never
 BinPackArguments: false
-BinPackParameters: false
+BinPackParameters: OnePerLine
 BreakBeforeTernaryOperators: true
 CommentPragmas: 'NOLINT(NEXTLINE|BEGIN|END)?\[.*\]'
 DerivePointerAlignment: false
@@ -53,7 +53,9 @@ RemoveParentheses: ReturnStatement
 RemoveSemicolon: true
 SeparateDefinitionBlocks: Leave
 SkipMacroDefinitionBody: false
-SortIncludes: CaseSensitive
+SortIncludes:
+  Enabled: true
+  IgnoreCase: false
 SpaceAroundPointerQualifiers: Both
 StatementAttributeLikeMacros:
   - Py_ALWAYS_INLINE
