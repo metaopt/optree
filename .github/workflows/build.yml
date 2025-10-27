@@ -92,7 +92,7 @@ jobs:
         run: python -m build --sdist
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sdist
           path: dist/*.tar.gz
@@ -276,7 +276,7 @@ jobs:
           config-file: "{package}/pyproject.toml"
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: wheels-${{ env.PYTHON_TAG }}-${{ runner.os }}-${{ matrix.target.archs }}
           path: wheelhouse/*.whl
@@ -311,7 +311,7 @@ jobs:
           rm -f dist/*wasm*.whl
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: artifacts
           path: dist/*

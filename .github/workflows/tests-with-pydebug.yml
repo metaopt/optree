@@ -425,7 +425,7 @@ jobs:
 
       - name: Upload core dump file
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coredump-${{ env.PYTHON_TAG }}-${{ runner.os }}
           path: |
