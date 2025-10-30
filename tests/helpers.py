@@ -68,6 +68,12 @@ skipif_ios = pytest.mark.skipif(
     reason='iOS does not support subprocesses',
 )
 
+ANDROID = sys.platform.startswith('android')
+skipif_android = pytest.mark.skipif(
+    ANDROID,
+    reason='Android testbed returns wrong `sys.executable` which breaks subprocesses',
+)
+
 WASM = sys.platform.startswith(('emscripten', 'wasi'))
 skipif_wasm = pytest.mark.skipif(
     WASM,
