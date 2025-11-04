@@ -153,23 +153,23 @@ jobs:
           # iOS
           - python-version: "3.13"
             target:
-              runner: macos-26
+              runner: macos-latest
               platform: ios
               archs: "arm64_iphoneos"
           - python-version: "3.14"
             target:
-              runner: macos-26
+              runner: macos-latest
               platform: ios
               archs: "arm64_iphoneos"
           # iOS Simulator
           - python-version: "3.13"
             target:
-              runner: macos-26
+              runner: macos-latest
               platform: ios
               archs: "arm64_iphonesimulator"
           - python-version: "3.14"
             target:
-              runner: macos-26
+              runner: macos-latest
               platform: ios
               archs: "arm64_iphonesimulator"
           # Android
