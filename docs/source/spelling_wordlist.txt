@@ -36,6 +36,7 @@ functools
 getattr
 hashable
 hypot
+imag
 init
 initializer
 inplace

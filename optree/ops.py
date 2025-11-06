@@ -1062,6 +1062,7 @@ def tree_partition(
     /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
+    fillvalue: None = None,
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> tuple[PyTree[T | None], PyTree[T | None]]: ...
@@ -1234,6 +1235,15 @@ def tree_transpose_map(
     """Map a multi-input function over pytree args to produce a new pytree with transposed structure.
 
     See also :func:`tree_map`, :func:`tree_map_with_path`, and :func:`tree_transpose`.
+
+    >>> comp = {'a': 1, 'b': (6j, -3 + 4j), 'c': [-5.0, 2j]}
+    >>> real, imag, mod = tree_transpose_map(lambda z: (z.real, z.imag, abs(z)), comp)
+    >>> real
+    {'a': 1, 'b': (0.0, -3.0), 'c': [-5.0, 0.0]}
+    >>> imag
+    {'a': 0, 'b': (6.0, 4.0), 'c': [0.0, 2.0]}
+    >>> mod
+    {'a': 1, 'b': (6.0, 5.0), 'c': [5.0, 2.0]}
 
     >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': (5, 6)}
     >>> tree_transpose_map(  # doctest: +IGNORE_WHITESPACE
