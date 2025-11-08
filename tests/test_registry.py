@@ -1118,3 +1118,158 @@ def test_dict_insertion_order_with_nested_context():
     assert not is_dict_insertion_ordered('')
     assert not is_dict_insertion_ordered('namespace')
     assert not is_dict_insertion_ordered('other-namespace')
+
+
+def test_register_pytree_node_class_legacy_methods():
+    @optree.register_pytree_node_class(namespace='legacy')
+    class LegacyStyleClass(UserList):
+        def tree_flatten(self):
+            return self.data, None, None
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            return cls(children)
+
+    assert hasattr(LegacyStyleClass, '__tree_flatten__')
+    assert hasattr(LegacyStyleClass, '__tree_unflatten__')
+    assert callable(LegacyStyleClass.__tree_flatten__)
+    assert callable(LegacyStyleClass.__tree_unflatten__)
+
+    tree = LegacyStyleClass([1, 2, 3])
+    leaves, treespec = optree.tree_flatten(tree, namespace='legacy')
+    assert leaves == [1, 2, 3]
+    assert tree == optree.tree_unflatten(treespec, leaves)
+
+    @optree.register_pytree_node_class(namespace='mixed')
+    class MixedStyleClass(UserList):
+        def __tree_flatten__(self):
+            return self.data, None, None
+
+        @classmethod
+        def __tree_unflatten__(cls, metadata, children):
+            return cls(children)
+
+        def tree_flatten(self):
+            return reversed(self.data), None, None
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            return cls(reversed(children))
+
+    tree = MixedStyleClass([1, 2, 3])
+    leaves, treespec = optree.tree_flatten(tree, namespace='mixed')
+    assert leaves == [1, 2, 3]
+    assert tree == optree.tree_unflatten(treespec, leaves)
+
+
+def test_register_pytree_node_class_missing_methods():
+    with pytest.raises(
+        TypeError,
+        match=r'must define both `__tree_flatten__` and `__tree_unflatten__` methods',
+    ):
+
+        @optree.register_pytree_node_class(namespace='error')
+        class NoMethodsClass(UserList):
+            pass
+
+    with pytest.raises(
+        TypeError,
+        match=r'must define both `__tree_flatten__` and `__tree_unflatten__` methods',
+    ):
+
+        @optree.register_pytree_node_class(namespace='error')
+        class OnlyOldFlattenClass(UserList):
+            def tree_flatten(self):
+                return self.data, None, None
+
+    with pytest.raises(
+        TypeError,
+        match=r'must define both `__tree_flatten__` and `__tree_unflatten__` methods',
+    ):
+
+        @optree.register_pytree_node_class(namespace='error')
+        class OnlyOldUnflattenClass(UserList):
+            @classmethod
+            def tree_unflatten(cls, metadata, children):
+                return cls(children)
+
+    with pytest.raises(
+        TypeError,
+        match=r'must define both `__tree_flatten__` and `__tree_unflatten__` methods',
+    ):
+
+        @optree.register_pytree_node_class(namespace='error')
+        class OnlyNewFlattenClass(UserList):
+            def __tree_flatten__(self):
+                return self.data, None, None
+
+    with pytest.raises(
+        TypeError,
+        match=r'must define both `__tree_flatten__` and `__tree_unflatten__` methods',
+    ):
+
+        @optree.register_pytree_node_class(namespace='error')
+        class OnlyNewUnflattenClass(UserList):
+            @classmethod
+            def __tree_unflatten__(cls, metadata, children):
+                return cls(children)
+
+    with pytest.raises(
+        TypeError,
+        match=r'must define both `__tree_flatten__` and `__tree_unflatten__` methods',
+    ):
+
+        @optree.register_pytree_node_class(namespace='error')
+        class MixedIncompleteClass1(UserList):
+            def tree_flatten(self):
+                return self.data, None, None
+
+            @classmethod
+            def __tree_unflatten__(cls, metadata, children):
+                return cls(children)
+
+    with pytest.raises(
+        TypeError,
+        match=r'must define both `__tree_flatten__` and `__tree_unflatten__` methods',
+    ):
+
+        @optree.register_pytree_node_class(namespace='error')
+        class MixedIncompleteClass2(UserList):
+            def __tree_flatten__(self):
+                return self.data, None, None
+
+            @classmethod
+            def tree_unflatten(cls, metadata, children):
+                return cls(children)
+
+
+def test_register_pytree_node_class_wrapping_behavior():
+    @optree.register_pytree_node_class(namespace='wrapping')
+    class WrappingTestClass(UserList):
+        def tree_flatten(self):
+            return list(reversed(self.data)), 'reversed', None
+
+        @classmethod
+        def tree_unflatten(cls, metadata, children):
+            if metadata == 'reversed':
+                return cls(reversed(children))
+            return cls(children)
+
+    tree = WrappingTestClass([1, 2, 3])
+
+    children, metadata, entries = tree.__tree_flatten__()
+    assert list(children) == [3, 2, 1]
+    assert metadata == 'reversed'
+    assert entries is None
+
+    reconstructed = WrappingTestClass.__tree_unflatten__(metadata, children)
+    assert list(reconstructed) == [1, 2, 3]
+
+    leaves, treespec = optree.tree_flatten(tree, namespace='wrapping')
+    assert leaves == [3, 2, 1]
+    assert tree == optree.tree_unflatten(treespec, leaves)
+
+    assert hasattr(WrappingTestClass, 'tree_flatten')
+    assert hasattr(WrappingTestClass, 'tree_unflatten')
+    assert callable(WrappingTestClass.tree_flatten)
+    assert callable(WrappingTestClass.tree_unflatten)
