@@ -334,11 +334,11 @@ def test_dataclass_with_duplicate_registrations():
         x: int
         y: float
 
-        def tree_flatten(self):
+        def __tree_flatten__(self):
             return [self.y], self.x, ['y']
 
         @classmethod
-        def tree_unflatten(cls, metadata, children):
+        def __tree_unflatten__(cls, metadata, children):
             return cls(metadata, children[0])
 
     foo = Foo(1, 2.0)

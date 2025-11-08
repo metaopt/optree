@@ -307,7 +307,7 @@ from collections import UserDict
 class MyDict(UserDict):
     TREE_PATH_ENTRY_TYPE = optree.MappingEntry  # used by accessor APIs
 
-    def tree_flatten(self):  # -> (children, metadata, entries)
+    def __tree_flatten__(self):  # -> (children, metadata, entries)
         reversed_keys = sorted(self.keys(), reverse=True)
         return (
             [self[key] for key in reversed_keys],  # children
@@ -316,7 +316,7 @@ class MyDict(UserDict):
         )
 
     @classmethod
-    def tree_unflatten(cls, metadata, children):
+    def __tree_unflatten__(cls, metadata, children):
         return cls(zip(metadata, children))
 ```
 
@@ -387,7 +387,7 @@ There are several key attributes of the pytree type registry:
             # Register a subclass to namespace 'mydict'
             optree.register_pytree_node_class(cls, namespace='mydict')
 
-        def tree_flatten(self):  # -> (children, metadata, entries)
+        def __tree_flatten__(self):  # -> (children, metadata, entries)
             reversed_keys = sorted(self.keys(), reverse=True)
             return (
                 [self[key] for key in reversed_keys],  # children
@@ -396,7 +396,7 @@ There are several key attributes of the pytree type registry:
             )
 
         @classmethod
-        def tree_unflatten(cls, metadata, children):
+        def __tree_unflatten__(cls, metadata, children):
             return cls(zip(metadata, children))
 
     # Subclasses will be automatically registered in namespace 'mydict'

@@ -21,6 +21,7 @@ import itertools
 import operator
 import os
 import pickle
+import platform
 import re
 import subprocess
 import sys
@@ -41,6 +42,7 @@ from helpers import (
     CustomTuple,
     FlatCache,
     MyAnotherDict,
+    Py_DEBUG,
     always,
     assert_equal_type_and_value,
     is_list,
@@ -77,6 +79,9 @@ def test_import_no_warnings():
 
 
 def test_max_depth():
+    if sys.version_info < (3, 10) and platform.system() == 'Windows' and Py_DEBUG:
+        pytest.skip('Flaky with Python 3.9 on Windows in debug mode.')
+
     lst = [1]
     for _ in range(optree.MAX_RECURSION_DEPTH - 1):
         lst = [lst]

@@ -114,12 +114,41 @@ suppress_warnings = ['config.cache']
 
 # -- Options for autodoc -----------------------------------------------------
 
+try:
+    from optree import PyTreeSpec
+except ImportError:
+    PyTreeSpec = type
+
 autodoc_default_options = {
     'member-order': 'bysource',
     'undoc-members': True,
     'special-members': True,
     'show-inheritance': True,
-    'exclude-members': '__module__, __dict__, __repr__, __str__, __weakref__',
+    'exclude-members': ', '.join(
+        (
+            '__module__',
+            '__dict__',
+            '__repr__',
+            '__str__',
+            '__getstate__',
+            '__setstate__',
+            '__weakref__',
+            '__annotations__',
+            '__firstlineno__',
+            '__orig_bases__',
+            '__parameters__',
+            '__slots__',
+            '__static_attributes__',
+            '__abstractmethods__',
+            '__non_callable_proto_members__',
+            '__protocol_attrs__',
+            '__subclasshook__',
+            '__instances__',
+            '__instance_lock__',
+            '__pybind11_native_enum__',
+            *(attr for attr in dir(PyTreeSpec) if attr.strip('_').startswith('pybind11')),
+        ),
+    ),
 }
 autoclass_content = 'both'
 
