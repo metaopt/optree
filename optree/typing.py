@@ -149,7 +149,7 @@ MetaData: TypeAlias = Optional[Hashable]
 class CustomTreeNode(Protocol[T]):
     """The abstract base class for custom pytree nodes."""
 
-    def tree_flatten(
+    def __tree_flatten__(
         self,
         /,
     ) -> (
@@ -290,7 +290,7 @@ class PyTree(Generic[T]):  # pragma: no cover
         """Emulate dataclass-like behavior."""
         raise NotImplementedError
 
-    def __contains__(self, key: Any | T, /) -> bool:
+    def __contains__(self, key: Any, /) -> bool:
         """Emulate collection-like behavior."""
         raise NotImplementedError
 
@@ -302,15 +302,15 @@ class PyTree(Generic[T]):  # pragma: no cover
         """Emulate collection-like behavior."""
         raise NotImplementedError
 
-    def index(self, key: Any | T, /) -> int:
+    def index(self, key: Any, /) -> int:
         """Emulate sequence-like behavior."""
         raise NotImplementedError
 
-    def count(self, key: Any | T, /) -> int:
+    def count(self, key: Any, /) -> int:
         """Emulate sequence-like behavior."""
         raise NotImplementedError
 
-    def get(self, key: Any, /, default: T | None = None) -> T | None:
+    def get(self, key: Any, /, default: S | None = None) -> PyTree[T] | T | S | None:
         """Emulate mapping-like behavior."""
         raise NotImplementedError
 
