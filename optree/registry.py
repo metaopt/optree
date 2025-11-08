@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import functools
 import inspect
 import sys
 from collections import OrderedDict, defaultdict, deque, namedtuple
@@ -36,7 +37,15 @@ from optree.accessors import (
     SequenceEntry,
     StructSequenceEntry,
 )
-from optree.typing import PyTreeKind, StructSequence, T, is_namedtuple_class, is_structseq_class
+from optree.typing import (
+    Children,
+    MetaData,
+    PyTreeKind,
+    StructSequence,
+    T,
+    is_namedtuple_class,
+    is_structseq_class,
+)
 from optree.utils import safe_zip, total_order_sorted, unzip2
 
 
@@ -439,6 +448,7 @@ def register_pytree_node_class(
 ) -> CustomTreeNodeType: ...
 
 
+# pylint: disable-next=too-many-branches
 def register_pytree_node_class(  # noqa: C901
     cls: CustomTreeNodeType | str | None = None,
     /,
@@ -475,9 +485,9 @@ def register_pytree_node_class(  # noqa: C901
     Raises:
         TypeError: If the path entry class is not a subclass of :class:`PyTreeEntry`.
         TypeError: If the namespace is not a string.
+        TypeError: If the class does not define the required method pairs.
         ValueError: If the namespace is an empty string.
         ValueError: If the type is already registered in the registry.
-        AttributeError: If the class does not define the required method pairs.
 
     .. versionadded:: 0.12.0
         The ``TREE_PATH_ENTRY_TYPE`` class variable to specify the path entry type used in
@@ -485,13 +495,14 @@ def register_pytree_node_class(  # noqa: C901
         If not provided, :class:`AutoEntry` will be used.
 
     .. versionadded:: 0.18.0
-        Previously, this function looks for methods named ``tree_flatten`` and ``tree_unflatten``
+        Previously, this function looked for methods named ``tree_flatten`` and ``tree_unflatten``
         for the given class. Since version 0.18.0, it prefers methods named ``__tree_flatten__``
         and ``__tree_unflatten__`` instead. The old method names are still supported for
         backward compatibility, but it is recommended to use the new method names.
-        If the new dunder-styled methods are defined, they will be used in favor of the old ones.
-        If the new dunder-styled methods are not defined, the old method names will be used if they
-        are defined and the class will be assigned two new dunder-styled methods that wrap the old ones.
+        The method resolution follows this priority:
+        1. If both ``__tree_flatten__`` and ``__tree_unflatten__`` are defined, use them directly.
+        2. If both ``tree_flatten`` and ``tree_unflatten`` are defined, wrap them as dunder methods.
+        3. If neither complete pair is available, raise a :exc:`TypeError` suggesting the new method names.
 
     This function is a thin wrapper around :func:`register_pytree_node`, and provides a
     class-oriented interface:
@@ -522,6 +533,18 @@ def register_pytree_node_class(  # noqa: C901
 
             @classmethod
             def __tree_unflatten__(cls, metadata, children):
+                return cls(*children)
+
+        # Legacy style (still supported but not recommended)
+        @register_pytree_node_class(namespace='legacy')
+        class LegacyStyleMyList(UserList):
+            def tree_flatten(self):
+                # Implementation automatically wrapped as __tree_flatten__
+                return self.data, None, None
+
+            @classmethod
+            def tree_unflatten(cls, metadata, children):
+                # Implementation automatically wrapped as __tree_unflatten__
                 return cls(*children)
     """
     if cls is __GLOBAL_NAMESPACE or isinstance(cls, str):
@@ -555,6 +578,45 @@ def register_pytree_node_class(  # noqa: C901
         path_entry_type = getattr(cls, 'TREE_PATH_ENTRY_TYPE', AutoEntry)
     if not (inspect.isclass(path_entry_type) and issubclass(path_entry_type, PyTreeEntry)):
         raise TypeError(f'Expected a subclass of PyTreeEntry, got {path_entry_type!r}.')
+
+    # Check for dunder-styled methods first (preferred since 0.18.0)
+    if not all(
+        callable(getattr(cls, method, None))
+        for method in ('__tree_flatten__', '__tree_unflatten__')
+    ):
+        # Check for old-styled methods (backward compatibility)
+        if not all(
+            callable(getattr(cls, method, None)) for method in ('tree_flatten', 'tree_unflatten')
+        ):
+            raise TypeError(
+                f'{cls!r} must define both `__tree_flatten__` and `__tree_unflatten__` methods '
+                'for registration as a pytree node.',
+            )
+
+        # Add dunder-styled wrapper methods to the class
+        # pylint: disable=no-member
+
+        @functools.wraps(cls.tree_flatten)
+        def __tree_flatten__(  # noqa: N807
+            self: CustomTreeNode[T],
+            /,
+        ) -> tuple[Children[T], MetaData] | tuple[Children[T], MetaData, Iterable[Any] | None]:
+            return self.tree_flatten()  # type: ignore[attr-defined]
+
+        @classmethod  # type: ignore[misc]
+        @functools.wraps(getattr(cls.tree_unflatten, '__func__', cls.tree_unflatten))
+        def __tree_unflatten__(  # noqa: N807
+            cls: type[CustomTreeNode[T]],
+            metadata: MetaData,
+            children: Children[T],
+            /,
+        ) -> CustomTreeNode[T]:
+            return cls.tree_unflatten(metadata, children)  # type: ignore[attr-defined]
+
+        # pylint: enable=no-member
+
+        cls.__tree_flatten__ = __tree_flatten__
+        cls.__tree_unflatten__ = __tree_unflatten__
 
     register_pytree_node(
         cls,
