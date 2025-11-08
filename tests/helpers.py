@@ -290,7 +290,7 @@ class MyDataclass:
     gamma: Any
     delta: Any
 
-    def tree_flatten(self):
+    def __tree_flatten__(self):
         return (
             (self.alpha, self.beta, self.gamma, self.delta),
             None,
@@ -298,7 +298,7 @@ class MyDataclass:
         )
 
     @classmethod
-    def tree_unflatten(cls, metadata, children):
+    def __tree_unflatten__(cls, metadata, children):
         return cls(*children)
 
 
@@ -331,11 +331,11 @@ class MyAnotherDataclass:
     y: Any
     z: Any
 
-    def tree_flatten(self):
+    def __tree_flatten__(self):
         return (self.x, self.y, self.z), None
 
     @classmethod
-    def tree_unflatten(cls, metadata, children):
+    def __tree_unflatten__(cls, metadata, children):
         return cls(*children)
 
 
@@ -368,11 +368,11 @@ class FlatCache:
             self._structured = optree.tree_unflatten(self.treespec, self.leaves)
         return self._structured
 
-    def tree_flatten(self):
+    def __tree_flatten__(self):
         return self.leaves, self.treespec
 
     @classmethod
-    def tree_unflatten(cls, metadata, children):
+    def __tree_unflatten__(cls, metadata, children):
         if not optree.all_leaves(children):
             children, metadata = optree.tree_flatten(optree.tree_unflatten(metadata, children))
         return cls(structured=None, leaves=children, treespec=metadata)
@@ -382,12 +382,12 @@ class FlatCache:
 class MyDict(UserDict):
     TREE_PATH_ENTRY_TYPE = optree.MappingEntry
 
-    def tree_flatten(self):
+    def __tree_flatten__(self):
         reversed_keys = sorted(self.keys(), reverse=True)
         return [self[key] for key in reversed_keys], reversed_keys, reversed_keys
 
     @classmethod
-    def tree_unflatten(cls, metadata, children):
+    def __tree_unflatten__(cls, metadata, children):
         return cls(zip(metadata, children))
 
     def __repr__(self):

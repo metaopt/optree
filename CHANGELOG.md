@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add Android support by [@XuehaiPan](https://github.com/XuehaiPan) in [#236](https://github.com/metaopt/optree/pull/236).
 - Add `manylinux-riscv64` wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#243](https://github.com/metaopt/optree/pull/243).
 - Add `cp{313,314}-ios` / `cp{313,314}-android` / `cp{312,313}-pyodide` wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#242](https://github.com/metaopt/optree/pull/242) and [#244](https://github.com/metaopt/optree/pull/244).
+- Add support for method pair `(__tree_flatten__, __tree_unflatten__)` for `register_pytree_node_class(cls)` by [@XuehaiPan](https://github.com/XuehaiPan) in [#253](https://github.com/metaopt/optree/pull/253).
 
 ### Changed
 
