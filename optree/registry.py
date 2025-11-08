@@ -301,6 +301,11 @@ def register_pytree_node(
         ValueError: If the namespace is an empty string.
         ValueError: If the type is already registered in the registry.
 
+    .. versionadded:: 0.12.0
+        The ``path_entry_type`` argument to specify the path entry type used in
+        :meth:`PyTreeSpec.accessors` and :func:`tree_flatten_with_accessor`.
+        If not provided, :class:`AutoEntry` will be used.
+
     Examples:
         >>> # Registry a Python type with lambda functions
         >>> register_pytree_node(
@@ -472,6 +477,21 @@ def register_pytree_node_class(  # noqa: C901
         TypeError: If the namespace is not a string.
         ValueError: If the namespace is an empty string.
         ValueError: If the type is already registered in the registry.
+        AttributeError: If the class does not define the required method pairs.
+
+    .. versionadded:: 0.12.0
+        The ``TREE_PATH_ENTRY_TYPE`` class variable to specify the path entry type used in
+        :meth:`PyTreeSpec.accessors` and :func:`tree_flatten_with_accessor`.
+        If not provided, :class:`AutoEntry` will be used.
+
+    .. versionadded:: 0.18.0
+        Previously, this function looks for methods named ``tree_flatten`` and ``tree_unflatten``
+        for the given class. Since version 0.18.0, it prefers methods named ``__tree_flatten__``
+        and ``__tree_unflatten__`` instead. The old method names are still supported for
+        backward compatibility, but it is recommended to use the new method names.
+        If the new dunder-styled methods are defined, they will be used in favor of the old ones.
+        If the new dunder-styled methods are not defined, the old method names will be used if they
+        are defined and the class will be assigned two new dunder-styled methods that wrap the old ones.
 
     This function is a thin wrapper around :func:`register_pytree_node`, and provides a
     class-oriented interface:
@@ -486,22 +506,22 @@ def register_pytree_node_class(  # noqa: C901
                 self.x = x
                 self.y = y
 
-            def tree_flatten(self):
+            def __tree_flatten__(self):
                 return ((self.x, self.y), None, ('x', 'y'))
 
             @classmethod
-            def tree_unflatten(cls, metadata, children):
+            def __tree_unflatten__(cls, metadata, children):
                 return cls(*children)
 
         @register_pytree_node_class('mylist')
         class MyList(UserList):
             TREE_PATH_ENTRY_TYPE = SequenceEntry
 
-            def tree_flatten(self):
+            def __tree_flatten__(self):
                 return self.data, None, None
 
             @classmethod
-            def tree_unflatten(cls, metadata, children):
+            def __tree_unflatten__(cls, metadata, children):
                 return cls(*children)
     """
     if cls is __GLOBAL_NAMESPACE or isinstance(cls, str):
@@ -538,8 +558,8 @@ def register_pytree_node_class(  # noqa: C901
 
     register_pytree_node(
         cls,
-        methodcaller('tree_flatten'),
-        cls.tree_unflatten,
+        methodcaller('__tree_flatten__'),
+        cls.__tree_unflatten__,
         path_entry_type=path_entry_type,
         namespace=namespace,
     )

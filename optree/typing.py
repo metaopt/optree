@@ -146,7 +146,7 @@ MetaData: TypeAlias = Optional[Hashable]
 
 
 @runtime_checkable
-class CustomTreeNode(Protocol[T]):
+class CustomTreeNode(Protocol[T]):  # pylint: disable=too-few-public-methods
     """The abstract base class for custom pytree nodes."""
 
     def __tree_flatten__(
@@ -162,7 +162,7 @@ class CustomTreeNode(Protocol[T]):
         """Flatten the custom pytree node into children and metadata."""
 
     @classmethod
-    def tree_unflatten(cls, metadata: MetaData, children: Children[T], /) -> Self:
+    def __tree_unflatten__(cls, metadata: MetaData, children: Children[T], /) -> Self:
         """Unflatten the children and metadata into the custom pytree node."""
 
 

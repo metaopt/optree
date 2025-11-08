@@ -1740,11 +1740,11 @@ def test_treespec_constructor(  # noqa: C901
 def test_treespec_constructor_namespace():
     @optree.register_pytree_node_class(namespace='mylist')
     class MyList(UserList):
-        def tree_flatten(self):
+        def __tree_flatten__(self):
             return self.data, None, None
 
         @classmethod
-        def tree_unflatten(cls, metadata, children):
+        def __tree_unflatten__(cls, metadata, children):
             return cls(children)
 
     with pytest.warns(

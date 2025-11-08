@@ -433,11 +433,11 @@ def test_flattened_entry_call():
         def __hash__(self):
             return hash((self.x, self.y, self.z))
 
-        def tree_flatten(self):
+        def __tree_flatten__(self):
             return (self.x, self.y, self.z), None
 
         @classmethod
-        def tree_unflatten(cls, metadata, children):
+        def __tree_unflatten__(cls, metadata, children):
             return cls(*children)
 
     obj = MyObject(1, 2, 3)
