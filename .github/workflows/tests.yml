@@ -49,7 +49,10 @@ env:
 
 jobs:
   test:
-    name: Test for Python ${{ matrix.python-version }} on ${{ matrix.runner }}
+    name: >-
+      Test for
+      ${{ startsWith(matrix.python-version, 'pypy') && 'PyPy' || 'CPython' }} ${{ matrix.python-version }}
+      on ${{ matrix.runner }}
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ${{ matrix.runner }}
     strategy:

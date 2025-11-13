@@ -50,12 +50,14 @@ from helpers import (
     is_tuple,
     never,
     parametrize,
+    skipif_android,
     skipif_ios,
     skipif_wasm,
 )
 
 
 @skipif_wasm
+@skipif_android
 @skipif_ios
 def test_import_no_warnings():
     env = {
