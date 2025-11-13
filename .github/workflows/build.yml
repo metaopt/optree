@@ -120,6 +120,7 @@ jobs:
           - { runner: ubuntu-latest, platform: linux, archs: "s390x" }
           - { runner: ubuntu-latest, platform: linux, archs: "riscv64" }
           - { runner: macos-latest, platform: macos, archs: "auto64" }
+          - { runner: macos-latest, platform: macos, archs: "x86_64" }
           - { runner: windows-latest, platform: windows, archs: "auto64" }
           - { runner: windows-latest, platform: windows, archs: "auto32" }
           - { runner: windows-11-arm, platform: windows, archs: "ARM64" }
@@ -293,7 +294,6 @@ jobs:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_PLATFORM: ${{ matrix.target.platform }}
           CIBW_ARCHS: ${{ matrix.target.archs }}
-          CIBW_ARCHS_MACOS: ${{ matrix.target.archs }} universal2
           CIBW_ENABLE: pypy cpython-freethreading${{ env.ALLOW_PRERELEASES == 'true' && ' cpython-prerelease' || '' }}
           CIBW_ALLOW_EMPTY: ${{ env.ALLOW_PRERELEASES == 'true' }}
         with:
