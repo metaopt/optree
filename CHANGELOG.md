@@ -13,11 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Use ARM-based GHA runners to build ARM wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#234](https://github.com/metaopt/optree/pull/234).
-- Add Android support by [@XuehaiPan](https://github.com/XuehaiPan) in [#236](https://github.com/metaopt/optree/pull/236).
-- Add `manylinux-riscv64` wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#243](https://github.com/metaopt/optree/pull/243).
-- Add `cp{313,314}-ios` / `cp{313,314}-android` / `cp{312,313}-pyodide` wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#242](https://github.com/metaopt/optree/pull/242) and [#244](https://github.com/metaopt/optree/pull/244).
-- Add support for method pair `(__tree_flatten__, __tree_unflatten__)` for `register_pytree_node_class(cls)` by [@XuehaiPan](https://github.com/XuehaiPan) in [#253](https://github.com/metaopt/optree/pull/253).
+-
 
 ### Changed
 
@@ -26,6 +22,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 -
+
+### Removed
+
+-
+
+------
+
+## [0.18.0] - 2025-11-14
+
+### Added
+
+- Use ARM-based GHA runners to build ARM wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#234](https://github.com/metaopt/optree/pull/234).
+- Add Android support by [@XuehaiPan](https://github.com/XuehaiPan) in [#236](https://github.com/metaopt/optree/pull/236).
+- Add `manylinux-riscv64` wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#243](https://github.com/metaopt/optree/pull/243).
+- Add `cp{313,314}-ios` / `cp{313,314}-android` / `cp{312,313}-pyodide` wheels by [@XuehaiPan](https://github.com/XuehaiPan) in [#242](https://github.com/metaopt/optree/pull/242) and [#244](https://github.com/metaopt/optree/pull/244).
+- Add support for method pair `(__tree_flatten__, __tree_unflatten__)` for `register_pytree_node_class(cls)` by [@XuehaiPan](https://github.com/XuehaiPan) in [#253](https://github.com/metaopt/optree/pull/253).
 
 ### Removed
 
@@ -474,7 +486,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/metaopt/optree/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/metaopt/optree/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/metaopt/optree/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/metaopt/optree/compare/v0.14.1...v0.15.0
