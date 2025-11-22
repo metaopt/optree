@@ -51,16 +51,15 @@ jobs:
           cache: pip
           cache-dependency-path: |
             pyproject.toml
-            **/requirements.txt
+            requirements*.txt
+            */requirements*.txt
             .pre-commit-config.yaml
 
       - name: Upgrade pip
-        run: |
-          python -m pip install --upgrade pip setuptools
+        run: python -m pip install --upgrade pip setuptools
 
       - name: Install dependencies
-        run: |
-          python -m pip install wheel pybind11 -r docs/requirements.txt
+        run: python -m pip install wheel pybind11 -r docs/requirements.txt
 
       - name: Install nightly pybind11
         shell: bash
@@ -75,52 +74,40 @@ jobs:
           python -m pip install --force-reinstall 'pybind11 @ git+https://github.com/pybind/pybind11.git#egg=pybind11'
 
       - name: Install OpTree
-        run: |
-          python -m pip install -v --no-build-isolation --editable '.[lint]'
+        run: python -m pip install -v --no-build-isolation --editable '.[lint]'
 
       - name: pre-commit
-        run: |
-          make pre-commit
+        run: make pre-commit
 
       - name: clang-format
-        run: |
-          make clang-format
+        run: make clang-format
 
       - name: clang-tidy
-        run: |
-          make clang-tidy CMAKE_CXX_STANDARD=17
+        run: make clang-tidy CMAKE_CXX_STANDARD=17
 
       - name: cpplint
-        run: |
-          make cpplint
+        run: make cpplint
 
       - name: python-format
-        run: |
-          make python-format
+        run: make python-format
 
       - name: ruff
-        run: |
-          make ruff
+        run: make ruff
 
       - name: pylint
-        run: |
-          make pylint
+        run: make pylint
 
       - name: mypy
-        run: |
-          make mypy
+        run: make mypy
 
       - name: doctest
-        run: |
-          make doctest
+        run: make doctest
 
       - name: addlicense
-        run: |
-          make addlicense
+        run: make addlicense
 
       - name: docstyle
-        run: |
-          make docstyle
+        run: make docstyle
 
       - name: spelling
         run: |

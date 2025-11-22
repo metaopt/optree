@@ -53,8 +53,7 @@ pip3 install git+https://github.com/metaopt/optree.git#egg=optree
 Or, clone this repo and install manually:
 
 ```bash
-git clone --depth=1 https://github.com/metaopt/optree.git
-cd optree
+git clone --depth=1 https://github.com/metaopt/optree.git && cd optree
 
 pip3 install .
 ```
@@ -68,6 +67,7 @@ export CMAKE_CXX_STANDARD="20"  # C++17 is tested on Linux/macOS (C++20 is requi
 export OPTREE_CXX_WERROR="OFF"
 export _GLIBCXX_USE_CXX11_ABI="1"
 export pybind11_DIR="/path/to/custom/pybind11"
+
 pip3 install .
 ```
 

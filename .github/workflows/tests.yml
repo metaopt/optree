@@ -85,7 +85,8 @@ jobs:
           cache: pip
           cache-dependency-path: |
             pyproject.toml
-            **/requirements.txt
+            requirements*.txt
+            */requirements*.txt
 
       - name: Set up Environment
         shell: bash
@@ -237,8 +238,7 @@ jobs:
           fi
 
       - name: Install OpTree (with system CMake)
-        run: |
-          ${{ env.PYTHON }} -m pip install -v --editable '.[test]'
+        run: ${{ env.PYTHON }} -m pip install -v --editable '.[test]'
 
       - name: Check installable with CMake from PyPI (with venv'ed CMake)
         shell: bash

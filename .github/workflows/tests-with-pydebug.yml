@@ -220,9 +220,8 @@ jobs:
         id: pip-cache
         uses: actions/cache@v4
         with:
-          path: |
-            ${{ env.PIP_CACHE_DIR }}
-          key: pip-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ hashFiles('pyproject.toml', '**/requirements.txt') }}
+          path: ${{ env.PIP_CACHE_DIR }}
+          key: pip-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ hashFiles('pyproject.toml', 'requirements*.txt', '*/requirements*.txt') }}$
 
       - name: Set up Environment
         shell: bash
@@ -324,12 +323,10 @@ jobs:
 
       - name: Test buildable without Python frontend
         if: runner.os != 'Windows'
-        run: |
-          make cmake-build PYTHON="${{ env.PYTHON }}" && make clean
+        run: make cmake-build PYTHON="${{ env.PYTHON }}" && make clean
 
       - name: Install OpTree
-        run: |
-          ${{ env.PYTHON }} -m pip install -v --editable '.[test]'
+        run: ${{ env.PYTHON }} -m pip install -v --editable '.[test]'
 
       - name: Test with pytest
         shell: bash
