@@ -45,7 +45,7 @@ make uninstall
 
 We use several tools to secure code quality, including:
 
-- Python code style: `black`, `isort`, `pylint`, `flake8`, `ruff`
+- Python code style: `ruff`, `isort`, `pylint`
 - Type hint check: `mypy`
 - C++ code style: `cpplint`, `clang-format`, `clang-tidy`
 - License: `addlicense`
@@ -80,7 +80,7 @@ You will need to install [`docker`](https://www.docker.com) first.
 Then run the following command:
 
 ```bash
-pip3 install --upgrade cibuildwheel
+python3 -m pip install --upgrade cibuildwheel
 
 python3 -m cibuildwheel --platform=linux --output-dir=wheelhouse --config-file=pyproject.toml
 ```

@@ -220,9 +220,8 @@ jobs:
         id: pip-cache
         uses: actions/cache@v4
         with:
-          path: |
-            ${{ env.PIP_CACHE_DIR }}
-          key: pip-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ hashFiles('pyproject.toml', '**/requirements.txt') }}
+          path: ${{ env.PIP_CACHE_DIR }}
+          key: pip-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ hashFiles('pyproject.toml', 'requirements*.txt', '*/requirements*.txt') }}$
 
       - name: Set up Environment
         shell: bash
@@ -250,13 +249,15 @@ jobs:
           "${PYTHON_EXE}" -m venv venv  # PATH is already updated in step setup-pyenv
           echo "::group::Python executables"
           if [[ "${{ runner.os }}" != 'Windows' ]]; then
+            source venv/bin/activate
             ls -alh venv/bin
           else
+            source venv/Scripts/activate
             ls -alh venv/Scripts
           fi
           echo "::endgroup::"
 
-          "${PYTHON}" -VV
+          "$(command -v "${PYTHON}")" -VV
           echo "::group::Upgrade pip"
           "${PYTHON}" -m pip install --upgrade pip setuptools wheel rich
           echo "::endgroup::"
@@ -316,6 +317,12 @@ jobs:
           github.event_name == 'pull_request' &&
           contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
         run: |
+          if [[ "${{ runner.os }}" != 'Windows' ]]; then
+            source venv/bin/activate
+          else
+            source venv/Scripts/activate
+          fi
+
           ${{ env.PYTHON }} .github/workflows/set_setup_requires.py
           echo "::group::pyproject.toml"
           cat pyproject.toml
@@ -324,16 +331,36 @@ jobs:
 
       - name: Test buildable without Python frontend
         if: runner.os != 'Windows'
+        shell: bash
         run: |
+          if [[ "${{ runner.os }}" != 'Windows' ]]; then
+            source venv/bin/activate
+          else
+            source venv/Scripts/activate
+          fi
+
           make cmake-build PYTHON="${{ env.PYTHON }}" && make clean
 
       - name: Install OpTree
+        shell: bash
         run: |
+          if [[ "${{ runner.os }}" != 'Windows' ]]; then
+            source venv/bin/activate
+          else
+            source venv/Scripts/activate
+          fi
+
           ${{ env.PYTHON }} -m pip install -v --editable '.[test]'
 
       - name: Test with pytest
         shell: bash
         run: |
+          if [[ "${{ runner.os }}" != 'Windows' ]]; then
+            source venv/bin/activate
+          else
+            source venv/Scripts/activate
+          fi
+
           set -x
           ulimit -c unlimited
           ulimit -a
