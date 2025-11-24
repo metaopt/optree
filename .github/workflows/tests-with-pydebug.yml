@@ -42,6 +42,7 @@ env:
   PYTHON_VERSION: "3" # to be updated
   pybind11_VERSION: "stable" # to be updated
   PYENV_ROOT: "~/.pyenv" # to be updated
+  VENV_BIN_NAME: "bin" # to be updated
   COLUMNS: "100"
   FORCE_COLOR: "1"
   CLICOLOR_FORCE: "1"
@@ -114,10 +115,12 @@ jobs:
         shell: pwsh
         run: |
           $Env:PYENV_ROOT = "$Env:USERPROFILE\.pyenv"
+          $Env:VENV_BIN_NAME = "Scripts"
           $Env:PATH = "$Env:PYENV_ROOT\pyenv-win\bin;$Env:PYENV_ROOT\pyenv-win\shims;$Env:PATH"
-          $Env:PATH = "$(Get-Location)\venv\Scripts;$Env:PATH"
+          $Env:PATH = "$(Get-Location)\venv\$Env:VENV_BIN_NAME;$Env:PATH"
           git clone https://github.com/pyenv-win/pyenv-win.git "$Env:PYENV_ROOT"
           Write-Output "PYENV_ROOT=$Env:PYENV_ROOT" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Output "VENV_BIN_NAME=$Env:VENV_BIN_NAME" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
           Write-Output "PATH=$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Determine Python version
@@ -248,13 +251,8 @@ jobs:
 
           "${PYTHON_EXE}" -m venv venv  # PATH is already updated in step setup-pyenv
           echo "::group::Python executables"
-          if [[ "${{ runner.os }}" != 'Windows' ]]; then
-            source venv/bin/activate
-            ls -alh venv/bin
-          else
-            source venv/Scripts/activate
-            ls -alh venv/Scripts
-          fi
+          ls -alh "venv/${VENV_BIN_NAME}"
+          source "venv/${VENV_BIN_NAME}/activate"
           echo "::endgroup::"
 
           "$(command -v "${PYTHON}")" -VV
@@ -317,12 +315,7 @@ jobs:
           github.event_name == 'pull_request' &&
           contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
         run: |
-          if [[ "${{ runner.os }}" != 'Windows' ]]; then
-            source venv/bin/activate
-          else
-            source venv/Scripts/activate
-          fi
-
+          source "venv/${VENV_BIN_NAME}/activate"
           ${{ env.PYTHON }} .github/workflows/set_setup_requires.py
           echo "::group::pyproject.toml"
           cat pyproject.toml
@@ -333,33 +326,19 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          if [[ "${{ runner.os }}" != 'Windows' ]]; then
-            source venv/bin/activate
-          else
-            source venv/Scripts/activate
-          fi
-
+          source "venv/${VENV_BIN_NAME}/activate"
           make cmake-build PYTHON="${{ env.PYTHON }}" && make clean
 
       - name: Install OpTree
         shell: bash
         run: |
-          if [[ "${{ runner.os }}" != 'Windows' ]]; then
-            source venv/bin/activate
-          else
-            source venv/Scripts/activate
-          fi
-
+          source "venv/${VENV_BIN_NAME}/activate"
           ${{ env.PYTHON }} -m pip install -v --editable '.[test]'
 
       - name: Test with pytest
         shell: bash
         run: |
-          if [[ "${{ runner.os }}" != 'Windows' ]]; then
-            source venv/bin/activate
-          else
-            source venv/Scripts/activate
-          fi
+          source "venv/${VENV_BIN_NAME}/activate"
 
           set -x
           ulimit -c unlimited

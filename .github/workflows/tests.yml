@@ -42,6 +42,7 @@ env:
   PYTHON: "python" # to be updated
   PYTHON_TAG: "py3" # to be updated
   pybind11_VERSION: "stable" # to be updated
+  VENV_BIN_NAME: "bin" # to be updated
   COLUMNS: "100"
   FORCE_COLOR: "1"
   CLICOLOR_FORCE: "1"
@@ -95,6 +96,7 @@ jobs:
 
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
             echo "CMAKE_BUILD_TYPE=Release" | tee -a "${GITHUB_ENV}"
+            echo "VENV_BIN_NAME=Scripts" | tee -a "${GITHUB_ENV}"
           fi
           ${{ env.PYTHON }} -VV
           echo "::group::Upgrade pip"
@@ -243,10 +245,8 @@ jobs:
       - name: Check installable with CMake from PyPI (with venv'ed CMake)
         shell: bash
         run: |
-          ACTIVATION_SCRIPT="venv/bin/activate"
           PYTHON_EXE=("${{ env.PYTHON }}")
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
-            ACTIVATION_SCRIPT="venv/Scripts/activate"
             PYTHON_EXE=(
               cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q"
               "${{ env.PYTHON }}"
@@ -255,7 +255,7 @@ jobs:
           (
             set -ex
             ${{ env.PYTHON }} -m venv venv
-            source "${ACTIVATION_SCRIPT}"
+            source "venv/${VENV_BIN_NAME}/activate"
             ${{ env.PYTHON }} -m pip install -v cmake
             ${{ env.PYTHON }} -m pip install -v .
             pushd tests
@@ -284,10 +284,8 @@ jobs:
           elif [[ "${{ runner.os }}" == 'Windows' ]]; then
             choco uninstall cmake cmake.install --force --yes || true
           fi
-          ACTIVATION_SCRIPT="venv/bin/activate"
           PYTHON_EXE=("${{ env.PYTHON }}")
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
-            ACTIVATION_SCRIPT="venv/Scripts/activate"
             PYTHON_EXE=(
               cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q"
               "${{ env.PYTHON }}"
@@ -296,7 +294,7 @@ jobs:
           (
             set -ex
             ${{ env.PYTHON }} -m venv venv
-            source "${ACTIVATION_SCRIPT}"
+            source "venv/${VENV_BIN_NAME}/activate"
             ${{ env.PYTHON }} -m pip install -v .
             pushd tests
             "${PYTHON_EXE[@]}" -X dev -Walways -Werror -c 'import optree'
