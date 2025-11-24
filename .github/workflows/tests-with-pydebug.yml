@@ -114,14 +114,13 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $Env:PYENV_ROOT = "$Env:USERPROFILE\.pyenv"
-          $Env:VENV_BIN_NAME = "Scripts"
-          $Env:PATH = "$Env:PYENV_ROOT\pyenv-win\bin;$Env:PYENV_ROOT\pyenv-win\shims;$Env:PATH"
-          $Env:PATH = "$(Get-Location)\venv\$Env:VENV_BIN_NAME;$Env:PATH"
-          git clone https://github.com/pyenv-win/pyenv-win.git "$Env:PYENV_ROOT"
-          Write-Output "PYENV_ROOT=$Env:PYENV_ROOT" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Output "VENV_BIN_NAME=$Env:VENV_BIN_NAME" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Output "PATH=$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          $Env:PYENV_ROOT = "${Env:USERPROFILE}\.pyenv"
+          $Env:PATH = "${Env:PYENV_ROOT}\pyenv-win\bin;${Env:PYENV_ROOT}\pyenv-win\shims;${Env:PATH}"
+          $Env:PATH = "$(Get-Location)\venv\Scripts;${Env:PATH}"
+          git clone https://github.com/pyenv-win/pyenv-win.git "${Env:PYENV_ROOT}"
+          Write-Output "PYENV_ROOT=${Env:PYENV_ROOT}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
+          Write-Output "VENV_BIN_NAME=Scripts" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
+          Write-Output "PATH=${Env:PATH}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
 
       - name: Determine Python version
         shell: bash
@@ -294,18 +293,18 @@ jobs:
         run: |
           choco install windowsdriverkit11 --no-progress --force --yes
           $pwd = Get-Location
-          $Env:_NT_SOURCE_PATH = "$pwd;${{ env.PYENV_ROOT }}\pyenv-win\versions\${{ env.PYTHON_VERSION }}"
-          $Env:_NT_SYMBOL_PATH = "cache*$pwd\.symcache;$Env:_NT_SOURCE_PATH;srv*https://msdl.microsoft.com/download/symbols"
+          $Env:_NT_SOURCE_PATH = "${pwd};${{ env.PYENV_ROOT }}\pyenv-win\versions\${{ env.PYTHON_VERSION }}"
+          $Env:_NT_SYMBOL_PATH = "cache*${pwd}\.symcache;${Env:_NT_SOURCE_PATH};srv*https://msdl.microsoft.com/download/symbols"
           Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Directory | Sort-Object -Property Name
           $WindowsKitsDir = "C:\Program Files (x86)\Windows Kits\10"
-          $DebuggersDir = "$WindowsKitsDir\Debuggers\x64"
-          Get-ChildItem -Path $DebuggersDir
-          $Env:PATH = "$DebuggersDir;$Env:PATH"
+          $DebuggersDir = "${WindowsKitsDir}\Debuggers\x64"
+          Get-ChildItem -Path "${DebuggersDir}"
+          $Env:PATH = "${DebuggersDir};${Env:PATH}"
           $PYTEST = 'cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q" ${{ env.PYTHON }} -X dev -m pytest -Walways'
-          Write-Output "_NT_SOURCE_PATH=$Env:_NT_SOURCE_PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Output "_NT_SYMBOL_PATH=$Env:_NT_SYMBOL_PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Output "PATH=$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Output "PYTEST=$PYTEST" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Output "_NT_SOURCE_PATH=${Env:_NT_SOURCE_PATH}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
+          Write-Output "_NT_SYMBOL_PATH=${Env:_NT_SYMBOL_PATH}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
+          Write-Output "PATH=${Env:PATH}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
+          Write-Output "PYTEST=${PYTEST}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
 
           cdb -version
 
