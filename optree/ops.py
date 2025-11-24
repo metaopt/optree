@@ -657,7 +657,7 @@ def tree_is_leaf(
 
 
 def all_leaves(
-    iterable: Iterable[T],
+    iterable: Iterable[PyTree[T]],
     /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
@@ -706,7 +706,15 @@ def all_leaves(
     Returns:
         A boolean indicating if all elements in the input iterable are leaves.
     """
-    return _C.all_leaves(iterable, is_leaf, none_is_leaf, namespace)
+    return all(
+        tree_is_leaf(
+            item,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        for item in iterable
+    )
 
 
 def tree_map(

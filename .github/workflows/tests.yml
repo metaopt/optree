@@ -169,8 +169,8 @@ jobs:
           $pwd = Get-Location
           $Env:_NT_SOURCE_PATH = "${pwd}"
           $Env:_NT_SYMBOL_PATH = "cache*${pwd}\.symcache;${Env:_NT_SOURCE_PATH};srv*https://msdl.microsoft.com/download/symbols"
-          Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Directory | Sort-Object -Property Name
-          $WindowsKitsDir = "C:\Program Files (x86)\Windows Kits\10"
+          Get-ChildItem -Path "${Env:ProgramFiles(x86)}\Windows Kits" -Directory | Sort-Object -Property Name
+          $WindowsKitsDir = "${Env:ProgramFiles(x86)}\Windows Kits\10"
           $DebuggersDir = "${WindowsKitsDir}\Debuggers\x64"
           Get-ChildItem -Path "${DebuggersDir}"
           $Env:PATH = "${DebuggersDir};${Env:PATH}"

@@ -831,36 +831,4 @@ bool IsLeaf(const py::object &object,
     }
 }
 
-template <bool NoneIsLeaf>
-bool AllLeavesImpl(const py::iterable &iterable,
-                   const std::optional<py::function> &leaf_predicate,
-                   const std::string &registry_namespace) {
-    PyTreeTypeRegistry::RegistrationPtr custom{nullptr};
-    for (const py::handle &handle : iterable) {
-        if (leaf_predicate &&
-            EVALUATE_WITH_LOCK_HELD2(thread_safe_cast<bool>((*leaf_predicate)(handle)),
-                                     handle,
-                                     *leaf_predicate)) [[unlikely]] {
-            continue;
-        }
-        if (PyTreeTypeRegistry::GetKind<NoneIsLeaf>(handle, custom, registry_namespace) !=
-            PyTreeKind::Leaf) [[unlikely]] {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool AllLeaves(const py::iterable &iterable,
-               const std::optional<py::function> &leaf_predicate,
-               const bool &none_is_leaf,
-               const std::string &registry_namespace) {
-    const scoped_critical_section cs{iterable};
-    if (none_is_leaf) [[unlikely]] {
-        return AllLeavesImpl<NONE_IS_LEAF>(iterable, leaf_predicate, registry_namespace);
-    } else [[likely]] {
-        return AllLeavesImpl<NONE_IS_NODE>(iterable, leaf_predicate, registry_namespace);
-    }
-}
-
 }  // namespace optree

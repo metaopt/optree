@@ -54,21 +54,10 @@ bool IsLeaf(const py::object &object,
             const bool &none_is_leaf = false,
             const std::string &registry_namespace = "");
 
-// Test whether all elements in the given iterable are all leaves.
-bool AllLeaves(const py::iterable &iterable,
-               const std::optional<py::function> &leaf_predicate,
-               const bool &none_is_leaf = false,
-               const std::string &registry_namespace = "");
-
 template <bool NoneIsLeaf>
 bool IsLeafImpl(const py::handle &handle,
                 const std::optional<py::function> &leaf_predicate,
                 const std::string &registry_namespace);
-
-template <bool NoneIsLeaf>
-bool AllLeavesImpl(const py::iterable &iterable,
-                   const std::optional<py::function> &leaf_predicate,
-                   const std::string &registry_namespace);
 
 py::module_ GetCxxModule(const std::optional<py::module_> &module = std::nullopt);
 
