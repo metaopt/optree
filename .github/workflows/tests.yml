@@ -42,6 +42,7 @@ env:
   PYTHON: "python" # to be updated
   PYTHON_TAG: "py3" # to be updated
   pybind11_VERSION: "stable" # to be updated
+  VENV_BIN_NAME: "bin" # to be updated
   COLUMNS: "100"
   FORCE_COLOR: "1"
   CLICOLOR_FORCE: "1"
@@ -72,7 +73,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -95,6 +96,7 @@ jobs:
 
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
             echo "CMAKE_BUILD_TYPE=Release" | tee -a "${GITHUB_ENV}"
+            echo "VENV_BIN_NAME=Scripts" | tee -a "${GITHUB_ENV}"
           fi
           ${{ env.PYTHON }} -VV
           echo "::group::Upgrade pip"
@@ -137,12 +139,11 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           choco install cmake cmake.install --no-progress --force --yes
-          $path = $Env:PATH
-          Write-Output "PATH=$path"
+          Write-Output "PATH=${Env:PATH}"
           Get-Command -All cmake
-          $Env:PATH = ($path.Split(';') | Where-Object {$_ -notmatch '^(\w+:)?\\Strawberry(\\|$)'} ) -join ';'
-          Write-Output "PATH=$Env:PATH"
-          Write-Output "PATH=$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          $Env:PATH = ( "${Env:PATH}".Split(';') | Where-Object { $_ -notmatch '^(\w+:)?\\Strawberry(\\|$)' } ) -join ';'
+          Write-Output "PATH=${Env:PATH}"
+          Write-Output "PATH=${Env:PATH}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
           Get-Command -All cmake
 
       - name: Enable core dump generation (Linux)
@@ -166,18 +167,18 @@ jobs:
         run: |
           choco install windowsdriverkit11 --no-progress --force --yes
           $pwd = Get-Location
-          $Env:_NT_SOURCE_PATH = "$pwd"
-          $Env:_NT_SYMBOL_PATH = "cache*$pwd\.symcache;$Env:_NT_SOURCE_PATH;srv*https://msdl.microsoft.com/download/symbols"
+          $Env:_NT_SOURCE_PATH = "${pwd}"
+          $Env:_NT_SYMBOL_PATH = "cache*${pwd}\.symcache;${Env:_NT_SOURCE_PATH};srv*https://msdl.microsoft.com/download/symbols"
           Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Directory | Sort-Object -Property Name
           $WindowsKitsDir = "C:\Program Files (x86)\Windows Kits\10"
-          $DebuggersDir = "$WindowsKitsDir\Debuggers\x64"
-          Get-ChildItem -Path $DebuggersDir
-          $Env:PATH = "$DebuggersDir;$Env:PATH"
+          $DebuggersDir = "${WindowsKitsDir}\Debuggers\x64"
+          Get-ChildItem -Path "${DebuggersDir}"
+          $Env:PATH = "${DebuggersDir};${Env:PATH}"
           $PYTEST = 'cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q" ${{ env.PYTHON }} -X dev -m pytest -Walways'
-          Write-Output "_NT_SOURCE_PATH=$Env:_NT_SOURCE_PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Output "_NT_SYMBOL_PATH=$Env:_NT_SYMBOL_PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Output "PATH=$Env:PATH" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Output "PYTEST=$PYTEST" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Output "_NT_SOURCE_PATH=${Env:_NT_SOURCE_PATH}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
+          Write-Output "_NT_SYMBOL_PATH=${Env:_NT_SYMBOL_PATH}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
+          Write-Output "PATH=${Env:PATH}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
+          Write-Output "PYTEST=${PYTEST}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
 
           cdb -version
 
@@ -243,10 +244,8 @@ jobs:
       - name: Check installable with CMake from PyPI (with venv'ed CMake)
         shell: bash
         run: |
-          ACTIVATION_SCRIPT="venv/bin/activate"
           PYTHON_EXE=("${{ env.PYTHON }}")
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
-            ACTIVATION_SCRIPT="venv/Scripts/activate"
             PYTHON_EXE=(
               cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q"
               "${{ env.PYTHON }}"
@@ -255,7 +254,7 @@ jobs:
           (
             set -ex
             ${{ env.PYTHON }} -m venv venv
-            source "${ACTIVATION_SCRIPT}"
+            source "venv/${VENV_BIN_NAME}/activate"
             ${{ env.PYTHON }} -m pip install -v cmake
             ${{ env.PYTHON }} -m pip install -v .
             pushd tests
@@ -284,10 +283,8 @@ jobs:
           elif [[ "${{ runner.os }}" == 'Windows' ]]; then
             choco uninstall cmake cmake.install --force --yes || true
           fi
-          ACTIVATION_SCRIPT="venv/bin/activate"
           PYTHON_EXE=("${{ env.PYTHON }}")
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
-            ACTIVATION_SCRIPT="venv/Scripts/activate"
             PYTHON_EXE=(
               cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q"
               "${{ env.PYTHON }}"
@@ -296,7 +293,7 @@ jobs:
           (
             set -ex
             ${{ env.PYTHON }} -m venv venv
-            source "${ACTIVATION_SCRIPT}"
+            source "venv/${VENV_BIN_NAME}/activate"
             ${{ env.PYTHON }} -m pip install -v .
             pushd tests
             "${PYTHON_EXE[@]}" -X dev -Walways -Werror -c 'import optree'
