@@ -664,7 +664,7 @@ def all_leaves(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> bool:
-    """Test whether all elements in the given iterable are all leaves.
+    """Test whether all elements in the given iterable are leaves.
 
     See also :func:`tree_flatten`, :func:`tree_leaves`, and :func:`tree_is_leaf`.
 
@@ -692,7 +692,7 @@ def all_leaves(
     of leaves.
 
     Args:
-        iterable (iterable): A iterable of leaves.
+        iterable (iterable): A iterable of objects.
         is_leaf (callable, optional): An optionally specified function that will be called at each
             flattening step. It should return a boolean, with :data:`True` stopping the traversal
             and the whole subtree being treated as a leaf, and :data:`False` indicating the
