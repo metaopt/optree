@@ -180,14 +180,6 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
              py::arg("leaf_predicate") = std::nullopt,
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
-        .def("all_leaves",
-             &AllLeaves,
-             "Test whether all elements in the given iterable are all leaves.",
-             py::arg("iterable"),
-             py::pos_only(),
-             py::arg("leaf_predicate") = std::nullopt,
-             py::arg("none_is_leaf") = false,
-             py::arg("namespace") = "")
         .def("make_leaf",
              &PyTreeSpec::MakeLeaf,
              "Make a treespec representing a leaf node.",

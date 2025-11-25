@@ -657,14 +657,14 @@ def tree_is_leaf(
 
 
 def all_leaves(
-    iterable: Iterable[T],
+    iterable: Iterable[PyTree[T]],
     /,
     is_leaf: Callable[[T], bool] | None = None,
     *,
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> bool:
-    """Test whether all elements in the given iterable are all leaves.
+    """Test whether all elements in the given iterable are leaves.
 
     See also :func:`tree_flatten`, :func:`tree_leaves`, and :func:`tree_is_leaf`.
 
@@ -692,7 +692,7 @@ def all_leaves(
     of leaves.
 
     Args:
-        iterable (iterable): A iterable of leaves.
+        iterable (iterable): An iterable of objects.
         is_leaf (callable, optional): An optionally specified function that will be called at each
             flattening step. It should return a boolean, with :data:`True` stopping the traversal
             and the whole subtree being treated as a leaf, and :data:`False` indicating the
@@ -706,7 +706,15 @@ def all_leaves(
     Returns:
         A boolean indicating if all elements in the input iterable are leaves.
     """
-    return _C.all_leaves(iterable, is_leaf, none_is_leaf, namespace)
+    return all(
+        tree_is_leaf(
+            item,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        for item in iterable
+    )
 
 
 def tree_map(
@@ -3085,7 +3093,7 @@ def treespec_tuple(
     ValueError: Expected treespec(s) with `none_is_leaf=False`.
 
     Args:
-        iterable (iterable of PyTreeSpec, optional): A iterable of child treespecs. They must have
+        iterable (iterable of PyTreeSpec, optional): An iterable of child treespecs. They must have
             the same ``none_is_leaf`` and ``namespace`` values.
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
             :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
@@ -3131,7 +3139,7 @@ def treespec_list(
     ValueError: Expected treespec(s) with `none_is_leaf=False`.
 
     Args:
-        iterable (iterable of PyTreeSpec, optional): A iterable of child treespecs. They must have
+        iterable (iterable of PyTreeSpec, optional): An iterable of child treespecs. They must have
             the same ``none_is_leaf`` and ``namespace`` values.
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
             :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
@@ -3373,7 +3381,7 @@ def treespec_deque(
     ValueError: Expected treespec(s) with `none_is_leaf=False`.
 
     Args:
-        iterable (iterable of PyTreeSpec, optional): A iterable of child treespecs. They must have
+        iterable (iterable of PyTreeSpec, optional): An iterable of child treespecs. They must have
             the same ``none_is_leaf`` and ``namespace`` values.
         maxlen (int or None, optional): The maximum size of a deque or :data:`None` if unbounded.
             (default: :data:`None`)
