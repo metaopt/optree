@@ -37,7 +37,7 @@ __all__ = [
 
 
 class _HashablePartialShim:
-    """Object that delegates :meth:`__call__`, :meth:`__eq__`, and :meth:`__hash__` to another object."""
+    """A shim object that delegates :meth:`__call__`, :meth:`__eq__`, and :meth:`__hash__` to a :func:`functools.partial` object."""  # pylint: disable=line-too-long
 
     __slots__: ClassVar[tuple[str, ...]] = ('args', 'func', 'keywords', 'partial_func')
 
@@ -154,7 +154,7 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
         Callable[..., Any],
         tuple[str, str],
     ]:
-        """Flatten the :class:`partial` instance to children and metadata."""
+        """Flatten the :class:`partial` instance into children and metadata."""
         return (self.args, self.keywords), self.func, ('args', 'keywords')
 
     @classmethod

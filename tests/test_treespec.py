@@ -1154,7 +1154,7 @@ def test_treespec_transform():
         ValueError,
         match=re.escape(
             'Expected the PyTreeSpec transform function returns '
-            'an one-level PyTreeSpec as the input',
+            'a one-level PyTreeSpec as the input',
         ),
     ):
         optree.treespec_transform(

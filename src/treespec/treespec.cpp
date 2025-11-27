@@ -520,7 +520,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
             }
             if (transformed->GetNumNodes() != node.arity + 1) [[unlikely]] {
                 std::ostringstream oss{};
-                oss << "Expected the PyTreeSpec transform function returns an one-level PyTreeSpec "
+                oss << "Expected the PyTreeSpec transform function returns a one-level PyTreeSpec "
                        "as the input, got "
                     << transformed->ToString() << " (input: " << GetOneLevel(node)->ToString()
                     << ").";

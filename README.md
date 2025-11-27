@@ -200,9 +200,9 @@ OpTree out-of-box supports the following Python container types in the global re
 
 which are considered non-leaf nodes in the tree.
 
-Python objects that their type is not registered will be treated as leaf nodes.
+Python objects whose type is not registered will be treated as leaf nodes.
 The registry lookup uses the `is` operator to determine whether the type is matched.
-So subclasses will need to explicitly register in the registry, otherwise, an object of that type will be considered a leaf.
+So subclasses will need to be explicitly registered in the registry, otherwise, objects of that type will be considered leaves.
 The [`NoneType`](https://docs.python.org/3/library/constants.html#None) is a special case discussed in section [`None` is non-leaf Node vs. `None` is Leaf](#none-is-non-leaf-node-vs-none-is-leaf).
 
 #### Registering a Container-like Custom Type as Non-leaf Nodes
@@ -433,7 +433,7 @@ There are several key attributes of the pytree type registry:
 
     optree.register_pytree_node(
         np.ndarray,
-        # Children are nest lists of Python objects
+        # Children are nested lists of Python objects
         lambda array: (np.atleast_1d(array).tolist(), array.ndim == 0),
         lambda scalar, rows: np.asarray(rows) if not scalar else np.asarray(rows[0]),
         namespace='numpy1',
@@ -460,9 +460,9 @@ There are several key attributes of the pytree type registry:
 
     optree.register_pytree_node(
         torch.Tensor,
-        # Children are nest lists of Python objects
+        # Children are nested lists of Python objects
         lambda tensor: (torch.atleast_1d(tensor).tolist(), tensor.ndim == 0),
-        lambda scalar, rows: torch.tensor(rows) if not scalar else torch.tensor(rows[0])),
+        lambda scalar, rows: torch.tensor(rows) if not scalar else torch.tensor(rows[0]),
         namespace='torch1',
     )
 
