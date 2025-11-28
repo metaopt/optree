@@ -8,6 +8,7 @@ arity
 bool
 boolean
 broadcasted
+callables
 cancelled
 classmethod
 cls

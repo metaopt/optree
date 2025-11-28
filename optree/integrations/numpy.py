@@ -98,7 +98,7 @@ def tree_ravel(
             flattening should traverse the current object.
         none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
             :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
-            treespec rather than in the leaves list and :data:`None` will be remain in the result
+            treespec rather than in the leaves list and :data:`None` will remain in the result
             pytree. (default: :data:`False`)
         namespace (str, optional): The registry namespace used for custom pytree node types.
             (default: :const:`''`, i.e., the global namespace)

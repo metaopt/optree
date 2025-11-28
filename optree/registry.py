@@ -158,7 +158,7 @@ def pytree_node_registry_get(  # noqa: C901
     *,
     namespace: str = '',
 ) -> dict[type, PyTreeNodeRegistryEntry] | PyTreeNodeRegistryEntry | None:
-    """Lookup the pytree node registry.
+    """Look up the pytree node registry.
 
     >>> register_pytree_node.get()  # doctest: +IGNORE_WHITESPACE,ELLIPSIS
     {
@@ -316,7 +316,7 @@ def register_pytree_node(
         If not provided, :class:`AutoEntry` will be used.
 
     Examples:
-        >>> # Registry a Python type with lambda functions
+        >>> # Register a Python type with lambda functions
         >>> register_pytree_node(
         ...     set,
         ...     lambda s: (sorted(s), None, None),
@@ -687,7 +687,7 @@ def dict_insertion_ordered(mode: bool, /, *, namespace: str) -> Generator[None]:
 
     This context manager is used to temporarily set the dictionary sorting mode for a specific
     namespace. The dictionary sorting mode is used to determine whether the keys of a dictionary
-    should be sorted or keeping the insertion order when flattening a pytree.
+    should be sorted or keep the insertion order when flattening a pytree.
 
     >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
     >>> tree_flatten(tree)  # doctest: +IGNORE_WHITESPACE
