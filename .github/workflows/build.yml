@@ -42,9 +42,11 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
+  OPTREE_CXX_WERROR: "OFF"
+  _GLIBCXX_USE_CXX11_ABI: "1"
+  PYTHONUNBUFFERED: "1"
   PYTHON_TAG: "py3" # to be updated
   PYTHON_VERSION: "3" # to be updated
-  _GLIBCXX_USE_CXX11_ABI: "1"
   COLUMNS: "100"
   FORCE_COLOR: "1"
   CLICOLOR_FORCE: "1"
