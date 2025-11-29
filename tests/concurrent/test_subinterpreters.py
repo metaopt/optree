@@ -14,6 +14,9 @@
 # ==============================================================================
 
 import atexit
+import contextlib
+import importlib
+import re
 import sys
 
 import pytest
@@ -26,10 +29,16 @@ from helpers import (
 )
 
 
-if PYPY or WASM or sys.version_info < (3, 14):
+if (
+    PYPY
+    or WASM
+    or sys.version_info < (3, 14)
+    or not getattr(sys.implementation, 'supports_isolated_interpreters', False)
+):
     pytest.skip('Test for CPython 3.14+ only', allow_module_level=True)
 
 
+from concurrent import interpreters
 from concurrent.futures import InterpreterPoolExecutor, as_completed
 
 
@@ -64,3 +73,18 @@ def concurrent_run(func, /, *args, **kwargs):
 
 
 run(object)  # warm-up
+
+
+def test_import_failure():
+    pattern = re.escape('module optree._C does not support loading in subinterpreters')
+    with pytest.raises(ImportError, match=pattern) as excinfo:
+        run(importlib.import_module, 'optree')
+
+    with contextlib.closing(interpreters.create()) as subinterpreter:
+        with pytest.raises(interpreters.ExecutionFailed, match=pattern) as excinfo:
+            subinterpreter.call(importlib.import_module, 'optree')
+        assert excinfo.value.excinfo.type.__name__ == 'ImportError'
+
+        with pytest.raises(interpreters.ExecutionFailed, match=pattern) as excinfo:
+            subinterpreter.exec('import optree')
+        assert excinfo.value.excinfo.type.__name__ == 'ImportError'
