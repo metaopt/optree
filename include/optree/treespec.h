@@ -19,6 +19,7 @@ limitations under the License.
 
 #include <memory>         // std::unique_ptr
 #include <optional>       // std::optional, std::nullopt
+#include <span>           // std::span
 #include <string>         // std::string
 #include <thread>         // std::thread::id
 #include <tuple>          // std::tuple
@@ -262,10 +263,8 @@ public:
         const bool &inherit_global_namespace = true) {
         const scoped_read_lock lock{sm_is_dict_insertion_ordered_mutex};
 
-        return (sm_is_dict_insertion_ordered.find(registry_namespace) !=
-                sm_is_dict_insertion_ordered.end()) ||
-               (inherit_global_namespace &&
-                sm_is_dict_insertion_ordered.find("") != sm_is_dict_insertion_ordered.end());
+        return (sm_is_dict_insertion_ordered.contains(registry_namespace)) ||
+               (inherit_global_namespace && sm_is_dict_insertion_ordered.contains(""));
     }
 
     // Set the namespace to preserve the insertion order of the dictionary keys during flattening.
@@ -334,9 +333,7 @@ private:
     static std::string NodeKindToString(const Node &node);
 
     // Helper that manufactures an instance of a node given its children.
-    static py::object MakeNode(const Node &node,
-                               const py::object children[],  // NOLINT[hicpp-avoid-c-arrays]
-                               const size_t &num_children);
+    static py::object MakeNode(const Node &node, const std::span<py::object> &children);
 
     // Helper that identifies the path entry class for a node.
     static py::object GetPathEntryType(const Node &node);

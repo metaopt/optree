@@ -37,6 +37,7 @@ env:
   CMAKE_BUILD_TYPE: "Debug"
   OPTREE_CXX_WERROR: "ON"
   _GLIBCXX_USE_CXX11_ABI: "1"
+  MACOSX_DEPLOYMENT_TARGET: "15.0"
   FULL_TEST_PYTHON_VERSIONS: "3.12;3.13"
   PYTHONUNBUFFERED: "1"
   PYTHON: "python" # to be updated
@@ -193,32 +194,6 @@ jobs:
           cat pyproject.toml
           echo "::endgroup::"
           echo "pybind11_VERSION=HEAD" | tee -a "${GITHUB_ENV}"
-
-      - name: Test installable with C++17
-        shell: bash
-        if: runner.os != 'Windows'
-        run: |
-          (
-            set -ex
-            ${{ env.PYTHON }} -m venv venv
-            source venv/bin/activate
-            OPTREE_CXX_WERROR=OFF CMAKE_CXX_STANDARD=17 \
-              ${{ env.PYTHON }} -m pip install -v .
-            pushd tests
-            ${{ env.PYTHON }} -X dev -Walways -Werror -c 'import optree'
-            popd
-            rm -rf venv
-          )
-          if [[ "$?" -ne 0 ]]; then
-            echo "::error::Failed to install with C++17." >&2
-            exit 1
-          fi
-          if [[ -n "$(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp")" ]]; then
-            echo "::error::Coredump files found, indicating a crash during tests." >&2
-            echo "Coredump files:" >&2
-            ls -alh $(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp") >&2
-            exit 1
-          fi
 
       - name: Test buildable without Python frontend
         if: runner.os != 'Windows'
