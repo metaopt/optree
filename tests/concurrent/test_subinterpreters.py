@@ -30,7 +30,7 @@ if PYPY or WASM or sys.version_info < (3, 14):
     pytest.skip('Test for CPython 3.14+ only', allow_module_level=True)
 
 
-from concurrent.futures import InterpreterPoolExecutor
+from concurrent.futures import InterpreterPoolExecutor, as_completed
 
 
 if Py_GIL_DISABLED and not Py_DEBUG:
@@ -51,3 +51,16 @@ def run(func, /, *args, **kwargs):
     if exception is not None:
         raise exception
     return future.result()
+
+
+def concurrent_run(func, /, *args, **kwargs):
+    futures = [EXECUTOR.submit(func, *args, **kwargs) for _ in range(NUM_FUTURES)]
+    future2index = {future: i for i, future in enumerate(futures)}
+    completed_futures = sorted(as_completed(futures), key=future2index.get)
+    first_exception = next(filter(None, (future.exception() for future in completed_futures)), None)
+    if first_exception is not None:
+        raise first_exception
+    return [future.result() for future in completed_futures]
+
+
+run(object)  # warm-up

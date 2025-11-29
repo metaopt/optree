@@ -55,6 +55,14 @@ EXECUTOR = ThreadPoolExecutor(max_workers=NUM_WORKERS)
 atexit.register(EXECUTOR.shutdown)
 
 
+def run(func, /, *args, **kwargs):
+    future = EXECUTOR.submit(func, *args, **kwargs)
+    exception = future.exception()
+    if exception is not None:
+        raise exception
+    return future.result()
+
+
 def concurrent_run(func, /, *args, **kwargs):
     futures = [EXECUTOR.submit(func, *args, **kwargs) for _ in range(NUM_FUTURES)]
     future2index = {future: i for i, future in enumerate(futures)}
@@ -65,7 +73,7 @@ def concurrent_run(func, /, *args, **kwargs):
     return [future.result() for future in completed_futures]
 
 
-concurrent_run(object)  # warm-up
+run(object)  # warm-up
 
 
 @parametrize(
