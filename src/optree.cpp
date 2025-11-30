@@ -17,11 +17,12 @@ limitations under the License.
 
 #include "optree/optree.h"
 
-#include <functional>  // std::{not_,}equal_to, std::less{,_equal}, std::greater{,_equal}
-#include <memory>      // std::unique_ptr
-#include <optional>    // std::optional, std::nullopt
-#include <string>      // std::string
-#include <utility>     // std::move
+#include <functional>     // std::{not_,}equal_to, std::less{,_equal}, std::greater{,_equal}
+#include <memory>         // std::unique_ptr
+#include <optional>       // std::optional, std::nullopt
+#include <string>         // std::string
+#include <unordered_set>  // std::unordered_set
+#include <utility>        // std::move
 
 #include <pybind11/eval.h>
 #include <pybind11/pybind11.h>
@@ -141,19 +142,6 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
              py::arg("cls"),
              py::pos_only(),
              py::arg("namespace") = "")
-        .def(
-            "registry_size",
-            [](const std::optional<std::string> &registry_namespace) {
-                const ssize_t count =
-                    PyTreeTypeRegistry::Singleton<false>()->Size(registry_namespace);
-                EXPECT_EQ(count,
-                          PyTreeTypeRegistry::Singleton<true>()->Size(registry_namespace) + 1,
-                          "The number of registered types in the two registries should match "
-                          "up to the extra None type in the NoneIsLeaf=false registry.");
-                return count;
-            },
-            "Get the number of registered types.",
-            py::arg("namespace") = std::nullopt)
         .def("is_dict_insertion_ordered",
              &PyTreeSpec::IsDictInsertionOrdered,
              "Return whether need to preserve the dict insertion order during flattening.",
@@ -165,6 +153,56 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
              py::arg("mode"),
              py::pos_only(),
              py::arg("namespace") = "")
+        .def(
+            "get_num_interpreters_seen",
+            []() -> size_t {
+                const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
+                return PyTreeTypeRegistry::sm_num_interpreters_seen;
+            },
+            "Get the number of interpreters that have seen the registry.")
+        .def(
+            "get_num_interpreters_alive",
+            []() -> size_t {
+                const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
+                EXPECT_EQ(py::ssize_t_cast(
+                              PyTreeTypeRegistry::sm_interpreter_scoped_registered_types.size()),
+                          PyTreeTypeRegistry::sm_num_interpreters_alive,
+                          "The number of alive interpreters should match the size of the "
+                          "interpreter-scoped registered types map.");
+                return PyTreeTypeRegistry::sm_num_interpreters_alive;
+            },
+            "Get the number of alive interpreters that have seen the registry.")
+        .def(
+            "get_alive_interpreter_ids",
+            []() -> std::unordered_set<ssize_t> {
+                const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
+                EXPECT_EQ(py::ssize_t_cast(
+                              PyTreeTypeRegistry::sm_interpreter_scoped_registered_types.size()),
+                          PyTreeTypeRegistry::sm_num_interpreters_alive,
+                          "The number of alive interpreters should match the size of the "
+                          "interpreter-scoped registered types map.");
+                std::unordered_set<ssize_t> ids;
+                for (const auto &[id, _] :
+                     PyTreeTypeRegistry::sm_interpreter_scoped_registered_types) {
+                    ids.insert(id);
+                }
+                return ids;
+            },
+            "Get the IDs of alive interpreters that have seen the registry.")
+        .def(
+            "get_registry_size",
+            [](const std::optional<std::string> &registry_namespace) {
+                const ssize_t count =
+                    PyTreeTypeRegistry::Singleton<NONE_IS_NODE>()->Size(registry_namespace);
+                EXPECT_EQ(
+                    count,
+                    PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>()->Size(registry_namespace) + 1,
+                    "The number of registered types in the two registries should match "
+                    "up to the extra None type in the NoneIsNode registry.");
+                return count;
+            },
+            "Get the number of registered types.",
+            py::arg("namespace") = std::nullopt)
         .def("flatten",
              &PyTreeSpec::Flatten,
              "Flattens a pytree.",
@@ -533,8 +571,17 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     PyType_Modified(PyTreeSpec_Type);
     PyType_Modified(PyTreeIter_Type);
 
-    py::getattr(py::module_::import("atexit"),
-                "register")(py::cpp_function(&PyTreeTypeRegistry::Clear));
+    const ssize_t interpreter_id = GetPyInterpreterID();
+
+    {
+        const scoped_write_lock lock{PyTreeTypeRegistry::sm_mutex};
+        ++PyTreeTypeRegistry::sm_num_interpreters_alive;
+        ++PyTreeTypeRegistry::sm_num_interpreters_seen;
+    }
+    (void)PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
+    (void)PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
+    py::getattr(py::module_::import("atexit"), "register")(py::cpp_function(
+        [interpreter_id]() -> void { PyTreeTypeRegistry::Clear(interpreter_id); }));
 }
 
 }  // namespace optree
@@ -543,7 +590,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 #if PYBIND11_VERSION_HEX >= 0x020D00F0  // pybind11 2.13.0
 #    if defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                            \
         NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT)
-PYBIND11_MODULE(_C, mod, py::mod_gil_not_used(), py::multiple_interpreters::shared_gil())
+PYBIND11_MODULE(_C, mod, py::mod_gil_not_used(), py::multiple_interpreters::per_interpreter_gil())
 #    else
 PYBIND11_MODULE(_C, mod, py::mod_gil_not_used())
 #    endif

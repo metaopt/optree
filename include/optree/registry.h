@@ -67,6 +67,14 @@ constexpr PyTreeKind kDeque = PyTreeKind::Deque;
 constexpr PyTreeKind kStructSequence = PyTreeKind::StructSequence;
 constexpr PyTreeKind kNumPyTreeKinds = PyTreeKind::NumKinds;
 
+[[nodiscard]] inline ssize_t GetPyInterpreterID() {
+    PyInterpreterState *interp = PyInterpreterState_Get();
+    if (interp == nullptr) [[unlikely]] {
+        throw std::runtime_error("Failed to get the current Python interpreter state.");
+    }
+    return PyInterpreterState_GetID(interp);
+}
+
 // Registry of custom node types.
 class PyTreeTypeRegistry {
 public:
@@ -141,13 +149,17 @@ private:
                                           const std::string &registry_namespace);
 
     // Clear the registry on cleanup.
-    static void Clear();
+    static void Clear(const std::optional<ssize_t> &interpreter_id = std::nullopt);
 
     std::unordered_map<py::handle, RegistrationPtr> m_registrations{};
     std::unordered_map<std::pair<std::string, py::handle>, RegistrationPtr> m_named_registrations{};
 
     static inline std::unordered_set<py::handle> sm_builtins_types{};
+    static inline std::unordered_map<ssize_t, std::unordered_set<py::handle>>
+        sm_interpreter_scoped_registered_types{};
     static inline read_write_mutex sm_mutex{};
+    static inline ssize_t sm_num_interpreters_alive = 0;
+    static inline ssize_t sm_num_interpreters_seen = 0;
 };
 
 }  // namespace optree

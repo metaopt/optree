@@ -37,7 +37,7 @@ from optree._C import (
     PYBIND11_HAS_SUBINTERPRETER_SUPPORT,
     Py_DEBUG,
     Py_GIL_DISABLED,
-    registry_size,
+    get_registry_size,
 )
 from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
 from optree.registry import _NODETYPE_REGISTRY as NODETYPE_REGISTRY
@@ -46,7 +46,7 @@ from optree.registry import _NODETYPE_REGISTRY as NODETYPE_REGISTRY
 TEST_ROOT = Path(__file__).absolute().parent
 
 
-INITIAL_REGISTRY_SIZE = registry_size()
+INITIAL_REGISTRY_SIZE = get_registry_size()
 assert INITIAL_REGISTRY_SIZE == 8
 assert INITIAL_REGISTRY_SIZE + 2 == len(NODETYPE_REGISTRY)
 

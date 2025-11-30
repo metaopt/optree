@@ -15,8 +15,7 @@
 
 import atexit
 import contextlib
-import importlib
-import re
+import random
 import sys
 
 import pytest
@@ -81,16 +80,16 @@ def concurrent_run(func, /, *args, **kwargs):
 run(object)  # warm-up
 
 
-def test_import_failure():
-    pattern = re.escape('module optree._C does not support loading in subinterpreters')
-    with pytest.raises(ImportError, match=pattern) as excinfo:
-        run(importlib.import_module, 'optree')
-
-    with contextlib.closing(interpreters.create()) as subinterpreter:
-        with pytest.raises(interpreters.ExecutionFailed, match=pattern) as excinfo:
-            subinterpreter.call(importlib.import_module, 'optree')
-        assert excinfo.value.excinfo.type.__name__ == 'ImportError'
-
-        with pytest.raises(interpreters.ExecutionFailed, match=pattern) as excinfo:
+def test_import():
+    for _ in range(random.randint(5, 10)):
+        with contextlib.closing(interpreters.create()) as subinterpreter:
             subinterpreter.exec('import optree')
-        assert excinfo.value.excinfo.type.__name__ == 'ImportError'
+
+    with contextlib.ExitStack() as stack:
+        subinterpreters = [
+            stack.enter_context(contextlib.closing(interpreters.create()))
+            for _ in range(random.randint(5, 10))
+        ]
+        random.shuffle(subinterpreters)
+        for subinterpreter in subinterpreters:
+            subinterpreter.exec('import optree')
