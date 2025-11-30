@@ -213,3 +213,6 @@ def set_dict_insertion_ordered(
     /,
     namespace: str = '',
 ) -> None: ...
+def registry_size(
+    namespace: str | None = None,
+) -> int: ...

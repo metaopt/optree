@@ -16,6 +16,7 @@ limitations under the License.
 */
 
 #include <memory>       // std::make_shared
+#include <optional>     // std::optional
 #include <sstream>      // std::ostringstream
 #include <string>       // std::string
 #include <type_traits>  // std::remove_const_t
@@ -64,6 +65,24 @@ template <bool NoneIsLeaf>
 
 template PyTreeTypeRegistry *PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
 template PyTreeTypeRegistry *PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
+
+ssize_t PyTreeTypeRegistry::Size(const std::optional<std::string> &registry_namespace) const {
+    const scoped_read_lock lock{sm_mutex};
+
+    if (registry_namespace.has_value()) [[unlikely]] {
+        if (registry_namespace->empty()) [[likely]] {
+            return static_cast<ssize_t>(m_registrations.size());
+        }
+        ssize_t count = 0;
+        for (const auto &entry : m_named_registrations) {
+            if (entry.first.first == *registry_namespace) [[likely]] {
+                ++count;
+            }
+        }
+        return static_cast<ssize_t>(m_registrations.size()) + count;
+    }
+    return static_cast<ssize_t>(m_registrations.size() + m_named_registrations.size());
+}
 
 template <bool NoneIsLeaf>
 /*static*/ void PyTreeTypeRegistry::RegisterImpl(const py::object &cls,

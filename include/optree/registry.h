@@ -19,6 +19,7 @@ limitations under the License.
 
 #include <cstdint>        // std::uint8_t
 #include <memory>         // std::shared_ptr
+#include <optional>       // std::optional, std::nullopt
 #include <string>         // std::string
 #include <unordered_map>  // std::unordered_map
 #include <unordered_set>  // std::unordered_set
@@ -97,6 +98,10 @@ public:
     };
 
     using RegistrationPtr = std::shared_ptr<const Registration>;
+
+    // Gets the number of registered types.
+    [[nodiscard]] ssize_t Size(
+        const std::optional<std::string> &registry_namespace = std::nullopt) const;
 
     // Registers a new custom type. Objects of `cls` will be treated as container node types in
     // PyTrees.

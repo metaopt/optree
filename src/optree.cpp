@@ -31,6 +31,9 @@ limitations under the License.
 #    include <pybind11/native_enum.h>
 #endif
 
+// NOLINTNEXTLINE[bugprone-macro-parentheses]
+#define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))
+
 namespace optree {
 
 py::module_ GetCxxModule(const std::optional<py::module_> &module) {
@@ -51,9 +54,6 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     mod.doc() = "Optimized PyTree Utilities. (C extension module built from " +
                 std::string(__FILE_RELPATH_FROM_PROJECT_ROOT__) + ")";
     mod.attr("Py_TPFLAGS_BASETYPE") = py::int_(Py_TPFLAGS_BASETYPE);
-
-    // NOLINTNEXTLINE[bugprone-macro-parentheses]
-#define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))
 
     // Meta information during build
     py::dict BUILDTIME_METADATA{};
@@ -99,8 +99,6 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] = py::bool_(false);
 #endif
 
-#undef NONZERO_OR_EMPTY
-
     mod.attr("BUILDTIME_METADATA") = std::move(BUILDTIME_METADATA);
     py::exec(
         R"py(
@@ -143,6 +141,19 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
              py::arg("cls"),
              py::pos_only(),
              py::arg("namespace") = "")
+        .def(
+            "registry_size",
+            [](const std::optional<std::string> &registry_namespace) {
+                const ssize_t count =
+                    PyTreeTypeRegistry::Singleton<false>()->Size(registry_namespace);
+                EXPECT_EQ(count,
+                          PyTreeTypeRegistry::Singleton<true>()->Size(registry_namespace) + 1,
+                          "The number of registered types in the two registries should match "
+                          "up to the extra None type in the NoneIsLeaf=false registry.");
+                return count;
+            },
+            "Get the number of registered types.",
+            py::arg("namespace") = std::nullopt)
         .def("is_dict_insertion_ordered",
              &PyTreeSpec::IsDictInsertionOrdered,
              "Return whether need to preserve the dict insertion order during flattening.",
@@ -528,10 +539,18 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 
 }  // namespace optree
 
+// NOLINTBEGIN[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
 #if PYBIND11_VERSION_HEX >= 0x020D00F0  // pybind11 2.13.0
-// NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
-PYBIND11_MODULE(_C, mod, py::mod_gil_not_used()) { optree::BuildModule(mod); }
+#    if defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                            \
+        NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT)
+PYBIND11_MODULE(_C, mod, py::mod_gil_not_used(), py::multiple_interpreters::shared_gil())
+#    else
+PYBIND11_MODULE(_C, mod, py::mod_gil_not_used())
+#    endif
 #else
-// NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
-PYBIND11_MODULE(_C, mod) { optree::BuildModule(mod); }
+PYBIND11_MODULE(_C, mod)
 #endif
+{
+    optree::BuildModule(mod);
+}
+// NOLINTEND[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
