@@ -19,10 +19,10 @@ limitations under the License.
 #include <optional>       // std::optional
 #include <sstream>        // std::ostringstream
 #include <string>         // std::string
+#include <tuple>          // std::tuple, std::make_tuple
 #include <type_traits>    // std::remove_const_t
 #include <unordered_set>  // std::unordered_set
 #include <utility>        // std::move, std::make_pair
-#include <vector>         // std::vector
 
 #include <Python.h>
 
@@ -36,38 +36,7 @@ template <bool NoneIsLeaf>
     return &(storage
                  .call_once_and_store_result([]() -> PyTreeTypeRegistry {
                      PyTreeTypeRegistry registry{};
-
-                     const ssize_t interpreter_id = GetPyInterpreterID();
-                     auto &interpreter_scoped_registered_types =
-                         sm_interpreter_scoped_registered_types.try_emplace(interpreter_id)
-                             .first->second;
-
-                     const auto add_builtin_type = [&registry,
-                                                    &interpreter_scoped_registered_types](
-                                                       const py::object &cls,
-                                                       const PyTreeKind &kind) -> void {
-                         auto registration =
-                             std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
-                         registration->kind = kind;
-                         registration->type = py::reinterpret_borrow<py::object>(cls);
-                         EXPECT_TRUE(
-                             registry.m_registrations.emplace(cls, std::move(registration)).second,
-                             "PyTree type " + PyRepr(cls) +
-                                 " is already registered in the global namespace.");
-                         if (sm_builtins_types.emplace(cls).second) [[likely]] {
-                             cls.inc_ref();
-                             interpreter_scoped_registered_types.emplace(cls);
-                         }
-                     };
-                     if constexpr (!NoneIsLeaf) {
-                         add_builtin_type(PyNoneTypeObject, PyTreeKind::None);
-                     }
-                     add_builtin_type(PyTupleTypeObject, PyTreeKind::Tuple);
-                     add_builtin_type(PyListTypeObject, PyTreeKind::List);
-                     add_builtin_type(PyDictTypeObject, PyTreeKind::Dict);
-                     add_builtin_type(PyOrderedDictTypeObject, PyTreeKind::OrderedDict);
-                     add_builtin_type(PyDefaultDictTypeObject, PyTreeKind::DefaultDict);
-                     add_builtin_type(PyDequeTypeObject, PyTreeKind::Deque);
+                     registry.m_none_is_leaf = NoneIsLeaf;
                      return registry;
                  })
                  .get_stored());
@@ -76,26 +45,100 @@ template <bool NoneIsLeaf>
 template PyTreeTypeRegistry *PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
 template PyTreeTypeRegistry *PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
 
+template <bool FirstTime>
+std::tuple<PyTreeTypeRegistry::RegistrationsMap *,
+           PyTreeTypeRegistry::NamedRegistrationsMap *,
+           PyTreeTypeRegistry::BuiltinsTypesSet *>
+PyTreeTypeRegistry::GetRegistrationsForInterpreterLocked() const {
+    const ssize_t interpreter_id = GetPyInterpreterID();
+
+    EXPECT_NE(
+        m_registrations.find(interpreter_id),
+        m_registrations.end(),
+        "Interpreter ID " + std::to_string(interpreter_id) + " not found in `m_registrations`.");
+    EXPECT_NE(m_named_registrations.find(interpreter_id),
+              m_named_registrations.end(),
+              "Interpreter ID " + std::to_string(interpreter_id) +
+                  " not found in `m_named_registrations`.");
+    EXPECT_NE(
+        sm_builtins_types.find(interpreter_id),
+        sm_builtins_types.end(),
+        "Interpreter ID " + std::to_string(interpreter_id) + " not found in `sm_builtins_types`.");
+
+    const auto &registrations = m_registrations.at(interpreter_id);
+    const auto &named_registrations = m_named_registrations.at(interpreter_id);
+    const auto &builtins_types = sm_builtins_types.at(interpreter_id);
+
+    // NOLINTBEGIN[cppcoreguidelines-pro-type-const-cast]
+    return std::make_tuple(const_cast<RegistrationsMap *>(&registrations),
+                           const_cast<NamedRegistrationsMap *>(&named_registrations),
+                           const_cast<BuiltinsTypesSet *>(&builtins_types));
+    // NOLINTEND[cppcoreguidelines-pro-type-const-cast]
+}
+
+void PyTreeTypeRegistry::Init() {
+    const scoped_write_lock lock{sm_mutex};
+
+    const ssize_t interpreter_id = GetPyInterpreterID();
+
+    EXPECT_EQ(m_registrations.find(interpreter_id),
+              m_registrations.end(),
+              "Interpreter ID " + std::to_string(interpreter_id) +
+                  " is already initialized in `m_registrations`.");
+    EXPECT_EQ(m_named_registrations.find(interpreter_id),
+              m_named_registrations.end(),
+              "Interpreter ID " + std::to_string(interpreter_id) +
+                  " is already initialized in `m_named_registrations`.");
+    if (!m_none_is_leaf) [[likely]] {
+        EXPECT_EQ(sm_builtins_types.find(interpreter_id),
+                  sm_builtins_types.end(),
+                  "Interpreter ID " + std::to_string(interpreter_id) +
+                      " is already initialized in `sm_builtins_types`.");
+    } else {
+        EXPECT_NE(sm_builtins_types.find(interpreter_id),
+                  sm_builtins_types.end(),
+                  "Interpreter ID " + std::to_string(interpreter_id) +
+                      " is not initialized in `sm_builtins_types`.");
+    }
+
+    auto &registrations = m_registrations.try_emplace(interpreter_id).first->second;
+    auto &named_registrations = m_named_registrations.try_emplace(interpreter_id).first->second;
+    auto &builtins_types = sm_builtins_types.try_emplace(interpreter_id).first->second;
+
+    (void)named_registrations;  // silence unused variable warning
+
+    const auto add_builtin_type =
+        [&registrations, &builtins_types](const py::object &cls, const PyTreeKind &kind) -> void {
+        auto registration = std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
+        registration->kind = kind;
+        registration->type = py::reinterpret_borrow<py::object>(cls);
+        EXPECT_TRUE(
+            registrations.emplace(cls, std::move(registration)).second,
+            "PyTree type " + PyRepr(cls) + " is already registered in the global namespace.");
+        if (builtins_types.emplace(cls).second) [[likely]] {
+            cls.inc_ref();
+        }
+    };
+    if (!m_none_is_leaf) [[likely]] {
+        add_builtin_type(PyNoneTypeObject, PyTreeKind::None);
+    }
+    add_builtin_type(PyTupleTypeObject, PyTreeKind::Tuple);
+    add_builtin_type(PyListTypeObject, PyTreeKind::List);
+    add_builtin_type(PyDictTypeObject, PyTreeKind::Dict);
+    add_builtin_type(PyOrderedDictTypeObject, PyTreeKind::OrderedDict);
+    add_builtin_type(PyDefaultDictTypeObject, PyTreeKind::DefaultDict);
+    add_builtin_type(PyDequeTypeObject, PyTreeKind::Deque);
+}
+
 ssize_t PyTreeTypeRegistry::Size(const std::optional<std::string> &registry_namespace) const {
     const scoped_read_lock lock{sm_mutex};
 
-    const ssize_t interpreter_id = GetPyInterpreterID();
-    const auto &it = sm_interpreter_scoped_registered_types.find(interpreter_id);
-    const auto &interpreter_scoped_registered_types =
-        (it != sm_interpreter_scoped_registered_types.end() ? it->second
-                                                            : std::unordered_set<py::handle>{});
+    const auto [registrations, named_registrations, _] =
+        GetRegistrationsForInterpreterLocked</*FirstTime=*/false>();
 
-    ssize_t count = 0;
-    for (const auto &[type, _] : m_registrations) {
-        if (interpreter_scoped_registered_types.find(type) !=
-            interpreter_scoped_registered_types.end()) [[likely]] {
-            ++count;
-        }
-    }
-    for (const auto &[named_type, _] : m_named_registrations) {
-        if (interpreter_scoped_registered_types.find(named_type.second) !=
-                interpreter_scoped_registered_types.end() &&
-            (!registry_namespace || named_type.first == *registry_namespace)) [[likely]] {
+    ssize_t count = py::ssize_t_cast(registrations->size());
+    for (const auto &[named_type, _] : *named_registrations) {
+        if (!registry_namespace || named_type.first == *registry_namespace) [[likely]] {
             ++count;
         }
     }
@@ -108,12 +151,16 @@ template <bool NoneIsLeaf>
                                                  const py::function &unflatten_func,
                                                  const py::object &path_entry_type,
                                                  const std::string &registry_namespace) {
-    if (sm_builtins_types.find(cls) != sm_builtins_types.end()) [[unlikely]] {
+    PyTreeTypeRegistry * const registry = Singleton<NoneIsLeaf>();
+
+    const auto [registrations, named_registrations, builtins_types] =
+        registry->GetRegistrationsForInterpreterLocked</*FirstTime=*/false>();
+
+    if (builtins_types->find(cls) != builtins_types->end()) [[unlikely]] {
         throw py::value_error("PyTree type " + PyRepr(cls) +
                               " is a built-in type and cannot be re-registered.");
     }
 
-    PyTreeTypeRegistry * const registry = Singleton<NoneIsLeaf>();
     auto registration = std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
     registration->kind = PyTreeKind::Custom;
     registration->type = py::reinterpret_borrow<py::object>(cls);
@@ -121,7 +168,7 @@ template <bool NoneIsLeaf>
     registration->unflatten_func = py::reinterpret_borrow<py::function>(unflatten_func);
     registration->path_entry_type = py::reinterpret_borrow<py::object>(path_entry_type);
     if (registry_namespace.empty()) [[unlikely]] {
-        if (!registry->m_registrations.emplace(cls, std::move(registration)).second) [[unlikely]] {
+        if (!registrations->emplace(cls, std::move(registration)).second) [[unlikely]] {
             throw py::value_error("PyTree type " + PyRepr(cls) +
                                   " is already registered in the global namespace.");
         }
@@ -143,8 +190,8 @@ template <bool NoneIsLeaf>
                          /*stack_level=*/2);
         }
     } else [[likely]] {
-        if (!registry->m_named_registrations
-                 .emplace(std::make_pair(registry_namespace, cls), std::move(registration))
+        if (!named_registrations
+                 ->emplace(std::make_pair(registry_namespace, cls), std::move(registration))
                  .second) [[unlikely]] {
             std::ostringstream oss{};
             oss << "PyTree type " << PyRepr(cls) << " is already registered in namespace "
@@ -196,25 +243,25 @@ template <bool NoneIsLeaf>
     flatten_func.inc_ref();
     unflatten_func.inc_ref();
     path_entry_type.inc_ref();
-
-    const ssize_t interpreter_id = GetPyInterpreterID();
-    const auto &it = sm_interpreter_scoped_registered_types.try_emplace(interpreter_id).first;
-    it->second.emplace(cls);
 }
 
 template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::UnregisterImpl(
     const py::object &cls,
     const std::string &registry_namespace) {
-    if (sm_builtins_types.find(cls) != sm_builtins_types.end()) [[unlikely]] {
+    PyTreeTypeRegistry * const registry = Singleton<NoneIsLeaf>();
+
+    const auto [registrations, named_registrations, builtins_types] =
+        registry->GetRegistrationsForInterpreterLocked</*FirstTime=*/false>();
+
+    if (builtins_types->find(cls) != builtins_types->end()) [[unlikely]] {
         throw py::value_error("PyTree type " + PyRepr(cls) +
                               " is a built-in type and cannot be unregistered.");
     }
 
-    PyTreeTypeRegistry * const registry = Singleton<NoneIsLeaf>();
     if (registry_namespace.empty()) [[unlikely]] {
-        const auto it = registry->m_registrations.find(cls);
-        if (it == registry->m_registrations.end()) [[unlikely]] {
+        const auto it = registrations->find(cls);
+        if (it == registrations->end()) [[unlikely]] {
             std::ostringstream oss{};
             oss << "PyTree type " << PyRepr(cls) << " ";
             if (IsStructSequenceClass(cls)) [[unlikely]] {
@@ -229,12 +276,11 @@ template <bool NoneIsLeaf>
             throw py::value_error(oss.str());
         }
         RegistrationPtr registration = it->second;
-        registry->m_registrations.erase(it);
+        registrations->erase(it);
         return registration;
     } else [[likely]] {
-        const auto named_it =
-            registry->m_named_registrations.find(std::make_pair(registry_namespace, cls));
-        if (named_it == registry->m_named_registrations.end()) [[unlikely]] {
+        const auto named_it = named_registrations->find(std::make_pair(registry_namespace, cls));
+        if (named_it == named_registrations->end()) [[unlikely]] {
             std::ostringstream oss{};
             oss << "PyTree type " << PyRepr(cls) << " ";
             if (IsStructSequenceClass(cls)) [[unlikely]] {
@@ -250,7 +296,7 @@ template <bool NoneIsLeaf>
             throw py::value_error(oss.str());
         }
         RegistrationPtr registration = named_it->second;
-        registry->m_named_registrations.erase(named_it);
+        named_registrations->erase(named_it);
         return registration;
     }
 }
@@ -277,16 +323,19 @@ template <bool NoneIsLeaf>
     const std::string &registry_namespace) {
     const scoped_read_lock lock{sm_mutex};
 
-    PyTreeTypeRegistry * const registry = Singleton<NoneIsLeaf>();
+    PyTreeTypeRegistry * const registry = PyTreeTypeRegistry::Singleton<NoneIsLeaf>();
+
+    const auto [registrations, named_registrations, _] =
+        registry->GetRegistrationsForInterpreterLocked</*FirstTime=*/false>();
+
     if (!registry_namespace.empty()) [[unlikely]] {
-        const auto named_it =
-            registry->m_named_registrations.find(std::make_pair(registry_namespace, cls));
-        if (named_it != registry->m_named_registrations.end()) [[likely]] {
+        const auto named_it = named_registrations->find(std::make_pair(registry_namespace, cls));
+        if (named_it != named_registrations->end()) [[likely]] {
             return named_it->second;
         }
     }
-    const auto it = registry->m_registrations.find(cls);
-    return it != registry->m_registrations.end() ? it->second : nullptr;
+    const auto it = registrations->find(cls);
+    return it != registrations->end() ? it->second : nullptr;
 }
 
 template PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(
@@ -331,23 +380,30 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     const std::string &);
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-/*static*/ void PyTreeTypeRegistry::Clear(const std::optional<ssize_t> &interpreter_id) {
+/*static*/ void PyTreeTypeRegistry::Clear() {
     const scoped_write_lock lock{sm_mutex};
+
+    const ssize_t interpreter_id = GetPyInterpreterID();
 
     PyTreeTypeRegistry * const registry1 = PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
     PyTreeTypeRegistry * const registry2 = PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
 
-    EXPECT_LE(sm_builtins_types.size(), registry1->m_registrations.size());
-    EXPECT_EQ(registry1->m_registrations.size(), registry2->m_registrations.size() + 1);
-    EXPECT_EQ(registry1->m_named_registrations.size(), registry2->m_named_registrations.size());
+    const auto [registrations1, named_registrations1, builtins_types] =
+        registry1->GetRegistrationsForInterpreterLocked</*FirstTime=*/false>();
+    const auto [registrations2, named_registrations2, _] =
+        registry2->GetRegistrationsForInterpreterLocked</*FirstTime=*/false>();
+
+    EXPECT_LE(builtins_types->size(), registrations1->size());
+    EXPECT_EQ(registrations1->size(), registrations2->size() + 1);
+    EXPECT_EQ(named_registrations1->size(), named_registrations2->size());
 
 #if defined(Py_DEBUG)
-    for (const auto &cls : sm_builtins_types) {
-        EXPECT_NE(registry1->m_registrations.find(cls), registry1->m_registrations.end());
+    for (const auto &cls : builtins_types) {
+        EXPECT_NE(registrations1->find(cls), registrations1->end());
     }
-    for (const auto &[cls2, registration2] : registry2->m_registrations) {
-        const auto it1 = registry1->m_registrations.find(cls2);
-        EXPECT_NE(it1, registry1->m_registrations.end());
+    for (const auto &[cls2, registration2] : *registrations2) {
+        const auto it1 = registrations1->find(cls2);
+        EXPECT_NE(it1, registrations1->end());
 
         const auto &registration1 = it1->second;
         EXPECT_TRUE(registration1->type.is(registration2->type));
@@ -355,9 +411,9 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
         EXPECT_TRUE(registration1->unflatten_func.is(registration2->unflatten_func));
         EXPECT_TRUE(registration1->path_entry_type.is(registration2->path_entry_type));
     }
-    for (const auto &[cls2, registration2] : registry2->m_named_registrations) {
-        const auto it1 = registry1->m_named_registrations.find(cls2);
-        EXPECT_NE(it1, registry1->m_named_registrations.end());
+    for (const auto &[cls2, registration2] : *named_registrations2) {
+        const auto it1 = named_registrations1->find(cls2);
+        EXPECT_NE(it1, named_registrations1->end());
 
         const auto &registration1 = it1->second;
         EXPECT_TRUE(registration1->type.is(registration2->type));
@@ -367,78 +423,34 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     }
 #endif
 
-    EXPECT_EQ(py::ssize_t_cast(sm_interpreter_scoped_registered_types.size()),
-              sm_num_interpreters_alive);
+    EXPECT_EQ(py::ssize_t_cast(sm_builtins_types.size()), sm_num_interpreters_alive);
 
-    if (!interpreter_id) [[unlikely]] {
-        EXPECT_EQ(sm_num_interpreters_alive,
-                  1,
-                  "interpreter_id must be provided when multiple interpreters are alive.");
-    }
-
-    if (sm_num_interpreters_alive > 1) [[unlikely]] {
-        EXPECT_TRUE(interpreter_id,
-                    "interpreter_id must be provided when multiple interpreters are alive.");
-        const auto it = sm_interpreter_scoped_registered_types.find(*interpreter_id);
-        if (it != sm_interpreter_scoped_registered_types.end()) [[likely]] {
-            for (const auto &cls : it->second) {
-                const auto reg_it1 = registry1->m_registrations.find(cls);
-                if (reg_it1 != registry1->m_registrations.end()) [[likely]] {
-                    const auto registration1 = reg_it1->second;
-                    registration1->type.dec_ref();
-                    registration1->flatten_func.dec_ref();
-                    registration1->unflatten_func.dec_ref();
-                    registration1->path_entry_type.dec_ref();
-                    registry1->m_registrations.erase(reg_it1);
-                }
-                std::vector<std::pair<std::string, py::handle>> named_types_to_erase{};
-                for (const auto &[named_type, _] : registry1->m_named_registrations) {
-                    if (named_type.second.is(cls)) [[likely]] {
-                        named_types_to_erase.emplace_back(named_type);
-                    }
-                }
-                for (const auto &named_type : named_types_to_erase) {
-                    const auto named_it1 = registry1->m_named_registrations.find(named_type);
-                    EXPECT_NE(named_it1, registry1->m_named_registrations.end());
-                    const auto registration1 = named_it1->second;
-                    registration1->type.dec_ref();
-                    registration1->flatten_func.dec_ref();
-                    registration1->unflatten_func.dec_ref();
-                    registration1->path_entry_type.dec_ref();
-                    registry1->m_named_registrations.erase(named_it1);
-                }
-                registry2->m_registrations.erase(cls);
-                for (const auto &named_type : named_types_to_erase) {
-                    registry2->m_named_registrations.erase(named_type);
-                }
-            }
-            sm_interpreter_scoped_registered_types.erase(it);
-        } else [[unlikely]] {
-            INTERNAL_ERROR("Interpreter ID " + std::to_string(*interpreter_id) +
-                           " not found in `sm_interpreter_scoped_registered_types`.");
-        }
-        --sm_num_interpreters_alive;
-        return;
-    }
-
-    for (const auto &[_, registration] : registry1->m_registrations) {
+    for (const auto &[_, registration] : *registrations1) {
         registration->type.dec_ref();
         registration->flatten_func.dec_ref();
         registration->unflatten_func.dec_ref();
         registration->path_entry_type.dec_ref();
     }
-    for (const auto &[_, registration] : registry1->m_named_registrations) {
+    for (const auto &[_, registration] : *named_registrations1) {
         registration->type.dec_ref();
         registration->flatten_func.dec_ref();
         registration->unflatten_func.dec_ref();
         registration->path_entry_type.dec_ref();
     }
 
-    sm_builtins_types.clear();
-    registry1->m_registrations.clear();
-    registry1->m_named_registrations.clear();
-    registry2->m_registrations.clear();
-    registry2->m_named_registrations.clear();
+    builtins_types->clear();
+    registrations1->clear();
+    named_registrations1->clear();
+    registrations2->clear();
+    named_registrations2->clear();
+
+    sm_builtins_types.erase(interpreter_id);
+    registry1->m_registrations.erase(interpreter_id);
+    registry1->m_named_registrations.erase(interpreter_id);
+    registry2->m_registrations.erase(interpreter_id);
+    registry2->m_named_registrations.erase(interpreter_id);
+
+    --sm_num_interpreters_alive;
 }
 
 }  // namespace optree

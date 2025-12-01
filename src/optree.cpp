@@ -161,8 +161,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             "get_num_interpreters_alive",
             []() -> size_t {
                 const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
-                EXPECT_EQ(py::ssize_t_cast(
-                              PyTreeTypeRegistry::sm_interpreter_scoped_registered_types.size()),
+                EXPECT_EQ(py::ssize_t_cast(PyTreeTypeRegistry::sm_builtins_types.size()),
                           PyTreeTypeRegistry::sm_num_interpreters_alive,
                           "The number of alive interpreters should match the size of the "
                           "interpreter-scoped registered types map.");
@@ -173,14 +172,12 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             "get_alive_interpreter_ids",
             []() -> std::unordered_set<ssize_t> {
                 const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
-                EXPECT_EQ(py::ssize_t_cast(
-                              PyTreeTypeRegistry::sm_interpreter_scoped_registered_types.size()),
+                EXPECT_EQ(py::ssize_t_cast(PyTreeTypeRegistry::sm_builtins_types.size()),
                           PyTreeTypeRegistry::sm_num_interpreters_alive,
                           "The number of alive interpreters should match the size of the "
                           "interpreter-scoped registered types map.");
                 std::unordered_set<ssize_t> ids;
-                for (const auto &[id, _] :
-                     PyTreeTypeRegistry::sm_interpreter_scoped_registered_types) {
+                for (const auto &[id, _] : PyTreeTypeRegistry::sm_builtins_types) {
                     ids.insert(id);
                 }
                 return ids;
@@ -568,17 +565,15 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     PyType_Modified(PyTreeSpec_Type);
     PyType_Modified(PyTreeIter_Type);
 
-    const ssize_t interpreter_id = GetPyInterpreterID();
-
     {
         const scoped_write_lock interp_lock{PyTreeTypeRegistry::sm_mutex};
         ++PyTreeTypeRegistry::sm_num_interpreters_alive;
         ++PyTreeTypeRegistry::sm_num_interpreters_seen;
     }
-    (void)PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
-    (void)PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
-    py::getattr(py::module_::import("atexit"), "register")(py::cpp_function(
-        [interpreter_id]() -> void { PyTreeTypeRegistry::Clear(interpreter_id); }));
+    PyTreeTypeRegistry::Singleton<NONE_IS_NODE>()->Init();
+    PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>()->Init();
+    py::getattr(py::module_::import("atexit"),
+                "register")(py::cpp_function(&PyTreeTypeRegistry::Clear));
 }
 
 }  // namespace optree
