@@ -67,14 +67,6 @@ constexpr PyTreeKind kDeque = PyTreeKind::Deque;
 constexpr PyTreeKind kStructSequence = PyTreeKind::StructSequence;
 constexpr PyTreeKind kNumPyTreeKinds = PyTreeKind::NumKinds;
 
-[[nodiscard]] inline ssize_t GetPyInterpreterID() {
-    PyInterpreterState *interp = PyInterpreterState_Get();
-    if (interp == nullptr) [[unlikely]] {
-        throw std::runtime_error("Failed to get the current Python interpreter state.");
-    }
-    return PyInterpreterState_GetID(interp);
-}
-
 // Registry of custom node types.
 class PyTreeTypeRegistry {
 public:

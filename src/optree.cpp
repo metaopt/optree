@@ -32,9 +32,6 @@ limitations under the License.
 #    include <pybind11/native_enum.h>
 #endif
 
-// NOLINTNEXTLINE[bugprone-macro-parentheses]
-#define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))
-
 namespace optree {
 
 py::module_ GetCxxModule(const std::optional<py::module_> &module) {
@@ -574,7 +571,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     const ssize_t interpreter_id = GetPyInterpreterID();
 
     {
-        const scoped_write_lock lock{PyTreeTypeRegistry::sm_mutex};
+        const scoped_write_lock interp_lock{PyTreeTypeRegistry::sm_mutex};
         ++PyTreeTypeRegistry::sm_num_interpreters_alive;
         ++PyTreeTypeRegistry::sm_num_interpreters_seen;
     }
