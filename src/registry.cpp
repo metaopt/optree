@@ -50,7 +50,7 @@ std::tuple<PyTreeTypeRegistry::RegistrationsMap *,
            PyTreeTypeRegistry::NamedRegistrationsMap *,
            PyTreeTypeRegistry::BuiltinsTypesSet *>
 PyTreeTypeRegistry::GetRegistrationsForInterpreterLocked() const {
-    const ssize_t interpreter_id = GetPyInterpreterID();
+    const auto interpreter_id = GetPyInterpreterID();
 
     EXPECT_NE(
         m_registrations.find(interpreter_id),
@@ -79,7 +79,7 @@ PyTreeTypeRegistry::GetRegistrationsForInterpreterLocked() const {
 void PyTreeTypeRegistry::Init() {
     const scoped_write_lock lock{sm_mutex};
 
-    const ssize_t interpreter_id = GetPyInterpreterID();
+    const auto interpreter_id = GetPyInterpreterID();
 
     EXPECT_EQ(m_registrations.find(interpreter_id),
               m_registrations.end(),
@@ -133,8 +133,10 @@ void PyTreeTypeRegistry::Init() {
 ssize_t PyTreeTypeRegistry::Size(const std::optional<std::string> &registry_namespace) const {
     const scoped_read_lock lock{sm_mutex};
 
-    const auto [registrations, named_registrations, _] =
+    const auto [registrations, named_registrations, builtins_types] =
         GetRegistrationsForInterpreterLocked</*FirstTime=*/false>();
+
+    (void)builtins_types;  // silence unused variable warning
 
     ssize_t count = py::ssize_t_cast(registrations->size());
     for (const auto &[named_type, _] : *named_registrations) {
@@ -151,7 +153,7 @@ template <bool NoneIsLeaf>
                                                  const py::function &unflatten_func,
                                                  const py::object &path_entry_type,
                                                  const std::string &registry_namespace) {
-    PyTreeTypeRegistry * const registry = Singleton<NoneIsLeaf>();
+    const PyTreeTypeRegistry * const registry = Singleton<NoneIsLeaf>();
 
     const auto [registrations, named_registrations, builtins_types] =
         registry->GetRegistrationsForInterpreterLocked</*FirstTime=*/false>();
@@ -249,7 +251,7 @@ template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::UnregisterImpl(
     const py::object &cls,
     const std::string &registry_namespace) {
-    PyTreeTypeRegistry * const registry = Singleton<NoneIsLeaf>();
+    const PyTreeTypeRegistry * const registry = Singleton<NoneIsLeaf>();
 
     const auto [registrations, named_registrations, builtins_types] =
         registry->GetRegistrationsForInterpreterLocked</*FirstTime=*/false>();
@@ -323,7 +325,7 @@ template <bool NoneIsLeaf>
     const std::string &registry_namespace) {
     const scoped_read_lock lock{sm_mutex};
 
-    PyTreeTypeRegistry * const registry = PyTreeTypeRegistry::Singleton<NoneIsLeaf>();
+    const PyTreeTypeRegistry * const registry = PyTreeTypeRegistry::Singleton<NoneIsLeaf>();
 
     const auto [registrations, named_registrations, _] =
         registry->GetRegistrationsForInterpreterLocked</*FirstTime=*/false>();
@@ -383,7 +385,7 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 /*static*/ void PyTreeTypeRegistry::Clear() {
     const scoped_write_lock lock{sm_mutex};
 
-    const ssize_t interpreter_id = GetPyInterpreterID();
+    const auto interpreter_id = GetPyInterpreterID();
 
     PyTreeTypeRegistry * const registry1 = PyTreeTypeRegistry::Singleton<NONE_IS_NODE>();
     PyTreeTypeRegistry * const registry2 = PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>();
@@ -398,7 +400,7 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     EXPECT_EQ(named_registrations1->size(), named_registrations2->size());
 
 #if defined(Py_DEBUG)
-    for (const auto &cls : builtins_types) {
+    for (const auto &cls : *builtins_types) {
         EXPECT_NE(registrations1->find(cls), registrations1->end());
     }
     for (const auto &[cls2, registration2] : *registrations2) {

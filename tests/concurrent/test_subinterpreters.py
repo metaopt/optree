@@ -80,10 +80,65 @@ def concurrent_run(func, /, *args, **kwargs):
 run(object)  # warm-up
 
 
+def check_module_importable():
+    import collections
+    import time
+
+    import optree._C
+
+    if optree._C.get_registry_size() != 8:
+        raise RuntimeError('registry size mismatch')
+
+    tree = {
+        'b': [2, (3, 4)],
+        'a': 1,
+        'c': collections.OrderedDict(
+            f=None,
+            d=5,
+            e=time.struct_time([6] + [None] * (time.struct_time.n_sequence_fields - 1)),
+        ),
+        'g': collections.defaultdict(list, h=collections.deque([7, 8, 9], maxlen=10)),
+    }
+
+    flat, spec = optree._C.flatten(tree)
+    reconstructed = spec.unflatten(flat)
+    if reconstructed != tree:
+        raise RuntimeError('unflatten/flatten mismatch')
+    if spec.num_leaves != 9:
+        raise RuntimeError(f'num_leaves mismatch: ({flat}, {spec})')
+    if flat != [1, 2, 3, 4, 5, 6, 7, 8, 9]:
+        raise RuntimeError(f'flattened leaves mismatch: ({flat}, {spec})')
+
+    return (
+        id(type(None)),
+        id(tuple),
+        id(list),
+        id(dict),
+        id(collections.OrderedDict),
+    )
+
+
 def test_import():
+    import collections
+
+    expected = (
+        id(type(None)),
+        id(tuple),
+        id(list),
+        id(dict),
+        id(collections.OrderedDict),
+    )
+
+    assert run(check_module_importable) == expected
+
     for _ in range(random.randint(5, 10)):
         with contextlib.closing(interpreters.create()) as subinterpreter:
             subinterpreter.exec('import optree')
+        with contextlib.closing(interpreters.create()) as subinterpreter:
+            assert subinterpreter.call(check_module_importable) == expected
+
+    for actual in concurrent_run(check_module_importable):
+        assert actual == expected
 
     with contextlib.ExitStack() as stack:
         subinterpreters = [
@@ -93,3 +148,12 @@ def test_import():
         random.shuffle(subinterpreters)
         for subinterpreter in subinterpreters:
             subinterpreter.exec('import optree')
+
+    with contextlib.ExitStack() as stack:
+        subinterpreters = [
+            stack.enter_context(contextlib.closing(interpreters.create()))
+            for _ in range(random.randint(5, 10))
+        ]
+        random.shuffle(subinterpreters)
+        for subinterpreter in subinterpreters:
+            assert subinterpreter.call(check_module_importable) == expected

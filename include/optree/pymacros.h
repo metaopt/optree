@@ -17,6 +17,7 @@ limitations under the License.
 
 #pragma once
 
+#include <cstdint>    // std::int64_t
 #include <stdexcept>  // std::runtime_error
 
 #include <Python.h>
@@ -102,7 +103,7 @@ Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
     (defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                               \
      NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT))
 
-inline py::ssize_t GetPyInterpreterID() {
+inline std::int64_t GetPyInterpreterID() {
     PyInterpreterState *interp = PyInterpreterState_Get();
     if (interp == nullptr) [[unlikely]] {
         throw std::runtime_error("Failed to get the current Python interpreter state.");
@@ -112,7 +113,7 @@ inline py::ssize_t GetPyInterpreterID() {
 
 #else
 
-inline constexpr py::ssize_t GetPyInterpreterID() noexcept {
+inline constexpr std::int64_t GetPyInterpreterID() noexcept {
     // Fallback for Python versions < 3.14 or when subinterpreter support is not available.
     return 0;
 }
