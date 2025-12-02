@@ -392,12 +392,13 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 
     const auto [registrations1, named_registrations1, builtins_types] =
         registry1->GetRegistrationsForInterpreterLocked</*FirstTime=*/false>();
-    const auto [registrations2, named_registrations2, _] =
+    const auto [registrations2, named_registrations2, builtins_types_] =
         registry2->GetRegistrationsForInterpreterLocked</*FirstTime=*/false>();
 
     EXPECT_LE(builtins_types->size(), registrations1->size());
     EXPECT_EQ(registrations1->size(), registrations2->size() + 1);
     EXPECT_EQ(named_registrations1->size(), named_registrations2->size());
+    EXPECT_EQ(builtins_types, builtins_types_);
 
 #if defined(Py_DEBUG)
     for (const auto &cls : *builtins_types) {

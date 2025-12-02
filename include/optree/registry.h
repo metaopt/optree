@@ -100,11 +100,11 @@ public:
 
     using RegistrationPtr = std::shared_ptr<const Registration>;
 
-    // Gets the number of registered types.
+    // Get the number of registered types.
     [[nodiscard]] ssize_t Size(
         const std::optional<std::string> &registry_namespace = std::nullopt) const;
 
-    // Registers a new custom type. Objects of `cls` will be treated as container node types in
+    // Register a new custom type. Objects of `cls` will be treated as container node types in
     // PyTrees.
     static void Register(const py::object &cls,
                          const py::function &flatten_func,
@@ -114,7 +114,7 @@ public:
 
     static void Unregister(const py::object &cls, const std::string &registry_namespace = "");
 
-    // Finds the custom type registration for `type`. Returns nullptr if none exists.
+    // Find the custom type registration for `type`. Returns nullptr if none exists.
     template <bool NoneIsLeaf>
     [[nodiscard]] static RegistrationPtr Lookup(const py::object &cls,
                                                 const std::string &registry_namespace);

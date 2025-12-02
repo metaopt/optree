@@ -62,7 +62,7 @@ inline constexpr Py_ALWAYS_INLINE bool Py_IsConstant(PyObject *x) noexcept {
 
 #define Py_Declare_ID(name)                                                                        \
     namespace {                                                                                    \
-    inline PyObject *Py_ID_##name() {                                                              \
+    [[nodiscard]] inline PyObject *Py_ID_##name() {                                                \
         PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyObject *> storage;            \
         return storage                                                                             \
             .call_once_and_store_result([]() -> PyObject * {                                       \
@@ -103,7 +103,7 @@ Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
     (defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                               \
      NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT))
 
-inline std::int64_t GetPyInterpreterID() {
+[[nodiscard]] inline std::int64_t GetPyInterpreterID() {
     PyInterpreterState *interp = PyInterpreterState_Get();
     if (interp == nullptr) [[unlikely]] {
         throw std::runtime_error("Failed to get the current Python interpreter state.");
@@ -113,7 +113,7 @@ inline std::int64_t GetPyInterpreterID() {
 
 #else
 
-inline constexpr std::int64_t GetPyInterpreterID() noexcept {
+[[nodiscard]] inline constexpr std::int64_t GetPyInterpreterID() noexcept {
     // Fallback for Python versions < 3.14 or when subinterpreter support is not available.
     return 0;
 }
