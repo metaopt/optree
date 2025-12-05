@@ -17,6 +17,9 @@ limitations under the License.
 
 #pragma once
 
+#include <cstdint>    // std::int64_t
+#include <stdexcept>  // std::runtime_error
+
 #include <Python.h>
 
 #include <pybind11/pybind11.h>
@@ -59,7 +62,7 @@ inline constexpr Py_ALWAYS_INLINE bool Py_IsConstant(PyObject *x) noexcept {
 
 #define Py_Declare_ID(name)                                                                        \
     namespace {                                                                                    \
-    inline PyObject *Py_ID_##name() {                                                              \
+    [[nodiscard]] inline PyObject *Py_ID_##name() {                                                \
         PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyObject *> storage;            \
         return storage                                                                             \
             .call_once_and_store_result([]() -> PyObject * {                                       \
@@ -91,3 +94,28 @@ Py_Declare_ID(_asdict);            // namedtuple._asdict
 Py_Declare_ID(n_fields);           // structseq.n_fields
 Py_Declare_ID(n_sequence_fields);  // structseq.n_sequence_fields
 Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
+
+// NOLINTNEXTLINE[bugprone-macro-parentheses]
+#define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))
+
+#if !defined(PYPY_VERSION) &&                                                                      \
+    (defined(PY_VERSION_HEX) && PY_VERSION_HEX >= 0x030E0000 /* Python 3.14 */) &&                 \
+    (defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                               \
+     NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT))
+
+[[nodiscard]] inline std::int64_t GetPyInterpreterID() {
+    PyInterpreterState *interp = PyInterpreterState_Get();
+    if (interp == nullptr) [[unlikely]] {
+        throw std::runtime_error("Failed to get the current Python interpreter state.");
+    }
+    return PyInterpreterState_GetID(interp);
+}
+
+#else
+
+[[nodiscard]] inline constexpr std::int64_t GetPyInterpreterID() noexcept {
+    // Fallback for Python versions < 3.14 or when subinterpreter support is not available.
+    return 0;
+}
+
+#endif

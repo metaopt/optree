@@ -75,6 +75,15 @@ inline const py::object &ImportOrderedDict() {
         })
         .get_stored();
 }
+#if !defined(PYPY_VERSION) &&                                                                      \
+    (defined(PY_VERSION_HEX) && PY_VERSION_HEX >= 0x030E0000 /* Python 3.14 */) &&                 \
+    (defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                               \
+     NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT))
+inline py::object ImportDefaultDict() {
+    return py::getattr(py::module_::import("collections"), "defaultdict");
+}
+inline py::object ImportDeque() { return py::getattr(py::module_::import("collections"), "deque"); }
+#else
 inline const py::object &ImportDefaultDict() {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
     return storage
@@ -90,6 +99,7 @@ inline const py::object &ImportDeque() {
             []() -> py::object { return py::getattr(py::module_::import("collections"), "deque"); })
         .get_stored();
 }
+#endif
 
 inline Py_ALWAYS_INLINE py::ssize_t TupleGetSize(const py::handle &tuple) {
     return PyTuple_GET_SIZE(tuple.ptr());

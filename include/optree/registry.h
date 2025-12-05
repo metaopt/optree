@@ -19,7 +19,9 @@ limitations under the License.
 
 #include <cstdint>        // std::uint8_t
 #include <memory>         // std::shared_ptr
+#include <optional>       // std::optional, std::nullopt
 #include <string>         // std::string
+#include <tuple>          // std::tuple
 #include <unordered_map>  // std::unordered_map
 #include <unordered_set>  // std::unordered_set
 #include <utility>        // std::pair
@@ -98,7 +100,11 @@ public:
 
     using RegistrationPtr = std::shared_ptr<const Registration>;
 
-    // Registers a new custom type. Objects of `cls` will be treated as container node types in
+    // Get the number of registered types.
+    [[nodiscard]] ssize_t Size(
+        const std::optional<std::string> &registry_namespace = std::nullopt) const;
+
+    // Register a new custom type. Objects of `cls` will be treated as container node types in
     // PyTrees.
     static void Register(const py::object &cls,
                          const py::function &flatten_func,
@@ -108,21 +114,22 @@ public:
 
     static void Unregister(const py::object &cls, const std::string &registry_namespace = "");
 
-    // Finds the custom type registration for `type`. Returns nullptr if none exists.
+    // Find the custom type registration for `type`. Returns nullptr if none exists.
     template <bool NoneIsLeaf>
-    static RegistrationPtr Lookup(const py::object &cls, const std::string &registry_namespace);
+    [[nodiscard]] static RegistrationPtr Lookup(const py::object &cls,
+                                                const std::string &registry_namespace);
 
     // Compute the node kind of a given Python object.
     template <bool NoneIsLeaf>
-    static PyTreeKind GetKind(const py::handle &handle,
-                              RegistrationPtr &custom,  // NOLINT[runtime/references]
-                              const std::string &registry_namespace);
+    [[nodiscard]] static PyTreeKind GetKind(const py::handle &handle,
+                                            RegistrationPtr &custom,  // NOLINT[runtime/references]
+                                            const std::string &registry_namespace);
 
     friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
 
 private:
     template <bool NoneIsLeaf>
-    static PyTreeTypeRegistry *Singleton();
+    [[nodiscard]] static PyTreeTypeRegistry *Singleton();
 
     template <bool NoneIsLeaf>
     static void RegisterImpl(const py::object &cls,
@@ -132,17 +139,32 @@ private:
                              const std::string &registry_namespace);
 
     template <bool NoneIsLeaf>
-    static RegistrationPtr UnregisterImpl(const py::object &cls,
-                                          const std::string &registry_namespace);
+    [[nodiscard]] static RegistrationPtr UnregisterImpl(const py::object &cls,
+                                                        const std::string &registry_namespace);
+
+    // Initialize the registry for a given interpreter.
+    void Init();
 
     // Clear the registry on cleanup.
     static void Clear();
 
-    std::unordered_map<py::handle, RegistrationPtr> m_registrations{};
-    std::unordered_map<std::pair<std::string, py::handle>, RegistrationPtr> m_named_registrations{};
+    using RegistrationsMap = std::unordered_map<py::handle, RegistrationPtr>;
+    using NamedRegistrationsMap =
+        std::unordered_map<std::pair<std::string, py::handle>, RegistrationPtr>;
+    using BuiltinsTypesSet = std::unordered_set<py::handle>;
 
-    static inline std::unordered_set<py::handle> sm_builtins_types{};
+    template <bool FirstTime>
+    [[nodiscard]] inline std::tuple<RegistrationsMap *, NamedRegistrationsMap *, BuiltinsTypesSet *>
+    GetRegistrationsForInterpreterLocked() const;
+
+    bool m_none_is_leaf = false;
+    std::unordered_map<ssize_t, RegistrationsMap> m_registrations{};
+    std::unordered_map<ssize_t, NamedRegistrationsMap> m_named_registrations{};
+
+    static inline std::unordered_map<ssize_t, BuiltinsTypesSet> sm_builtins_types{};
     static inline read_write_mutex sm_mutex{};
+    static inline ssize_t sm_num_interpreters_alive = 0;
+    static inline ssize_t sm_num_interpreters_seen = 0;
 };
 
 }  // namespace optree

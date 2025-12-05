@@ -17,11 +17,12 @@ limitations under the License.
 
 #include "optree/optree.h"
 
-#include <functional>  // std::{not_,}equal_to, std::less{,_equal}, std::greater{,_equal}
-#include <memory>      // std::unique_ptr
-#include <optional>    // std::optional, std::nullopt
-#include <string>      // std::string
-#include <utility>     // std::move
+#include <functional>     // std::{not_,}equal_to, std::less{,_equal}, std::greater{,_equal}
+#include <memory>         // std::unique_ptr
+#include <optional>       // std::optional, std::nullopt
+#include <string>         // std::string
+#include <unordered_set>  // std::unordered_set
+#include <utility>        // std::move
 
 #include <pybind11/eval.h>
 #include <pybind11/pybind11.h>
@@ -51,9 +52,6 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     mod.doc() = "Optimized PyTree Utilities. (C extension module built from " +
                 std::string(__FILE_RELPATH_FROM_PROJECT_ROOT__) + ")";
     mod.attr("Py_TPFLAGS_BASETYPE") = py::int_(Py_TPFLAGS_BASETYPE);
-
-    // NOLINTNEXTLINE[bugprone-macro-parentheses]
-#define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))
 
     // Meta information during build
     py::dict BUILDTIME_METADATA{};
@@ -99,8 +97,6 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] = py::bool_(false);
 #endif
 
-#undef NONZERO_OR_EMPTY
-
     mod.attr("BUILDTIME_METADATA") = std::move(BUILDTIME_METADATA);
     py::exec(
         R"py(
@@ -111,11 +107,9 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
                 return f'0x{self:08X}'
 
         BUILDTIME_METADATA.update(
-            **{
-                name: HexInt(value)
-                for name, value in BUILDTIME_METADATA.items()
-                if name.endswith('_HEX') and isinstance(value, int)
-            },
+            (name, HexInt(value))
+            for name, value in BUILDTIME_METADATA.items()
+            if name.endswith('_HEX') and isinstance(value, int)
         )
 
         BUILDTIME_METADATA = types.MappingProxyType(BUILDTIME_METADATA)
@@ -156,6 +150,53 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
              py::arg("mode"),
              py::pos_only(),
              py::arg("namespace") = "")
+        .def(
+            "get_num_interpreters_seen",
+            []() -> size_t {
+                const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
+                return PyTreeTypeRegistry::sm_num_interpreters_seen;
+            },
+            "Get the number of interpreters that have seen the registry.")
+        .def(
+            "get_num_interpreters_alive",
+            []() -> size_t {
+                const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
+                EXPECT_EQ(py::ssize_t_cast(PyTreeTypeRegistry::sm_builtins_types.size()),
+                          PyTreeTypeRegistry::sm_num_interpreters_alive,
+                          "The number of alive interpreters should match the size of the "
+                          "interpreter-scoped registered types map.");
+                return PyTreeTypeRegistry::sm_num_interpreters_alive;
+            },
+            "Get the number of alive interpreters that have seen the registry.")
+        .def(
+            "get_alive_interpreter_ids",
+            []() -> std::unordered_set<ssize_t> {
+                const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
+                EXPECT_EQ(py::ssize_t_cast(PyTreeTypeRegistry::sm_builtins_types.size()),
+                          PyTreeTypeRegistry::sm_num_interpreters_alive,
+                          "The number of alive interpreters should match the size of the "
+                          "interpreter-scoped registered types map.");
+                std::unordered_set<ssize_t> ids;
+                for (const auto &[id, _] : PyTreeTypeRegistry::sm_builtins_types) {
+                    ids.insert(id);
+                }
+                return ids;
+            },
+            "Get the IDs of alive interpreters that have seen the registry.")
+        .def(
+            "get_registry_size",
+            [](const std::optional<std::string> &registry_namespace) {
+                const ssize_t count =
+                    PyTreeTypeRegistry::Singleton<NONE_IS_NODE>()->Size(registry_namespace);
+                EXPECT_EQ(
+                    count,
+                    PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>()->Size(registry_namespace) + 1,
+                    "The number of registered types in the two registries should match "
+                    "up to the extra None type in the NoneIsNode registry.");
+                return count;
+            },
+            "Get the number of registered types.",
+            py::arg("namespace") = std::nullopt)
         .def("flatten",
              &PyTreeSpec::Flatten,
              "Flattens a pytree.",
@@ -277,10 +318,8 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 #endif
     auto * const PyTreeKind_Type = reinterpret_cast<PyTypeObject *>(PyTreeKindTypeObject.ptr());
     PyTreeKind_Type->tp_name = "optree.PyTreeKind";
-    py::setattr(PyTreeKindTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
-    py::setattr(PyTreeKindTypeObject.ptr(),
-                "NUM_KINDS",
-                py::int_(py::ssize_t(PyTreeKind::NumKinds)));
+    py::setattr(PyTreeKindTypeObject, Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeKindTypeObject, "NUM_KINDS", py::int_(py::ssize_t(PyTreeKind::NumKinds)));
 
     auto PyTreeSpecTypeObject =
 #if defined(PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT)
@@ -303,7 +342,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             py::module_local());
     auto * const PyTreeSpec_Type = reinterpret_cast<PyTypeObject *>(PyTreeSpecTypeObject.ptr());
     PyTreeSpec_Type->tp_name = "optree.PyTreeSpec";
-    py::setattr(PyTreeSpecTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeSpecTypeObject, Py_Get_ID(__module__), Py_Get_ID(optree));
 
     PyTreeSpecTypeObject
         .def("unflatten",
@@ -501,7 +540,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             py::module_local());
     auto * const PyTreeIter_Type = reinterpret_cast<PyTypeObject *>(PyTreeIterTypeObject.ptr());
     PyTreeIter_Type->tp_name = "optree.PyTreeIter";
-    py::setattr(PyTreeIterTypeObject.ptr(), Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeIterTypeObject, Py_Get_ID(__module__), Py_Get_ID(optree));
 
     PyTreeIterTypeObject
         .def(py::init<py::object, std::optional<py::function>, bool, std::string>(),
@@ -526,16 +565,31 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     PyType_Modified(PyTreeSpec_Type);
     PyType_Modified(PyTreeIter_Type);
 
+    {
+        const scoped_write_lock interp_lock{PyTreeTypeRegistry::sm_mutex};
+        ++PyTreeTypeRegistry::sm_num_interpreters_alive;
+        ++PyTreeTypeRegistry::sm_num_interpreters_seen;
+    }
+    PyTreeTypeRegistry::Singleton<NONE_IS_NODE>()->Init();
+    PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>()->Init();
     py::getattr(py::module_::import("atexit"),
                 "register")(py::cpp_function(&PyTreeTypeRegistry::Clear));
 }
 
 }  // namespace optree
 
+// NOLINTBEGIN[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
 #if PYBIND11_VERSION_HEX >= 0x020D00F0  // pybind11 2.13.0
-// NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
-PYBIND11_MODULE(_C, mod, py::mod_gil_not_used()) { optree::BuildModule(mod); }
+#    if defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                            \
+        NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT)
+PYBIND11_MODULE(_C, mod, py::mod_gil_not_used(), py::multiple_interpreters::per_interpreter_gil())
+#    else
+PYBIND11_MODULE(_C, mod, py::mod_gil_not_used())
+#    endif
 #else
-// NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
-PYBIND11_MODULE(_C, mod) { optree::BuildModule(mod); }
+PYBIND11_MODULE(_C, mod)
 #endif
+{
+    optree::BuildModule(mod);
+}
+// NOLINTEND[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]

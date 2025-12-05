@@ -23,7 +23,7 @@ limitations under the License.
 #include "optree/pymacros.h"  // Py_ALWAYS_INLINE
 
 template <typename T>
-inline Py_ALWAYS_INLINE std::vector<T> reserved_vector(std::size_t size) {
+[[nodiscard]] inline Py_ALWAYS_INLINE std::vector<T> reserved_vector(std::size_t size) {
     std::vector<T> v{};
     v.reserve(size);
     return v;
