@@ -178,6 +178,6 @@ private:
 #endif
 
 template <typename T>
-inline Py_ALWAYS_INLINE T thread_safe_cast(const py::handle &handle) {
+[[nodiscard]] inline Py_ALWAYS_INLINE T thread_safe_cast(const py::handle &handle) {
     return EVALUATE_WITH_LOCK_HELD(py::cast<T>(handle), handle);
 }

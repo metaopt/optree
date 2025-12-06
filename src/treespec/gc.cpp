@@ -62,8 +62,8 @@ namespace optree {
         return 0;
     }
     auto &self = thread_safe_cast<PyTreeIter &>(py::handle{self_base});
-    for (const auto &pair : self.m_agenda) {
-        Py_VISIT(pair.first.ptr());
+    for (const auto &[obj, _] : self.m_agenda) {
+        Py_VISIT(obj.ptr());
     }
     Py_VISIT(self.m_root.ptr());
     return 0;
@@ -76,8 +76,8 @@ namespace optree {
         return 0;
     }
     auto &self = thread_safe_cast<PyTreeIter &>(py::handle{self_base});
-    for (auto &pair : self.m_agenda) {
-        Py_CLEAR(pair.first.ptr());
+    for (auto &[obj, _] : self.m_agenda) {
+        Py_CLEAR(obj.ptr());
     }
     self.m_agenda.clear();
     Py_CLEAR(self.m_root.ptr());
