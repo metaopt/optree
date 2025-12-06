@@ -183,6 +183,9 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
                 return ids;
             },
             "Get the IDs of alive interpreters that have seen the registry.")
+        .def("get_current_interpreter_id",
+             &GetPyInterpreterID,
+             "Get the ID of the current interpreter.")
         .def(
             "get_registry_size",
             [](const std::optional<std::string> &registry_namespace) {

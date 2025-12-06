@@ -108,7 +108,11 @@ Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
     if (interp == nullptr) [[unlikely]] {
         throw std::runtime_error("Failed to get the current Python interpreter state.");
     }
-    return PyInterpreterState_GetID(interp);
+    const std::int64_t id = PyInterpreterState_GetID(interp);
+    if (id < 0) [[unlikely]] {
+        throw std::runtime_error("Failed to get the current Python interpreter ID (invalid ID).");
+    }
+    return id;
 }
 
 #else
