@@ -123,7 +123,7 @@ public:
 
 private:
     template <bool NoneIsLeaf>
-    [[nodiscard]] static PyTreeTypeRegistry *Singleton();
+    [[nodiscard]] static PyTreeTypeRegistry &GetSingleton();
 
     template <bool NoneIsLeaf>
     static void RegisterImpl(const py::object &cls,
