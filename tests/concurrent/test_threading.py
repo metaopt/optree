@@ -55,8 +55,16 @@ EXECUTOR = ThreadPoolExecutor(max_workers=NUM_WORKERS)
 atexit.register(EXECUTOR.shutdown)
 
 
-def concurrent_run(func):
-    futures = [EXECUTOR.submit(func) for _ in range(NUM_FUTURES)]
+def run(func, /, *args, **kwargs):
+    future = EXECUTOR.submit(func, *args, **kwargs)
+    exception = future.exception()
+    if exception is not None:
+        raise exception
+    return future.result()
+
+
+def concurrent_run(func, /, *args, **kwargs):
+    futures = [EXECUTOR.submit(func, *args, **kwargs) for _ in range(NUM_FUTURES)]
     future2index = {future: i for i, future in enumerate(futures)}
     completed_futures = sorted(as_completed(futures), key=future2index.get)
     first_exception = next(filter(None, (future.exception() for future in completed_futures)), None)
@@ -65,7 +73,7 @@ def concurrent_run(func):
     return [future.result() for future in completed_futures]
 
 
-concurrent_run(object)  # warm-up
+run(object)  # warm-up
 
 
 @parametrize(
@@ -92,7 +100,7 @@ def test_tree_flatten_unflatten_thread_safe(
         for result in concurrent_run(test_fn):
             assert result == expected
 
-    for result in concurrent_run(lambda: optree.tree_unflatten(treespec, leaves)):
+    for result in concurrent_run(optree.tree_unflatten, treespec, leaves):
         assert result == tree
 
 
@@ -353,7 +361,7 @@ def test_tree_iter_thread_safe(
             namespace=namespace,
         )
 
-    results = concurrent_run(lambda: list(it))
+    results = concurrent_run(list, it)
     for seq in results:
         assert sorted(seq) == seq
     assert sorted(itertools.chain.from_iterable(results)) == list(range(num_leaves))
