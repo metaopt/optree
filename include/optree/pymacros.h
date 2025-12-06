@@ -59,7 +59,7 @@ inline constexpr Py_ALWAYS_INLINE bool Py_IsConstant(PyObject *x) noexcept {
 
 #define Py_Declare_ID(name)                                                                        \
     namespace {                                                                                    \
-    inline PyObject *Py_ID_##name() {                                                              \
+    [[nodiscard]] inline PyObject *Py_ID_##name() {                                                \
         PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyObject *> storage;            \
         return storage                                                                             \
             .call_once_and_store_result([]() -> PyObject * {                                       \
@@ -91,3 +91,6 @@ Py_Declare_ID(_asdict);            // namedtuple._asdict
 Py_Declare_ID(n_fields);           // structseq.n_fields
 Py_Declare_ID(n_sequence_fields);  // structseq.n_sequence_fields
 Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
+
+// NOLINTNEXTLINE[bugprone-macro-parentheses]
+#define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))

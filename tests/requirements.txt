@@ -3,16 +3,19 @@
 pytest
 pytest-cov
 covdefaults
-rich
-ruff
-pylint[spelling]
-mypy
-doc8
-pyenchant
 xdoctest
-cpplint
-pre-commit
+rich
 
-jax[cpu] >= 0.4.6
+cpplint
+doc8
+mypy
+pre-commit
+pyenchant
+pylint[spelling]
+ruff
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+jax[cpu]
 numpy
 torch

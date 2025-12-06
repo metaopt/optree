@@ -98,7 +98,7 @@ public:
 
     using RegistrationPtr = std::shared_ptr<const Registration>;
 
-    // Registers a new custom type. Objects of `cls` will be treated as container node types in
+    // Register a new custom type. Objects of `cls` will be treated as container node types in
     // PyTrees.
     static void Register(const py::object &cls,
                          const py::function &flatten_func,
@@ -108,21 +108,22 @@ public:
 
     static void Unregister(const py::object &cls, const std::string &registry_namespace = "");
 
-    // Finds the custom type registration for `type`. Returns nullptr if none exists.
+    // Find the custom type registration for `type`. Returns nullptr if none exists.
     template <bool NoneIsLeaf>
-    static RegistrationPtr Lookup(const py::object &cls, const std::string &registry_namespace);
+    [[nodiscard]] static RegistrationPtr Lookup(const py::object &cls,
+                                                const std::string &registry_namespace);
 
     // Compute the node kind of a given Python object.
     template <bool NoneIsLeaf>
-    static PyTreeKind GetKind(const py::handle &handle,
-                              RegistrationPtr &custom,  // NOLINT[runtime/references]
-                              const std::string &registry_namespace);
+    [[nodiscard]] static PyTreeKind GetKind(const py::handle &handle,
+                                            RegistrationPtr &custom,  // NOLINT[runtime/references]
+                                            const std::string &registry_namespace);
 
     friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
 
 private:
     template <bool NoneIsLeaf>
-    static PyTreeTypeRegistry *Singleton();
+    [[nodiscard]] static PyTreeTypeRegistry *Singleton();
 
     template <bool NoneIsLeaf>
     static void RegisterImpl(const py::object &cls,
@@ -132,8 +133,8 @@ private:
                              const std::string &registry_namespace);
 
     template <bool NoneIsLeaf>
-    static RegistrationPtr UnregisterImpl(const py::object &cls,
-                                          const std::string &registry_namespace);
+    [[nodiscard]] static RegistrationPtr UnregisterImpl(const py::object &cls,
+                                                        const std::string &registry_namespace);
 
     // Clear the registry on cleanup.
     static void Clear();
