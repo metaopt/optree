@@ -3,14 +3,14 @@
 sphinx
 sphinx-autoapi
 sphinx-autobuild
+sphinx-autodoc-typehints
 sphinx-copybutton
 sphinx-rtd-theme
 sphinxcontrib-bibtex
-sphinx-autodoc-typehints
 docutils
 
 --extra-index-url https://download.pytorch.org/whl/cpu
 
-jax[cpu] >= 0.4.6
+jax[cpu]
 numpy
 torch

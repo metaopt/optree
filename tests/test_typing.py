@@ -26,8 +26,8 @@ from typing import TypeVar, Union
 import pytest
 
 import optree
-import optree._C
 from helpers import (
+    PYBIND11_HAS_NATIVE_ENUM,
     CustomNamedTupleSubclass,
     CustomTuple,
     Py_GIL_DISABLED,
@@ -72,7 +72,7 @@ class FakeStructSequence(tuple):
 
 
 def test_pytreekind_enum():
-    if optree._C.PYBIND11_HAS_NATIVE_ENUM:
+    if PYBIND11_HAS_NATIVE_ENUM:
         all_kinds = list(optree.PyTreeKind)
         assert len(all_kinds) == optree.PyTreeKind.NUM_KINDS
         assert issubclass(optree.PyTreeKind, enum.IntEnum)
