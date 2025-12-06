@@ -375,6 +375,14 @@ inline bool IsStructSequenceClass(const py::handle &type) {
     {
         const scoped_write_lock lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+#if defined(MS_WINDOWS) &&                                                                         \
+    (PY_VERSION_HEX >= 0x030B0000 && PY_VERSION_HEX < 0x030C0000 /* Python 3.11 */)
+            // Workaround for Python 3.11 debug build on Windows crashing during
+            // PyStructSequence type deallocation.
+            if (result) [[unlikely]] {
+                type.inc_ref();
+            }
+#endif
             cache.emplace(type, result);
             (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
                                   const scoped_write_lock lock{mutex};
