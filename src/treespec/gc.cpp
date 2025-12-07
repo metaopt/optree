@@ -17,13 +17,23 @@ limitations under the License.
 
 #include "optree/optree.h"
 
+namespace {
+#if PYBIND11_VERSION_HEX >= 0x030000F0  // pybind11 3.0.0
+using pybind11::detail::is_holder_constructed;
+#else
+[[nodiscard]] inline bool is_holder_constructed(PyObject *obj) {
+    auto * const instance = reinterpret_cast<pybind11::detail::instance *>(obj);
+    return instance->get_value_and_holder().holder_constructed();
+}
+#endif
+}  // namespace
+
 namespace optree {
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ int PyTreeSpec::PyTpTraverse(PyObject *self_base, visitproc visit, void *arg) {
     Py_VISIT(Py_TYPE(self_base));
-    auto * const instance = reinterpret_cast<py::detail::instance *>(self_base);
-    if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
+    if (!::is_holder_constructed(self_base)) [[unlikely]] {
         // The holder has not been constructed yet. Skip the traversal to avoid segmentation faults.
         return 0;
     }
@@ -38,8 +48,7 @@ namespace optree {
 }
 
 /*static*/ int PyTreeSpec::PyTpClear(PyObject *self_base) {
-    auto * const instance = reinterpret_cast<py::detail::instance *>(self_base);
-    if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
+    if (!::is_holder_constructed(self_base)) [[unlikely]] {
         // The holder has not been constructed yet. Skip the traversal to avoid segmentation faults.
         return 0;
     }
@@ -56,8 +65,7 @@ namespace optree {
 
 /*static*/ int PyTreeIter::PyTpTraverse(PyObject *self_base, visitproc visit, void *arg) {
     Py_VISIT(Py_TYPE(self_base));
-    auto * const instance = reinterpret_cast<py::detail::instance *>(self_base);
-    if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
+    if (!::is_holder_constructed(self_base)) [[unlikely]] {
         // The holder has not been constructed yet. Skip the traversal to avoid segmentation faults.
         return 0;
     }
@@ -70,8 +78,7 @@ namespace optree {
 }
 
 /*static*/ int PyTreeIter::PyTpClear(PyObject *self_base) {
-    auto * const instance = reinterpret_cast<py::detail::instance *>(self_base);
-    if (!instance->get_value_and_holder().holder_constructed()) [[unlikely]] {
+    if (!::is_holder_constructed(self_base)) [[unlikely]] {
         // The holder has not been constructed yet. Skip the traversal to avoid segmentation faults.
         return 0;
     }
