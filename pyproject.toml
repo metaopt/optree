@@ -71,7 +71,6 @@ test = [
     "pytest",
     "pytest-cov",
     "covdefaults",
-    "xdoctest",
     "rich",
     # Pin to minimum for compatibility test
     "typing-extensions == 4.6.0; python_version < '3.13' and platform_system == 'Linux'",
