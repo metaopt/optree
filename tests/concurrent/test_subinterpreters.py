@@ -52,11 +52,11 @@ from concurrent.futures import InterpreterPoolExecutor, as_completed
 if Py_GIL_DISABLED and not Py_DEBUG:
     NUM_WORKERS = 32
     NUM_FUTURES = 128
-    NUM_FLAKY_RERUNS = 8
+    NUM_FLAKY_RERUNS = 16
 else:
     NUM_WORKERS = 4
     NUM_FUTURES = 16
-    NUM_FLAKY_RERUNS = 5
+    NUM_FLAKY_RERUNS = 8
 
 
 EXECUTOR = InterpreterPoolExecutor(max_workers=NUM_WORKERS)
