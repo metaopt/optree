@@ -29,6 +29,7 @@ limitations under the License.
 #include <pybind11/pybind11.h>
 
 #include "optree/hashing.h"
+#include "optree/pymacros.h"
 #include "optree/synchronization.h"
 
 namespace optree {
@@ -153,15 +154,16 @@ private:
         std::unordered_map<std::pair<std::string, py::handle>, RegistrationPtr>;
     using BuiltinsTypesSet = std::unordered_set<py::handle>;
 
-    template <bool FirstTime = false>
-    [[nodiscard]] inline std::tuple<RegistrationsMap *, NamedRegistrationsMap *, BuiltinsTypesSet *>
-    GetRegistrationsForInterpreterLocked() const;
+    // Get the registrations for the current Python interpreter.
+    [[nodiscard]] inline Py_ALWAYS_INLINE std::
+        tuple<RegistrationsMap &, NamedRegistrationsMap &, BuiltinsTypesSet &>
+        GetRegistrationsForCurrentPyInterpreterLocked() const;
 
     bool m_none_is_leaf = false;
-    std::unordered_map<ssize_t, RegistrationsMap> m_registrations{};
-    std::unordered_map<ssize_t, NamedRegistrationsMap> m_named_registrations{};
+    std::unordered_map<interpid_t, RegistrationsMap> m_registrations{};
+    std::unordered_map<interpid_t, NamedRegistrationsMap> m_named_registrations{};
 
-    static inline std::unordered_map<ssize_t, BuiltinsTypesSet> sm_builtins_types{};
+    static inline std::unordered_map<interpid_t, BuiltinsTypesSet> sm_builtins_types{};
     static inline read_write_mutex sm_mutex{};
     static inline ssize_t sm_num_interpreters_alive = 0;
     static inline ssize_t sm_num_interpreters_seen = 0;

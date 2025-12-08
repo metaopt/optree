@@ -101,6 +101,8 @@ Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
 // NOLINTNEXTLINE[bugprone-macro-parentheses]
 #define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))
 
+using interpid_t = std::int64_t;
+
 #if !defined(PYPY_VERSION) &&                                                                      \
     (defined(PY_VERSION_HEX) && PY_VERSION_HEX >= 0x030E0000 /* Python 3.14 */) &&                 \
     (defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                               \
@@ -108,23 +110,26 @@ Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
 
 #    define OPTREE_HAS_SUBINTERPRETER_SUPPORT 1
 
-[[nodiscard]] inline std::int64_t GetPyInterpreterID() {
+[[nodiscard]] inline interpid_t GetPyInterpreterID() {
     PyInterpreterState *interp = PyInterpreterState_Get();
+    if (PyErr_Occurred() != nullptr) [[unlikely]] {
+        throw py::error_already_set();
+    }
     if (interp == nullptr) [[unlikely]] {
         throw std::runtime_error("Failed to get the current Python interpreter state.");
     }
-    const std::int64_t id = PyInterpreterState_GetID(interp);
-    if (id < 0) [[unlikely]] {
-        throw std::runtime_error("Failed to get the current Python interpreter ID (invalid ID).");
+    const interpid_t interpid = PyInterpreterState_GetID(interp);
+    if (PyErr_Occurred() != nullptr) [[unlikely]] {
+        throw py::error_already_set();
     }
-    return id;
+    return interpid;
 }
 
 #else
 
 #    undef OPTREE_HAS_SUBINTERPRETER_SUPPORT
 
-[[nodiscard]] inline constexpr std::int64_t GetPyInterpreterID() noexcept {
+[[nodiscard]] inline constexpr interpid_t GetPyInterpreterID() noexcept {
     // Fallback for Python versions < 3.14 or when subinterpreter support is not available.
     return 0;
 }

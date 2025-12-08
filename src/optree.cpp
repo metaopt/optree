@@ -157,14 +157,14 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
              py::arg("namespace") = "")
         .def(
             "get_num_interpreters_seen",
-            []() -> size_t {
+            []() -> ssize_t {
                 const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
                 return PyTreeTypeRegistry::sm_num_interpreters_seen;
             },
             "Get the number of interpreters that have seen the registry.")
         .def(
             "get_num_interpreters_alive",
-            []() -> size_t {
+            []() -> ssize_t {
                 const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
                 EXPECT_EQ(py::ssize_t_cast(PyTreeTypeRegistry::sm_builtins_types.size()),
                           PyTreeTypeRegistry::sm_num_interpreters_alive,
@@ -175,17 +175,17 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             "Get the number of alive interpreters that have seen the registry.")
         .def(
             "get_alive_interpreter_ids",
-            []() -> std::unordered_set<ssize_t> {
+            []() -> std::unordered_set<interpid_t> {
                 const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
                 EXPECT_EQ(py::ssize_t_cast(PyTreeTypeRegistry::sm_builtins_types.size()),
                           PyTreeTypeRegistry::sm_num_interpreters_alive,
                           "The number of alive interpreters should match the size of the "
                           "interpreter-scoped registered types map.");
-                std::unordered_set<ssize_t> ids;
-                for (const auto &[id, _] : PyTreeTypeRegistry::sm_builtins_types) {
-                    ids.insert(id);
+                std::unordered_set<interpid_t> interpids;
+                for (const auto &[interpid, _] : PyTreeTypeRegistry::sm_builtins_types) {
+                    interpids.insert(interpid);
                 }
-                return ids;
+                return interpids;
             },
             "Get the IDs of alive interpreters that have seen the registry.")
         .def("get_current_interpreter_id",
@@ -207,7 +207,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             py::arg("namespace") = std::nullopt)
         .def("flatten",
              &PyTreeSpec::Flatten,
-             "Flattens a pytree.",
+             "Flatten a pytree.",
              py::arg("tree"),
              py::pos_only(),
              py::arg("leaf_predicate") = std::nullopt,
