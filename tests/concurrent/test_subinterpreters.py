@@ -17,6 +17,7 @@ import atexit
 import contextlib
 import random
 import sys
+import textwrap
 
 import pytest
 
@@ -28,6 +29,7 @@ from helpers import (
     WASM,
     Py_DEBUG,
     Py_GIL_DISABLED,
+    check_script_in_subprocess,
 )
 
 
@@ -50,9 +52,11 @@ from concurrent.futures import InterpreterPoolExecutor, as_completed
 if Py_GIL_DISABLED and not Py_DEBUG:
     NUM_WORKERS = 32
     NUM_FUTURES = 128
+    NUM_FLAKY_RERUNS = 8
 else:
     NUM_WORKERS = 4
     NUM_FUTURES = 16
+    NUM_FLAKY_RERUNS = 5
 
 
 EXECUTOR = InterpreterPoolExecutor(max_workers=NUM_WORKERS)
@@ -157,3 +161,70 @@ def test_import():
         random.shuffle(subinterpreters)
         for subinterpreter in subinterpreters:
             assert subinterpreter.call(check_module_importable) == expected
+
+
+def test_import_in_subinterpreter_after_main():
+    check_script_in_subprocess(
+        textwrap.dedent(
+            """
+            import contextlib
+            import gc
+            from concurrent import interpreters
+
+            import optree
+
+            subinterpreter = None
+            with contextlib.closing(interpreters.create()) as subinterpreter:
+                subinterpreter.exec('import optree')
+
+            del optree, subinterpreter
+            for _ in range(10):
+                gc.collect()
+            """,
+        ).strip(),
+        rerun=NUM_FLAKY_RERUNS,
+    )
+
+
+def test_import_in_subinterpreter_before_main():
+    check_script_in_subprocess(
+        textwrap.dedent(
+            """
+            import contextlib
+            import gc
+            from concurrent import interpreters
+
+            subinterpreter = None
+            with contextlib.closing(interpreters.create()) as subinterpreter:
+                subinterpreter.exec('import optree')
+
+            import optree
+            del optree, subinterpreter
+            for _ in range(10):
+                gc.collect()
+            """,
+        ).strip(),
+        rerun=NUM_FLAKY_RERUNS,
+    )
+
+
+def test_import_in_subinterpreters_concurrently():
+    check_script_in_subprocess(
+        textwrap.dedent(
+            f"""
+            from concurrent.futures import InterpreterPoolExecutor, as_completed
+
+            def check_import():
+                import optree
+
+                if optree._C.get_registry_size() != 8:
+                    raise RuntimeError('registry size mismatch')
+
+            with InterpreterPoolExecutor(max_workers={NUM_WORKERS}) as executor:
+                futures = [executor.submit(check_import) for _ in range({NUM_FUTURES})]
+                for future in as_completed(futures):
+                    future.result()
+            """,
+        ).strip(),
+        rerun=NUM_FLAKY_RERUNS,
+    )
