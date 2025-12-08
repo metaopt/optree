@@ -351,7 +351,7 @@ jobs:
 
           CORE_DUMP_FILES="$(
             find . -type d -path "./venv" -prune \
-              -o -iname "core.*.[1-9]*" -o -iname "core_*.dmp" -print
+              -o '(' -iname "core.*.[1-9]*" -o -iname "core_*.dmp" ')' -print
           )"
           if [[ -n "${CORE_DUMP_FILES}" ]]; then
             echo "::error::Coredump files found, indicating a crash during tests." >&2
@@ -376,7 +376,7 @@ jobs:
         run: |
           CORE_DUMP_FILES="$(
             find . -type d -path "./venv" -prune \
-              -o -iname "core.*.[1-9]*" -o -iname "core_*.dmp" -print
+              -o '(' -iname "core.*.[1-9]*" -o -iname "core_*.dmp" ')' -print
           )"
           if [[ -n "${CORE_DUMP_FILES}" ]]; then
             echo "Found core dumps:"
