@@ -348,10 +348,15 @@ jobs:
             "--junit-xml=junit-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml"
           )
           make test PYTESTOPTS="${PYTESTOPTS[*]}"
-          if [[ -n "$(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp")" ]]; then
+
+          CORE_DUMP_FILES="$(
+            find . -type d -path "./venv" -prune \
+              -o -iname "core.*.[1-9]*" -o -iname "core_*.dmp" -print
+          )"
+          if [[ -n "${CORE_DUMP_FILES}" ]]; then
             echo "::error::Coredump files found, indicating a crash during tests." >&2
             echo "Coredump files:" >&2
-            ls -alh $(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp") >&2
+            ls -alh ${CORE_DUMP_FILES} >&2
             exit 1
           fi
 
@@ -369,9 +374,13 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         run: |
-          if [[ -n "$(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp")" ]]; then
+          CORE_DUMP_FILES="$(
+            find . -type d -path "./venv" -prune \
+              -o -iname "core.*.[1-9]*" -o -iname "core_*.dmp" -print
+          )"
+          if [[ -n "${CORE_DUMP_FILES}" ]]; then
             echo "Found core dumps:"
-            ls -alh $(find . -iname "core.*.[1-9]*" -o -iname "core_*.dmp")
+            ls -alh ${CORE_DUMP_FILES}
             BACKTRACE_COMMAND=""
             if [[ "${{ runner.os }}" == 'Linux' ]]; then
               echo "::group::Install GDB"
@@ -392,18 +401,23 @@ jobs:
             fi
             if [[ -n "${BACKTRACE_COMMAND}" ]]; then
               echo "Collecting backtraces:"
-              find . -iname "core.*.[1-9]*" -exec bash -xc "
-                echo '::group::backtrace from: {}';
-                ${BACKTRACE_COMMAND};
-                echo '::endgroup::';
-              " ';'
-              find . -iname "core_*.dmp" -exec bash -xc "
-                echo '::group::backtrace from: {}';
-                ${BACKTRACE_COMMAND};
-                echo '::endgroup::';
-              " ';'
+              find . -type d -path "./venv" -prune \
+                -o -iname "core.*.[1-9]*" \
+                -exec bash -xc "
+                  echo '::group::backtrace from: {}';
+                  ${BACKTRACE_COMMAND};
+                  echo '::endgroup::';
+                " ';'
+              find . -type d -path "./venv" -prune \
+                -o -iname "core_*.dmp" \
+                -exec bash -xc "
+                  echo '::group::backtrace from: {}';
+                  ${BACKTRACE_COMMAND};
+                  echo '::endgroup::';
+                " ';'
             fi
             echo "::warning::Coredump files found, see backtraces above for details." >&2
+            exit 1
           fi
 
       - name: Upload coverage to Codecov

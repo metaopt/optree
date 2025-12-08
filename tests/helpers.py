@@ -32,25 +32,31 @@ from typing import Any, NamedTuple
 import pytest
 
 import optree
-import optree._C
+from optree._C import (
+    PYBIND11_HAS_NATIVE_ENUM,
+    PYBIND11_HAS_SUBINTERPRETER_SUPPORT,
+    Py_DEBUG,
+    Py_GIL_DISABLED,
+)
 from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
 
 
 TEST_ROOT = Path(__file__).absolute().parent
 
 
+_ = PYBIND11_HAS_NATIVE_ENUM
+_ = PYBIND11_HAS_SUBINTERPRETER_SUPPORT
+
 if sysconfig.get_config_var('Py_DEBUG') is None:
-    Py_DEBUG = hasattr(sys, 'gettotalrefcount')
+    assert Py_DEBUG == hasattr(sys, 'gettotalrefcount')
 else:
-    Py_DEBUG = bool(int(sysconfig.get_config_var('Py_DEBUG') or '0'))
-assert Py_DEBUG == optree._C.Py_DEBUG
+    assert Py_DEBUG == bool(int(sysconfig.get_config_var('Py_DEBUG') or '0'))
 skipif_pydebug = pytest.mark.skipif(
     Py_DEBUG,
     reason='Py_DEBUG is enabled which causes too much overhead',
 )
 
-Py_GIL_DISABLED = bool(int(sysconfig.get_config_var('Py_GIL_DISABLED') or '0'))
-assert Py_GIL_DISABLED == optree._C.Py_GIL_DISABLED
+assert Py_GIL_DISABLED == bool(int(sysconfig.get_config_var('Py_GIL_DISABLED') or '0'))
 skipif_freethreading = pytest.mark.skipif(
     Py_GIL_DISABLED,
     reason='Py_GIL_DISABLED is set',
