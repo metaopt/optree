@@ -168,8 +168,11 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
              &PyTreeTypeRegistry::GetAliveInterpreterIDs,
              "Get the IDs of alive interpreters that have seen the registry.")
         .def("get_current_interpreter_id",
-             &GetPyInterpreterID,
+             &GetCurrentPyInterpreterID,
              "Get the ID of the current interpreter.")
+        .def("get_main_interpreter_id",
+             &GetMainPyInterpreterID,
+             "Get the ID of the main interpreter.")
         .def("flatten",
              &PyTreeSpec::Flatten,
              "Flatten a pytree.",

@@ -126,7 +126,7 @@ using interpid_t = std::int64_t;
 
 #if defined(OPTREE_HAS_SUBINTERPRETER_SUPPORT)
 
-[[nodiscard]] inline interpid_t GetPyInterpreterID() {
+[[nodiscard]] inline interpid_t GetCurrentPyInterpreterID() {
     PyInterpreterState *interp = PyInterpreterState_Get();
     if (PyErr_Occurred() != nullptr) [[unlikely]] {
         throw py::error_already_set();
@@ -141,9 +141,29 @@ using interpid_t = std::int64_t;
     return interpid;
 }
 
+[[nodiscard]] inline interpid_t GetMainPyInterpreterID() {
+    PyInterpreterState *interp = PyInterpreterState_Main();
+    if (PyErr_Occurred() != nullptr) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    if (interp == nullptr) [[unlikely]] {
+        throw std::runtime_error("Failed to get the main Python interpreter state.");
+    }
+    const interpid_t interpid = PyInterpreterState_GetID(interp);
+    if (PyErr_Occurred() != nullptr) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    return interpid;
+}
+
 #else
 
-[[nodiscard]] inline constexpr interpid_t GetPyInterpreterID() noexcept {
+[[nodiscard]] inline constexpr interpid_t GetCurrentPyInterpreterID() noexcept {
+    // Fallback for Python versions < 3.14 or when subinterpreter support is not available.
+    return 0;
+}
+
+[[nodiscard]] inline constexpr interpid_t GetMainPyInterpreterID() noexcept {
     // Fallback for Python versions < 3.14 or when subinterpreter support is not available.
     return 0;
 }

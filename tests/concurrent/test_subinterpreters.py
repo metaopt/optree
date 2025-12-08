@@ -104,16 +104,43 @@ def check_module_importable():
         'g': collections.defaultdict(list, h=collections.deque([7, 8, 9], maxlen=10)),
     }
 
-    flat, spec = optree._C.flatten(tree)
-    reconstructed = spec.unflatten(flat)
-    if reconstructed != tree:
+    leaves1, treespec1 = optree.tree_flatten(tree, none_is_leaf=False)
+    reconstructed1 = optree.tree_unflatten(treespec1, leaves1)
+    if reconstructed1 != tree:
         raise RuntimeError('unflatten/flatten mismatch')
-    if spec.num_leaves != 9:
-        raise RuntimeError(f'num_leaves mismatch: ({flat}, {spec})')
-    if flat != [1, 2, 3, 4, 5, 6, 7, 8, 9]:
-        raise RuntimeError(f'flattened leaves mismatch: ({flat}, {spec})')
+    if treespec1.num_leaves != len(leaves1):
+        raise RuntimeError(f'num_leaves mismatch: ({leaves1}, {treespec1})')
+    if leaves1 != [1, 2, 3, 4, 5, 6, 7, 8, 9]:
+        raise RuntimeError(f'flattened leaves mismatch: ({leaves1}, {treespec1})')
+
+    leaves2, treespec2 = optree.tree_flatten(tree, none_is_leaf=True)
+    reconstructed2 = optree.tree_unflatten(treespec2, leaves2)
+    if reconstructed2 != tree:
+        raise RuntimeError('unflatten/flatten mismatch')
+    if treespec2.num_leaves != len(leaves2):
+        raise RuntimeError(f'num_leaves mismatch: ({leaves2}, {treespec2})')
+    if leaves2 != [
+        1,
+        2,
+        3,
+        4,
+        None,
+        5,
+        6,
+        *([None] * (time.struct_time.n_sequence_fields - 1)),
+        7,
+        8,
+        9,
+    ]:
+        raise RuntimeError(f'flattened leaves mismatch: ({leaves2}, {treespec2})')
+
+    _ = optree.tree_flatten_with_path(tree, none_is_leaf=False)
+    _ = optree.tree_flatten_with_path(tree, none_is_leaf=True)
+    # _ = optree.tree_flatten_with_accessor(tree, none_is_leaf=False)
+    # _ = optree.tree_flatten_with_accessor(tree, none_is_leaf=True)
 
     return (
+        optree._C.get_main_interpreter_id(),
         id(type(None)),
         id(tuple),
         id(list),
@@ -126,6 +153,7 @@ def test_import():
     import collections
 
     expected = (
+        0,
         id(type(None)),
         id(tuple),
         id(list),

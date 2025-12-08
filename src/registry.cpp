@@ -48,7 +48,7 @@ std::tuple<PyTreeTypeRegistry::RegistrationsMap &,
            PyTreeTypeRegistry::NamedRegistrationsMap &,
            PyTreeTypeRegistry::BuiltinsTypesSet &>
 PyTreeTypeRegistry::GetRegistrationsForCurrentPyInterpreterLocked() const {
-    const auto interpid = GetPyInterpreterID();
+    const auto interpid = GetCurrentPyInterpreterID();
 
     EXPECT_NE(m_registrations.find(interpid),
               m_registrations.end(),
@@ -71,7 +71,7 @@ PyTreeTypeRegistry::GetRegistrationsForCurrentPyInterpreterLocked() const {
 void PyTreeTypeRegistry::Init() {
     const scoped_write_lock lock{sm_mutex};
 
-    const auto interpid = GetPyInterpreterID();
+    const auto interpid = GetCurrentPyInterpreterID();
 
     EXPECT_EQ(m_registrations.find(interpid),
               m_registrations.end(),
@@ -377,7 +377,7 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 /*static*/ void PyTreeTypeRegistry::Clear() {
     const scoped_write_lock lock{sm_mutex};
 
-    const auto interpid = GetPyInterpreterID();
+    const auto interpid = GetCurrentPyInterpreterID();
 
     auto &registry1 = GetSingleton<NONE_IS_NODE>();
     auto &registry2 = GetSingleton<NONE_IS_LEAF>();

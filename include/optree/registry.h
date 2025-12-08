@@ -106,7 +106,7 @@ public:
     [[nodiscard]] ssize_t Size(
         const std::optional<std::string> &registry_namespace = std::nullopt) const;
 
-    // Register a new custom type. Objects of `cls` will be treated as container node types in
+    // Register a new custom type. Objects of type `cls` will be treated as container node types in
     // PyTrees.
     static void Register(const py::object &cls,
                          const py::function &flatten_func,
@@ -117,7 +117,7 @@ public:
     // Unregister a previously registered custom type.
     static void Unregister(const py::object &cls, const std::string &registry_namespace = "");
 
-    // Find the custom type registration for `type`. Returns nullptr if none exists.
+    // Find the custom type registration for `type`. Return nullptr if none exists.
     template <bool NoneIsLeaf>
     [[nodiscard]] static RegistrationPtr Lookup(const py::object &cls,
                                                 const std::string &registry_namespace);
@@ -187,10 +187,10 @@ private:
     [[nodiscard]] static RegistrationPtr UnregisterImpl(const py::object &cls,
                                                         const std::string &registry_namespace);
 
-    // Initialize the registry for a given interpreter.
+    // Initialize the registry for the current interpreter.
     void Init();
 
-    // Clear the registry on cleanup.
+    // Clear the registry on cleanup for the current interpreter.
     static void Clear();
 
     using RegistrationsMap = std::unordered_map<py::handle, RegistrationPtr>;
