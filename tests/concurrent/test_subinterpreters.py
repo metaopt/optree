@@ -23,7 +23,7 @@ import pytest
 from helpers import (
     ANDROID,
     IOS,
-    PYBIND11_HAS_SUBINTERPRETER_SUPPORT,
+    OPTREE_HAS_SUBINTERPRETER_SUPPORT,
     PYPY,
     WASM,
     Py_DEBUG,
@@ -38,7 +38,7 @@ if (
     or ANDROID
     or sys.version_info < (3, 14)
     or not getattr(sys.implementation, 'supports_isolated_interpreters', False)
-    or not PYBIND11_HAS_SUBINTERPRETER_SUPPORT
+    or not OPTREE_HAS_SUBINTERPRETER_SUPPORT
 ):
     pytest.skip('Test for CPython 3.14+ only', allow_module_level=True)
 

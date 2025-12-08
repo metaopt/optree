@@ -33,8 +33,8 @@ import pytest
 
 import optree
 from optree._C import (
+    OPTREE_HAS_SUBINTERPRETER_SUPPORT,
     PYBIND11_HAS_NATIVE_ENUM,
-    PYBIND11_HAS_SUBINTERPRETER_SUPPORT,
     Py_DEBUG,
     Py_GIL_DISABLED,
     get_registry_size,
@@ -51,7 +51,7 @@ assert INITIAL_REGISTRY_SIZE == 8
 assert INITIAL_REGISTRY_SIZE + 2 == len(NODETYPE_REGISTRY)
 
 _ = PYBIND11_HAS_NATIVE_ENUM
-_ = PYBIND11_HAS_SUBINTERPRETER_SUPPORT
+_ = OPTREE_HAS_SUBINTERPRETER_SUPPORT
 
 if sysconfig.get_config_var('Py_DEBUG') is None:
     assert Py_DEBUG == hasattr(sys, 'gettotalrefcount')

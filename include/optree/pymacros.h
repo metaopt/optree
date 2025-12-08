@@ -86,6 +86,9 @@ Py_Declare_ID(__qualname__);       // type.__qualname__
 Py_Declare_ID(__name__);           // type.__name__
 Py_Declare_ID(sort);               // list.sort
 Py_Declare_ID(copy);               // dict.copy
+Py_Declare_ID(OrderedDict);        // OrderedDict
+Py_Declare_ID(defaultdict);        // defaultdict
+Py_Declare_ID(deque);              // deque
 Py_Declare_ID(default_factory);    // defaultdict.default_factory
 Py_Declare_ID(maxlen);             // deque.maxlen
 Py_Declare_ID(_fields);            // namedtuple._fields
@@ -103,6 +106,8 @@ Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
     (defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                               \
      NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT))
 
+#    define OPTREE_HAS_SUBINTERPRETER_SUPPORT 1
+
 [[nodiscard]] inline std::int64_t GetPyInterpreterID() {
     PyInterpreterState *interp = PyInterpreterState_Get();
     if (interp == nullptr) [[unlikely]] {
@@ -116,6 +121,8 @@ Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
 }
 
 #else
+
+#    undef OPTREE_HAS_SUBINTERPRETER_SUPPORT
 
 [[nodiscard]] inline constexpr std::int64_t GetPyInterpreterID() noexcept {
     // Fallback for Python versions < 3.14 or when subinterpreter support is not available.

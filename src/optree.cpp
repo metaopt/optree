@@ -96,6 +96,11 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 #else
     BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] = py::bool_(false);
 #endif
+#if defined(OPTREE_HAS_SUBINTERPRETER_SUPPORT)
+    BUILDTIME_METADATA["OPTREE_HAS_SUBINTERPRETER_SUPPORT"] = py::bool_(true);
+#else
+    BUILDTIME_METADATA["OPTREE_HAS_SUBINTERPRETER_SUPPORT"] = py::bool_(false);
+#endif
 
     mod.attr("BUILDTIME_METADATA") = std::move(BUILDTIME_METADATA);
     py::exec(
@@ -583,8 +588,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 
 // NOLINTBEGIN[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
 #if PYBIND11_VERSION_HEX >= 0x020D00F0  // pybind11 2.13.0
-#    if defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                            \
-        NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT)
+#    if defined(OPTREE_HAS_SUBINTERPRETER_SUPPORT)
 PYBIND11_MODULE(_C, mod, py::mod_gil_not_used(), py::multiple_interpreters::per_interpreter_gil())
 #    else
 PYBIND11_MODULE(_C, mod, py::mod_gil_not_used())
