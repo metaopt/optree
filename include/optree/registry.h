@@ -28,6 +28,7 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
+#include "optree/exceptions.h"
 #include "optree/hashing.h"
 #include "optree/pymacros.h"
 #include "optree/synchronization.h"
@@ -113,6 +114,7 @@ public:
                          const py::object &path_entry_type,
                          const std::string &registry_namespace = "");
 
+    // Unregister a previously registered custom type.
     static void Unregister(const py::object &cls, const std::string &registry_namespace = "");
 
     // Find the custom type registration for `type`. Returns nullptr if none exists.
@@ -125,6 +127,48 @@ public:
     [[nodiscard]] static PyTreeKind GetKind(const py::handle &handle,
                                             RegistrationPtr &custom,  // NOLINT[runtime/references]
                                             const std::string &registry_namespace);
+
+    // Get the number of registered types.
+    [[nodiscard]] static inline Py_ALWAYS_INLINE ssize_t GetRegistrySize(
+        const std::optional<std::string> &registry_namespace = std::nullopt) {
+        const ssize_t count = GetSingleton<NONE_IS_NODE>().Size(registry_namespace);
+        EXPECT_EQ(count,
+                  GetSingleton<NONE_IS_LEAF>().Size(registry_namespace) + 1,
+                  "The number of registered types in the two registries should match "
+                  "up to the extra None type in the NoneIsNode registry.");
+        return count;
+    }
+
+    // Get the number of alive interpreters that have seen the registry.
+    [[nodiscard]] static inline Py_ALWAYS_INLINE ssize_t GetNumInterpretersAlive() {
+        const scoped_read_lock lock{sm_mutex};
+        return sm_num_interpreters_seen;
+    }
+
+    // Get the number of interpreters that have seen the registry.
+    [[nodiscard]] static inline Py_ALWAYS_INLINE ssize_t GetNumInterpretersSeen() {
+        const scoped_read_lock lock{sm_mutex};
+        EXPECT_EQ(py::ssize_t_cast(sm_builtins_types.size()),
+                  sm_num_interpreters_alive,
+                  "The number of alive interpreters should match the size of the "
+                  "interpreter-scoped registered types map.");
+        return sm_num_interpreters_alive;
+    }
+
+    // Get the IDs of alive interpreters that have seen the registry.
+    [[nodiscard]] static inline Py_ALWAYS_INLINE std::unordered_set<interpid_t>
+    GetAliveInterpreterIDs() {
+        const scoped_read_lock lock{sm_mutex};
+        EXPECT_EQ(py::ssize_t_cast(sm_builtins_types.size()),
+                  sm_num_interpreters_alive,
+                  "The number of alive interpreters should match the size of the "
+                  "interpreter-scoped registered types map.");
+        std::unordered_set<interpid_t> interpids;
+        for (const auto &[interpid, _] : sm_builtins_types) {
+            interpids.insert(interpid);
+        }
+        return interpids;
+    }
 
     friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
 

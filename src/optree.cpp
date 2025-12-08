@@ -17,12 +17,11 @@ limitations under the License.
 
 #include "optree/optree.h"
 
-#include <functional>     // std::{not_,}equal_to, std::less{,_equal}, std::greater{,_equal}
-#include <memory>         // std::unique_ptr
-#include <optional>       // std::optional, std::nullopt
-#include <string>         // std::string
-#include <unordered_set>  // std::unordered_set
-#include <utility>        // std::move
+#include <functional>  // std::{not_,}equal_to, std::less{,_equal}, std::greater{,_equal}
+#include <memory>      // std::unique_ptr
+#include <optional>    // std::optional, std::nullopt
+#include <string>      // std::string
+#include <utility>     // std::move
 
 #include <pybind11/eval.h>
 #include <pybind11/pybind11.h>
@@ -155,56 +154,22 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
              py::arg("mode"),
              py::pos_only(),
              py::arg("namespace") = "")
-        .def(
-            "get_num_interpreters_seen",
-            []() -> ssize_t {
-                const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
-                return PyTreeTypeRegistry::sm_num_interpreters_seen;
-            },
-            "Get the number of interpreters that have seen the registry.")
-        .def(
-            "get_num_interpreters_alive",
-            []() -> ssize_t {
-                const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
-                EXPECT_EQ(py::ssize_t_cast(PyTreeTypeRegistry::sm_builtins_types.size()),
-                          PyTreeTypeRegistry::sm_num_interpreters_alive,
-                          "The number of alive interpreters should match the size of the "
-                          "interpreter-scoped registered types map.");
-                return PyTreeTypeRegistry::sm_num_interpreters_alive;
-            },
-            "Get the number of alive interpreters that have seen the registry.")
-        .def(
-            "get_alive_interpreter_ids",
-            []() -> std::unordered_set<interpid_t> {
-                const scoped_read_lock lock{PyTreeTypeRegistry::sm_mutex};
-                EXPECT_EQ(py::ssize_t_cast(PyTreeTypeRegistry::sm_builtins_types.size()),
-                          PyTreeTypeRegistry::sm_num_interpreters_alive,
-                          "The number of alive interpreters should match the size of the "
-                          "interpreter-scoped registered types map.");
-                std::unordered_set<interpid_t> interpids;
-                for (const auto &[interpid, _] : PyTreeTypeRegistry::sm_builtins_types) {
-                    interpids.insert(interpid);
-                }
-                return interpids;
-            },
-            "Get the IDs of alive interpreters that have seen the registry.")
+        .def("get_registry_size",
+             &PyTreeTypeRegistry::GetRegistrySize,
+             "Get the number of registered types.",
+             py::arg("namespace") = std::nullopt)
+        .def("get_num_interpreters_seen",
+             &PyTreeTypeRegistry::GetNumInterpretersSeen,
+             "Get the number of interpreters that have seen the registry.")
+        .def("get_num_interpreters_alive",
+             &PyTreeTypeRegistry::GetNumInterpretersAlive,
+             "Get the number of alive interpreters that have seen the registry.")
+        .def("get_alive_interpreter_ids",
+             &PyTreeTypeRegistry::GetAliveInterpreterIDs,
+             "Get the IDs of alive interpreters that have seen the registry.")
         .def("get_current_interpreter_id",
              &GetPyInterpreterID,
              "Get the ID of the current interpreter.")
-        .def(
-            "get_registry_size",
-            [](const std::optional<std::string> &registry_namespace) {
-                const ssize_t count =
-                    PyTreeTypeRegistry::GetSingleton<NONE_IS_NODE>().Size(registry_namespace);
-                EXPECT_EQ(
-                    count,
-                    PyTreeTypeRegistry::GetSingleton<NONE_IS_LEAF>().Size(registry_namespace) + 1,
-                    "The number of registered types in the two registries should match "
-                    "up to the extra None type in the NoneIsNode registry.");
-                return count;
-            },
-            "Get the number of registered types.",
-            py::arg("namespace") = std::nullopt)
         .def("flatten",
              &PyTreeSpec::Flatten,
              "Flatten a pytree.",

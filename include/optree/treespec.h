@@ -288,7 +288,7 @@ public:
 
 private:
     using RegistrationPtr = PyTreeTypeRegistry::RegistrationPtr;
-    using ThreadedIdentity = std::pair<const optree::PyTreeSpec *, std::thread::id>;
+    using ThreadedIdentity = std::pair<const PyTreeSpec *, std::thread::id>;
 
     struct Node {
         PyTreeKind kind = PyTreeKind::Leaf;
