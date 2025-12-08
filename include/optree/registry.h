@@ -129,7 +129,7 @@ public:
 
 private:
     template <bool NoneIsLeaf>
-    [[nodiscard]] static PyTreeTypeRegistry *Singleton();
+    [[nodiscard]] static PyTreeTypeRegistry &GetSingleton();
 
     template <bool NoneIsLeaf>
     static void RegisterImpl(const py::object &cls,
@@ -153,7 +153,7 @@ private:
         std::unordered_map<std::pair<std::string, py::handle>, RegistrationPtr>;
     using BuiltinsTypesSet = std::unordered_set<py::handle>;
 
-    template <bool FirstTime>
+    template <bool FirstTime = false>
     [[nodiscard]] inline std::tuple<RegistrationsMap *, NamedRegistrationsMap *, BuiltinsTypesSet *>
     GetRegistrationsForInterpreterLocked() const;
 

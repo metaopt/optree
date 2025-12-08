@@ -190,10 +190,10 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             "get_registry_size",
             [](const std::optional<std::string> &registry_namespace) {
                 const ssize_t count =
-                    PyTreeTypeRegistry::Singleton<NONE_IS_NODE>()->Size(registry_namespace);
+                    PyTreeTypeRegistry::GetSingleton<NONE_IS_NODE>().Size(registry_namespace);
                 EXPECT_EQ(
                     count,
-                    PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>()->Size(registry_namespace) + 1,
+                    PyTreeTypeRegistry::GetSingleton<NONE_IS_LEAF>().Size(registry_namespace) + 1,
                     "The number of registered types in the two registries should match "
                     "up to the extra None type in the NoneIsNode registry.");
                 return count;
@@ -573,8 +573,8 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
         ++PyTreeTypeRegistry::sm_num_interpreters_alive;
         ++PyTreeTypeRegistry::sm_num_interpreters_seen;
     }
-    PyTreeTypeRegistry::Singleton<NONE_IS_NODE>()->Init();
-    PyTreeTypeRegistry::Singleton<NONE_IS_LEAF>()->Init();
+    PyTreeTypeRegistry::GetSingleton<NONE_IS_NODE>().Init();
+    PyTreeTypeRegistry::GetSingleton<NONE_IS_LEAF>().Init();
     py::getattr(py::module_::import("atexit"),
                 "register")(py::cpp_function(&PyTreeTypeRegistry::Clear));
 }
