@@ -162,6 +162,7 @@ def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, re
     env = {
         key: value for key, value in env.items() if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
     }
+    result = ''
     for _ in range(rerun):
         result = subprocess.check_output(
             [sys.executable, '-Walways', '-Werror', '-c', script],
@@ -173,6 +174,7 @@ def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, re
         )
         if output is not None:
             assert result == output
+    return result
 
 
 MISSING = object()

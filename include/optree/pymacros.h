@@ -34,6 +34,7 @@ limitations under the License.
 
 // NOLINTNEXTLINE[bugprone-macro-parentheses]
 #define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))
+
 #if !defined(PYPY_VERSION) &&                                                                      \
     (defined(PY_VERSION_HEX) && PY_VERSION_HEX >= 0x030E0000 /* Python 3.14 */) &&                 \
     (defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                               \
