@@ -43,6 +43,7 @@ from helpers import (
     MyAnotherDict,
     MyDict,
     Py_DEBUG,
+    check_script_in_subprocess,
     disable_systrace,
     gc_collect,
     parametrize,
@@ -70,11 +71,6 @@ def test_treespec_construct():
     with pytest.raises(TypeError, match=re.escape('No constructor defined!')):
         treespec.__init__()
 
-    env = {
-        key: value
-        for key, value in os.environ.items()
-        if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
-    }
     script = textwrap.dedent(
         r"""
         import signal
@@ -95,11 +91,7 @@ def test_treespec_construct():
     returncode = 0
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            subprocess.check_call(
-                [sys.executable, '-Walways', '-Werror', '-c', script],
-                cwd=tmpdir,
-                env=env,
-            )
+            check_script_in_subprocess(script, cwd=tmpdir, output=None)
     except subprocess.CalledProcessError as ex:
         returncode = abs(ex.returncode)
         if 128 < returncode < 256:

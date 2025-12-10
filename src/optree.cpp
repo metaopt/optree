@@ -52,9 +52,6 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
                 std::string(__FILE_RELPATH_FROM_PROJECT_ROOT__) + ")";
     mod.attr("Py_TPFLAGS_BASETYPE") = py::int_(Py_TPFLAGS_BASETYPE);
 
-    // NOLINTNEXTLINE[bugprone-macro-parentheses]
-#define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))
-
     // Meta information during build
     py::dict BUILDTIME_METADATA{};
     BUILDTIME_METADATA["PY_VERSION"] = py::str(PY_VERSION);
@@ -98,8 +95,6 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 #else
     BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] = py::bool_(false);
 #endif
-
-#undef NONZERO_OR_EMPTY
 
     mod.attr("BUILDTIME_METADATA") = std::move(BUILDTIME_METADATA);
     py::exec(
@@ -156,7 +151,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
              py::arg("namespace") = "")
         .def("flatten",
              &PyTreeSpec::Flatten,
-             "Flattens a pytree.",
+             "Flatten a pytree.",
              py::arg("tree"),
              py::pos_only(),
              py::arg("leaf_predicate") = std::nullopt,
@@ -528,10 +523,13 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 
 }  // namespace optree
 
+// NOLINTBEGIN[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
 #if PYBIND11_VERSION_HEX >= 0x020D00F0  // pybind11 2.13.0
-// NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
-PYBIND11_MODULE(_C, mod, py::mod_gil_not_used()) { optree::BuildModule(mod); }
+PYBIND11_MODULE(_C, mod, py::mod_gil_not_used())
 #else
-// NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
-PYBIND11_MODULE(_C, mod) { optree::BuildModule(mod); }
+PYBIND11_MODULE(_C, mod)
 #endif
+// NOLINTEND[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
+{
+    optree::BuildModule(mod);
+}

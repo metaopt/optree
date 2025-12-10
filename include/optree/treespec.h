@@ -288,7 +288,7 @@ public:
 
 private:
     using RegistrationPtr = PyTreeTypeRegistry::RegistrationPtr;
-    using ThreadedIdentity = std::pair<const optree::PyTreeSpec *, std::thread::id>;
+    using ThreadedIdentity = std::pair<const PyTreeSpec *, std::thread::id>;
 
     struct Node {
         PyTreeKind kind = PyTreeKind::Leaf;
@@ -333,16 +333,16 @@ private:
     // The registry namespace used to resolve the custom pytree node types.
     std::string m_namespace{};
 
-    // Helper that returns the string representation of a node kind.
+    // Return the string representation of a node kind.
     [[nodiscard]] static std::string NodeKindToString(const Node &node);
 
-    // Helper that manufactures an instance of a node given its children.
+    // Manufacture an instance of a node given its children.
     [[nodiscard]] static py::object MakeNode(
         const Node &node,
         const py::object children[],  // NOLINT[hicpp-avoid-c-arrays]
         const size_t &num_children);
 
-    // Helper that identifies the path entry class for a node.
+    // Identify the path entry class for a node.
     [[nodiscard]] static py::object GetPathEntryType(const Node &node);
 
     // Recursive helper used to implement Flatten().

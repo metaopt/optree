@@ -20,7 +20,9 @@ import dataclasses
 import functools
 import gc
 import itertools
+import os
 import platform
+import subprocess
 import sys
 import sysconfig
 import time
@@ -146,6 +148,27 @@ def disable_systrace(func):
             return func(*args, **kwargs)
 
     return wrapper
+
+
+def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, rerun=1):
+    if env is None:
+        env = os.environ
+    env = {
+        key: value for key, value in env.items() if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
+    }
+    result = ''
+    for _ in range(rerun):
+        result = subprocess.check_output(
+            [sys.executable, '-Walways', '-Werror', '-c', script],
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding='utf-8',
+            cwd=cwd,
+            env=env,
+        )
+        if output is not None:
+            assert result == output
+    return result
 
 
 MISSING = object()
