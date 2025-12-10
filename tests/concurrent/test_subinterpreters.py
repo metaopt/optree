@@ -192,9 +192,8 @@ def test_import():
 
 
 def test_import_in_subinterpreter_after_main():
-    check_script_in_subprocess(
-        textwrap.dedent(
-            """
+    script = textwrap.dedent(
+        """
             import contextlib
             import gc
             from concurrent import interpreters
@@ -209,15 +208,13 @@ def test_import_in_subinterpreter_after_main():
             for _ in range(10):
                 gc.collect()
             """,
-        ).strip(),
-        rerun=NUM_FLAKY_RERUNS,
-    )
+    ).strip()
+    check_script_in_subprocess(script, output='', rerun=NUM_FLAKY_RERUNS)
 
 
 def test_import_in_subinterpreter_before_main():
-    check_script_in_subprocess(
-        textwrap.dedent(
-            """
+    script = textwrap.dedent(
+        """
             import contextlib
             import gc
             from concurrent import interpreters
@@ -231,15 +228,13 @@ def test_import_in_subinterpreter_before_main():
             for _ in range(10):
                 gc.collect()
             """,
-        ).strip(),
-        rerun=NUM_FLAKY_RERUNS,
-    )
+    ).strip()
+    check_script_in_subprocess(script, output='', rerun=NUM_FLAKY_RERUNS)
 
 
 def test_import_in_subinterpreters_concurrently():
-    check_script_in_subprocess(
-        textwrap.dedent(
-            f"""
+    script = textwrap.dedent(
+        f"""
             from concurrent.futures import InterpreterPoolExecutor, as_completed
 
             def check_import():
@@ -253,6 +248,5 @@ def test_import_in_subinterpreters_concurrently():
                 for future in as_completed(futures):
                     future.result()
             """,
-        ).strip(),
-        rerun=NUM_FLAKY_RERUNS,
-    )
+    ).strip()
+    check_script_in_subprocess(script, output='', rerun=NUM_FLAKY_RERUNS)

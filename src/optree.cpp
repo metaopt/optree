@@ -564,7 +564,7 @@ PYBIND11_MODULE(_C, mod, py::mod_gil_not_used())
 #else
 PYBIND11_MODULE(_C, mod)
 #endif
+// NOLINTEND[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
 {
     optree::BuildModule(mod);
 }
-// NOLINTEND[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]

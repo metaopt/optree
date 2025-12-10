@@ -156,24 +156,23 @@ def disable_systrace(func):
     return wrapper
 
 
-def check_script_in_subprocess(script, /, *, rerun=1):
+def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, rerun=1):
+    if env is None:
+        env = os.environ
     env = {
-        key: value
-        for key, value in os.environ.items()
-        if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
+        key: value for key, value in env.items() if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
     }
     for _ in range(rerun):
-        assert (
-            subprocess.check_output(
-                [sys.executable, '-Walways', '-Werror', '-c', script],
-                stderr=subprocess.STDOUT,
-                text=True,
-                encoding='utf-8',
-                cwd=TEST_ROOT,
-                env=env,
-            )
-            == ''
+        result = subprocess.check_output(
+            [sys.executable, '-Walways', '-Werror', '-c', script],
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding='utf-8',
+            cwd=cwd,
+            env=env,
         )
+        if output is not None:
+            assert result == output
 
 
 MISSING = object()

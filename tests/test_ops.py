@@ -58,7 +58,7 @@ from helpers import (
 @skipif_android
 @skipif_ios
 def test_import_no_warnings():
-    check_script_in_subprocess('import optree')
+    check_script_in_subprocess('import optree', output='')
 
 
 def test_max_depth():
