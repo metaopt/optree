@@ -98,7 +98,7 @@ public:
 
     using RegistrationPtr = std::shared_ptr<const Registration>;
 
-    // Register a new custom type. Objects of `cls` will be treated as container node types in
+    // Register a new custom type. Objects of type `cls` will be treated as container node types in
     // PyTrees.
     static void Register(const py::object &cls,
                          const py::function &flatten_func,
@@ -106,9 +106,10 @@ public:
                          const py::object &path_entry_type,
                          const std::string &registry_namespace = "");
 
+    // Unregister a previously registered custom type.
     static void Unregister(const py::object &cls, const std::string &registry_namespace = "");
 
-    // Find the custom type registration for `type`. Returns nullptr if none exists.
+    // Find the custom type registration for `type`. Return nullptr if none exists.
     template <bool NoneIsLeaf>
     [[nodiscard]] static RegistrationPtr Lookup(const py::object &cls,
                                                 const std::string &registry_namespace);
@@ -136,13 +137,18 @@ private:
     [[nodiscard]] static RegistrationPtr UnregisterImpl(const py::object &cls,
                                                         const std::string &registry_namespace);
 
-    // Clear the registry on cleanup.
+    // Clear the registry on cleanup for the current interpreter.
     static void Clear();
 
-    std::unordered_map<py::handle, RegistrationPtr> m_registrations{};
-    std::unordered_map<std::pair<std::string, py::handle>, RegistrationPtr> m_named_registrations{};
+    using RegistrationsMap = std::unordered_map<py::handle, RegistrationPtr>;
+    using NamedRegistrationsMap =
+        std::unordered_map<std::pair<std::string, py::handle>, RegistrationPtr>;
+    using BuiltinsTypesSet = std::unordered_set<py::handle>;
 
-    static inline std::unordered_set<py::handle> sm_builtins_types{};
+    RegistrationsMap m_registrations{};
+    NamedRegistrationsMap m_named_registrations{};
+
+    static inline BuiltinsTypesSet sm_builtins_types{};
     static inline read_write_mutex sm_mutex{};
 };
 

@@ -29,6 +29,9 @@ limitations under the License.
 #    error "pybind11 2.12.0 or newer is required."
 #endif
 
+// NOLINTNEXTLINE[bugprone-macro-parentheses]
+#define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))
+
 namespace py = pybind11;
 
 #if !defined(Py_ALWAYS_INLINE)
@@ -83,6 +86,9 @@ Py_Declare_ID(__qualname__);       // type.__qualname__
 Py_Declare_ID(__name__);           // type.__name__
 Py_Declare_ID(sort);               // list.sort
 Py_Declare_ID(copy);               // dict.copy
+Py_Declare_ID(OrderedDict);        // OrderedDict
+Py_Declare_ID(defaultdict);        // defaultdict
+Py_Declare_ID(deque);              // deque
 Py_Declare_ID(default_factory);    // defaultdict.default_factory
 Py_Declare_ID(maxlen);             // deque.maxlen
 Py_Declare_ID(_fields);            // namedtuple._fields
@@ -91,6 +97,3 @@ Py_Declare_ID(_asdict);            // namedtuple._asdict
 Py_Declare_ID(n_fields);           // structseq.n_fields
 Py_Declare_ID(n_sequence_fields);  // structseq.n_sequence_fields
 Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
-
-// NOLINTNEXTLINE[bugprone-macro-parentheses]
-#define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))

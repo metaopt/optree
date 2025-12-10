@@ -1,6 +1,6 @@
 --requirement ../requirements.txt
 
-sphinx
+sphinx ~= 8.0
 sphinx-autoapi
 sphinx-autobuild
 sphinx-autodoc-typehints

@@ -19,11 +19,9 @@ import copy
 import functools
 import itertools
 import operator
-import os
 import pickle
 import platform
 import re
-import subprocess
 import sys
 from collections import OrderedDict, defaultdict, deque
 
@@ -34,7 +32,6 @@ from helpers import (
     GLOBAL_NAMESPACE,
     IS_LEAF_FUNCTIONS,
     LEAVES,
-    TEST_ROOT,
     TREE_ACCESSORS,
     TREE_PATHS,
     TREES,
@@ -45,6 +42,7 @@ from helpers import (
     Py_DEBUG,
     always,
     assert_equal_type_and_value,
+    check_script_in_subprocess,
     is_list,
     is_none,
     is_tuple,
@@ -60,22 +58,7 @@ from helpers import (
 @skipif_android
 @skipif_ios
 def test_import_no_warnings():
-    env = {
-        key: value
-        for key, value in os.environ.items()
-        if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
-    }
-    assert (
-        subprocess.check_output(
-            [sys.executable, '-Walways', '-Werror', '-c', 'import optree'],
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding='utf-8',
-            cwd=TEST_ROOT,
-            env=env,
-        )
-        == ''
-    )
+    check_script_in_subprocess('import optree', output='')
 
 
 def test_max_depth():

@@ -81,7 +81,7 @@ test = [
     "typing-extensions == 4.12.0; python_version >= '3.13' and platform_system == 'Windows'",
 ]
 docs = [
-    "sphinx",
+    "sphinx ~= 8.0",
     "sphinx-autoapi",
     "sphinx-autobuild",
     "sphinx-autodoc-typehints",
