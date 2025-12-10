@@ -27,6 +27,7 @@ import optree
 import optree._C
 from helpers import (
     GLOBAL_NAMESPACE,
+    NODETYPE_REGISTRY,
     PYPY,
     Py_GIL_DISABLED,
     disable_systrace,
@@ -1273,3 +1274,43 @@ def test_register_pytree_node_class_wrapping_behavior():
     assert hasattr(WrappingTestClass, 'tree_unflatten')
     assert callable(WrappingTestClass.tree_flatten)
     assert callable(WrappingTestClass.tree_unflatten)
+
+
+def test_registry_size():
+    initial_size = len(optree.register_pytree_node.get())
+    initial_total_size = len(NODETYPE_REGISTRY)
+    initial_registry_size = len(optree.register_pytree_node.get(namespace='mylist'))
+    assert optree._C.get_registry_size() + 2 == initial_total_size
+    assert optree._C.get_registry_size(namespace='') + 2 == initial_size
+    assert optree._C.get_registry_size(namespace='mylist') + 2 == initial_registry_size
+    assert optree._C.get_registry_size(namespace='undefined') + 2 == initial_size
+    assert len(optree.register_pytree_node.get(namespace='undefined')) == initial_size
+
+    @optree.register_pytree_node_class(namespace='mylist')
+    class MyList(UserList):
+        def __tree_flatten__(self):
+            return self.data, None, None
+
+        @classmethod
+        def __tree_unflatten__(cls, metadata, children):
+            return cls(children)
+
+    assert len(optree.register_pytree_node.get()) == initial_size
+    assert len(NODETYPE_REGISTRY) == initial_total_size + 1
+    assert len(optree.register_pytree_node.get(namespace='mylist')) == initial_registry_size + 1
+    assert optree._C.get_registry_size() + 2 == initial_total_size + 1
+    assert optree._C.get_registry_size(namespace='') + 2 == initial_size
+    assert optree._C.get_registry_size(namespace='mylist') + 2 == initial_registry_size + 1
+    assert optree._C.get_registry_size(namespace='undefined') + 2 == initial_size
+    assert len(optree.register_pytree_node.get(namespace='undefined')) == initial_size
+
+    optree.unregister_pytree_node(MyList, namespace='mylist')
+
+    assert len(optree.register_pytree_node.get()) == initial_size
+    assert len(NODETYPE_REGISTRY) == initial_total_size
+    assert len(optree.register_pytree_node.get(namespace='mylist')) == initial_registry_size
+    assert optree._C.get_registry_size() + 2 == initial_total_size
+    assert optree._C.get_registry_size(namespace='') + 2 == initial_size
+    assert optree._C.get_registry_size(namespace='mylist') + 2 == initial_registry_size
+    assert optree._C.get_registry_size(namespace='undefined') + 2 == initial_size
+    assert len(optree.register_pytree_node.get(namespace='undefined')) == initial_size

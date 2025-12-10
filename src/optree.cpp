@@ -95,6 +95,11 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 #else
     BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] = py::bool_(false);
 #endif
+#if defined(OPTREE_HAS_SUBINTERPRETER_SUPPORT)
+    BUILDTIME_METADATA["OPTREE_HAS_SUBINTERPRETER_SUPPORT"] = py::bool_(true);
+#else
+    BUILDTIME_METADATA["OPTREE_HAS_SUBINTERPRETER_SUPPORT"] = py::bool_(false);
+#endif
 
     mod.attr("BUILDTIME_METADATA") = std::move(BUILDTIME_METADATA);
     py::exec(
@@ -149,6 +154,25 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
              py::arg("mode"),
              py::pos_only(),
              py::arg("namespace") = "")
+        .def("get_registry_size",
+             &PyTreeTypeRegistry::GetRegistrySize,
+             "Get the number of registered types.",
+             py::arg("namespace") = std::nullopt)
+        .def("get_num_interpreters_seen",
+             &PyTreeTypeRegistry::GetNumInterpretersSeen,
+             "Get the number of interpreters that have seen the registry.")
+        .def("get_num_interpreters_alive",
+             &PyTreeTypeRegistry::GetNumInterpretersAlive,
+             "Get the number of alive interpreters that have seen the registry.")
+        .def("get_alive_interpreter_ids",
+             &PyTreeTypeRegistry::GetAliveInterpreterIDs,
+             "Get the IDs of alive interpreters that have seen the registry.")
+        .def("get_current_interpreter_id",
+             &GetCurrentPyInterpreterID,
+             "Get the ID of the current interpreter.")
+        .def("get_main_interpreter_id",
+             &GetMainPyInterpreterID,
+             "Get the ID of the main interpreter.")
         .def("flatten",
              &PyTreeSpec::Flatten,
              "Flatten a pytree.",
@@ -517,6 +541,13 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     PyType_Modified(PyTreeSpec_Type);
     PyType_Modified(PyTreeIter_Type);
 
+    {
+        const scoped_write_lock interp_lock{PyTreeTypeRegistry::sm_mutex};
+        ++PyTreeTypeRegistry::sm_num_interpreters_alive;
+        ++PyTreeTypeRegistry::sm_num_interpreters_seen;
+    }
+    PyTreeTypeRegistry::GetSingleton<NONE_IS_NODE>().Init();
+    PyTreeTypeRegistry::GetSingleton<NONE_IS_LEAF>().Init();
     py::getattr(py::module_::import("atexit"),
                 "register")(py::cpp_function(&PyTreeTypeRegistry::Clear));
 }
@@ -525,7 +556,11 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 
 // NOLINTBEGIN[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
 #if PYBIND11_VERSION_HEX >= 0x020D00F0  // pybind11 2.13.0
+#    if defined(OPTREE_HAS_SUBINTERPRETER_SUPPORT)
+PYBIND11_MODULE(_C, mod, py::mod_gil_not_used(), py::multiple_interpreters::per_interpreter_gil())
+#    else
 PYBIND11_MODULE(_C, mod, py::mod_gil_not_used())
+#    endif
 #else
 PYBIND11_MODULE(_C, mod)
 #endif
