@@ -136,8 +136,8 @@ def check_module_importable():
 
     _ = optree.tree_flatten_with_path(tree, none_is_leaf=False)
     _ = optree.tree_flatten_with_path(tree, none_is_leaf=True)
-    # _ = optree.tree_flatten_with_accessor(tree, none_is_leaf=False)
-    # _ = optree.tree_flatten_with_accessor(tree, none_is_leaf=True)
+    _ = optree.tree_flatten_with_accessor(tree, none_is_leaf=False)
+    _ = optree.tree_flatten_with_accessor(tree, none_is_leaf=True)
 
     return (
         optree._C.get_main_interpreter_id(),
@@ -194,20 +194,20 @@ def test_import():
 def test_import_in_subinterpreter_after_main():
     script = textwrap.dedent(
         """
-            import contextlib
-            import gc
-            from concurrent import interpreters
+        import contextlib
+        import gc
+        from concurrent import interpreters
 
-            import optree
+        import optree
 
-            subinterpreter = None
-            with contextlib.closing(interpreters.create()) as subinterpreter:
-                subinterpreter.exec('import optree')
+        subinterpreter = None
+        with contextlib.closing(interpreters.create()) as subinterpreter:
+            subinterpreter.exec('import optree')
 
-            del optree, subinterpreter
-            for _ in range(10):
-                gc.collect()
-            """,
+        del optree, subinterpreter
+        for _ in range(10):
+            gc.collect()
+        """,
     ).strip()
     check_script_in_subprocess(script, output='', rerun=NUM_FLAKY_RERUNS)
 
@@ -215,19 +215,19 @@ def test_import_in_subinterpreter_after_main():
 def test_import_in_subinterpreter_before_main():
     script = textwrap.dedent(
         """
-            import contextlib
-            import gc
-            from concurrent import interpreters
+        import contextlib
+        import gc
+        from concurrent import interpreters
 
-            subinterpreter = None
-            with contextlib.closing(interpreters.create()) as subinterpreter:
-                subinterpreter.exec('import optree')
+        subinterpreter = None
+        with contextlib.closing(interpreters.create()) as subinterpreter:
+            subinterpreter.exec('import optree')
 
-            import optree
-            del optree, subinterpreter
-            for _ in range(10):
-                gc.collect()
-            """,
+        import optree
+        del optree, subinterpreter
+        for _ in range(10):
+            gc.collect()
+        """,
     ).strip()
     check_script_in_subprocess(script, output='', rerun=NUM_FLAKY_RERUNS)
 
@@ -235,18 +235,18 @@ def test_import_in_subinterpreter_before_main():
 def test_import_in_subinterpreters_concurrently():
     script = textwrap.dedent(
         f"""
-            from concurrent.futures import InterpreterPoolExecutor, as_completed
+        from concurrent.futures import InterpreterPoolExecutor, as_completed
 
-            def check_import():
-                import optree
+        def check_import():
+            import optree
 
-                if optree._C.get_registry_size() != 8:
-                    raise RuntimeError('registry size mismatch')
+            if optree._C.get_registry_size() != 8:
+                raise RuntimeError('registry size mismatch')
 
-            with InterpreterPoolExecutor(max_workers={NUM_WORKERS}) as executor:
-                futures = [executor.submit(check_import) for _ in range({NUM_FUTURES})]
-                for future in as_completed(futures):
-                    future.result()
-            """,
+        with InterpreterPoolExecutor(max_workers={NUM_WORKERS}) as executor:
+            futures = [executor.submit(check_import) for _ in range({NUM_FUTURES})]
+            for future in as_completed(futures):
+                future.result()
+        """,
     ).strip()
     check_script_in_subprocess(script, output='', rerun=NUM_FLAKY_RERUNS)
