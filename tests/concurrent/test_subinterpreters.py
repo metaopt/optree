@@ -192,61 +192,152 @@ def test_import():
 
 
 def test_import_in_subinterpreter_after_main():
-    script = textwrap.dedent(
-        """
-        import contextlib
-        import gc
-        from concurrent import interpreters
+    check_script_in_subprocess(
+        textwrap.dedent(
+            """
+            import contextlib
+            import gc
+            from concurrent import interpreters
 
-        import optree
+            import optree
 
-        subinterpreter = None
-        with contextlib.closing(interpreters.create()) as subinterpreter:
-            subinterpreter.exec('import optree')
+            subinterpreter = None
+            with contextlib.closing(interpreters.create()) as subinterpreter:
+                subinterpreter.exec('import optree')
 
-        del optree, subinterpreter
-        for _ in range(10):
-            gc.collect()
-        """,
-    ).strip()
-    check_script_in_subprocess(script, output='', rerun=NUM_FLAKY_RERUNS)
+            del optree, subinterpreter
+            for _ in range(10):
+                gc.collect()
+            """,
+        ).strip(),
+        output='',
+        rerun=NUM_FLAKY_RERUNS,
+    )
+
+    check_script_in_subprocess(
+        textwrap.dedent(
+            f"""
+            import contextlib
+            import gc
+            from concurrent import interpreters
+
+            import optree
+
+            subinterpreter = subinterpreters = stack = None
+            with contextlib.ExitStack() as stack:
+                subinterpreters = [
+                    stack.enter_context(contextlib.closing(interpreters.create()))
+                    for _ in range({NUM_FUTURES})
+                ]
+                for subinterpreter in subinterpreters:
+                    subinterpreter.exec('import optree')
+
+            del optree, subinterpreter, subinterpreters, stack
+            for _ in range(10):
+                gc.collect()
+            """,
+        ).strip(),
+        output='',
+        rerun=NUM_FLAKY_RERUNS,
+    )
 
 
 def test_import_in_subinterpreter_before_main():
-    script = textwrap.dedent(
-        """
-        import contextlib
-        import gc
-        from concurrent import interpreters
+    check_script_in_subprocess(
+        textwrap.dedent(
+            """
+            import contextlib
+            import gc
+            from concurrent import interpreters
 
-        subinterpreter = None
-        with contextlib.closing(interpreters.create()) as subinterpreter:
-            subinterpreter.exec('import optree')
+            subinterpreter = None
+            with contextlib.closing(interpreters.create()) as subinterpreter:
+                subinterpreter.exec('import optree')
 
-        import optree
-        del optree, subinterpreter
-        for _ in range(10):
-            gc.collect()
-        """,
-    ).strip()
-    check_script_in_subprocess(script, output='', rerun=NUM_FLAKY_RERUNS)
+            import optree
+
+            del optree, subinterpreter
+            for _ in range(10):
+                gc.collect()
+            """,
+        ).strip(),
+        output='',
+        rerun=NUM_FLAKY_RERUNS,
+    )
+
+    check_script_in_subprocess(
+        textwrap.dedent(
+            f"""
+            import contextlib
+            import gc
+            from concurrent import interpreters
+
+            subinterpreter = subinterpreters = stack = None
+            with contextlib.ExitStack() as stack:
+                subinterpreters = [
+                    stack.enter_context(contextlib.closing(interpreters.create()))
+                    for _ in range({NUM_FUTURES})
+                ]
+                for subinterpreter in subinterpreters:
+                    subinterpreter.exec('import optree')
+
+            import optree
+
+            del optree, subinterpreter, subinterpreters, stack
+            for _ in range(10):
+                gc.collect()
+            """,
+        ).strip(),
+        output='',
+        rerun=NUM_FLAKY_RERUNS,
+    )
+
+    check_script_in_subprocess(
+        textwrap.dedent(
+            f"""
+            import contextlib
+            import gc
+            from concurrent import interpreters
+
+            subinterpreter = subinterpreters = stack = None
+            with contextlib.ExitStack() as stack:
+                subinterpreters = [
+                    stack.enter_context(contextlib.closing(interpreters.create()))
+                    for _ in range({NUM_FUTURES})
+                ]
+                for subinterpreter in subinterpreters:
+                    subinterpreter.exec('import optree')
+
+                import optree
+
+            del optree, subinterpreter, subinterpreters, stack
+            for _ in range(10):
+                gc.collect()
+            """,
+        ).strip(),
+        output='',
+        rerun=NUM_FLAKY_RERUNS,
+    )
 
 
 def test_import_in_subinterpreters_concurrently():
-    script = textwrap.dedent(
-        f"""
-        from concurrent.futures import InterpreterPoolExecutor, as_completed
+    check_script_in_subprocess(
+        textwrap.dedent(
+            f"""
+            from concurrent.futures import InterpreterPoolExecutor, as_completed
 
-        def check_import():
-            import optree
+            def check_import():
+                import optree
 
-            if optree._C.get_registry_size() != 8:
-                raise RuntimeError('registry size mismatch')
+                if optree._C.get_registry_size() != 8:
+                    raise RuntimeError('registry size mismatch')
 
-        with InterpreterPoolExecutor(max_workers={NUM_WORKERS}) as executor:
-            futures = [executor.submit(check_import) for _ in range({NUM_FUTURES})]
-            for future in as_completed(futures):
-                future.result()
-        """,
-    ).strip()
-    check_script_in_subprocess(script, output='', rerun=NUM_FLAKY_RERUNS)
+            with InterpreterPoolExecutor(max_workers={NUM_WORKERS}) as executor:
+                futures = [executor.submit(check_import) for _ in range({NUM_FUTURES})]
+                for future in as_completed(futures):
+                    future.result()
+            """,
+        ).strip(),
+        output='',
+        rerun=NUM_FLAKY_RERUNS,
+    )

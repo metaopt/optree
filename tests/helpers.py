@@ -157,21 +157,23 @@ def disable_systrace(func):
 
 
 def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, rerun=1):
-    if env is None:
-        env = os.environ
-    env = {
-        key: value for key, value in env.items() if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
-    }
     result = ''
     for _ in range(rerun):
-        result = subprocess.check_output(
-            [sys.executable, '-Walways', '-Werror', '-c', script],
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding='utf-8',
-            cwd=cwd,
-            env=env,
-        )
+        try:
+            result = subprocess.check_output(
+                [sys.executable, '-Walways', '-Werror', '-c', script],
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding='utf-8',
+                cwd=cwd,
+                env={
+                    key: value
+                    for key, value in (env if env is not None else os.environ).items()
+                    if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
+                },
+            )
+        except subprocess.CalledProcessError as ex:
+            raise subprocess.SubprocessError(f'{ex}\nOutput:\n{ex.output}') from None
         if output is not None:
             assert result == output
     return result

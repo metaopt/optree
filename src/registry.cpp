@@ -353,9 +353,14 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 #if defined(Py_DEBUG)
     for (const auto &cls : registry1.m_builtins_types) {
         EXPECT_NE(registry1.m_registrations.find(cls), registry1.m_registrations.end());
+        EXPECT_NE(registry2.m_builtins_types.find(cls), registry2.m_builtins_types.end());
     }
     for (const auto &cls : registry2.m_builtins_types) {
-        EXPECT_NE(registry2.m_registrations.find(cls), registry2.m_registrations.end());
+        if (cls.is(PyNoneTypeObject)) [[unlikely]] {
+            EXPECT_EQ(registry2.m_registrations.find(cls), registry2.m_registrations.end());
+        } else [[likely]] {
+            EXPECT_NE(registry2.m_registrations.find(cls), registry2.m_registrations.end());
+        }
     }
     for (const auto &[cls2, registration2] : registry2.m_registrations) {
         const auto it1 = registry1.m_registrations.find(cls2);
