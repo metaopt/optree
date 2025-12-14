@@ -390,7 +390,8 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     EXPECT_LE(builtins_types.size(), registrations1.size());
     EXPECT_EQ(registrations1.size(), registrations2.size() + 1);
     EXPECT_EQ(named_registrations1.size(), named_registrations2.size());
-    EXPECT_EQ(&builtins_types, &builtins_types_);
+    EXPECT_EQ(reinterpret_cast<intptr_t>(&builtins_types),
+              reinterpret_cast<intptr_t>(&builtins_types));
 
 #if defined(Py_DEBUG)
     for (const auto &cls : builtins_types) {

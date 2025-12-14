@@ -142,17 +142,17 @@ public:
     // Get the number of alive interpreters that have seen the registry.
     [[nodiscard]] static inline Py_ALWAYS_INLINE ssize_t GetNumInterpretersAlive() {
         const scoped_read_lock lock{sm_mutex};
-        return sm_num_interpreters_seen;
-    }
-
-    // Get the number of interpreters that have seen the registry.
-    [[nodiscard]] static inline Py_ALWAYS_INLINE ssize_t GetNumInterpretersSeen() {
-        const scoped_read_lock lock{sm_mutex};
         EXPECT_EQ(py::ssize_t_cast(sm_builtins_types.size()),
                   sm_num_interpreters_alive,
                   "The number of alive interpreters should match the size of the "
                   "interpreter-scoped registered types map.");
         return sm_num_interpreters_alive;
+    }
+
+    // Get the number of interpreters that have seen the registry.
+    [[nodiscard]] static inline Py_ALWAYS_INLINE ssize_t GetNumInterpretersSeen() {
+        const scoped_read_lock lock{sm_mutex};
+        return sm_num_interpreters_seen;
     }
 
     // Get the IDs of alive interpreters that have seen the registry.

@@ -243,7 +243,7 @@ std::string PyTreeSpec::ToStringImpl() const {
         agenda.emplace_back(sstream.str());
     }
 
-    EXPECT_EQ(agenda.size(), 1, "PyTreeSpec traversal did not yield a singleton.");
+    EXPECT_EQ(agenda.size(), 1U, "PyTreeSpec traversal did not yield a singleton.");
     std::ostringstream oss{};
     oss << "PyTreeSpec(" << agenda.back();
     if (m_none_is_leaf) [[unlikely]] {
