@@ -72,35 +72,22 @@ inline constexpr Py_ALWAYS_INLINE bool Py_IsConstant(PyObject *x) noexcept {
 }
 #define Py_IsConstant(x) Py_IsConstant(x)
 
-#if defined(OPTREE_HAS_SUBINTERPRETER_SUPPORT)
-#    define Py_Declare_ID(name)                                                                    \
-        namespace {                                                                                \
-        [[nodiscard]] inline PyObject *Py_ID_##name() {                                            \
-            PyObject * const ptr = PyUnicode_InternFromString(#name);                              \
-            if (ptr == nullptr) [[unlikely]] {                                                     \
-                throw py::error_already_set();                                                     \
-            }                                                                                      \
-            return ptr;                                                                            \
-        }                                                                                          \
-        }  // namespace
-#else
-#    define Py_Declare_ID(name)                                                                    \
-        namespace {                                                                                \
-        [[nodiscard]] inline PyObject *Py_ID_##name() {                                            \
-            PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyObject *> storage;        \
-            return storage                                                                         \
-                .call_once_and_store_result([]() -> PyObject * {                                   \
-                    PyObject * const ptr = PyUnicode_InternFromString(#name);                      \
-                    if (ptr == nullptr) [[unlikely]] {                                             \
-                        throw py::error_already_set();                                             \
-                    }                                                                              \
-                    Py_INCREF(ptr); /* leak a reference on purpose */                              \
-                    return ptr;                                                                    \
-                })                                                                                 \
-                .get_stored();                                                                     \
-        }                                                                                          \
-        }  // namespace
-#endif
+#define Py_Declare_ID(name)                                                                        \
+    namespace {                                                                                    \
+    [[nodiscard]] inline PyObject *Py_ID_##name() {                                                \
+        PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyObject *> storage;            \
+        return storage                                                                             \
+            .call_once_and_store_result([]() -> PyObject * {                                       \
+                PyObject * const ptr = PyUnicode_InternFromString(#name);                          \
+                if (ptr == nullptr) [[unlikely]] {                                                 \
+                    throw py::error_already_set();                                                 \
+                }                                                                                  \
+                Py_INCREF(ptr); /* leak a reference on purpose */                                  \
+                return ptr;                                                                        \
+            })                                                                                     \
+            .get_stored();                                                                         \
+    }                                                                                              \
+    }  // namespace
 
 #define Py_Get_ID(name) (::Py_ID_##name())
 

@@ -71,35 +71,25 @@ inline const py::object &ImportOrderedDict() {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
     return storage
         .call_once_and_store_result([]() -> py::object {
-            return py::getattr(py::module_::import("collections"), Py_Get_ID(OrderedDict));
+            return py::getattr(py::module_::import("collections"), "OrderedDict");
         })
         .get_stored();
 }
-#if defined(OPTREE_HAS_SUBINTERPRETER_SUPPORT)
-inline py::object ImportDefaultDict() {
-    return py::getattr(py::module_::import("collections"), Py_Get_ID(defaultdict));
-}
-inline py::object ImportDeque() {
-    return py::getattr(py::module_::import("collections"), Py_Get_ID(deque));
-}
-#else
 inline const py::object &ImportDefaultDict() {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
     return storage
         .call_once_and_store_result([]() -> py::object {
-            return py::getattr(py::module_::import("collections"), Py_Get_ID(defaultdict));
+            return py::getattr(py::module_::import("collections"), "defaultdict");
         })
         .get_stored();
 }
 inline const py::object &ImportDeque() {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
     return storage
-        .call_once_and_store_result([]() -> py::object {
-            return py::getattr(py::module_::import("collections"), Py_Get_ID(deque));
-        })
+        .call_once_and_store_result(
+            []() -> py::object { return py::getattr(py::module_::import("collections"), "deque"); })
         .get_stored();
 }
-#endif
 
 inline Py_ALWAYS_INLINE py::ssize_t TupleGetSize(const py::handle &tuple) {
     return PyTuple_GET_SIZE(tuple.ptr());

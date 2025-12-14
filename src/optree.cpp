@@ -541,15 +541,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     PyType_Modified(PyTreeSpec_Type);
     PyType_Modified(PyTreeIter_Type);
 
-    {
-        const scoped_write_lock interp_lock{PyTreeTypeRegistry::sm_mutex};
-        ++PyTreeTypeRegistry::sm_num_interpreters_alive;
-        ++PyTreeTypeRegistry::sm_num_interpreters_seen;
-    }
-    PyTreeTypeRegistry::GetSingleton<NONE_IS_NODE>().Init();
-    PyTreeTypeRegistry::GetSingleton<NONE_IS_LEAF>().Init();
-    py::getattr(py::module_::import("atexit"),
-                "register")(py::cpp_function(&PyTreeTypeRegistry::Clear));
+    PyTreeTypeRegistry::Init();
 }
 
 }  // namespace optree

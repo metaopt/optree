@@ -142,11 +142,7 @@ public:
     // Get the number of alive interpreters that have seen the registry.
     [[nodiscard]] static inline Py_ALWAYS_INLINE ssize_t GetNumInterpretersAlive() {
         const scoped_read_lock lock{sm_mutex};
-        EXPECT_EQ(py::ssize_t_cast(sm_builtins_types.size()),
-                  sm_num_interpreters_alive,
-                  "The number of alive interpreters should match the size of the "
-                  "interpreter-scoped registered types map.");
-        return sm_num_interpreters_alive;
+        return py::ssize_t_cast(sm_alive_interpids.size());
     }
 
     // Get the number of interpreters that have seen the registry.
@@ -159,15 +155,7 @@ public:
     [[nodiscard]] static inline Py_ALWAYS_INLINE std::unordered_set<interpid_t>
     GetAliveInterpreterIDs() {
         const scoped_read_lock lock{sm_mutex};
-        EXPECT_EQ(py::ssize_t_cast(sm_builtins_types.size()),
-                  sm_num_interpreters_alive,
-                  "The number of alive interpreters should match the size of the "
-                  "interpreter-scoped registered types map.");
-        std::unordered_set<interpid_t> interpids;
-        for (const auto &[interpid, _] : sm_builtins_types) {
-            interpids.insert(interpid);
-        }
-        return interpids;
+        return sm_alive_interpids;
     }
 
     friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
@@ -188,7 +176,7 @@ private:
                                                         const std::string &registry_namespace);
 
     // Initialize the registry for the current interpreter.
-    void Init();
+    static void Init();
 
     // Clear the registry on cleanup for the current interpreter.
     static void Clear();
@@ -198,18 +186,12 @@ private:
         std::unordered_map<std::pair<std::string, py::handle>, RegistrationPtr>;
     using BuiltinsTypesSet = std::unordered_set<py::handle>;
 
-    // Get the registrations for the current Python interpreter.
-    [[nodiscard]] inline Py_ALWAYS_INLINE std::
-        tuple<RegistrationsMap &, NamedRegistrationsMap &, BuiltinsTypesSet &>
-        GetRegistrationsForCurrentPyInterpreterLocked() const;
+    RegistrationsMap m_registrations{};
+    NamedRegistrationsMap m_named_registrations{};
+    BuiltinsTypesSet m_builtins_types{};
 
-    bool m_none_is_leaf = false;
-    std::unordered_map<interpid_t, RegistrationsMap> m_registrations{};
-    std::unordered_map<interpid_t, NamedRegistrationsMap> m_named_registrations{};
-
-    static inline std::unordered_map<interpid_t, BuiltinsTypesSet> sm_builtins_types{};
+    static inline std::unordered_set<interpid_t> sm_alive_interpids{};
     static inline read_write_mutex sm_mutex{};
-    static inline ssize_t sm_num_interpreters_alive = 0;
     static inline ssize_t sm_num_interpreters_seen = 0;
 };
 
