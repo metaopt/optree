@@ -315,7 +315,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Download built sdist
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           # unpacks default artifact into dist/
           # if `name: artifact` is omitted, the action will create extra parent dir
@@ -323,7 +323,7 @@ jobs:
           path: dist
 
       - name: Download built wheels
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           pattern: wheels-*
           path: dist
@@ -386,7 +386,7 @@ jobs:
           fi
 
       - name: Download built artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           # unpacks default artifact into dist/
           # if `name: artifact` is omitted, the action will create extra parent dir
