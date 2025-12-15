@@ -21,7 +21,6 @@ limitations under the License.
 #include <memory>         // std::shared_ptr
 #include <optional>       // std::optional, std::nullopt
 #include <string>         // std::string
-#include <tuple>          // std::tuple
 #include <unordered_map>  // std::unordered_map
 #include <unordered_set>  // std::unordered_set
 #include <utility>        // std::pair

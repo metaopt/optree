@@ -347,7 +347,8 @@ jobs:
             "--cov-report=xml:coverage-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml"
             "--junit-xml=junit-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml"
           )
-          make test PYTESTOPTS="${PYTESTOPTS[*]}"
+          make test PYTESTOPTS="${PYTESTOPTS[*]} -k 'subinterpreter'"
+          make test PYTESTOPTS="${PYTESTOPTS[*]} -k 'not subinterpreter'"
 
           CORE_DUMP_FILES="$(
             find . -type d -path "./venv" -prune \
