@@ -70,6 +70,9 @@ def test_treespec_construct():
     treespec = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
     with pytest.raises(TypeError, match=re.escape('No constructor defined!')):
         treespec.__init__()
+    del treespec
+
+    gc_collect()
 
     script = textwrap.dedent(
         r"""

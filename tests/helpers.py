@@ -156,6 +156,11 @@ def disable_systrace(func):
     return wrapper
 
 
+class CalledProcessError(subprocess.CalledProcessError):
+    def __str__(self):
+        return f'{super().__str__()}\nOutput:\n{self.output}'
+
+
 def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, rerun=1):
     result = ''
     for _ in range(rerun):
@@ -173,7 +178,7 @@ def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, re
                 },
             )
         except subprocess.CalledProcessError as ex:
-            raise subprocess.SubprocessError(f'{ex}\nOutput:\n{ex.output}') from None
+            raise CalledProcessError(ex.returncode, ex.cmd, ex.output, ex.stderr) from None
         if output is not None:
             assert result == output
     return result

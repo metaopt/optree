@@ -81,9 +81,6 @@ def concurrent_run(func, /, *args, **kwargs):
     return [future.result() for future in completed_futures]
 
 
-run(object)  # warm-up
-
-
 def check_module_importable():
     import collections
     import time
