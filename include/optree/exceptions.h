@@ -59,8 +59,7 @@ public:
 
 }  // namespace optree
 
-namespace {  // NOLINT[build/namespaces_headers]
-
+inline namespace {  // NOLINT[build/namespaces_headers]
 // SFINAE helper to detect if std::to_string is available for a type
 template <typename T, typename = void>
 struct has_to_string : std::false_type {};
@@ -80,7 +79,6 @@ inline std::string try_to_string([[maybe_unused]] const T &value) {
     }
     return "<?>";
 }
-
 }  // namespace
 
 #define VA_FUNC2_(__0, __1, NAME, ...) NAME

@@ -17,7 +17,7 @@ limitations under the License.
 
 #include "optree/optree.h"
 
-namespace {
+inline namespace {
 #if PYBIND11_VERSION_HEX >= 0x030000F0  // pybind11 3.0.0
 using pybind11::detail::is_holder_constructed;
 #else
