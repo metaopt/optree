@@ -17,11 +17,12 @@ limitations under the License.
 
 #pragma once
 
-#include <cstddef>    // std::size_t
-#include <optional>   // std::optional, std::nullopt
-#include <sstream>    // std::ostringstream
-#include <stdexcept>  // std::logic_error
-#include <string>     // std::string, std::char_traits
+#include <cstddef>      // std::size_t
+#include <optional>     // std::optional, std::nullopt
+#include <sstream>      // std::ostringstream
+#include <stdexcept>    // std::logic_error
+#include <string>       // std::string, std::char_traits, std::to_string
+#include <type_traits>  // std::declval, std::void_t, std::{true,false}_type
 
 namespace optree {
 
@@ -56,6 +57,32 @@ public:
           }()) {}
 };
 
+}  // namespace optree
+
+namespace {  // NOLINT[build/namespaces_headers]
+
+// SFINAE helper to detect if std::to_string is available for a type
+template <typename T, typename = void>
+struct has_to_string : std::false_type {};
+
+template <typename T>
+struct has_to_string<T, std::void_t<decltype(std::to_string(std::declval<T>()))>> : std::true_type {
+};
+
+template <typename T>
+inline constexpr bool has_to_string_v = has_to_string<T>::value;
+
+// Convert value to string if possible, otherwise return a placeholder.
+template <typename T>
+inline std::string try_to_string([[maybe_unused]] const T &value) {
+    if constexpr (has_to_string_v<T>) {
+        return std::to_string(value);
+    }
+    return "<?>";
+}
+
+}  // namespace
+
 #define VA_FUNC2_(__0, __1, NAME, ...) NAME
 #define VA_FUNC3_(__0, __1, __2, NAME, ...) NAME
 
@@ -81,13 +108,41 @@ public:
 #define EXPECT_(...)                                                                               \
     VA_FUNC3_(__0 __VA_OPT__(, ) __VA_ARGS__, EXPECT2_, EXPECT1_, EXPECT0_)(__VA_ARGS__)
 
+#define EXPECT_OP0_(a, b, op)                                                                      \
+    {                                                                                              \
+        const auto &__a = (a);                                                                     \
+        const auto &__b = (b);                                                                     \
+        EXPECT2_((__a)op(__b),                                                                     \
+                 "Expected `(" #a ") " #op " (" #b ")`, but got `! (" + ::try_to_string(__a) +     \
+                     ") " #op " (" + ::try_to_string(__b) + ")`.");                                \
+    }
+#define EXPECT_OP1_(a, b, op, nop)                                                                 \
+    {                                                                                              \
+        const auto &__a = (a);                                                                     \
+        const auto &__b = (b);                                                                     \
+        EXPECT2_((__a)op(__b),                                                                     \
+                 "Expected `(" #a ") " #op " (" #b ")`, but got `(" + ::try_to_string(__a) +       \
+                     ") " #nop " (" + ::try_to_string(__b) + ")`.");                               \
+    }
+#define EXPECT_OP2_(a, b, op, nop, message)                                                        \
+    {                                                                                              \
+        const auto &__a = (a);                                                                     \
+        const auto &__b = (b);                                                                     \
+        EXPECT2_((__a)op(__b),                                                                     \
+                 std::string(message) + " (Expected `(" #a ") " #op " (" #b ")`, but got `(" +     \
+                     ::try_to_string(__a) + ") " #nop " (" + ::try_to_string(__b) + ")`.)");       \
+    }
+#define EXPECT_OP_(a, b, op, ...)                                                                  \
+    VA_FUNC3_(__0 __VA_OPT__(, ) __VA_ARGS__,                                                      \
+              EXPECT_OP2_,                                                                         \
+              EXPECT_OP1_,                                                                         \
+              EXPECT_OP0_)(a, b, op __VA_OPT__(, ) __VA_ARGS__)
+
 #define EXPECT_TRUE(condition, ...) EXPECT_((condition)__VA_OPT__(, ) __VA_ARGS__)
 #define EXPECT_FALSE(condition, ...) EXPECT_(!(condition)__VA_OPT__(, ) __VA_ARGS__)
-#define EXPECT_EQ(a, b, ...) EXPECT_((a) == (b)__VA_OPT__(, ) __VA_ARGS__)
-#define EXPECT_NE(a, b, ...) EXPECT_((a) != (b)__VA_OPT__(, ) __VA_ARGS__)
-#define EXPECT_LT(a, b, ...) EXPECT_((a) < (b)__VA_OPT__(, ) __VA_ARGS__)
-#define EXPECT_LE(a, b, ...) EXPECT_((a) <= (b)__VA_OPT__(, ) __VA_ARGS__)
-#define EXPECT_GT(a, b, ...) EXPECT_((a) > (b)__VA_OPT__(, ) __VA_ARGS__)
-#define EXPECT_GE(a, b, ...) EXPECT_((a) >= (b)__VA_OPT__(, ) __VA_ARGS__)
-
-}  // namespace optree
+#define EXPECT_EQ(a, b, ...) EXPECT_OP_(a, b, ==, != __VA_OPT__(, ) __VA_ARGS__)
+#define EXPECT_NE(a, b, ...) EXPECT_OP_(a, b, !=, == __VA_OPT__(, ) __VA_ARGS__)
+#define EXPECT_LT(a, b, ...) EXPECT_OP_(a, b, <, >= __VA_OPT__(, ) __VA_ARGS__)
+#define EXPECT_LE(a, b, ...) EXPECT_OP_(a, b, <=, > __VA_OPT__(, ) __VA_ARGS__)
+#define EXPECT_GT(a, b, ...) EXPECT_OP_(a, b, >, <= __VA_OPT__(, ) __VA_ARGS__)
+#define EXPECT_GE(a, b, ...) EXPECT_OP_(a, b, >=, < __VA_OPT__(, ) __VA_ARGS__)

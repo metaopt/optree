@@ -551,7 +551,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
         }
     }
     EXPECT_EQ(pending_num_leaves_nodes.size(),
-              1,
+              1U,
               "PyTreeSpec::Transform() did not yield a singleton.");
 
     const auto &root = treespec->m_traversal.back();
