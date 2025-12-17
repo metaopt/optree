@@ -355,6 +355,12 @@ def test_tree_iter_thread_safe(
             namespace=namespace,
         )
         num_leaves = next(counter)
+        assert optree.tree_leaves(
+            new_tree,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        ) == list(range(num_leaves))
+
         it = optree.tree_iter(
             new_tree,
             none_is_leaf=none_is_leaf,
@@ -362,6 +368,6 @@ def test_tree_iter_thread_safe(
         )
 
     results = concurrent_run(list, it)
+    assert sorted(itertools.chain.from_iterable(results)) == list(range(num_leaves))
     for seq in results:
         assert sorted(seq) == seq
-    assert sorted(itertools.chain.from_iterable(results)) == list(range(num_leaves))

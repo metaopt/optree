@@ -248,7 +248,7 @@ py::object PyTreeSpec::WalkImpl(const py::iterable &leaves,
         throw py::value_error("Too many leaves for PyTreeSpec.");
     }
 
-    EXPECT_EQ(agenda.size(), 1, "PyTreeSpec traversal did not yield a singleton.");
+    EXPECT_EQ(agenda.size(), 1U, "PyTreeSpec traversal did not yield a singleton.");
     return agenda.back();
 }
 

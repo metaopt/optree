@@ -184,16 +184,6 @@ jobs:
               runner: ubuntu-latest
               platform: android
               archs: "arm64_v8a"
-          - python-version: "3.13"
-            target:
-              runner: ubuntu-latest
-              platform: android
-              archs: "x86_64"
-          - python-version: "3.14"
-            target:
-              runner: ubuntu-latest
-              platform: android
-              archs: "x86_64"
           # Pyodide
           - python-version: "3.12"
             target:

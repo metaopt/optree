@@ -150,22 +150,35 @@ def disable_systrace(func):
     return wrapper
 
 
+class CalledProcessError(subprocess.CalledProcessError):
+    def __str__(self):
+        return ''.join(
+            (
+                super().__str__(),
+                f'\nOutput:\n{self.output}' if self.output is not None else '',
+                f'\nStderr:\n{self.stderr}' if self.stderr is not None else '',
+            ),
+        )
+
+
 def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, rerun=1):
-    if env is None:
-        env = os.environ
-    env = {
-        key: value for key, value in env.items() if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
-    }
     result = ''
     for _ in range(rerun):
-        result = subprocess.check_output(
-            [sys.executable, '-Walways', '-Werror', '-c', script],
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding='utf-8',
-            cwd=cwd,
-            env=env,
-        )
+        try:
+            result = subprocess.check_output(
+                [sys.executable, '-Walways', '-Werror', '-c', script],
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding='utf-8',
+                cwd=cwd,
+                env={
+                    key: value
+                    for key, value in (env if env is not None else os.environ).items()
+                    if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
+                },
+            )
+        except subprocess.CalledProcessError as ex:
+            raise CalledProcessError(ex.returncode, ex.cmd, ex.output, ex.stderr) from None
         if output is not None:
             assert result == output
     return result
