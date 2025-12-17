@@ -92,7 +92,7 @@ jobs:
         run: python -m build --sdist
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: sdist
           path: dist/*.tar.gz
@@ -184,16 +184,6 @@ jobs:
               runner: ubuntu-latest
               platform: android
               archs: "arm64_v8a"
-          - python-version: "3.13"
-            target:
-              runner: ubuntu-latest
-              platform: android
-              archs: "x86_64"
-          - python-version: "3.14"
-            target:
-              runner: ubuntu-latest
-              platform: android
-              archs: "x86_64"
           # Pyodide
           - python-version: "3.12"
             target:
@@ -302,7 +292,7 @@ jobs:
           config-file: "{package}/pyproject.toml"
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: wheels-${{ env.PYTHON_TAG }}-${{ matrix.target.platform }}-${{ matrix.target.archs }}
           path: wheelhouse/*.whl
@@ -315,7 +305,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Download built sdist
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           # unpacks default artifact into dist/
           # if `name: artifact` is omitted, the action will create extra parent dir
@@ -323,7 +313,7 @@ jobs:
           path: dist
 
       - name: Download built wheels
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           pattern: wheels-*
           path: dist
@@ -336,7 +326,7 @@ jobs:
         run: rm -f dist/*wasm*.whl
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: artifacts
           path: dist/*
@@ -386,7 +376,7 @@ jobs:
           fi
 
       - name: Download built artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           # unpacks default artifact into dist/
           # if `name: artifact` is omitted, the action will create extra parent dir

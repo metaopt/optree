@@ -57,6 +57,9 @@ public:
           }()) {}
 };
 
+}  // namespace optree
+
+inline namespace {  // NOLINT[build/namespaces_headers]
 // SFINAE helper to detect if std::to_string is available for a type
 template <typename T, typename = void>
 struct has_to_string : std::false_type {};
@@ -70,12 +73,13 @@ inline constexpr bool has_to_string_v = has_to_string<T>::value;
 
 // Convert value to string if possible, otherwise return a placeholder.
 template <typename T>
-inline std::string to_string([[maybe_unused]] const T &value) {
+inline std::string try_to_string([[maybe_unused]] const T &value) {
     if constexpr (has_to_string_v<T>) {
         return std::to_string(value);
     }
     return "<?>";
 }
+}  // namespace
 
 #define VA_FUNC2_(__0, __1, NAME, ...) NAME
 #define VA_FUNC3_(__0, __1, __2, NAME, ...) NAME
@@ -107,16 +111,16 @@ inline std::string to_string([[maybe_unused]] const T &value) {
         const auto &__a = (a);                                                                     \
         const auto &__b = (b);                                                                     \
         EXPECT2_((__a)op(__b),                                                                     \
-                 "Expected `(" #a ") " #op " (" #b ")`, but got `! (" + optree::to_string(__a) +   \
-                     ") " #op " (" + optree::to_string(__b) + ")`.");                              \
+                 "Expected `(" #a ") " #op " (" #b ")`, but got `! (" + ::try_to_string(__a) +     \
+                     ") " #op " (" + ::try_to_string(__b) + ")`.");                                \
     }
 #define EXPECT_OP1_(a, b, op, nop)                                                                 \
     {                                                                                              \
         const auto &__a = (a);                                                                     \
         const auto &__b = (b);                                                                     \
         EXPECT2_((__a)op(__b),                                                                     \
-                 "Expected `(" #a ") " #op " (" #b ")`, but got `(" + optree::to_string(__a) +     \
-                     ") " #nop " (" + optree::to_string(__b) + ")`.");                             \
+                 "Expected `(" #a ") " #op " (" #b ")`, but got `(" + ::try_to_string(__a) +       \
+                     ") " #nop " (" + ::try_to_string(__b) + ")`.");                               \
     }
 #define EXPECT_OP2_(a, b, op, nop, message)                                                        \
     {                                                                                              \
@@ -124,7 +128,7 @@ inline std::string to_string([[maybe_unused]] const T &value) {
         const auto &__b = (b);                                                                     \
         EXPECT2_((__a)op(__b),                                                                     \
                  std::string(message) + " (Expected `(" #a ") " #op " (" #b ")`, but got `(" +     \
-                     optree::to_string(__a) + ") " #nop " (" + optree::to_string(__b) + ")`.)");   \
+                     ::try_to_string(__a) + ") " #nop " (" + ::try_to_string(__b) + ")`.)");       \
     }
 #define EXPECT_OP_(a, b, op, ...)                                                                  \
     VA_FUNC3_(__0 __VA_OPT__(, ) __VA_ARGS__,                                                      \
@@ -140,5 +144,3 @@ inline std::string to_string([[maybe_unused]] const T &value) {
 #define EXPECT_LE(a, b, ...) EXPECT_OP_(a, b, <=, > __VA_OPT__(, ) __VA_ARGS__)
 #define EXPECT_GT(a, b, ...) EXPECT_OP_(a, b, >, <= __VA_OPT__(, ) __VA_ARGS__)
 #define EXPECT_GE(a, b, ...) EXPECT_OP_(a, b, >=, < __VA_OPT__(, ) __VA_ARGS__)
-
-}  // namespace optree
