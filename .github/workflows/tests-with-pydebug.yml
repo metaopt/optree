@@ -350,6 +350,7 @@ jobs:
 
           if ${{ env.PYTHON }} -c 'import sys, optree; sys.exit(not optree._C.OPTREE_HAS_SUBINTERPRETER_SUPPORT)'; then
             make test PYTESTOPTS="${PYTESTOPTS[*]} -k 'subinterpreter' --no-cov"
+            make test PYTESTOPTS="${PYTESTOPTS[*]} -k 'concurrent' --no-cov"
             make test PYTESTOPTS="${PYTESTOPTS[*]} -k 'not subinterpreter'"
           else
             make test PYTESTOPTS="${PYTESTOPTS[*]}"
