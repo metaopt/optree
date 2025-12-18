@@ -172,7 +172,7 @@ def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, re
     for _ in range(rerun):
         try:
             result = subprocess.check_output(
-                [sys.executable, '-Walways', '-Werror', '-c', script],
+                [sys.executable, '-u', '-X', 'dev', '-Walways', '-Werror', '-c', script],
                 stderr=subprocess.STDOUT,
                 text=True,
                 encoding='utf-8',
@@ -180,7 +180,10 @@ def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, re
                 env={
                     key: value
                     for key, value in (env if env is not None else os.environ).items()
-                    if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
+                    if (
+                        not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
+                        or key in ('PYTHON_GIL', 'PYTHONDEVMODE', 'PYTHONHASHSEED')
+                    )
                 },
             )
         except subprocess.CalledProcessError as ex:

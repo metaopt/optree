@@ -539,11 +539,6 @@ def test_treespec_pickle_missing_registration():
     treespec = optree.tree_structure(Foo(0, 1), namespace='foo')
     serialized = pickle.dumps(treespec)
 
-    env = {
-        key: value
-        for key, value in os.environ.items()
-        if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
-    }
     try:
         output = subprocess.run(
             [
@@ -571,7 +566,14 @@ def test_treespec_pickle_missing_registration():
             text=True,
             encoding='utf-8',
             cwd=TEST_ROOT,
-            env=env,
+            env={
+                key: value
+                for key, value in os.environ.items()
+                if (
+                    not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
+                    or key in ('PYTHON_GIL', 'PYTHONDEVMODE', 'PYTHONHASHSEED')
+                )
+            },
         )
         message = output.stdout.strip()
     except subprocess.CalledProcessError as ex:
