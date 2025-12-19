@@ -74,27 +74,28 @@ def test_treespec_construct():
 
     gc_collect()
 
-    script = textwrap.dedent(
-        r"""
-        import signal
-        import sys
-
-        import optree
-        import optree._C
-
-        for _ in range(32):
-            treespec = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
-            try:
-                repr(treespec)
-            except optree._C.InternalError as ex:
-                assert 'src/treespec/serialization.cpp' in str(ex).replace('\\', '/')
-                sys.exit(0)
-        """,
-    ).strip()
     returncode = 0
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            check_script_in_subprocess(script, cwd=tmpdir, output=None)
+            check_script_in_subprocess(
+                r"""
+                import signal
+                import sys
+
+                import optree
+                import optree._C
+
+                for _ in range(32):
+                    treespec = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+                    try:
+                        repr(treespec)
+                    except optree._C.InternalError as ex:
+                        assert 'src/treespec/serialization.cpp' in str(ex).replace('\\', '/')
+                        sys.exit(0)
+                """,
+                cwd=tmpdir,
+                output=None,
+            )
     except subprocess.CalledProcessError as ex:
         returncode = abs(ex.returncode)
         if 128 < returncode < 256:

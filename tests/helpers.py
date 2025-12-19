@@ -25,6 +25,7 @@ import platform
 import subprocess
 import sys
 import sysconfig
+import textwrap
 import time
 import types
 from collections import OrderedDict, UserDict, defaultdict, deque, namedtuple
@@ -168,6 +169,7 @@ class CalledProcessError(subprocess.CalledProcessError):
 
 
 def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, rerun=1):
+    script = textwrap.dedent(script).strip()
     result = ''
     for _ in range(rerun):
         try:
