@@ -149,6 +149,10 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
              py::arg("mode"),
              py::pos_only(),
              py::arg("namespace") = "")
+        .def("get_registry_size",
+             &PyTreeTypeRegistry::GetRegistrySize,
+             "Get the number of registered types.",
+             py::arg("namespace") = std::nullopt)
         .def("flatten",
              &PyTreeSpec::Flatten,
              "Flatten a pytree.",
@@ -517,8 +521,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     PyType_Modified(PyTreeSpec_Type);
     PyType_Modified(PyTreeIter_Type);
 
-    py::getattr(py::module_::import("atexit"),
-                "register")(py::cpp_function(&PyTreeTypeRegistry::Clear));
+    PyTreeTypeRegistry::Init();
 }
 
 }  // namespace optree
