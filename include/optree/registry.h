@@ -19,6 +19,7 @@ limitations under the License.
 
 #include <cstdint>        // std::uint8_t
 #include <memory>         // std::shared_ptr
+#include <optional>       // std::optional, std::nullopt
 #include <string>         // std::string
 #include <unordered_map>  // std::unordered_map
 #include <unordered_set>  // std::unordered_set
@@ -26,6 +27,7 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
+#include "optree/exceptions.h"
 #include "optree/hashing.h"
 #include "optree/synchronization.h"
 
@@ -98,6 +100,10 @@ public:
 
     using RegistrationPtr = std::shared_ptr<const Registration>;
 
+    // Get the number of registered types.
+    [[nodiscard]] ssize_t Size(
+        const std::optional<std::string> &registry_namespace = std::nullopt) const;
+
     // Register a new custom type. Objects of type `cls` will be treated as container node types in
     // PyTrees.
     static void Register(const py::object &cls,
@@ -120,6 +126,21 @@ public:
                                             RegistrationPtr &custom,  // NOLINT[runtime/references]
                                             const std::string &registry_namespace);
 
+    // Get the number of registered types.
+    [[nodiscard]] static inline Py_ALWAYS_INLINE ssize_t GetRegistrySize(
+        const std::optional<std::string> &registry_namespace = std::nullopt) {
+        auto &registry1 = GetSingleton<NONE_IS_NODE>();
+        auto &registry2 = GetSingleton<NONE_IS_LEAF>();
+
+        const ssize_t count1 = registry1.Size(registry_namespace);
+        const ssize_t count2 = registry2.Size(registry_namespace);
+        EXPECT_EQ(count1,
+                  count2 + 1,
+                  "The number of registered types in the two registries should match "
+                  "up to the extra None type in the NoneIsNode registry.");
+        return count1;
+    }
+
     friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
 
 private:
@@ -137,6 +158,9 @@ private:
     [[nodiscard]] static RegistrationPtr UnregisterImpl(const py::object &cls,
                                                         const std::string &registry_namespace);
 
+    // Initialize the registry for the current interpreter.
+    static void Init();
+
     // Clear the registry on cleanup for the current interpreter.
     static void Clear();
 
@@ -147,8 +171,8 @@ private:
 
     RegistrationsMap m_registrations{};
     NamedRegistrationsMap m_named_registrations{};
+    BuiltinsTypesSet m_builtins_types{};
 
-    static inline BuiltinsTypesSet sm_builtins_types{};
     static inline read_write_mutex sm_mutex{};
 };
 

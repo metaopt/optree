@@ -25,6 +25,7 @@ import platform
 import subprocess
 import sys
 import sysconfig
+import textwrap
 import time
 import types
 from collections import OrderedDict, UserDict, defaultdict, deque, namedtuple
@@ -39,12 +40,18 @@ from optree._C import (
     PYBIND11_HAS_SUBINTERPRETER_SUPPORT,
     Py_DEBUG,
     Py_GIL_DISABLED,
+    get_registry_size,
 )
 from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
+from optree.registry import _NODETYPE_REGISTRY as NODETYPE_REGISTRY
 
 
 TEST_ROOT = Path(__file__).absolute().parent
 
+
+INITIAL_REGISTRY_SIZE = get_registry_size()
+assert INITIAL_REGISTRY_SIZE == 8
+assert INITIAL_REGISTRY_SIZE + 2 == len(NODETYPE_REGISTRY)
 
 _ = PYBIND11_HAS_NATIVE_ENUM
 _ = PYBIND11_HAS_SUBINTERPRETER_SUPPORT
@@ -162,11 +169,12 @@ class CalledProcessError(subprocess.CalledProcessError):
 
 
 def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, rerun=1):
+    script = textwrap.dedent(script).strip()
     result = ''
     for _ in range(rerun):
         try:
             result = subprocess.check_output(
-                [sys.executable, '-Walways', '-Werror', '-c', script],
+                [sys.executable, '-u', '-X', 'dev', '-Walways', '-Werror', '-c', script],
                 stderr=subprocess.STDOUT,
                 text=True,
                 encoding='utf-8',
@@ -174,7 +182,10 @@ def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, re
                 env={
                     key: value
                     for key, value in (env if env is not None else os.environ).items()
-                    if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
+                    if (
+                        not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
+                        or key in ('PYTHON_GIL', 'PYTHONDEVMODE', 'PYTHONHASHSEED')
+                    )
                 },
             )
         except subprocess.CalledProcessError as ex:

@@ -74,27 +74,28 @@ def test_treespec_construct():
 
     gc_collect()
 
-    script = textwrap.dedent(
-        r"""
-        import signal
-        import sys
-
-        import optree
-        import optree._C
-
-        for _ in range(32):
-            treespec = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
-            try:
-                repr(treespec)
-            except optree._C.InternalError as ex:
-                assert 'src/treespec/serialization.cpp' in str(ex).replace('\\', '/')
-                sys.exit(0)
-        """,
-    ).strip()
     returncode = 0
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            check_script_in_subprocess(script, cwd=tmpdir, output=None)
+            check_script_in_subprocess(
+                r"""
+                import signal
+                import sys
+
+                import optree
+                import optree._C
+
+                for _ in range(32):
+                    treespec = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+                    try:
+                        repr(treespec)
+                    except optree._C.InternalError as ex:
+                        assert 'src/treespec/serialization.cpp' in str(ex).replace('\\', '/')
+                        sys.exit(0)
+                """,
+                cwd=tmpdir,
+                output=None,
+            )
     except subprocess.CalledProcessError as ex:
         returncode = abs(ex.returncode)
         if 128 < returncode < 256:
@@ -539,11 +540,6 @@ def test_treespec_pickle_missing_registration():
     treespec = optree.tree_structure(Foo(0, 1), namespace='foo')
     serialized = pickle.dumps(treespec)
 
-    env = {
-        key: value
-        for key, value in os.environ.items()
-        if not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
-    }
     try:
         output = subprocess.run(
             [
@@ -571,7 +567,14 @@ def test_treespec_pickle_missing_registration():
             text=True,
             encoding='utf-8',
             cwd=TEST_ROOT,
-            env=env,
+            env={
+                key: value
+                for key, value in os.environ.items()
+                if (
+                    not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
+                    or key in ('PYTHON_GIL', 'PYTHONDEVMODE', 'PYTHONHASHSEED')
+                )
+            },
         )
         message = output.stdout.strip()
     except subprocess.CalledProcessError as ex:
