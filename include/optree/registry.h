@@ -130,12 +130,16 @@ public:
     // Get the number of registered types.
     [[nodiscard]] static inline Py_ALWAYS_INLINE ssize_t GetRegistrySize(
         const std::optional<std::string> &registry_namespace = std::nullopt) {
-        const ssize_t count = GetSingleton<NONE_IS_NODE>().Size(registry_namespace);
-        EXPECT_EQ(count,
-                  GetSingleton<NONE_IS_LEAF>().Size(registry_namespace) + 1,
+        auto &registry1 = GetSingleton<NONE_IS_NODE>();
+        auto &registry2 = GetSingleton<NONE_IS_LEAF>();
+
+        const ssize_t count1 = registry1.Size(registry_namespace);
+        const ssize_t count2 = registry2.Size(registry_namespace);
+        EXPECT_EQ(count1,
+                  count2 + 1,
                   "The number of registered types in the two registries should match "
                   "up to the extra None type in the NoneIsNode registry.");
-        return count;
+        return count1;
     }
 
     // Get the number of alive interpreters that have seen the registry.

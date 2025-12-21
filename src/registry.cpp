@@ -19,7 +19,6 @@ limitations under the License.
 #include <optional>     // std::optional
 #include <sstream>      // std::ostringstream
 #include <string>       // std::string
-#include <tuple>        // std::tuple
 #include <type_traits>  // std::remove_const_t
 #include <utility>      // std::move, std::make_pair
 
