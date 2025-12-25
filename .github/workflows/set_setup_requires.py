@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).absolute().parents[2]
 
 PYPROJECT_FILE = ROOT / 'pyproject.toml'
-PYBIND11_GIT_URL = 'https://github.com/XuehaiPan/pybind11.git@subinterp-call-once-and-store'
+PYBIND11_GIT_URL = 'https://github.com/XuehaiPan/pybind11.git@fix-multiple-interpreters-concurrency'
 
 
 if __name__ == '__main__':
