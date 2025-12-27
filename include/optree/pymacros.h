@@ -34,8 +34,8 @@ limitations under the License.
 // NOLINTNEXTLINE[bugprone-macro-parentheses]
 #define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))
 
-#if !defined(PYPY_VERSION) &&                                                                      \
-    (defined(PY_VERSION_HEX) && PY_VERSION_HEX >= 0x030E0000 /* Python 3.14 */) &&                 \
+#if !defined(PYPY_VERSION) && (PY_VERSION_HEX >= 0x030E0000 /* Python 3.14 */) &&                  \
+    (PYBIND11_VERSION_HEX >= 0x030002A0 /* pybind11 3.0.2.a0 */) &&                                \
     (defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                               \
      NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT))
 #    define OPTREE_HAS_SUBINTERPRETER_SUPPORT 1
