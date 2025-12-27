@@ -29,6 +29,7 @@ limitations under the License.
 
 #include "optree/exceptions.h"
 #include "optree/hashing.h"
+#include "optree/pymacros.h"
 #include "optree/synchronization.h"
 
 namespace optree {
@@ -141,6 +142,25 @@ public:
         return count1;
     }
 
+    // Get the number of alive interpreters that have seen the registry.
+    [[nodiscard]] static inline Py_ALWAYS_INLINE ssize_t GetNumInterpretersAlive() {
+        const scoped_read_lock lock{sm_mutex};
+        return py::ssize_t_cast(sm_alive_interpids.size());
+    }
+
+    // Get the number of interpreters that have seen the registry.
+    [[nodiscard]] static inline Py_ALWAYS_INLINE ssize_t GetNumInterpretersSeen() {
+        const scoped_read_lock lock{sm_mutex};
+        return sm_num_interpreters_seen;
+    }
+
+    // Get the IDs of alive interpreters that have seen the registry.
+    [[nodiscard]] static inline Py_ALWAYS_INLINE std::unordered_set<interpid_t>
+    GetAliveInterpreterIDs() {
+        const scoped_read_lock lock{sm_mutex};
+        return sm_alive_interpids;
+    }
+
     friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
 
 private:
@@ -173,7 +193,9 @@ private:
     NamedRegistrationsMap m_named_registrations{};
     BuiltinsTypesSet m_builtins_types{};
 
+    static inline std::unordered_set<interpid_t> sm_alive_interpids{};
     static inline read_write_mutex sm_mutex{};
+    static inline ssize_t sm_num_interpreters_seen = 0;
 };
 
 }  // namespace optree

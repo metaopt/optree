@@ -73,6 +73,8 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 #endif
     BUILDTIME_METADATA["PYBIND11_VERSION_HEX"] = py::int_(PYBIND11_VERSION_HEX);
     BUILDTIME_METADATA["PYBIND11_INTERNALS_VERSION"] = py::int_(PYBIND11_INTERNALS_VERSION);
+    BUILDTIME_METADATA["PYBIND11_INTERNALS_ID"] = py::str(PYBIND11_INTERNALS_ID);
+    BUILDTIME_METADATA["PYBIND11_MODULE_LOCAL_ID"] = py::str(PYBIND11_MODULE_LOCAL_ID);
 #if defined(PYBIND11_HAS_NATIVE_ENUM) && NONZERO_OR_EMPTY(PYBIND11_HAS_NATIVE_ENUM)
     BUILDTIME_METADATA["PYBIND11_HAS_NATIVE_ENUM"] = py::bool_(true);
 #else
@@ -94,6 +96,11 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] = py::bool_(true);
 #else
     BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] = py::bool_(false);
+#endif
+#if defined(OPTREE_HAS_SUBINTERPRETER_SUPPORT)
+    BUILDTIME_METADATA["OPTREE_HAS_SUBINTERPRETER_SUPPORT"] = py::bool_(true);
+#else
+    BUILDTIME_METADATA["OPTREE_HAS_SUBINTERPRETER_SUPPORT"] = py::bool_(false);
 #endif
 
     mod.attr("BUILDTIME_METADATA") = std::move(BUILDTIME_METADATA);
@@ -153,6 +160,24 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
              &PyTreeTypeRegistry::GetRegistrySize,
              "Get the number of registered types.",
              py::arg("namespace") = std::nullopt)
+        .def("get_num_interpreters_seen",
+             &PyTreeTypeRegistry::GetNumInterpretersSeen,
+             "Get the number of interpreters that have seen the registry.")
+        .def("get_num_interpreters_alive",
+             &PyTreeTypeRegistry::GetNumInterpretersAlive,
+             "Get the number of alive interpreters that have seen the registry.")
+        .def("get_alive_interpreter_ids",
+             &PyTreeTypeRegistry::GetAliveInterpreterIDs,
+             "Get the IDs of alive interpreters that have seen the registry.")
+        .def("is_current_interpreter_main",
+             &IsCurrentPyInterpreterMain,
+             "Check whether the current interpreter is the main interpreter.")
+        .def("get_current_interpreter_id",
+             &GetCurrentPyInterpreterID,
+             "Get the ID of the current interpreter.")
+        .def("get_main_interpreter_id",
+             &GetMainPyInterpreterID,
+             "Get the ID of the main interpreter.")
         .def("flatten",
              &PyTreeSpec::Flatten,
              "Flatten a pytree.",
@@ -274,7 +299,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 #endif
     auto * const PyTreeKind_Type = reinterpret_cast<PyTypeObject *>(PyTreeKindTypeObject.ptr());
     PyTreeKind_Type->tp_name = "optree.PyTreeKind";
-    py::setattr(PyTreeKindTypeObject, Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeKindTypeObject, "__module__", py::str("optree"));
     py::setattr(PyTreeKindTypeObject, "NUM_KINDS", py::int_(py::ssize_t(PyTreeKind::NumKinds)));
 
     auto PyTreeSpecTypeObject =
@@ -298,7 +323,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             py::module_local());
     auto * const PyTreeSpec_Type = reinterpret_cast<PyTypeObject *>(PyTreeSpecTypeObject.ptr());
     PyTreeSpec_Type->tp_name = "optree.PyTreeSpec";
-    py::setattr(PyTreeSpecTypeObject, Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeSpecTypeObject, "__module__", py::str("optree"));
 
     PyTreeSpecTypeObject
         .def("unflatten",
@@ -496,7 +521,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             py::module_local());
     auto * const PyTreeIter_Type = reinterpret_cast<PyTypeObject *>(PyTreeIterTypeObject.ptr());
     PyTreeIter_Type->tp_name = "optree.PyTreeIter";
-    py::setattr(PyTreeIterTypeObject, Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeIterTypeObject, "__module__", py::str("optree"));
 
     PyTreeIterTypeObject
         .def(py::init<py::object, std::optional<py::function>, bool, std::string>(),
@@ -528,7 +553,11 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 
 // NOLINTBEGIN[cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg]
 #if PYBIND11_VERSION_HEX >= 0x020D00F0  // pybind11 2.13.0
+#    if defined(OPTREE_HAS_SUBINTERPRETER_SUPPORT)
+PYBIND11_MODULE(_C, mod, py::mod_gil_not_used(), py::multiple_interpreters::per_interpreter_gil())
+#    else
 PYBIND11_MODULE(_C, mod, py::mod_gil_not_used())
+#    endif
 #else
 PYBIND11_MODULE(_C, mod)
 #endif

@@ -856,11 +856,11 @@ py::list PyTreeSpec::Entries() const {
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict: {
             const scoped_critical_section cs{root.node_data};
-            return py::getattr(root.node_data, Py_Get_ID(copy))();
+            return py::getattr(root.node_data, "copy")();
         }
         case PyTreeKind::DefaultDict: {
             const scoped_critical_section cs{root.node_data};
-            return py::getattr(TupleGetItem(root.node_data, 1), Py_Get_ID(copy))();
+            return py::getattr(TupleGetItem(root.node_data, 1), "copy")();
         }
 
         case PyTreeKind::NumKinds:

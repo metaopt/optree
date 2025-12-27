@@ -311,6 +311,14 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 /*static*/ void PyTreeTypeRegistry::Init() {
     const scoped_write_lock lock{sm_mutex};
 
+    const auto interpid = GetCurrentPyInterpreterID();
+
+    ++sm_num_interpreters_seen;
+    EXPECT_TRUE(
+        sm_alive_interpids.insert(interpid).second,
+        "The current interpreter ID should not be already present in the alive interpreters "
+        "set.");
+
     auto &registry1 = GetSingleton<NONE_IS_NODE>();
     auto &registry2 = GetSingleton<NONE_IS_LEAF>();
 
@@ -325,6 +333,13 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ void PyTreeTypeRegistry::Clear() {
     const scoped_write_lock lock{sm_mutex};
+
+    const auto interpid = GetCurrentPyInterpreterID();
+
+    EXPECT_NE(sm_alive_interpids.find(interpid),
+              sm_alive_interpids.end(),
+              "The current interpreter ID should be present in the alive interpreters set.");
+    sm_alive_interpids.erase(interpid);
 
     auto &registry1 = GetSingleton<NONE_IS_NODE>();
     auto &registry2 = GetSingleton<NONE_IS_LEAF>();
