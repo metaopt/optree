@@ -367,7 +367,7 @@ def test_tree_iter_thread_safe(
             namespace=namespace,
         )
 
-    results = concurrent_run(list, it)
+    results = concurrent_run(lambda x: list(x), it)
     assert sorted(itertools.chain.from_iterable(results)) == list(range(num_leaves))
     for seq in results:
         assert sorted(seq) == seq
