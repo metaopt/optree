@@ -169,6 +169,9 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
         .def("get_alive_interpreter_ids",
              &PyTreeTypeRegistry::GetAliveInterpreterIDs,
              "Get the IDs of alive interpreters that have seen the registry.")
+        .def("is_current_interpreter_main",
+             &IsCurrentPyInterpreterMain,
+             "Check whether the current interpreter is the main interpreter.")
         .def("get_current_interpreter_id",
              &GetCurrentPyInterpreterID,
              "Get the ID of the current interpreter.")

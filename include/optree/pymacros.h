@@ -17,7 +17,6 @@ limitations under the License.
 
 #pragma once
 
-#include <cstdint>    // std::int64_t
 #include <stdexcept>  // std::runtime_error
 
 #include <Python.h>
@@ -110,20 +109,22 @@ Py_Declare_ID(n_fields);           // structseq.n_fields
 Py_Declare_ID(n_sequence_fields);  // structseq.n_sequence_fields
 Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
 
-using interpid_t = std::int64_t;
+using interpid_t = decltype(PyInterpreterState_GetID(nullptr));
 
-#if defined(OPTREE_HAS_SUBINTERPRETER_SUPPORT)
+[[nodiscard]] inline bool IsCurrentPyInterpreterMain() {
+    return PyInterpreterState_Get() == PyInterpreterState_Main();
+}
 
 [[nodiscard]] inline interpid_t GetCurrentPyInterpreterID() {
     PyInterpreterState *interp = PyInterpreterState_Get();
-    if (PyErr_Occurred() != nullptr) [[unlikely]] {
+    if (PyErr_Occurred()) [[unlikely]] {
         throw py::error_already_set();
     }
-    if (interp == nullptr) [[unlikely]] {
+    if (!interp) [[unlikely]] {
         throw std::runtime_error("Failed to get the current Python interpreter state.");
     }
     const interpid_t interpid = PyInterpreterState_GetID(interp);
-    if (PyErr_Occurred() != nullptr) [[unlikely]] {
+    if (PyErr_Occurred()) [[unlikely]] {
         throw py::error_already_set();
     }
     return interpid;
@@ -131,29 +132,15 @@ using interpid_t = std::int64_t;
 
 [[nodiscard]] inline interpid_t GetMainPyInterpreterID() {
     PyInterpreterState *interp = PyInterpreterState_Main();
-    if (PyErr_Occurred() != nullptr) [[unlikely]] {
+    if (PyErr_Occurred()) [[unlikely]] {
         throw py::error_already_set();
     }
-    if (interp == nullptr) [[unlikely]] {
+    if (!interp) [[unlikely]] {
         throw std::runtime_error("Failed to get the main Python interpreter state.");
     }
     const interpid_t interpid = PyInterpreterState_GetID(interp);
-    if (PyErr_Occurred() != nullptr) [[unlikely]] {
+    if (PyErr_Occurred()) [[unlikely]] {
         throw py::error_already_set();
     }
     return interpid;
 }
-
-#else
-
-[[nodiscard]] inline constexpr interpid_t GetCurrentPyInterpreterID() noexcept {
-    // Fallback for Python versions < 3.14 or when subinterpreter support is not available.
-    return 0;
-}
-
-[[nodiscard]] inline constexpr interpid_t GetMainPyInterpreterID() noexcept {
-    // Fallback for Python versions < 3.14 or when subinterpreter support is not available.
-    return 0;
-}
-
-#endif

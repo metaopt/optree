@@ -86,7 +86,14 @@ def check_module_importable():
 
     import optree._C
 
-    if optree._C.get_registry_size() != 8:
+    is_current_interpreter_main = optree._C.is_current_interpreter_main()
+    main_interpreter_id = optree._C.get_main_interpreter_id()
+    current_interpreter_id = optree._C.get_current_interpreter_id()
+
+    if is_current_interpreter_main != (main_interpreter_id == current_interpreter_id):
+        raise RuntimeError('interpreter identity mismatch')
+
+    if not is_current_interpreter_main and optree._C.get_registry_size() != 8:
         raise RuntimeError('registry size mismatch')
 
     tree = {
@@ -136,7 +143,8 @@ def check_module_importable():
     _ = optree.tree_flatten_with_accessor(tree, none_is_leaf=True)
 
     return (
-        optree._C.get_main_interpreter_id(),
+        is_current_interpreter_main,
+        main_interpreter_id,
         id(type(None)),
         id(tuple),
         id(list),
@@ -149,6 +157,7 @@ def test_import():
     import collections
 
     expected = (
+        False,
         0,
         id(type(None)),
         id(tuple),
@@ -157,6 +166,7 @@ def test_import():
         id(collections.OrderedDict),
     )
 
+    assert check_module_importable() == (True, *expected[1:])
     assert run(check_module_importable) == expected
 
     for _ in range(random.randint(5, 10)):
@@ -322,6 +332,8 @@ def test_import_in_subinterpreters_concurrently():
 
             if optree._C.get_registry_size() != 8:
                 raise RuntimeError('registry size mismatch')
+            if optree._C.is_current_interpreter_main():
+                raise RuntimeError('expected subinterpreter')
 
         with InterpreterPoolExecutor(max_workers={NUM_WORKERS}) as executor:
             futures = [executor.submit(check_import) for _ in range({NUM_FUTURES})]
