@@ -71,44 +71,6 @@ inline constexpr Py_ALWAYS_INLINE bool Py_IsConstant(PyObject *x) noexcept {
 }
 #define Py_IsConstant(x) Py_IsConstant(x)
 
-#define Py_Declare_ID(name)                                                                        \
-    inline namespace {                                                                             \
-    [[nodiscard]] inline PyObject *Py_ID_##name() {                                                \
-        PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<PyObject *> storage;            \
-        return storage                                                                             \
-            .call_once_and_store_result([]() -> PyObject * {                                       \
-                PyObject * const ptr = PyUnicode_InternFromString(#name);                          \
-                if (ptr == nullptr) [[unlikely]] {                                                 \
-                    throw py::error_already_set();                                                 \
-                }                                                                                  \
-                Py_INCREF(ptr); /* leak a reference on purpose */                                  \
-                return ptr;                                                                        \
-            })                                                                                     \
-            .get_stored();                                                                         \
-    }                                                                                              \
-    }  // namespace
-
-#define Py_Get_ID(name) (::Py_ID_##name())
-
-Py_Declare_ID(optree);
-Py_Declare_ID(__main__);           // __main__
-Py_Declare_ID(__module__);         // type.__module__
-Py_Declare_ID(__qualname__);       // type.__qualname__
-Py_Declare_ID(__name__);           // type.__name__
-Py_Declare_ID(sort);               // list.sort
-Py_Declare_ID(copy);               // dict.copy
-Py_Declare_ID(OrderedDict);        // OrderedDict
-Py_Declare_ID(defaultdict);        // defaultdict
-Py_Declare_ID(deque);              // deque
-Py_Declare_ID(default_factory);    // defaultdict.default_factory
-Py_Declare_ID(maxlen);             // deque.maxlen
-Py_Declare_ID(_fields);            // namedtuple._fields
-Py_Declare_ID(_make);              // namedtuple._make
-Py_Declare_ID(_asdict);            // namedtuple._asdict
-Py_Declare_ID(n_fields);           // structseq.n_fields
-Py_Declare_ID(n_sequence_fields);  // structseq.n_sequence_fields
-Py_Declare_ID(n_unnamed_fields);   // structseq.n_unnamed_fields
-
 using interpid_t = decltype(PyInterpreterState_GetID(nullptr));
 
 [[nodiscard]] inline bool IsCurrentPyInterpreterMain() {
@@ -117,14 +79,14 @@ using interpid_t = decltype(PyInterpreterState_GetID(nullptr));
 
 [[nodiscard]] inline interpid_t GetCurrentPyInterpreterID() {
     PyInterpreterState *interp = PyInterpreterState_Get();
-    if (PyErr_Occurred()) [[unlikely]] {
+    if (PyErr_Occurred() != nullptr) [[unlikely]] {
         throw py::error_already_set();
     }
-    if (!interp) [[unlikely]] {
+    if (interp == nullptr) [[unlikely]] {
         throw std::runtime_error("Failed to get the current Python interpreter state.");
     }
     const interpid_t interpid = PyInterpreterState_GetID(interp);
-    if (PyErr_Occurred()) [[unlikely]] {
+    if (PyErr_Occurred() != nullptr) [[unlikely]] {
         throw py::error_already_set();
     }
     return interpid;
@@ -132,14 +94,14 @@ using interpid_t = decltype(PyInterpreterState_GetID(nullptr));
 
 [[nodiscard]] inline interpid_t GetMainPyInterpreterID() {
     PyInterpreterState *interp = PyInterpreterState_Main();
-    if (PyErr_Occurred()) [[unlikely]] {
+    if (PyErr_Occurred() != nullptr) [[unlikely]] {
         throw py::error_already_set();
     }
-    if (!interp) [[unlikely]] {
+    if (interp == nullptr) [[unlikely]] {
         throw std::runtime_error("Failed to get the main Python interpreter state.");
     }
     const interpid_t interpid = PyInterpreterState_GetID(interp);
-    if (PyErr_Occurred()) [[unlikely]] {
+    if (PyErr_Occurred() != nullptr) [[unlikely]] {
         throw py::error_already_set();
     }
     return interpid;
