@@ -73,6 +73,9 @@ inline constexpr Py_ALWAYS_INLINE bool Py_IsConstant(PyObject *x) noexcept {
 
 using interpid_t = decltype(PyInterpreterState_GetID(nullptr));
 
+#if defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                                \
+    NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT)
+
 [[nodiscard]] inline bool IsCurrentPyInterpreterMain() {
     return PyInterpreterState_Get() == PyInterpreterState_Main();
 }
@@ -106,3 +109,11 @@ using interpid_t = decltype(PyInterpreterState_GetID(nullptr));
     }
     return interpid;
 }
+
+#else
+
+[[nodiscard]] inline bool IsCurrentPyInterpreterMain() noexcept { return true; }
+[[nodiscard]] inline interpid_t GetCurrentPyInterpreterID() noexcept { return 0; }
+[[nodiscard]] inline interpid_t GetMainPyInterpreterID() noexcept { return 0; }
+
+#endif
