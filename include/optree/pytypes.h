@@ -261,6 +261,7 @@ inline bool IsNamedTupleClass(const py::handle &type) {
     static read_write_mutex mutex{};
 
     {
+        const py::gil_scoped_release_simple gil_release{};
         const scoped_read_lock lock{mutex};
         const auto it = cache.find(type);
         if (it != cache.end()) [[likely]] {
@@ -270,8 +271,10 @@ inline bool IsNamedTupleClass(const py::handle &type) {
 
     const bool result = EVALUATE_WITH_LOCK_HELD(IsNamedTupleClassImpl(type), type);
     {
+        const py::gil_scoped_release_simple gil_release{};
         const scoped_write_lock lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+            const py::gil_scoped_acquire_simple gil_acquire{};
             cache.emplace(type, result);
             (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
                                   const scoped_write_lock lock{mutex};
@@ -363,6 +366,7 @@ inline bool IsStructSequenceClass(const py::handle &type) {
     static read_write_mutex mutex{};
 
     {
+        const py::gil_scoped_release_simple gil_release{};
         const scoped_read_lock lock{mutex};
         const auto it = cache.find(type);
         if (it != cache.end()) [[likely]] {
@@ -372,8 +376,10 @@ inline bool IsStructSequenceClass(const py::handle &type) {
 
     const bool result = EVALUATE_WITH_LOCK_HELD(IsStructSequenceClassImpl(type), type);
     {
+        const py::gil_scoped_release_simple gil_release{};
         const scoped_write_lock lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+            const py::gil_scoped_acquire_simple gil_acquire{};
             cache.emplace(type, result);
             (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
                                   const scoped_write_lock lock{mutex};
@@ -446,17 +452,21 @@ inline py::tuple StructSequenceGetFields(const py::handle &object) {
     static read_write_mutex mutex{};
 
     {
+        const py::gil_scoped_release_simple gil_release{};
         const scoped_read_lock lock{mutex};
         const auto it = cache.find(type);
         if (it != cache.end()) [[likely]] {
+            const py::gil_scoped_acquire_simple gil_acquire{};
             return py::reinterpret_borrow<py::tuple>(it->second);
         }
     }
 
     const py::tuple fields = EVALUATE_WITH_LOCK_HELD(StructSequenceGetFieldsImpl(type), type);
     {
+        const py::gil_scoped_release_simple gil_release{};
         const scoped_write_lock lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
+            const py::gil_scoped_acquire_simple gil_acquire{};
             cache.emplace(type, fields);
             fields.inc_ref();
             (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {

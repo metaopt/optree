@@ -162,20 +162,14 @@ py::object PyTreeIter::NextImpl() {
 }
 
 py::object PyTreeIter::Next() {
-#if !defined(Py_GIL_DISABLED)
-    const py::gil_scoped_release gil_release;
-#endif
+    const py::gil_scoped_release_simple gil_release{};
+    const scoped_lock lock{m_mutex};
     {
-        const scoped_lock lock{m_mutex};
-        {
-#if !defined(Py_GIL_DISABLED)
-            const py::gil_scoped_acquire gil_acquire;
-#endif
-            if (m_none_is_leaf) [[unlikely]] {
-                return NextImpl<NONE_IS_LEAF>();
-            } else [[likely]] {
-                return NextImpl<NONE_IS_NODE>();
-            }
+        const py::gil_scoped_acquire_simple gil_acquire{};
+        if (m_none_is_leaf) [[unlikely]] {
+            return NextImpl<NONE_IS_LEAF>();
+        } else [[likely]] {
+            return NextImpl<NONE_IS_NODE>();
         }
     }
 }
