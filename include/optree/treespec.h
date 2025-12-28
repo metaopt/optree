@@ -23,7 +23,7 @@ limitations under the License.
 #include <thread>         // std::thread::id
 #include <tuple>          // std::tuple
 #include <unordered_set>  // std::unordered_set
-#include <utility>        // std::pair
+#include <utility>        // std::pair, std::make_pair
 #include <vector>         // std::vector
 
 #include <pybind11/pybind11.h>
@@ -263,28 +263,31 @@ public:
     [[nodiscard]] static inline Py_ALWAYS_INLINE bool IsDictInsertionOrdered(
         const std::string &registry_namespace,
         const bool &inherit_global_namespace = true) {
-        const scoped_read_lock lock{sm_is_dict_insertion_ordered_mutex};
+        const scoped_read_lock lock{sm_dict_order_mutex};
 
-        return (sm_is_dict_insertion_ordered.find(registry_namespace) !=
-                sm_is_dict_insertion_ordered.end()) ||
-               (inherit_global_namespace &&
-                sm_is_dict_insertion_ordered.find("") != sm_is_dict_insertion_ordered.end());
+        const auto interpid = GetCurrentPyInterpreterID();
+        const auto &namespaces = sm_dict_insertion_ordered_namespaces;
+        return (namespaces.find({interpid, registry_namespace}) != namespaces.end()) ||
+               (inherit_global_namespace && namespaces.find({interpid, ""}) != namespaces.end());
     }
 
     // Set the namespace to preserve the insertion order of the dictionary keys during flattening.
     static inline Py_ALWAYS_INLINE void SetDictInsertionOrdered(
         const bool &mode,
         const std::string &registry_namespace) {
-        const scoped_write_lock lock{sm_is_dict_insertion_ordered_mutex};
+        const scoped_write_lock lock{sm_dict_order_mutex};
 
+        const auto interpid = GetCurrentPyInterpreterID();
+        const auto key = std::make_pair(interpid, registry_namespace);
         if (mode) [[likely]] {
-            sm_is_dict_insertion_ordered.insert(registry_namespace);
+            sm_dict_insertion_ordered_namespaces.insert(key);
         } else [[unlikely]] {
-            sm_is_dict_insertion_ordered.erase(registry_namespace);
+            sm_dict_insertion_ordered_namespaces.erase(key);
         }
     }
 
     friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
+    friend class PyTreeTypeRegistry;
 
 private:
     using RegistrationPtr = PyTreeTypeRegistry::RegistrationPtr;
@@ -426,8 +429,9 @@ private:
 
     // A set of namespaces that preserve the insertion order of the dictionary keys during
     // flattening.
-    static inline std::unordered_set<std::string> sm_is_dict_insertion_ordered{};
-    static inline read_write_mutex sm_is_dict_insertion_ordered_mutex{};
+    static inline std::unordered_set<std::pair<interpid_t, std::string>>
+        sm_dict_insertion_ordered_namespaces{};
+    static inline read_write_mutex sm_dict_order_mutex{};
 };
 
 class PyTreeIter {

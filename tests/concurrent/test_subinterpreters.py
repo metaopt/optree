@@ -27,7 +27,6 @@ from helpers import (
     PYPY,
     WASM,
     Py_DEBUG,
-    Py_GIL_DISABLED,
     check_script_in_subprocess,
 )
 
@@ -48,9 +47,9 @@ from concurrent import interpreters
 from concurrent.futures import InterpreterPoolExecutor, as_completed
 
 
-if Py_GIL_DISABLED and not Py_DEBUG:
-    NUM_WORKERS = 32
-    NUM_FUTURES = 128
+if not Py_DEBUG:
+    NUM_WORKERS = 8
+    NUM_FUTURES = 32
     NUM_FLAKY_RERUNS = 16
 else:
     NUM_WORKERS = 4

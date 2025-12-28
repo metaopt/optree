@@ -341,6 +341,27 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
               "The current interpreter ID should be present in the alive interpreters set.");
     sm_alive_interpids.erase(interpid);
 
+    {
+        const scoped_write_lock namespace_lock{PyTreeSpec::sm_dict_order_mutex};
+        using key_type = decltype(PyTreeSpec::sm_dict_insertion_ordered_namespaces)::key_type;
+        auto &dict_insertion_ordered_namespaces = PyTreeSpec::sm_dict_insertion_ordered_namespaces;
+        auto entries = reserved_vector<key_type>(4);
+        for (const auto &entry : dict_insertion_ordered_namespaces) {
+            if (entry.first == interpid) [[likely]] {
+                entries.emplace_back(entry);
+            }
+        }
+        for (const auto &entry : entries) {
+            dict_insertion_ordered_namespaces.erase(entry);
+        }
+        if (sm_alive_interpids.empty()) [[likely]] {
+            EXPECT_TRUE(
+                dict_insertion_ordered_namespaces.empty(),
+                "The dict insertion ordered namespaces map should be empty when there is no "
+                "alive Python interpreter.");
+        }
+    }
+
     auto &registry1 = GetSingleton<NONE_IS_NODE>();
     auto &registry2 = GetSingleton<NONE_IS_LEAF>();
 
