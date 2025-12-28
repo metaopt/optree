@@ -83,6 +83,7 @@ def check_module_importable():
     import collections
     import time
 
+    import optree
     import optree._C
 
     is_current_interpreter_main = optree._C.is_current_interpreter_main()
