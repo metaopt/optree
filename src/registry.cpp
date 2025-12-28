@@ -41,7 +41,7 @@ template <bool NoneIsLeaf>
                             "PyTree type " + PyRepr(cls) +
                                 " is already registered in the built-in types set.");
                 cls.inc_ref();
-                if (!NoneIsLeaf || kind != PyTreeKind::None) {
+                if (!NoneIsLeaf || kind != PyTreeKind::None) [[likely]] {
                     auto registration =
                         std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
                     registration->kind = kind;
