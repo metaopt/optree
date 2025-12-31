@@ -208,11 +208,12 @@ bool PyTreeSpec::FlattenInto(const py::handle &handle,
     bool is_dict_insertion_ordered_in_current_namespace = false;
     {
 #if defined(HAVE_READ_WRITE_LOCK)
-        const scoped_read_lock lock{sm_dict_order_mutex};
+        const scoped_read_lock lock{PyTreeTypeRegistry::sm_dict_order_mutex};
 #endif
-        is_dict_insertion_ordered = IsDictInsertionOrdered(registry_namespace);
+        is_dict_insertion_ordered = PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace);
         is_dict_insertion_ordered_in_current_namespace =
-            IsDictInsertionOrdered(registry_namespace, /*inherit_global_namespace=*/false);
+            PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace,
+                                                       /*inherit_global_namespace=*/false);
     }
 
     if (none_is_leaf) [[unlikely]] {
@@ -484,11 +485,12 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle &handle,
     bool is_dict_insertion_ordered_in_current_namespace = false;
     {
 #if defined(HAVE_READ_WRITE_LOCK)
-        const scoped_read_lock lock{sm_dict_order_mutex};
+        const scoped_read_lock lock{PyTreeTypeRegistry::sm_dict_order_mutex};
 #endif
-        is_dict_insertion_ordered = IsDictInsertionOrdered(registry_namespace);
+        is_dict_insertion_ordered = PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace);
         is_dict_insertion_ordered_in_current_namespace =
-            IsDictInsertionOrdered(registry_namespace, /*inherit_global_namespace=*/false);
+            PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace,
+                                                       /*inherit_global_namespace=*/false);
     }
 
     auto stack = reserved_vector<py::handle>(4);

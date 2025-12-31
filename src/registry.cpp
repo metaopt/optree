@@ -342,21 +342,20 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     sm_alive_interpids.erase(interpid);
 
     {
-        const scoped_write_lock namespace_lock{PyTreeSpec::sm_dict_order_mutex};
-        using key_type = decltype(PyTreeSpec::sm_dict_insertion_ordered_namespaces)::key_type;
-        auto &dict_insertion_ordered_namespaces = PyTreeSpec::sm_dict_insertion_ordered_namespaces;
+        const scoped_write_lock namespace_lock{sm_dict_order_mutex};
+        using key_type = decltype(sm_dict_insertion_ordered_namespaces)::key_type;
         auto entries = reserved_vector<key_type>(4);
-        for (const auto &entry : dict_insertion_ordered_namespaces) {
+        for (const auto &entry : sm_dict_insertion_ordered_namespaces) {
             if (entry.first == interpid) [[likely]] {
                 entries.emplace_back(entry);
             }
         }
         for (const auto &entry : entries) {
-            dict_insertion_ordered_namespaces.erase(entry);
+            sm_dict_insertion_ordered_namespaces.erase(entry);
         }
         if (sm_alive_interpids.empty()) [[likely]] {
             EXPECT_TRUE(
-                dict_insertion_ordered_namespaces.empty(),
+                sm_dict_insertion_ordered_namespaces.empty(),
                 "The dict insertion ordered namespaces map should be empty when there is no "
                 "alive Python interpreter.");
         }
