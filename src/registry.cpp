@@ -40,7 +40,6 @@ template <bool NoneIsLeaf>
                 EXPECT_TRUE(registry.m_builtins_types.emplace(cls).second,
                             "PyTree type " + PyRepr(cls) +
                                 " is already registered in the built-in types set.");
-                cls.inc_ref();
                 if (!NoneIsLeaf || kind != PyTreeKind::None) [[likely]] {
                     auto registration =
                         std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
@@ -50,9 +49,9 @@ template <bool NoneIsLeaf>
                         registry.m_registrations.emplace(cls, std::move(registration)).second,
                         "PyTree type " + PyRepr(cls) +
                             " is already registered in the global namespace.");
-                    if constexpr (!NoneIsLeaf) {
-                        cls.inc_ref();
-                    }
+                }
+                if constexpr (!NoneIsLeaf) {
+                    cls.inc_ref();
                 }
             };
             add_builtin_type(PyNoneTypeObject, PyTreeKind::None);
@@ -343,8 +342,7 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 
     {
         const scoped_write_lock namespace_lock{sm_dict_order_mutex};
-        using key_type = decltype(sm_dict_insertion_ordered_namespaces)::key_type;
-        auto entries = reserved_vector<key_type>(4);
+        auto entries = reserved_vector<decltype(sm_dict_insertion_ordered_namespaces)::key_type>(4);
         for (const auto &entry : sm_dict_insertion_ordered_namespaces) {
             if (entry.first == interpid) [[likely]] {
                 entries.emplace_back(entry);
@@ -403,9 +401,6 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     }
 #endif
 
-    for (const auto &cls : registry1.m_builtins_types) {
-        cls.dec_ref();
-    }
     for (const auto &[_, registration1] : registry1.m_registrations) {
         registration1->type.dec_ref();
         registration1->flatten_func.dec_ref();
