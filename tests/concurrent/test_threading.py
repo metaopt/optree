@@ -343,31 +343,33 @@ def test_tree_iter_thread_safe(
     dict_should_be_sorted,
     dict_session_namespace,
 ):
-    counter = itertools.count()
-    with optree.dict_insertion_ordered(
-        not dict_should_be_sorted,
-        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
-    ):
-        new_tree = optree.tree_map(
-            lambda x: next(counter),
-            tree,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-        num_leaves = next(counter)
-        assert optree.tree_leaves(
-            new_tree,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        ) == list(range(num_leaves))
+    def get_iterator():
+        counter = itertools.count()
+        with optree.dict_insertion_ordered(
+            not dict_should_be_sorted,
+            namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+        ):
+            new_tree = optree.tree_map(
+                lambda x: next(counter),
+                tree,
+                none_is_leaf=none_is_leaf,
+                namespace=namespace,
+            )
+            num_leaves = next(counter)
+            it = optree.tree_iter(
+                new_tree,
+                none_is_leaf=none_is_leaf,
+                namespace=namespace,
+            )
+        return it, new_tree, num_leaves
 
-        it = optree.tree_iter(
-            new_tree,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
+    it, _, num_leaves = get_iterator()
+    sentinel = object()
+    assert list(it) == list(range(num_leaves))
+    assert next(it, sentinel) is sentinel
 
+    it, new_tree, _ = get_iterator()
     results = concurrent_run(list, it)
     assert sorted(itertools.chain.from_iterable(results)) == list(range(num_leaves))
     for seq in results:
-        assert sorted(seq) == seq
+        assert seq == sorted(seq), f'Expected {sorted(seq)}, but got {seq}: tree {new_tree!r}.'
