@@ -274,7 +274,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 #endif
     auto * const PyTreeKind_Type = reinterpret_cast<PyTypeObject *>(PyTreeKindTypeObject.ptr());
     PyTreeKind_Type->tp_name = "optree.PyTreeKind";
-    py::setattr(PyTreeKindTypeObject, Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeKindTypeObject, "__module__", py::str("optree"));
     py::setattr(PyTreeKindTypeObject, "NUM_KINDS", py::int_(py::ssize_t(PyTreeKind::NumKinds)));
 
     auto PyTreeSpecTypeObject =
@@ -298,7 +298,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             py::module_local());
     auto * const PyTreeSpec_Type = reinterpret_cast<PyTypeObject *>(PyTreeSpecTypeObject.ptr());
     PyTreeSpec_Type->tp_name = "optree.PyTreeSpec";
-    py::setattr(PyTreeSpecTypeObject, Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeSpecTypeObject, "__module__", py::str("optree"));
 
     PyTreeSpecTypeObject
         .def("unflatten",
@@ -496,7 +496,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             py::module_local());
     auto * const PyTreeIter_Type = reinterpret_cast<PyTypeObject *>(PyTreeIterTypeObject.ptr());
     PyTreeIter_Type->tp_name = "optree.PyTreeIter";
-    py::setattr(PyTreeIterTypeObject, Py_Get_ID(__module__), Py_Get_ID(optree));
+    py::setattr(PyTreeIterTypeObject, "__module__", py::str("optree"));
 
     PyTreeIterTypeObject
         .def(py::init<py::object, std::optional<py::function>, bool, std::string>(),

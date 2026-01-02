@@ -169,7 +169,7 @@ template <bool NoneIsLeaf>
                 node.arity = DictGetSize(dict);
                 keys = DictKeys(dict);
                 if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
-                    node.original_keys = py::getattr(keys, Py_Get_ID(copy))();
+                    node.original_keys = py::getattr(keys, "copy")();
                     if (!IsDictInsertionOrdered(registry_namespace)) [[likely]] {
                         TotalOrderSort(keys);
                     }
@@ -181,8 +181,8 @@ template <bool NoneIsLeaf>
             verify_children(children, treespecs);
             if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
                 const scoped_critical_section cs{handle};
-                node.node_data = py::make_tuple(py::getattr(handle, Py_Get_ID(default_factory)),
-                                                std::move(keys));
+                node.node_data =
+                    py::make_tuple(py::getattr(handle, "default_factory"), std::move(keys));
             } else [[likely]] {
                 node.node_data = std::move(keys);
             }
@@ -204,8 +204,7 @@ template <bool NoneIsLeaf>
         case PyTreeKind::Deque: {
             const auto list = thread_safe_cast<py::list>(handle);
             node.arity = ListGetSize(list);
-            node.node_data =
-                EVALUATE_WITH_LOCK_HELD(py::getattr(handle, Py_Get_ID(maxlen)), handle);
+            node.node_data = EVALUATE_WITH_LOCK_HELD(py::getattr(handle, "maxlen"), handle);
             for (ssize_t i = 0; i < node.arity; ++i) {
                 children.emplace_back(ListGetItem(list, i));
             }
