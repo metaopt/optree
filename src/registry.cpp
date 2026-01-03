@@ -310,6 +310,14 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 /*static*/ void PyTreeTypeRegistry::Init() {
     const scoped_write_lock lock{sm_mutex};
 
+    const auto interpid = GetCurrentPyInterpreterID();
+
+    ++sm_num_interpreters_seen;
+    EXPECT_TRUE(
+        sm_alive_interpids.insert(interpid).second,
+        "The current interpreter ID should not be already present in the alive interpreters "
+        "set.");
+
     auto &registry1 = GetSingleton<NONE_IS_NODE>();
     auto &registry2 = GetSingleton<NONE_IS_LEAF>();
 
@@ -324,6 +332,32 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ void PyTreeTypeRegistry::Clear() {
     const scoped_write_lock lock{sm_mutex};
+
+    const auto interpid = GetCurrentPyInterpreterID();
+
+    EXPECT_NE(sm_alive_interpids.find(interpid),
+              sm_alive_interpids.end(),
+              "The current interpreter ID should be present in the alive interpreters set.");
+    sm_alive_interpids.erase(interpid);
+
+    {
+        const scoped_write_lock namespace_lock{sm_dict_order_mutex};
+        auto entries = reserved_vector<decltype(sm_dict_insertion_ordered_namespaces)::key_type>(4);
+        for (const auto &entry : sm_dict_insertion_ordered_namespaces) {
+            if (entry.first == interpid) [[likely]] {
+                entries.emplace_back(entry);
+            }
+        }
+        for (const auto &entry : entries) {
+            sm_dict_insertion_ordered_namespaces.erase(entry);
+        }
+        if (sm_alive_interpids.empty()) [[likely]] {
+            EXPECT_TRUE(
+                sm_dict_insertion_ordered_namespaces.empty(),
+                "The dict insertion ordered namespaces map should be empty when there is no "
+                "alive Python interpreter.");
+        }
+    }
 
     auto &registry1 = GetSingleton<NONE_IS_NODE>();
     auto &registry2 = GetSingleton<NONE_IS_LEAF>();
