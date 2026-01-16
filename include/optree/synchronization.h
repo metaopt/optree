@@ -62,7 +62,7 @@ using scoped_recursive_lock = std::scoped_lock<recursive_mutex>;
 #if (defined(__APPLE__) /* header <shared_mutex> is not available on macOS build target */ &&      \
      PY_VERSION_HEX < 0x030C00F0 /* Python 3.12.0 */)
 
-#    undef HAVE_READ_WRITE_LOCK
+#    undef OPTREE_HAS_READ_WRITE_LOCK
 
 using read_write_mutex = mutex;
 using scoped_read_lock = scoped_lock;
@@ -70,7 +70,7 @@ using scoped_write_lock = scoped_lock;
 
 #else
 
-#    define HAVE_READ_WRITE_LOCK
+#    define OPTREE_HAS_READ_WRITE_LOCK 1
 
 #    include <shared_mutex>  // std::shared_mutex, std::shared_lock
 

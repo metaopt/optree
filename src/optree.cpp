@@ -102,6 +102,11 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 #else
     BUILDTIME_METADATA["OPTREE_HAS_SUBINTERPRETER_SUPPORT"] = py::bool_(false);
 #endif
+#if defined(OPTREE_HAS_READ_WRITE_LOCK)
+    BUILDTIME_METADATA["OPTREE_HAS_READ_WRITE_LOCK"] = py::bool_(true);
+#else
+    BUILDTIME_METADATA["OPTREE_HAS_READ_WRITE_LOCK"] = py::bool_(false);
+#endif
 
     mod.attr("BUILDTIME_METADATA") = std::move(BUILDTIME_METADATA);
     py::exec(
