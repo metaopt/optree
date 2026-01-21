@@ -169,21 +169,21 @@ To flatten [`dict`](https://docs.python.org/3/library/stdtypes.html#dict) and [`
 > # User code
 > In [1]: import foo
 >
-> In [2]: foo.pytree.flatten({'a': 1, 'b': 2, 'c': foo.bar.Bar(3, 4.0)}))
+> In [2]: foo.pytree.flatten({'a': 1, 'b': 2, 'c': foo.bar.Bar(3, 4.0)})
 > Out[2]:
 > (
 >     [1, 2, 3, 4.0],
 >     PyTreeSpec({'a': *, 'b': *, 'c': CustomTreeNode(Bar[()], [*, *])}, namespace='foo')
 > )
 >
-> In [3]: foo.pytree.functools.reduce(lambda x, y: x * y, {'a': 1, 'b': 2, 'c': foo.bar.Bar(3, 4.0)}))
+> In [3]: foo.pytree.functools.reduce(lambda x, y: x * y, {'a': 1, 'b': 2, 'c': foo.bar.Bar(3, 4.0)})
 > Out[3]: 24.0
 > ```
 
 ### Tree Nodes and Leaves
 
 A tree is a collection of non-leaf nodes and leaf nodes, where the leaf nodes are opaque objects having no children to flatten.
-`optree.tree_flatten(...)` will flatten the tree and return a list of leaf nodes while the non-leaf nodes will store in the tree structure specification.
+`optree.tree_flatten(...)` will flatten the tree and return a list of leaf nodes while the non-leaf nodes will be stored in the tree structure specification.
 
 #### Built-in PyTree Node Types
 
@@ -223,7 +223,7 @@ The `entries` can be omitted (only returns a pair) or is optional to implement (
 The following examples show how to register custom types and utilize them for `tree_flatten` and `tree_map`. Please refer to section [Notes about the PyTree Type Registry](#notes-about-the-pytree-type-registry) for more information.
 
 ```python
-# Registry a Python type with lambda functions
+# Register a Python type with lambda functions
 optree.register_pytree_node(
     set,
     # (set) -> (children, metadata, None)
@@ -362,7 +362,7 @@ class MyDict(UserDict):
 
 There are several key attributes of the pytree type registry:
 
-1. **The type registry is per-interpreter-dependent.** This means registering a custom type in the registry affects all modules that use OpTree.
+1. **The type registry is interpreter-dependent.** This means registering a custom type in the registry affects all modules that use OpTree in the same Python interpreter.
 
 > [!WARNING]
 > For safety reasons, a `namespace` must be specified while registering a custom type. It is
