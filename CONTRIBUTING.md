@@ -98,7 +98,7 @@ You can change `cp39*` to `cp312*` to build for Python 3.12. See <https://cibuil
 
 ## Documentation
 
-Documentation is written under the [`docs/source`](https://github.com/metaopt/optree/tree/HEAD/docs/source) directory as ReStructuredText (`.rst`) files.
+Documentations are written under the [`docs/source`](https://github.com/metaopt/optree/tree/HEAD/docs/source) directory as ReStructuredText (`.rst`) files.
 `index.rst` is the main page.
 A Tutorial on ReStructuredText can be found [here](https://pythonhosted.org/an_example_pypi_project/sphinx.html).
 
@@ -110,6 +110,6 @@ To compile documentation into webpage, run
 make docs
 ```
 
-The generated webpage is located under directory `docs/build` and will open the browser after building documentation.
+The generated webpage locates under directory `docs/build` and will open the browser after building documentation.
 
 Detailed documentation is hosted online at <https://optree.readthedocs.io>.
