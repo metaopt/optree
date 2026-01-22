@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).absolute().parents[2]
 
 PYPROJECT_FILE = ROOT / 'pyproject.toml'
-PYBIND11_GIT_URL = 'https://github.com/pybind/pybind11.git'
+PYBIND11_GIT_URL = 'https://github.com/XuehaiPan/pybind11.git@fix-segfault'
 
 
 if __name__ == '__main__':
