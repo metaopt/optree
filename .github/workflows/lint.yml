@@ -24,6 +24,7 @@ concurrency:
 env:
   OPTREE_CXX_WERROR: "ON"
   _GLIBCXX_USE_CXX11_ABI: "1"
+  PYTHONDEVMODE: "1"
   PYTHONUNBUFFERED: "1"
   FORCE_COLOR: "1"
   CLICOLOR_FORCE: "1"
@@ -61,17 +62,23 @@ jobs:
       - name: Install dependencies
         run: python -m pip install wheel pybind11 -r docs/requirements.txt
 
+      - name: Enable core dump generation
+        run: |
+          sudo sysctl -w kernel.core_pattern="core.%P"
+          sudo sysctl -w kernel.core_uses_pid=0
+          sudo sysctl -w fs.suid_dumpable=1
+          sysctl kernel.core_pattern kernel.core_uses_pid fs.suid_dumpable
+
       - name: Install nightly pybind11
         shell: bash
         if: |
           github.event_name == 'pull_request' &&
           contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
         run: |
-          python .github/workflows/set_setup_requires.py
+          python -m pip install --force-reinstall "$(python .github/workflows/set_setup_requires.py)"
           echo "::group::pyproject.toml"
           cat pyproject.toml
           echo "::endgroup::"
-          python -m pip install --force-reinstall 'pybind11 @ git+https://github.com/pybind/pybind11.git#egg=pybind11'
 
       - name: Install OpTree
         run: python -m pip install -v --no-build-isolation --editable '.[lint]'
@@ -117,3 +124,39 @@ jobs:
             exit 1
           fi
           make spelling
+
+      - name: List generated files
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          find . -type f -name '*.py[co]' -delete
+          find . -depth -type d -name "__pycache__" -exec rm -r "{}" +
+          if git status --ignored --porcelain | grep -qvE '/$'; then
+            ls -alh $(git status --ignored --porcelain | grep -vE '/$' | grep -oE '\S+$')
+          fi
+
+      - name: Collect backtraces from coredumps (if any)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          CORE_DUMP_FILES="$(find . -iname "core.[1-9]*")"
+          if [[ -n "${CORE_DUMP_FILES}" ]]; then
+            echo "Found core dumps:"
+            ls -alh ${CORE_DUMP_FILES}
+            BACKTRACE_COMMAND="gdb --exec python --core '{}' -ex 'bt -full' -ex 'q'"
+            echo "::group::Install GDB"
+            (
+              export DEBIAN_FRONTEND=noninteractive
+              sudo apt-get update -qq && sudo apt-get install -yqq gdb
+            )
+            echo "::endgroup::"
+            echo "Collecting backtraces:"
+            find . -iname "core.[1-9]*" \
+              -exec bash -xc "
+                echo '::group::backtrace from: {}';
+                ${BACKTRACE_COMMAND};
+                echo '::endgroup::';
+              " ';'
+            echo "::warning::Coredump files found, see backtraces above for details." >&2
+            exit 1
+          fi

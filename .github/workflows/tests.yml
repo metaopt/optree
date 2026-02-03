@@ -38,6 +38,7 @@ env:
   OPTREE_CXX_WERROR: "ON"
   _GLIBCXX_USE_CXX11_ABI: "1"
   FULL_TEST_PYTHON_VERSIONS: "3.12;3.13"
+  PYTHONDEVMODE: "1"
   PYTHONUNBUFFERED: "1"
   PYTHON: "python" # to be updated
   PYTHON_TAG: "py3" # to be updated
@@ -189,10 +190,10 @@ jobs:
           contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
         run: |
           ${{ env.PYTHON }} .github/workflows/set_setup_requires.py
+          ${{ env.PYTHON }} -m pip install --force-reinstall "$(${{ env.PYTHON }} .github/workflows/set_setup_requires.py)"
           echo "::group::pyproject.toml"
           cat pyproject.toml
           echo "::endgroup::"
-          echo "pybind11_VERSION=HEAD" | tee -a "${GITHUB_ENV}"
 
       - name: Test installable with C++17
         shell: bash
