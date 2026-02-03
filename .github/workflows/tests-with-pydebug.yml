@@ -317,10 +317,10 @@ jobs:
         run: |
           source "venv/${VENV_BIN_NAME}/activate"
           ${{ env.PYTHON }} .github/workflows/set_setup_requires.py
+          ${{ env.PYTHON }} -m pip install --force-reinstall "$(${{ env.PYTHON }} .github/workflows/set_setup_requires.py)"
           echo "::group::pyproject.toml"
           cat pyproject.toml
           echo "::endgroup::"
-          echo "pybind11_VERSION=HEAD" | tee -a "${GITHUB_ENV}"
 
       - name: Test buildable without Python frontend
         if: runner.os != 'Windows'
