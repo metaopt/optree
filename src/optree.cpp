@@ -245,7 +245,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 #if defined(PYBIND11_HAS_NATIVE_ENUM)
     py::native_enum<PyTreeKind>(mod, "PyTreeKind", "enum.IntEnum", "The kind of a pytree node.")
         .value("CUSTOM", PyTreeKind::Custom, "A custom type.")
-        .value("LEAF", PyTreeKind::Leaf, "A opaque leaf node.")
+        .value("LEAF", PyTreeKind::Leaf, "An opaque leaf node.")
         .value("NONE", PyTreeKind::None, "None.")
         .value("TUPLE", PyTreeKind::Tuple, "A tuple.")
         .value("LIST", PyTreeKind::List, "A list.")
