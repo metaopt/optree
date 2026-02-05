@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  schedule:
+    # Run at 12:00 Asia/Shanghai (04:00 UTC) every three days with nightly pybind11
+    - cron: "0 4 */3 * *"
   pull_request:
     types:
       - labeled
@@ -24,6 +27,12 @@ on:
       - .github/workflows/tests-with-pydebug.yml
   # Allow to trigger the workflow manually
   workflow_dispatch:
+    inputs:
+      nightly-pybind11:
+        description: "Use nightly pybind11"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -312,11 +321,14 @@ jobs:
       - name: Use nightly pybind11
         shell: bash
         if: |
-          github.event_name == 'pull_request' &&
-          contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
+          github.event_name == 'schedule' ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.nightly-pybind11 == 'true') ||
+          (
+            github.event_name == 'pull_request' &&
+            contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
+          )
         run: |
           source "venv/${VENV_BIN_NAME}/activate"
-          ${{ env.PYTHON }} .github/workflows/set_setup_requires.py
           ${{ env.PYTHON }} -m pip install --force-reinstall "$(${{ env.PYTHON }} .github/workflows/set_setup_requires.py)"
           echo "::group::pyproject.toml"
           cat pyproject.toml
