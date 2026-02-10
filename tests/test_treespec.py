@@ -575,6 +575,7 @@ def test_treespec_pickle_missing_registration():
                     or key in ('PYTHON_GIL', 'PYTHONDEVMODE', 'PYTHONHASHSEED')
                 )
             },
+            timeout=120.0,
         )
         message = output.stdout.strip()
     except subprocess.CalledProcessError as ex:

@@ -170,7 +170,16 @@ class CalledProcessError(subprocess.CalledProcessError):
         )
 
 
-def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, rerun=1):
+def check_script_in_subprocess(
+    script,
+    /,
+    *,
+    output,
+    timeout=120.0,
+    cwd=TEST_ROOT,
+    env=None,
+    rerun=1,
+):
     script = textwrap.dedent(script).strip()
     result = ''
     for _ in range(rerun):
@@ -180,6 +189,7 @@ def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, re
                 stderr=subprocess.STDOUT,
                 text=True,
                 encoding='utf-8',
+                timeout=timeout,
                 cwd=cwd,
                 env={
                     key: value

@@ -60,8 +60,9 @@ def is_importable(mod: str) -> bool:
             ],
             cwd=TEST_ROOT,
             env=env,
+            timeout=120.0,
         )
-    except subprocess.CalledProcessError:
+    except subprocess.SubprocessError:
         return False
     return True
 
