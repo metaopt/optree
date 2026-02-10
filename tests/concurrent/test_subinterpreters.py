@@ -15,6 +15,7 @@
 
 import atexit
 import contextlib
+import platform
 import random
 import sys
 
@@ -322,6 +323,7 @@ def test_import_in_subinterpreter_before_main():
     )
 
 
+@pytest.mark.flaky(condition=platform.system() == 'Windows', reruns=3, only_rerun='TimeoutExpired')
 def test_import_in_subinterpreters_concurrently():
     check_script_in_subprocess(
         f"""

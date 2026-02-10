@@ -28,8 +28,13 @@ if not __release__:
     root_dir = Path(__file__).absolute().parent.parent
     try:
         prefix, sep, suffix = (
-            subprocess.check_output(
-                ['git', 'describe', '--abbrev=7'],  # noqa: S607
+            subprocess.check_output(  # noqa: S603
+                [  # noqa: S607
+                    'git',
+                    f'--git-dir={root_dir / ".git"}',
+                    'describe',
+                    '--abbrev=7',
+                ],
                 cwd=root_dir,
                 stderr=subprocess.DEVNULL,
                 text=True,
