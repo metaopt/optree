@@ -323,7 +323,7 @@ def test_import_in_subinterpreter_before_main():
     )
 
 
-@pytest.mark.flaky(condition=Py_GIL_DISABLED, reruns=3, only_rerun='TimeoutExpired')
+@pytest.mark.flaky(condition=Py_GIL_DISABLED, reruns=5, only_rerun='TimeoutExpired')
 def test_import_in_subinterpreters_concurrently():
     check_script_in_subprocess(
         f"""
