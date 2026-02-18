@@ -48,7 +48,6 @@ env:
   PYTHONUNBUFFERED: "1"
   PYTHON: "python" # to be updated
   PYTHON_TAG: "py3" # to be updated
-  pybind11_VERSION: "stable" # to be updated
   VENV_BIN_NAME: "bin" # to be updated
   COLUMNS: "100"
   FORCE_COLOR: "1"
