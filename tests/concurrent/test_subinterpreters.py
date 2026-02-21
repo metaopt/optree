@@ -27,7 +27,6 @@ from helpers import (
     OPTREE_HAS_SUBINTERPRETER_SUPPORT,
     PYPY,
     WASM,
-    WINDOWS,
     Py_DEBUG,
     Py_GIL_DISABLED,
     check_script_in_subprocess,
@@ -325,7 +324,7 @@ def test_import_in_subinterpreter_before_main():
     )
 
 
-@pytest.mark.xfail(condition=WINDOWS, reason='Deadlocks on Windows')
+@pytest.mark.xfail(condition=platform.system() == 'Windows', reason='Deadlocks on Windows')
 @pytest.mark.flaky(condition=Py_GIL_DISABLED, reruns=5, only_rerun='TimeoutExpired')
 @pytest.mark.skipif(
     platform.machine().lower() not in ('x86_64', 'amd64'),
