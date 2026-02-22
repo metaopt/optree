@@ -6,6 +6,8 @@ on:
       - main # allow to trigger the workflow with tag push event
   pull_request:
     types:
+      - labeled
+      - unlabeled
       - opened
       - synchronize
       - reopened
@@ -33,6 +35,11 @@ on:
           - build-only
           - build-and-publish
         required: true
+      nightly-pybind11:
+        description: "Use nightly pybind11"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -84,6 +91,20 @@ jobs:
 
       - name: Print version
         run: python setup.py --version
+
+      - name: Use nightly pybind11
+        shell: bash
+        if: |
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.nightly-pybind11 == 'true') ||
+          (
+            github.event_name == 'pull_request' &&
+            contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
+          )
+        run: |
+          python -m pip install --force-reinstall "$(python .github/workflows/set_setup_requires.py)"
+          echo "::group::pyproject.toml"
+          cat pyproject.toml
+          echo "::endgroup::"
 
       - name: Install dependencies
         run: python -m pip install --upgrade pip setuptools wheel build
@@ -245,6 +266,20 @@ jobs:
 
       - name: Print version
         run: python setup.py --version
+
+      - name: Use nightly pybind11
+        shell: bash
+        if: |
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.nightly-pybind11 == 'true') ||
+          (
+            github.event_name == 'pull_request' &&
+            contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
+          )
+        run: |
+          python -m pip install --force-reinstall "$(python .github/workflows/set_setup_requires.py)"
+          echo "::group::pyproject.toml"
+          cat pyproject.toml
+          echo "::endgroup::"
 
       - name: Set CIBW_BUILD
         shell: bash

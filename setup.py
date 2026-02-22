@@ -101,8 +101,9 @@ def cmake_context(
             stderr=subprocess.STDOUT,
             text=True,
             encoding='utf-8',
+            timeout=120.0,
         ).strip()
-    except (OSError, subprocess.CalledProcessError):
+    except (OSError, subprocess.SubprocessError):
         eprint(
             f'Could not run `{cmake}` directly. '
             'Unset the `PYTHONPATH` environment variable in the build environment.',
@@ -115,6 +116,7 @@ def cmake_context(
                 stderr=subprocess.STDOUT,
                 text=True,
                 encoding='utf-8',
+                timeout=120.0,
             ).strip()
 
     if verbose and output:
@@ -160,9 +162,10 @@ class CMakeExtension(Extension):
                         stderr=subprocess.DEVNULL,
                         text=True,
                         encoding='utf-8',
+                        timeout=120.0,
                     ),
                 )
-            except (OSError, subprocess.CalledProcessError, json.JSONDecodeError):
+            except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
                 cmake_capabilities = {}
             cmake_version = cmake_capabilities.get('version', {}).get('string', '0.0.0')
             if Version(cmake_version) < Version(minimum_version):

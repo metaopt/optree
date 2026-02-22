@@ -25,6 +25,12 @@ on:
       - .github/workflows/tests.yml
   # Allow to trigger the workflow manually
   workflow_dispatch:
+    inputs:
+      nightly-pybind11:
+        description: "Use nightly pybind11"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -42,7 +48,6 @@ env:
   PYTHONUNBUFFERED: "1"
   PYTHON: "python" # to be updated
   PYTHON_TAG: "py3" # to be updated
-  pybind11_VERSION: "stable" # to be updated
   VENV_BIN_NAME: "bin" # to be updated
   COLUMNS: "100"
   FORCE_COLOR: "1"
@@ -186,10 +191,12 @@ jobs:
       - name: Use nightly pybind11
         shell: bash
         if: |
-          github.event_name == 'pull_request' &&
-          contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.nightly-pybind11 == 'true') ||
+          (
+            github.event_name == 'pull_request' &&
+            contains(github.event.pull_request.labels.*.name, 'test-with-nightly-pybind11')
+          )
         run: |
-          ${{ env.PYTHON }} .github/workflows/set_setup_requires.py
           ${{ env.PYTHON }} -m pip install --force-reinstall "$(${{ env.PYTHON }} .github/workflows/set_setup_requires.py)"
           echo "::group::pyproject.toml"
           cat pyproject.toml

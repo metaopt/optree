@@ -36,6 +36,7 @@ import pytest
 
 import optree
 from optree._C import (
+    OPTREE_HAS_SUBINTERPRETER_SUPPORT,
     PYBIND11_HAS_NATIVE_ENUM,
     PYBIND11_HAS_SUBINTERPRETER_SUPPORT,
     Py_DEBUG,
@@ -55,6 +56,7 @@ assert INITIAL_REGISTRY_SIZE + 2 == len(NODETYPE_REGISTRY)
 
 _ = PYBIND11_HAS_NATIVE_ENUM
 _ = PYBIND11_HAS_SUBINTERPRETER_SUPPORT
+_ = OPTREE_HAS_SUBINTERPRETER_SUPPORT
 
 if sysconfig.get_config_var('Py_DEBUG') is None:
     assert Py_DEBUG == hasattr(sys, 'gettotalrefcount')
@@ -168,7 +170,16 @@ class CalledProcessError(subprocess.CalledProcessError):
         )
 
 
-def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, rerun=1):
+def check_script_in_subprocess(
+    script,
+    /,
+    *,
+    output,
+    timeout=120.0,
+    cwd=TEST_ROOT,
+    env=None,
+    rerun=1,
+):
     script = textwrap.dedent(script).strip()
     result = ''
     for _ in range(rerun):
@@ -178,6 +189,7 @@ def check_script_in_subprocess(script, /, *, output, env=None, cwd=TEST_ROOT, re
                 stderr=subprocess.STDOUT,
                 text=True,
                 encoding='utf-8',
+                timeout=timeout,
                 cwd=cwd,
                 env={
                     key: value

@@ -17,6 +17,8 @@ limitations under the License.
 
 #pragma once
 
+#include <stdexcept>  // std::runtime_error
+
 #include <Python.h>
 
 #include <pybind11/pybind11.h>
@@ -31,6 +33,15 @@ limitations under the License.
 
 // NOLINTNEXTLINE[bugprone-macro-parentheses]
 #define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))
+
+#if !defined(PYPY_VERSION) && (PY_VERSION_HEX >= 0x030E0000 /* Python 3.14 */) &&                  \
+    (PYBIND11_VERSION_HEX >= 0x030002F0 /* pybind11 3.0.2 */) &&                                   \
+    (defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                               \
+     NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT))
+#    define OPTREE_HAS_SUBINTERPRETER_SUPPORT 1
+#else
+#    undef OPTREE_HAS_SUBINTERPRETER_SUPPORT
+#endif
 
 namespace py = pybind11;
 
@@ -59,3 +70,50 @@ inline constexpr Py_ALWAYS_INLINE bool Py_IsConstant(PyObject *x) noexcept {
     return Py_IsNone(x) || Py_IsTrue(x) || Py_IsFalse(x);
 }
 #define Py_IsConstant(x) Py_IsConstant(x)
+
+using interpid_t = decltype(PyInterpreterState_GetID(nullptr));
+
+#if defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                                \
+    NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT)
+
+[[nodiscard]] inline bool IsCurrentPyInterpreterMain() {
+    return PyInterpreterState_Get() == PyInterpreterState_Main();
+}
+
+[[nodiscard]] inline interpid_t GetCurrentPyInterpreterID() {
+    PyInterpreterState *interp = PyInterpreterState_Get();
+    if (PyErr_Occurred() != nullptr) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    if (interp == nullptr) [[unlikely]] {
+        throw std::runtime_error("Failed to get the current Python interpreter state.");
+    }
+    const interpid_t interpid = PyInterpreterState_GetID(interp);
+    if (PyErr_Occurred() != nullptr) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    return interpid;
+}
+
+[[nodiscard]] inline interpid_t GetMainPyInterpreterID() {
+    PyInterpreterState *interp = PyInterpreterState_Main();
+    if (PyErr_Occurred() != nullptr) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    if (interp == nullptr) [[unlikely]] {
+        throw std::runtime_error("Failed to get the main Python interpreter state.");
+    }
+    const interpid_t interpid = PyInterpreterState_GetID(interp);
+    if (PyErr_Occurred() != nullptr) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    return interpid;
+}
+
+#else
+
+[[nodiscard]] inline bool IsCurrentPyInterpreterMain() noexcept { return true; }
+[[nodiscard]] inline interpid_t GetCurrentPyInterpreterID() noexcept { return 0; }
+[[nodiscard]] inline interpid_t GetMainPyInterpreterID() noexcept { return 0; }
+
+#endif

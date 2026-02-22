@@ -17,14 +17,13 @@ limitations under the License.
 
 #pragma once
 
-#include <memory>         // std::unique_ptr
-#include <optional>       // std::optional, std::nullopt
-#include <string>         // std::string
-#include <thread>         // std::thread::id
-#include <tuple>          // std::tuple
-#include <unordered_set>  // std::unordered_set
-#include <utility>        // std::pair
-#include <vector>         // std::vector
+#include <memory>    // std::unique_ptr
+#include <optional>  // std::optional, std::nullopt
+#include <string>    // std::string
+#include <thread>    // std::thread::id
+#include <tuple>     // std::tuple
+#include <utility>   // std::pair
+#include <vector>    // std::vector
 
 #include <pybind11/pybind11.h>
 
@@ -259,31 +258,6 @@ public:
         const bool &none_is_leaf = false,
         const std::string &registry_namespace = "");
 
-    // Check if should preserve the insertion order of the dictionary keys during flattening.
-    [[nodiscard]] static inline Py_ALWAYS_INLINE bool IsDictInsertionOrdered(
-        const std::string &registry_namespace,
-        const bool &inherit_global_namespace = true) {
-        const scoped_read_lock lock{sm_is_dict_insertion_ordered_mutex};
-
-        return (sm_is_dict_insertion_ordered.find(registry_namespace) !=
-                sm_is_dict_insertion_ordered.end()) ||
-               (inherit_global_namespace &&
-                sm_is_dict_insertion_ordered.find("") != sm_is_dict_insertion_ordered.end());
-    }
-
-    // Set the namespace to preserve the insertion order of the dictionary keys during flattening.
-    static inline Py_ALWAYS_INLINE void SetDictInsertionOrdered(
-        const bool &mode,
-        const std::string &registry_namespace) {
-        const scoped_write_lock lock{sm_is_dict_insertion_ordered_mutex};
-
-        if (mode) [[likely]] {
-            sm_is_dict_insertion_ordered.insert(registry_namespace);
-        } else [[unlikely]] {
-            sm_is_dict_insertion_ordered.erase(registry_namespace);
-        }
-    }
-
     friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
 
 private:
@@ -423,11 +397,6 @@ private:
 
     // Used in tp_clear for GC support.
     static int PyTpClear(PyObject *self_base);
-
-    // A set of namespaces that preserve the insertion order of the dictionary keys during
-    // flattening.
-    static inline std::unordered_set<std::string> sm_is_dict_insertion_ordered{};
-    static inline read_write_mutex sm_is_dict_insertion_ordered_mutex{};
 };
 
 class PyTreeIter {
@@ -441,7 +410,8 @@ public:
           m_leaf_predicate{leaf_predicate},
           m_none_is_leaf{none_is_leaf},
           m_namespace{registry_namespace},
-          m_is_dict_insertion_ordered{PyTreeSpec::IsDictInsertionOrdered(registry_namespace)} {}
+          m_is_dict_insertion_ordered{
+              PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace)} {}
 
     PyTreeIter() = delete;
     ~PyTreeIter() = default;
