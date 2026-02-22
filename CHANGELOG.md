@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add subinterpreters support for Python 3.14+ by [@XuehaiPan](https://github.com/XuehaiPan) in [#245](https://github.com/metaopt/optree/pull/245).
+-
 
 ### Changed
 
@@ -21,11 +21,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Polish docstrings and fix grammars by [@XuehaiPan](https://github.com/XuehaiPan) in [#256](https://github.com/metaopt/optree/pull/256).
+-
 
 ### Removed
 
 -
+
+------
+
+## [0.19.0] - 2025-02-23
+
+### Added
+
+- Add subinterpreters support for Python 3.14+ by [@XuehaiPan](https://github.com/XuehaiPan) in [#245](https://github.com/metaopt/optree/pull/245).
+
+### Fixed
+
+- Polish docstrings and fix grammars by [@XuehaiPan](https://github.com/XuehaiPan) in [#256](https://github.com/metaopt/optree/pull/256).
 
 ------
 
@@ -486,7 +498,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/metaopt/optree/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/metaopt/optree/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/metaopt/optree/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/metaopt/optree/compare/v0.15.0...v0.16.0
