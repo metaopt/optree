@@ -315,7 +315,4 @@ ban-relative-imports = "all"
 
 [tool.pytest.ini_options]
 verbosity_assertions = 3
-markers = [
-    "flaky(condition, reruns, only_rerun): mark test as flaky and rerun when configured",
-]
 filterwarnings = ["always", "error"]
