@@ -15,7 +15,6 @@
 
 import atexit
 import contextlib
-import platform
 import random
 import sys
 
@@ -28,7 +27,6 @@ from helpers import (
     PYPY,
     WASM,
     Py_DEBUG,
-    Py_GIL_DISABLED,
     check_script_in_subprocess,
 )
 
@@ -324,12 +322,12 @@ def test_import_in_subinterpreter_before_main():
     )
 
 
-@pytest.mark.xfail(reason='Deadlock or timeout may occur due to GIL issues', strict=False)
-@pytest.mark.flaky(condition=Py_GIL_DISABLED, reruns=5, only_rerun='TimeoutExpired')
-@pytest.mark.skipif(
-    platform.machine().lower() not in ('x86_64', 'amd64'),
-    reason='Only run on x86_64 and AMD64 architectures',
-)
+# @pytest.mark.xfail(reason='Deadlock or timeout may occur due to GIL issues', strict=False)
+# @pytest.mark.flaky(condition=Py_GIL_DISABLED, reruns=5, only_rerun='TimeoutExpired')
+# @pytest.mark.skipif(
+#     platform.machine().lower() not in ('x86_64', 'amd64'),
+#     reason='Only run on x86_64 and AMD64 architectures',
+# )
 def test_import_in_subinterpreters_concurrently():
     check_script_in_subprocess(
         f"""

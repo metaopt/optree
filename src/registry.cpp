@@ -308,118 +308,123 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     const std::string &);
 
 /*static*/ void PyTreeTypeRegistry::Init() {
-    const scoped_write_lock lock{sm_mutex};
-
-    const auto interpid = GetCurrentPyInterpreterID();
-
-    ++sm_num_interpreters_seen;
-    EXPECT_TRUE(
-        sm_alive_interpids.insert(interpid).second,
-        "The current interpreter ID should not be already present in the alive interpreters "
-        "set.");
-
     auto &registry1 = GetSingleton<NONE_IS_NODE>();
     auto &registry2 = GetSingleton<NONE_IS_LEAF>();
 
-    EXPECT_EQ(registry1.m_builtins_types.size(), registry2.m_builtins_types.size());
-    EXPECT_LE(registry1.m_builtins_types.size(), registry1.m_registrations.size());
-    EXPECT_EQ(registry1.m_registrations.size(), registry2.m_registrations.size() + 1);
-    EXPECT_EQ(registry1.m_named_registrations.size(), registry2.m_named_registrations.size());
+    {
+        const scoped_write_lock lock{sm_mutex};
 
-    py::getattr(py::module_::import("atexit"), "register")(py::cpp_function(&Clear));
+        const auto interpid = GetCurrentPyInterpreterID();
+
+        ++sm_num_interpreters_seen;
+        EXPECT_TRUE(
+            sm_alive_interpids.insert(interpid).second,
+            "The current interpreter ID should not be already present in the alive interpreters "
+            "set.");
+
+        EXPECT_EQ(registry1.m_builtins_types.size(), registry2.m_builtins_types.size());
+        EXPECT_LE(registry1.m_builtins_types.size(), registry1.m_registrations.size());
+        EXPECT_EQ(registry1.m_registrations.size(), registry2.m_registrations.size() + 1);
+        EXPECT_EQ(registry1.m_named_registrations.size(), registry2.m_named_registrations.size());
+
+        py::getattr(py::module_::import("atexit"), "register")(py::cpp_function(&Clear));
+    }
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ void PyTreeTypeRegistry::Clear() {
-    const scoped_write_lock lock{sm_mutex};
-
-    const auto interpid = GetCurrentPyInterpreterID();
-
-    EXPECT_NE(sm_alive_interpids.find(interpid),
-              sm_alive_interpids.end(),
-              "The current interpreter ID should be present in the alive interpreters set.");
-    sm_alive_interpids.erase(interpid);
-
-    {
-        const scoped_write_lock namespace_lock{sm_dict_order_mutex};
-        auto entries = reserved_vector<decltype(sm_dict_insertion_ordered_namespaces)::key_type>(4);
-        for (const auto &entry : sm_dict_insertion_ordered_namespaces) {
-            if (entry.first == interpid) [[likely]] {
-                entries.emplace_back(entry);
-            }
-        }
-        for (const auto &entry : entries) {
-            sm_dict_insertion_ordered_namespaces.erase(entry);
-        }
-        if (sm_alive_interpids.empty()) [[likely]] {
-            EXPECT_TRUE(
-                sm_dict_insertion_ordered_namespaces.empty(),
-                "The dict insertion ordered namespaces map should be empty when there is no "
-                "alive Python interpreter.");
-        }
-    }
-
     auto &registry1 = GetSingleton<NONE_IS_NODE>();
     auto &registry2 = GetSingleton<NONE_IS_LEAF>();
 
-    EXPECT_EQ(registry1.m_builtins_types.size(), registry2.m_builtins_types.size());
-    EXPECT_LE(registry1.m_builtins_types.size(), registry1.m_registrations.size());
-    EXPECT_EQ(registry1.m_registrations.size(), registry2.m_registrations.size() + 1);
-    EXPECT_EQ(registry1.m_named_registrations.size(), registry2.m_named_registrations.size());
+    {
+        const scoped_write_lock lock{sm_mutex};
+
+        const auto interpid = GetCurrentPyInterpreterID();
+
+        EXPECT_NE(sm_alive_interpids.find(interpid),
+                  sm_alive_interpids.end(),
+                  "The current interpreter ID should be present in the alive interpreters set.");
+        sm_alive_interpids.erase(interpid);
+
+        {
+            const scoped_write_lock namespace_lock{sm_dict_order_mutex};
+            auto entries =
+                reserved_vector<decltype(sm_dict_insertion_ordered_namespaces)::key_type>(4);
+            for (const auto &entry : sm_dict_insertion_ordered_namespaces) {
+                if (entry.first == interpid) [[likely]] {
+                    entries.emplace_back(entry);
+                }
+            }
+            for (const auto &entry : entries) {
+                sm_dict_insertion_ordered_namespaces.erase(entry);
+            }
+            if (sm_alive_interpids.empty()) [[likely]] {
+                EXPECT_TRUE(
+                    sm_dict_insertion_ordered_namespaces.empty(),
+                    "The dict insertion ordered namespaces map should be empty when there is no "
+                    "alive Python interpreter.");
+            }
+        }
+
+        EXPECT_EQ(registry1.m_builtins_types.size(), registry2.m_builtins_types.size());
+        EXPECT_LE(registry1.m_builtins_types.size(), registry1.m_registrations.size());
+        EXPECT_EQ(registry1.m_registrations.size(), registry2.m_registrations.size() + 1);
+        EXPECT_EQ(registry1.m_named_registrations.size(), registry2.m_named_registrations.size());
 
 #if defined(Py_DEBUG)
-    for (const auto &cls : registry1.m_builtins_types) {
-        EXPECT_NE(registry1.m_registrations.find(cls), registry1.m_registrations.end());
-        EXPECT_NE(registry2.m_builtins_types.find(cls), registry2.m_builtins_types.end());
-    }
-    for (const auto &cls : registry2.m_builtins_types) {
-        if (cls.is(PyNoneTypeObject)) [[unlikely]] {
-            EXPECT_EQ(registry2.m_registrations.find(cls), registry2.m_registrations.end());
-        } else [[likely]] {
-            EXPECT_NE(registry2.m_registrations.find(cls), registry2.m_registrations.end());
+        for (const auto &cls : registry1.m_builtins_types) {
+            EXPECT_NE(registry1.m_registrations.find(cls), registry1.m_registrations.end());
+            EXPECT_NE(registry2.m_builtins_types.find(cls), registry2.m_builtins_types.end());
         }
-    }
-    for (const auto &[cls2, registration2] : registry2.m_registrations) {
-        const auto it1 = registry1.m_registrations.find(cls2);
-        EXPECT_NE(it1, registry1.m_registrations.end());
+        for (const auto &cls : registry2.m_builtins_types) {
+            if (cls.is(PyNoneTypeObject)) [[unlikely]] {
+                EXPECT_EQ(registry2.m_registrations.find(cls), registry2.m_registrations.end());
+            } else [[likely]] {
+                EXPECT_NE(registry2.m_registrations.find(cls), registry2.m_registrations.end());
+            }
+        }
+        for (const auto &[cls2, registration2] : registry2.m_registrations) {
+            const auto it1 = registry1.m_registrations.find(cls2);
+            EXPECT_NE(it1, registry1.m_registrations.end());
 
-        const auto &registration1 = it1->second;
-        EXPECT_TRUE(registration1->type.is(registration2->type));
-        EXPECT_TRUE(registration1->flatten_func.is(registration2->flatten_func));
-        EXPECT_TRUE(registration1->unflatten_func.is(registration2->unflatten_func));
-        EXPECT_TRUE(registration1->path_entry_type.is(registration2->path_entry_type));
-    }
-    for (const auto &[named_cls2, registration2] : registry2.m_named_registrations) {
-        const auto it1 = registry1.m_named_registrations.find(named_cls2);
-        EXPECT_NE(it1, registry1.m_named_registrations.end());
+            const auto &registration1 = it1->second;
+            EXPECT_TRUE(registration1->type.is(registration2->type));
+            EXPECT_TRUE(registration1->flatten_func.is(registration2->flatten_func));
+            EXPECT_TRUE(registration1->unflatten_func.is(registration2->unflatten_func));
+            EXPECT_TRUE(registration1->path_entry_type.is(registration2->path_entry_type));
+        }
+        for (const auto &[named_cls2, registration2] : registry2.m_named_registrations) {
+            const auto it1 = registry1.m_named_registrations.find(named_cls2);
+            EXPECT_NE(it1, registry1.m_named_registrations.end());
 
-        const auto &registration1 = it1->second;
-        EXPECT_TRUE(registration1->type.is(registration2->type));
-        EXPECT_TRUE(registration1->flatten_func.is(registration2->flatten_func));
-        EXPECT_TRUE(registration1->unflatten_func.is(registration2->unflatten_func));
-        EXPECT_TRUE(registration1->path_entry_type.is(registration2->path_entry_type));
-    }
+            const auto &registration1 = it1->second;
+            EXPECT_TRUE(registration1->type.is(registration2->type));
+            EXPECT_TRUE(registration1->flatten_func.is(registration2->flatten_func));
+            EXPECT_TRUE(registration1->unflatten_func.is(registration2->unflatten_func));
+            EXPECT_TRUE(registration1->path_entry_type.is(registration2->path_entry_type));
+        }
 #endif
 
-    for (const auto &[_, registration1] : registry1.m_registrations) {
-        registration1->type.dec_ref();
-        registration1->flatten_func.dec_ref();
-        registration1->unflatten_func.dec_ref();
-        registration1->path_entry_type.dec_ref();
-    }
-    for (const auto &[_, registration1] : registry1.m_named_registrations) {
-        registration1->type.dec_ref();
-        registration1->flatten_func.dec_ref();
-        registration1->unflatten_func.dec_ref();
-        registration1->path_entry_type.dec_ref();
-    }
+        for (const auto &[_, registration1] : registry1.m_registrations) {
+            registration1->type.dec_ref();
+            registration1->flatten_func.dec_ref();
+            registration1->unflatten_func.dec_ref();
+            registration1->path_entry_type.dec_ref();
+        }
+        for (const auto &[_, registration1] : registry1.m_named_registrations) {
+            registration1->type.dec_ref();
+            registration1->flatten_func.dec_ref();
+            registration1->unflatten_func.dec_ref();
+            registration1->path_entry_type.dec_ref();
+        }
 
-    registry1.m_builtins_types.clear();
-    registry1.m_registrations.clear();
-    registry1.m_named_registrations.clear();
-    registry2.m_builtins_types.clear();
-    registry2.m_registrations.clear();
-    registry2.m_named_registrations.clear();
+        registry1.m_builtins_types.clear();
+        registry1.m_registrations.clear();
+        registry1.m_named_registrations.clear();
+        registry2.m_builtins_types.clear();
+        registry2.m_registrations.clear();
+        registry2.m_named_registrations.clear();
+    }
 }
 
 }  // namespace optree
