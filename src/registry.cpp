@@ -310,11 +310,10 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 /*static*/ void PyTreeTypeRegistry::Init() {
     auto &registry1 = GetSingleton<NONE_IS_NODE>();
     auto &registry2 = GetSingleton<NONE_IS_LEAF>();
+    const auto interpid = GetCurrentPyInterpreterID();
 
     {
         const scoped_write_lock lock{sm_mutex};
-
-        const auto interpid = GetCurrentPyInterpreterID();
 
         ++sm_num_interpreters_seen;
         EXPECT_TRUE(
@@ -326,20 +325,19 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
         EXPECT_LE(registry1.m_builtins_types.size(), registry1.m_registrations.size());
         EXPECT_EQ(registry1.m_registrations.size(), registry2.m_registrations.size() + 1);
         EXPECT_EQ(registry1.m_named_registrations.size(), registry2.m_named_registrations.size());
-
-        py::getattr(py::module_::import("atexit"), "register")(py::cpp_function(&Clear));
     }
+
+    py::getattr(py::module_::import("atexit"), "register")(py::cpp_function(&Clear));
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ void PyTreeTypeRegistry::Clear() {
     auto &registry1 = GetSingleton<NONE_IS_NODE>();
     auto &registry2 = GetSingleton<NONE_IS_LEAF>();
+    const auto interpid = GetCurrentPyInterpreterID();
 
     {
         const scoped_write_lock lock{sm_mutex};
-
-        const auto interpid = GetCurrentPyInterpreterID();
 
         EXPECT_NE(sm_alive_interpids.find(interpid),
                   sm_alive_interpids.end(),
