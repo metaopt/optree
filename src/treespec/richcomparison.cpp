@@ -15,7 +15,7 @@ limitations under the License.
 ================================================================================
 */
 
-#include <algorithm>      // std::copy, std::reverse
+#include <algorithm>      // std::ranges::copy, std::ranges::reverse
 #include <unordered_map>  // std::unordered_map
 #include <vector>         // std::vector
 
@@ -103,8 +103,8 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec &other, const bool &strict) const {
                         other_offsets.emplace_back(other_offsets.back() + num_nodes);
                         other_cur += num_nodes;
                     }
-                    std::reverse(other_num_nodes.begin(), other_num_nodes.end());
-                    std::reverse(other_offsets.begin(), other_offsets.end());
+                    std::ranges::reverse(other_num_nodes);
+                    std::ranges::reverse(other_offsets);
                     EXPECT_EQ(other_offsets.front(),
                               b->num_nodes,
                               "PyTreeSpec traversal out of range.");
@@ -125,15 +125,15 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec &other, const bool &strict) const {
                         reordered_other_offsets.emplace_back(reordered_other_offsets.back() +
                                                              reordered_other_num_nodes[i]);
                     }
-                    std::reverse(reordered_other_offsets.begin(), reordered_other_offsets.end());
+                    std::ranges::reverse(reordered_other_offsets);
                     EXPECT_EQ(reordered_other_offsets.front(),
                               b->num_nodes,
                               "PyTreeSpec traversal out of range.");
                     auto original_b = other.m_traversal.crbegin() + (b - other_traversal.crbegin());
                     for (const auto &[i, j] : reordered_index_to_index) {
-                        std::copy(original_b + other_offsets[j + 1],
-                                  original_b + other_offsets[j],
-                                  b + reordered_other_offsets[i + 1]);
+                        std::ranges::copy(original_b + other_offsets[j + 1],
+                                          original_b + other_offsets[j],
+                                          b + reordered_other_offsets[i + 1]);
                     }
                 }
                 break;
