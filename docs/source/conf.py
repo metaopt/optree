@@ -1,4 +1,4 @@
-# Copyright 2022-2025 MetaOPT Team. All Rights Reserved.
+# Copyright 2022-2026 MetaOPT Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ def get_version() -> str:
 # -- Project information -----------------------------------------------------
 
 project = 'OpTree'
-copyright = '2022-2025 MetaOPT Team'
+copyright = '2022-2026 MetaOPT Team'
 author = 'OpTree Contributors'
 
 # The full version, including alpha/beta/rc tags
