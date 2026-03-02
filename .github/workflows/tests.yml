@@ -433,12 +433,13 @@ jobs:
 
       - name: Upload JUnit results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@v1
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: tests/junit-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml
           flags: junit,junit-${{ env.PYTHON_TAG }}-${{ runner.os }}
           name: junit
+          report_type: test_results
           verbose: true
           fail_ci_if_error: false
 
