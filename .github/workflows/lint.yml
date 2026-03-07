@@ -99,7 +99,7 @@ jobs:
         run: make clang-format
 
       - name: clang-tidy
-        run: make clang-tidy CMAKE_CXX_STANDARD=17
+        run: make clang-tidy CMAKE_CXX_STANDARD=20
 
       - name: cpplint
         run: make cpplint

@@ -15,6 +15,7 @@ limitations under the License.
 ================================================================================
 */
 
+#include <format>       // std::format
 #include <memory>       // std::make_shared
 #include <optional>     // std::optional
 #include <sstream>      // std::ostringstream
@@ -38,8 +39,9 @@ template <bool NoneIsLeaf>
             const auto add_builtin_type = [&registry](const py::object &cls,
                                                       const PyTreeKind &kind) -> void {
                 EXPECT_TRUE(registry.m_builtins_types.emplace(cls).second,
-                            "PyTree type " + PyRepr(cls) +
-                                " is already registered in the built-in types set.");
+                            std::format("PyTree type {} is already registered "
+                                        "in the built-in types set.",
+                                        cls));
                 if (!NoneIsLeaf || kind != PyTreeKind::None) [[likely]] {
                     auto registration =
                         std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
@@ -47,8 +49,9 @@ template <bool NoneIsLeaf>
                     registration->type = py::reinterpret_borrow<py::object>(cls);
                     EXPECT_TRUE(
                         registry.m_registrations.emplace(cls, std::move(registration)).second,
-                        "PyTree type " + PyRepr(cls) +
-                            " is already registered in the global namespace.");
+                        std::format("PyTree type {} is already registered "
+                                    "in the global namespace.",
+                                    cls));
                 }
                 if constexpr (!NoneIsLeaf) {
                     cls.inc_ref();
@@ -89,9 +92,9 @@ template <bool NoneIsLeaf>
                                                  const std::string &registry_namespace) {
     auto &registry = GetSingleton<NoneIsLeaf>();
 
-    if (registry.m_builtins_types.find(cls) != registry.m_builtins_types.end()) [[unlikely]] {
-        throw py::value_error("PyTree type " + PyRepr(cls) +
-                              " is a built-in type and cannot be re-registered.");
+    if (registry.m_builtins_types.contains(cls)) [[unlikely]] {
+        throw py::value_error(
+            std::format("PyTree type {} is a built-in type and cannot be re-registered.", cls));
     }
 
     auto registration = std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
@@ -102,23 +105,23 @@ template <bool NoneIsLeaf>
     registration->path_entry_type = py::reinterpret_borrow<py::object>(path_entry_type);
     if (registry_namespace.empty()) [[unlikely]] {
         if (!registry.m_registrations.emplace(cls, std::move(registration)).second) [[unlikely]] {
-            throw py::value_error("PyTree type " + PyRepr(cls) +
-                                  " is already registered in the global namespace.");
+            throw py::value_error(
+                std::format("PyTree type {} is already registered in the global namespace.", cls));
         }
         if (IsStructSequenceClass(cls)) [[unlikely]] {
             PyErr_WarnEx(PyExc_UserWarning,
-                         ("PyTree type " + PyRepr(cls) +
-                          " is a class of `PyStructSequence`, "
-                          "which is already registered in the global namespace. "
-                          "Override it with custom flatten/unflatten functions.")
+                         std::format("PyTree type {} is a class of `PyStructSequence`, "
+                                     "which is already registered in the global namespace. "
+                                     "Override it with custom flatten/unflatten functions.",
+                                     cls)
                              .c_str(),
                          /*stack_level=*/2);
         } else if (IsNamedTupleClass(cls)) [[unlikely]] {
             PyErr_WarnEx(PyExc_UserWarning,
-                         ("PyTree type " + PyRepr(cls) +
-                          " is a subclass of `collections.namedtuple`, "
-                          "which is already registered in the global namespace. "
-                          "Override it with custom flatten/unflatten functions.")
+                         std::format("PyTree type {} is a subclass of `collections.namedtuple`, "
+                                     "which is already registered in the global namespace. "
+                                     "Override it with custom flatten/unflatten functions.",
+                                     cls)
                              .c_str(),
                          /*stack_level=*/2);
         }
@@ -126,31 +129,32 @@ template <bool NoneIsLeaf>
         if (!registry.m_named_registrations
                  .emplace(std::make_pair(registry_namespace, cls), std::move(registration))
                  .second) [[unlikely]] {
-            std::ostringstream oss{};
-            oss << "PyTree type " << PyRepr(cls) << " is already registered in namespace "
-                << PyRepr(registry_namespace) << ".";
-            throw py::value_error(oss.str());
+            throw py::value_error(
+                std::format("PyTree type {} is already registered in namespace {}.",
+                            cls,
+                            PyRepr(registry_namespace)));
         }
         if (IsStructSequenceClass(cls)) [[unlikely]] {
-            std::ostringstream oss{};
-            oss << "PyTree type " << PyRepr(cls)
-                << " is a class of `PyStructSequence`, "
-                   "which is already registered in the global namespace. "
-                   "Override it with custom flatten/unflatten functions in namespace "
-                << PyRepr(registry_namespace) << ".";
-            PyErr_WarnEx(PyExc_UserWarning,
-                         oss.str().c_str(),
-                         /*stack_level=*/2);
+            PyErr_WarnEx(
+                PyExc_UserWarning,
+
+                std::format("PyTree type {} is a class of `PyStructSequence`, "
+                            "which is already registered in the global namespace. "
+                            "Override it with custom flatten/unflatten functions in namespace {}.",
+                            cls,
+                            PyRepr(registry_namespace))
+                    .c_str(),
+                /*stack_level=*/2);
         } else if (IsNamedTupleClass(cls)) [[unlikely]] {
-            std::ostringstream oss{};
-            oss << "PyTree type " << PyRepr(cls)
-                << " is a subclass of `collections.namedtuple`, "
-                   "which is already registered in the global namespace. "
-                   "Override it with custom flatten/unflatten functions in namespace "
-                << PyRepr(registry_namespace) << ".";
-            PyErr_WarnEx(PyExc_UserWarning,
-                         oss.str().c_str(),
-                         /*stack_level=*/2);
+            PyErr_WarnEx(
+                PyExc_UserWarning,
+                std::format("PyTree type {} is a subclass of `collections.namedtuple`, "
+                            "which is already registered in the global namespace. "
+                            "Override it with custom flatten/unflatten functions in namespace {}.",
+                            cls,
+                            PyRepr(registry_namespace))
+                    .c_str(),
+                /*stack_level=*/2);
         }
     }
 }
@@ -184,9 +188,9 @@ template <bool NoneIsLeaf>
     const std::string &registry_namespace) {
     auto &registry = GetSingleton<NoneIsLeaf>();
 
-    if (registry.m_builtins_types.find(cls) != registry.m_builtins_types.end()) [[unlikely]] {
-        throw py::value_error("PyTree type " + PyRepr(cls) +
-                              " is a built-in type and cannot be unregistered.");
+    if (registry.m_builtins_types.contains(cls)) [[unlikely]] {
+        throw py::value_error(
+            std::format("PyTree type {} is a built-in type and cannot be unregistered.", cls));
     }
 
     if (registry_namespace.empty()) [[unlikely]] {
@@ -339,9 +343,8 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     {
         const scoped_write_lock lock{sm_mutex};
 
-        EXPECT_NE(sm_alive_interpids.find(interpid),
-                  sm_alive_interpids.end(),
-                  "The current interpreter ID should be present in the alive interpreters set.");
+        EXPECT_TRUE(sm_alive_interpids.contains(interpid),
+                    "The current interpreter ID should be present in the alive interpreters set.");
         sm_alive_interpids.erase(interpid);
 
         {
@@ -371,14 +374,14 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 
 #if defined(Py_DEBUG)
         for (const auto &cls : registry1.m_builtins_types) {
-            EXPECT_NE(registry1.m_registrations.find(cls), registry1.m_registrations.end());
-            EXPECT_NE(registry2.m_builtins_types.find(cls), registry2.m_builtins_types.end());
+            EXPECT_TRUE(registry1.m_registrations.contains(cls));
+            EXPECT_TRUE(registry2.m_builtins_types.contains(cls));
         }
         for (const auto &cls : registry2.m_builtins_types) {
             if (cls.is(PyNoneTypeObject)) [[unlikely]] {
-                EXPECT_EQ(registry2.m_registrations.find(cls), registry2.m_registrations.end());
+                EXPECT_FALSE(registry2.m_registrations.contains(cls));
             } else [[likely]] {
-                EXPECT_NE(registry2.m_registrations.find(cls), registry2.m_registrations.end());
+                EXPECT_TRUE(registry2.m_registrations.contains(cls));
             }
         }
         for (const auto &[cls2, registration2] : registry2.m_registrations) {
