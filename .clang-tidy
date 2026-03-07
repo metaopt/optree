@@ -14,6 +14,7 @@ Checks: |
   cppcoreguidelines-*,
   -cppcoreguidelines-macro-usage,
   -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
   hicpp-*,
   misc-*,
   modernize-*,

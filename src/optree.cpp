@@ -305,7 +305,9 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
     auto * const PyTreeKind_Type = reinterpret_cast<PyTypeObject *>(PyTreeKindTypeObject.ptr());
     PyTreeKind_Type->tp_name = "optree.PyTreeKind";
     py::setattr(PyTreeKindTypeObject, "__module__", py::str("optree"));
-    py::setattr(PyTreeKindTypeObject, "NUM_KINDS", py::int_(py::ssize_t(PyTreeKind::NumKinds)));
+    py::setattr(PyTreeKindTypeObject,
+                "NUM_KINDS",
+                py::int_(static_cast<py::ssize_t>(PyTreeKind::NumKinds)));
 
     auto PyTreeSpecTypeObject =
 #if defined(PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT)

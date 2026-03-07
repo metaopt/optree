@@ -44,6 +44,7 @@ inline constexpr Py_ALWAYS_INLINE void HashCombine(
     seed ^= (std::hash<T>{}(v) + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 }
 
+// NOLINTBEGIN[bugprone-std-namespace-modification]
 template <>
 struct std::equal_to<py::handle> {
     using is_transparent = void;
@@ -99,3 +100,4 @@ struct std::hash<std::pair<T, U>> {
         return seed;
     }
 };
+// NOLINTEND[bugprone-std-namespace-modification]
