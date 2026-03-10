@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
--
+- Drop Python 3.9 support by [@XuehaiPan](https://github.com/XuehaiPan) in [#272](https://github.com/metaopt/optree/pull/272).
 
 ------
 

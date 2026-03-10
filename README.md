@@ -2,7 +2,7 @@
 
 # OpTree
 
-![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-brightgreen)
+![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-brightgreen)
 [![PyPI](https://img.shields.io/pypi/v/optree?logo=pypi)](https://pypi.org/project/optree)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/metaopt/optree/build.yml?label=build&logo=github)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/metaopt/optree/tests.yml?label=tests&logo=github)
@@ -71,7 +71,7 @@ export pybind11_DIR="/path/to/custom/pybind11"
 pip3 install .
 ```
 
-Compiling from source requires Python 3.9+, a C++ compiler (`g++` / `clang++` / `icpx` / `cl.exe`) that supports C++20, and a `cmake` installation.
+Compiling from source requires Python 3.10+, a C++ compiler (`g++` / `clang++` / `icpx` / `cl.exe`) that supports C++20, and a `cmake` installation.
 
 --------------------------------------------------------------------------------
 

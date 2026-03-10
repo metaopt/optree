@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import dataclasses
-import sys
 from collections.abc import Iterable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, TypeVar, overload
 from typing_extensions import Self  # Python 3.11+
@@ -47,10 +46,7 @@ __all__ = [
 ]
 
 
-SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}  # Python 3.10+
-
-
-@dataclasses.dataclass(init=True, repr=False, eq=False, frozen=True, **SLOTS)
+@dataclasses.dataclass(init=True, repr=False, eq=False, frozen=True, slots=True)
 class PyTreeEntry:
     """Base class for path entries."""
 
@@ -122,9 +118,6 @@ class PyTreeEntry:
         return f'{node}[<flat index {self.entry!r}>]'  # should be overridden
 
 
-del SLOTS
-
-
 _T = TypeVar('_T')
 _T_co = TypeVar('_T_co', covariant=True)
 _KT_co = TypeVar('_KT_co', covariant=True)
@@ -134,7 +127,7 @@ _VT_co = TypeVar('_VT_co', covariant=True)
 class AutoEntry(PyTreeEntry):
     """A generic path entry class that determines the entry type on creation automatically."""
 
-    __slots__: ClassVar[tuple[()]] = ()
+    __slots__: ClassVar[tuple[()]] = ()  # type: ignore[misc]
 
     def __new__(  # type: ignore[misc]
         cls,
@@ -184,7 +177,7 @@ class AutoEntry(PyTreeEntry):
 class GetItemEntry(PyTreeEntry):
     """A generic path entry class for nodes that access their children by :meth:`__getitem__`."""
 
-    __slots__: ClassVar[tuple[()]] = ()
+    __slots__: ClassVar[tuple[()]] = ()  # type: ignore[misc]
 
     def __call__(self, obj: Any, /) -> Any:
         """Get the child object."""
@@ -198,7 +191,7 @@ class GetItemEntry(PyTreeEntry):
 class GetAttrEntry(PyTreeEntry):
     """A generic path entry class for nodes that access their children by :meth:`__getattr__`."""
 
-    __slots__: ClassVar[tuple[()]] = ()
+    __slots__: ClassVar[tuple[()]] = ()  # type: ignore[misc]
 
     entry: str
 
@@ -219,13 +212,13 @@ class GetAttrEntry(PyTreeEntry):
 class FlattenedEntry(PyTreeEntry):  # pylint: disable=too-few-public-methods
     """A fallback path entry class for flattened objects."""
 
-    __slots__: ClassVar[tuple[()]] = ()
+    __slots__: ClassVar[tuple[()]] = ()  # type: ignore[misc]
 
 
 class SequenceEntry(GetItemEntry, Generic[_T_co]):
     """A path entry class for sequences."""
 
-    __slots__: ClassVar[tuple[()]] = ()
+    __slots__: ClassVar[tuple[()]] = ()  # type: ignore[misc]
 
     entry: int
     type: builtins.type[Sequence[_T_co]]
@@ -247,7 +240,7 @@ class SequenceEntry(GetItemEntry, Generic[_T_co]):
 class MappingEntry(GetItemEntry, Generic[_KT_co, _VT_co]):
     """A path entry class for mappings."""
 
-    __slots__: ClassVar[tuple[()]] = ()
+    __slots__: ClassVar[tuple[()]] = ()  # type: ignore[misc]
 
     entry: _KT_co
     type: builtins.type[Mapping[_KT_co, _VT_co]]
@@ -269,7 +262,7 @@ class MappingEntry(GetItemEntry, Generic[_KT_co, _VT_co]):
 class NamedTupleEntry(SequenceEntry[_T]):
     """A path entry class for namedtuple objects."""
 
-    __slots__: ClassVar[tuple[()]] = ()
+    __slots__: ClassVar[tuple[()]] = ()  # type: ignore[misc]
 
     entry: int
     type: builtins.type[NamedTuple[_T]]  # type: ignore[type-arg]
@@ -299,7 +292,7 @@ class NamedTupleEntry(SequenceEntry[_T]):
 class StructSequenceEntry(SequenceEntry[_T]):
     """A path entry class for PyStructSequence objects."""
 
-    __slots__: ClassVar[tuple[()]] = ()
+    __slots__: ClassVar[tuple[()]] = ()  # type: ignore[misc]
 
     entry: int
     type: builtins.type[StructSequence[_T]]
@@ -329,7 +322,7 @@ class StructSequenceEntry(SequenceEntry[_T]):
 class DataclassEntry(GetAttrEntry):
     """A path entry class for dataclasses."""
 
-    __slots__: ClassVar[tuple[()]] = ()
+    __slots__: ClassVar[tuple[()]] = ()  # type: ignore[misc]
 
     entry: str | int  # type: ignore[assignment]
 

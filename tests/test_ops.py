@@ -20,9 +20,7 @@ import functools
 import itertools
 import operator
 import pickle
-import platform
 import re
-import sys
 from collections import OrderedDict, defaultdict, deque
 
 import pytest
@@ -39,7 +37,6 @@ from helpers import (
     CustomTuple,
     FlatCache,
     MyAnotherDict,
-    Py_DEBUG,
     always,
     assert_equal_type_and_value,
     check_script_in_subprocess,
@@ -62,9 +59,6 @@ def test_import_no_warnings():
 
 
 def test_max_depth():
-    if sys.version_info < (3, 10) and platform.system() == 'Windows' and Py_DEBUG:
-        pytest.skip('Flaky with Python 3.9 on Windows in debug mode.')
-
     lst = [1]
     for _ in range(optree.MAX_RECURSION_DEPTH - 1):
         lst = [lst]
@@ -557,7 +551,7 @@ def test_paths_and_accessors(data):
     assert other_treespec == expected_treespec
     assert paths == expected_paths
     assert accessors == expected_accessors
-    for leaf, accessor, path in zip(leaves, accessors, paths):
+    for leaf, accessor, path in zip(leaves, accessors, paths, strict=True):
         assert isinstance(accessor, optree.PyTreeAccessor)
         assert isinstance(path, tuple)
         assert len(accessor) == len(path)
@@ -628,7 +622,7 @@ def test_paths_and_accessors_with_is_leaf(
         assert treespec == expected_treespec
         assert other_leaves == expected_leaves
         assert other_treespec == expected_treespec
-        for leaf, accessor, path in zip(leaves, accessors, paths):
+        for leaf, accessor, path in zip(leaves, accessors, paths, strict=True):
             assert isinstance(accessor, optree.PyTreeAccessor)
             assert isinstance(path, tuple)
             assert len(accessor) == len(path)
@@ -3398,7 +3392,7 @@ def test_tree_flatten_one_level(  # noqa: C901
                     assert node_kind == optree.PyTreeKind.CUSTOM
                 assert len(entries) == len(children)
                 if hasattr(node, '__getitem__'):
-                    for child, entry in zip(children, entries):
+                    for child, entry in zip(children, entries, strict=True):
                         assert node[entry] is child
 
                 assert unflatten_func(metadata, children) == node
@@ -3407,7 +3401,7 @@ def test_tree_flatten_one_level(  # noqa: C901
                     with pytest.raises(ValueError, match=re.escape('Expected no children.')):
                         unflatten_func(metadata, range(1))
 
-                for child, entry in zip(children, entries):
+                for child, entry in zip(children, entries, strict=True):
                     path_stack.append(entry)
                     accessor_stack.append(output.path_entry_type(entry, node_type, node_kind))
                     flatten(child)

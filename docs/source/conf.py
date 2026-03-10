@@ -281,7 +281,7 @@ def get_pytree_typing_instance(annotation):  # noqa: C901
 
         return all(
             matches_pytree_typing_alias(arg, pat, recursive_pattern, recursive_ref_names)
-            for arg, pat in zip(annotation_args, pattern_args)
+            for arg, pat in zip(annotation_args, pattern_args, strict=True)
         )
 
     for pytree_alias, pytree_instance in tuple(PyTree.__instances__.items()):

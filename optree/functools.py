@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Any, Callable, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 from typing_extensions import Self  # Python 3.11+
 
 from optree import registry
@@ -27,6 +27,8 @@ from optree.typing import CustomTreeNode, T
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from optree.accessors import PyTreeEntry
 
 
