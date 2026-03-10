@@ -16,8 +16,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Any, Callable, overload
+from collections.abc import Callable, Iterable, Sequence
+from typing import TYPE_CHECKING, Any, overload
 
 
 if TYPE_CHECKING:
@@ -101,7 +101,7 @@ def safe_zip(*args: Iterable[Any]) -> zip[tuple[Any, ...]]:
     seqs = [arg if isinstance(arg, Sequence) else list(arg) for arg in args]
     if len(set(map(len, seqs))) > 1:
         raise ValueError(f'length mismatch: {list(map(len, seqs))}')
-    return zip(*seqs)
+    return zip(*seqs, strict=True)
 
 
 def unzip2(xys: Iterable[tuple[T, S]], /) -> tuple[tuple[T, ...], tuple[S, ...]]:

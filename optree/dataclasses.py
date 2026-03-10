@@ -69,14 +69,14 @@ import sys
 import warnings
 from dataclasses import *  # noqa: F401,F403,RUF100 # pylint: disable=wildcard-import,unused-wildcard-import
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Callable, Literal, Protocol, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, overload
 from typing_extensions import dataclass_transform  # Python 3.11+
 
 from optree.accessors import DataclassEntry
 
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
 
 __all__ = [
@@ -106,7 +106,7 @@ def field(
     hash: bool | None = None,  # pylint: disable=redefined-builtin
     compare: bool = True,
     metadata: dict[Any, Any] | None = None,
-    kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
+    kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type]
     doc: str | None = None,  # Python 3.14+
     pytree_node: bool | None = None,
 ) -> _T: ...
@@ -121,7 +121,7 @@ def field(
     hash: bool | None = None,  # pylint: disable=redefined-builtin
     compare: bool = True,
     metadata: dict[Any, Any] | None = None,
-    kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
+    kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type]
     doc: str | None = None,  # Python 3.14+
     pytree_node: bool | None = None,
 ) -> _T: ...
@@ -135,7 +135,7 @@ def field(
     hash: bool | None = None,  # pylint: disable=redefined-builtin
     compare: bool = True,
     metadata: dict[Any, Any] | None = None,
-    kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
+    kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type]
     doc: str | None = None,  # Python 3.14+
     pytree_node: bool | None = None,
 ) -> Any: ...
@@ -150,7 +150,7 @@ def field(  # noqa: D417 # pylint: disable=function-redefined
     hash: bool | None = None,  # pylint: disable=redefined-builtin
     compare: bool = True,
     metadata: dict[Any, Any] | None = None,
-    kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type] # Python 3.10+
+    kw_only: bool | Literal[dataclasses.MISSING] = dataclasses.MISSING,  # type: ignore[valid-type]
     doc: str | None = None,  # Python 3.14+
     pytree_node: bool | None = None,
 ) -> Any:
@@ -192,12 +192,8 @@ def field(  # noqa: D417 # pylint: disable=function-redefined
         'hash': hash,
         'compare': compare,
         'metadata': metadata,
+        'kw_only': kw_only,
     }
-
-    if sys.version_info >= (3, 10):  # pragma: >=3.10 cover
-        kwargs['kw_only'] = kw_only
-    elif kw_only is not dataclasses.MISSING:  # pragma: <3.10 cover
-        raise TypeError("field() got an unexpected keyword argument 'kw_only'")
 
     if sys.version_info >= (3, 14):  # pragma: >=3.14 cover
         kwargs['doc'] = doc
@@ -222,9 +218,9 @@ def dataclass(
     order: bool = False,
     unsafe_hash: bool = False,
     frozen: bool = False,
-    match_args: bool = True,  # Python 3.10+
-    kw_only: bool = False,  # Python 3.10+
-    slots: bool = False,  # Python 3.10+
+    match_args: bool = True,
+    kw_only: bool = False,
+    slots: bool = False,
     weakref_slot: bool = False,  # Python 3.11+
     namespace: str,
 ) -> Callable[[_TypeT], _TypeT]: ...
@@ -241,16 +237,16 @@ def dataclass(
     order: bool = False,
     unsafe_hash: bool = False,
     frozen: bool = False,
-    match_args: bool = True,  # Python 3.10+
-    kw_only: bool = False,  # Python 3.10+
-    slots: bool = False,  # Python 3.10+
+    match_args: bool = True,
+    kw_only: bool = False,
+    slots: bool = False,
     weakref_slot: bool = False,  # Python 3.11+
     namespace: str,
 ) -> _TypeT: ...
 
 
 @dataclass_transform(field_specifiers=(field,))
-def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined
+def dataclass(  # noqa: D417 # pylint: disable=function-redefined
     cls: _TypeT | None = None,
     /,
     *,
@@ -260,9 +256,9 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined
     order: bool = False,
     unsafe_hash: bool = False,
     frozen: bool = False,
-    match_args: bool = True,  # Python 3.10+
-    kw_only: bool = False,  # Python 3.10+
-    slots: bool = False,  # Python 3.10+
+    match_args: bool = True,
+    kw_only: bool = False,
+    slots: bool = False,
     weakref_slot: bool = False,  # Python 3.11+
     namespace: str,
 ) -> _TypeT | Callable[[_TypeT], _TypeT]:
@@ -286,18 +282,10 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined
         'order': order,
         'unsafe_hash': unsafe_hash,
         'frozen': frozen,
+        'match_args': match_args,
+        'kw_only': kw_only,
+        'slots': slots,
     }
-
-    if sys.version_info >= (3, 10):  # pragma: >=3.10 cover
-        kwargs['match_args'] = match_args
-        kwargs['kw_only'] = kw_only
-        kwargs['slots'] = slots
-    elif match_args is not True:  # pragma: <3.10 cover
-        raise TypeError("dataclass() got an unexpected keyword argument 'match_args'")
-    elif kw_only is not False:  # pragma: <3.10 cover
-        raise TypeError("dataclass() got an unexpected keyword argument 'kw_only'")
-    elif slots is not False:  # pragma: <3.10 cover
-        raise TypeError("dataclass() got an unexpected keyword argument 'slots'")
 
     if sys.version_info >= (3, 11):  # pragma: >=3.11 cover
         kwargs['weakref_slot'] = weakref_slot
@@ -360,9 +348,9 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
     order: bool = False,
     unsafe_hash: bool = False,
     frozen: bool = False,
-    match_args: bool = True,  # Python 3.10+
-    kw_only: bool = False,  # Python 3.10+
-    slots: bool = False,  # Python 3.10+
+    match_args: bool = True,
+    kw_only: bool = False,
+    slots: bool = False,
     weakref_slot: bool = False,  # Python 3.11+
     module: str | None = None,  # Python 3.12+
     decorator: _DataclassDecorator[_TypeT] = dataclasses.dataclass,  # type: ignore[assignment] # Python 3.14+
@@ -414,22 +402,14 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
         'order': order,
         'unsafe_hash': unsafe_hash,
         'frozen': frozen,
+        'match_args': match_args,
+        'kw_only': kw_only,
+        'slots': slots,
     }
     make_dataclass_kwargs = {
         'bases': bases,
         'namespace': ns,
     }
-
-    if sys.version_info >= (3, 10):  # pragma: >=3.10 cover
-        dataclass_kwargs['match_args'] = match_args
-        dataclass_kwargs['kw_only'] = kw_only
-        dataclass_kwargs['slots'] = slots
-    elif match_args is not True:  # pragma: <3.10 cover
-        raise TypeError("make_dataclass() got an unexpected keyword argument 'match_args'")
-    elif kw_only is not False:  # pragma: <3.10 cover
-        raise TypeError("make_dataclass() got an unexpected keyword argument 'kw_only'")
-    elif slots is not False:  # pragma: <3.10 cover
-        raise TypeError("make_dataclass() got an unexpected keyword argument 'slots'")
 
     if sys.version_info >= (3, 11):  # pragma: >=3.11 cover
         dataclass_kwargs['weakref_slot'] = weakref_slot
@@ -596,7 +576,7 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
 
     # pylint: disable-next=line-too-long
     def unflatten_func(metadata: tuple[tuple[str, Any], ...], children: tuple[_U, ...], /) -> _T:  # type: ignore[type-var]
-        kwargs = dict(zip(children_field_names, children))
+        kwargs = dict(zip(children_field_names, children, strict=True))
         kwargs.update(metadata)
         return cls(**kwargs)  # type: ignore[return-value]
 
