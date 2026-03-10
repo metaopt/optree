@@ -132,8 +132,7 @@ __all__ = [
 
 if _TYPE_CHECKING:
     from collections.abc import Callable, Iterable
-    from typing import Any, TypeVar  # pylint: disable=ungrouped-imports
-    from typing_extensions import ParamSpec  # Python 3.10+
+    from typing import Any, ParamSpec, TypeVar  # pylint: disable=ungrouped-imports
 
     _P = ParamSpec('_P')
     _T = TypeVar('_T')
