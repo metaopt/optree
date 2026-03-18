@@ -325,71 +325,56 @@ def register_pytree_node(
         ... )
         <class 'set'>
 
-        >>> # Register a Python type into a namespace
-        >>> import torch
-        >>> register_pytree_node(
-        ...     torch.Tensor,
-        ...     flatten_func=lambda tensor: (
-        ...         (tensor.cpu().detach().numpy(),),
-        ...         {'dtype': tensor.dtype, 'device': tensor.device, 'requires_grad': tensor.requires_grad},
+        >>> # Register a custom type into a namespace with accessor support
+        >>> import types
+        >>> # This can be whatever your container type is.
+        >>> class MyContainer(types.SimpleNamespace):
+        ...     pass
+        >>> # (Optional) Define a custom path entry type for accessor support.
+        >>> # Here we showcase how to define one. In practice, you can use the built-in ``GetAttrEntry``.
+        >>> class MyContainerEntry(PyTreeEntry):
+        ...     def __call__(self, obj):
+        ...         return getattr(obj, self.entry)
+        ...     def codify(self, node=''):
+        ...         return f'{node}.{self.entry}'
+        >>> register_pytree_node(  # doctest: +ELLIPSIS
+        ...     MyContainer,
+        ...     flatten_func=lambda ct: (
+        ...         list(vars(ct).values()),
+        ...         list(vars(ct).keys()),
+        ...         list(vars(ct).keys()),
         ...     ),
-        ...     unflatten_func=lambda metadata, children: torch.tensor(children[0], **metadata),
-        ...     namespace='torch2numpy',
+        ...     unflatten_func=lambda keys, values: MyContainer(**dict(zip(keys, values))),
+        ...     path_entry_type=MyContainerEntry,
+        ...     namespace='mycontainer',
         ... )
-        <class 'torch.Tensor'>
+        <class '...MyContainer'>
 
-        >>> # doctest: +SKIP
-        >>> tree = {'weight': torch.ones(size=(1, 2)).cuda(), 'bias': torch.zeros(size=(2,))}
-        >>> tree
-        {'weight': tensor([[1., 1.]], device='cuda:0'), 'bias': tensor([0., 0.])}
+        >>> tree = {'config': MyContainer(lr=0.01, momentum=0.9), 'steps': 1000}
 
         >>> # Flatten without specifying the namespace
-        >>> tree_flatten(tree)  # `torch.Tensor`s are leaf nodes
-        ([tensor([0., 0.]), tensor([[1., 1.]], device='cuda:0')], PyTreeSpec({'bias': *, 'weight': *}))
+        >>> tree_flatten(tree)  # `MyContainer`s are leaf nodes
+        ([MyContainer(lr=0.01, momentum=0.9), 1000], PyTreeSpec({'config': *, 'steps': *}))
 
         >>> # Flatten with the namespace
-        >>> tree_flatten(tree, namespace='torch2numpy')
-        (
-            [array([0., 0.], dtype=float32), array([[1., 1.]], dtype=float32)],
-            PyTreeSpec(
-                {
-                    'bias': CustomTreeNode(Tensor[{'dtype': torch.float32, 'device': device(type='cpu'), 'requires_grad': False}], [*]),
-                    'weight': CustomTreeNode(Tensor[{'dtype': torch.float32, 'device': device(type='cuda', index=0), 'requires_grad': False}], [*])
-                },
-                namespace='torch2numpy'
-            )
-        )
+        >>> leaves, treespec = tree_flatten(tree, namespace='mycontainer')
+        >>> leaves, treespec
+        ([0.01, 0.9, 1000], PyTreeSpec({'config': CustomTreeNode(MyContainer[['lr', 'momentum']], [*, *]), 'steps': *}, namespace='mycontainer'))
 
-        >>> # Register the same type with a different namespace for different behaviors
-        >>> def tensor2flatparam(tensor):
-        ...     return [torch.nn.Parameter(tensor.reshape(-1))], tensor.shape, None
-        ...
-        ... def flatparam2tensor(metadata, children):
-        ...     return children[0].reshape(metadata)
-        ...
-        ... register_pytree_node(
-        ...     torch.Tensor,
-        ...     flatten_func=tensor2flatparam,
-        ...     unflatten_func=flatparam2tensor,
-        ...     namespace='tensor2flatparam',
-        ... )
-        <class 'torch.Tensor'>
+        >>> # Custom ``entries`` are defined as attribute names
+        >>> tree_paths(tree, namespace='mycontainer')
+        [('config', 'lr'), ('config', 'momentum'), ('steps',)]
 
-        >>> # Flatten with the new namespace
-        >>> tree_flatten(tree, namespace='tensor2flatparam')
-        (
-            [
-                Parameter containing: tensor([0., 0.], requires_grad=True),
-                Parameter containing: tensor([1., 1.], device='cuda:0', requires_grad=True)
-            ],
-            PyTreeSpec(
-                {
-                    'bias': CustomTreeNode(Tensor[torch.Size([2])], [*]),
-                    'weight': CustomTreeNode(Tensor[torch.Size([1, 2])], [*])
-                },
-                namespace='tensor2flatparam'
-            )
-        )
+        >>> # Custom path entry type defines the pytree access behavior
+        >>> accessors = tree_accessors(tree, namespace='mycontainer')
+        >>> accessors[0].codify()
+        "*['config'].lr"
+        >>> accessors[0](tree)
+        0.01
+
+        >>> # Unflatten back to a copy of the original object
+        >>> tree_unflatten(treespec, leaves)
+        {'config': MyContainer(lr=0.01, momentum=0.9), 'steps': 1000}
     """  # pylint: disable=line-too-long
     if not inspect.isclass(cls):
         raise TypeError(f'Expected a class, got {cls!r}.')

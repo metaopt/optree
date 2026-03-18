@@ -47,7 +47,7 @@ conda install conda-forge::optree
 Install the latest version from GitHub:
 
 ```bash
-pip3 install git+https://github.com/metaopt/optree.git#egg=optree
+pip3 install git+https://github.com/metaopt/optree.git
 ```
 
 Or, clone this repo and install manually:
@@ -58,7 +58,7 @@ git clone --depth=1 https://github.com/metaopt/optree.git && cd optree
 pip3 install .
 ```
 
-The following options are available while building the Python C extension from the source:
+The following options are available while building the Python C extension from source:
 
 ```bash
 export CMAKE_COMMAND="/path/to/custom/cmake"
@@ -71,17 +71,17 @@ export pybind11_DIR="/path/to/custom/pybind11"
 pip3 install .
 ```
 
-Compiling from the source requires Python 3.9+, a compiler (`gcc` / `clang` / `icc` / `cl.exe`) that supports C++20 and a `cmake` installation.
+Compiling from source requires Python 3.9+, a C++ compiler (`g++` / `clang++` / `icpx` / `cl.exe`) that supports C++20, and a `cmake` installation.
 
 --------------------------------------------------------------------------------
 
 ## PyTrees
 
-A PyTree is a recursive structure that can be an arbitrarily nested Python container (e.g., `tuple`, `list`, `dict`, `OrderedDict`, `NamedTuple`, etc.) or an opaque Python object.
-The key concepts of tree operations are tree flattening and its inverse (tree unflattening).
-Additional tree operations can be performed based on these two basic functions (e.g., `tree_map = tree_unflatten ∘ map ∘ tree_flatten`).
+A PyTree is a recursive structure that can be an arbitrarily nested Python container (e.g., `tuple`, `list`, `dict`, `OrderedDict`, `namedtuple`, etc.) and/or an opaque Python object.
+The key concepts of tree operations are tree flattening and its inverse (unflattening).
+Additional tree operations can be built from these two primitives (e.g., `tree_map = tree_unflatten ∘ map ∘ tree_flatten`).
 
-Tree flattening is traversing the entire tree in a left-to-right depth-first manner and returning the leaves of the tree in a deterministic order.
+Tree flattening traverses the entire tree in a left-to-right depth-first manner and returns the leaves in a deterministic order.
 
 ```python
 >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': 5, 'd': 6}
@@ -95,7 +95,7 @@ Tree flattening is traversing the entire tree in a left-to-right depth-first man
 {'b': (4, [9, 16]), 'a': 1, 'c': 25, 'd': 36}
 ```
 
-This usually implies that the equal pytrees return equal lists of leaves and the same tree structure.
+This usually implies that equal pytrees produce equal lists of leaves and the same tree structure.
 See also section [Key Ordering for Dictionaries](#key-ordering-for-dictionaries).
 
 ```python
@@ -109,23 +109,6 @@ True
 {'a': [1, 4], 'b': [9]}
 >>> optree.tree_map(lambda x: x**2, {'b': [3], 'a': [1, 2]})
 {'b': [9], 'a': [1, 4]}
-```
-
-To flatten [`dict`](https://docs.python.org/3/library/stdtypes.html#dict) and [`collections.defaultdict`](https://docs.python.org/3/library/collections.html#collections.defaultdict) objects with the insertion order preserved, use the `dict_insertion_ordered` context manager:
-
-```python
->>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
->>> optree.tree_flatten(tree)
-(
-    [1, 2, 3, 4, 5],
-    PyTreeSpec({'a': *, 'b': (*, [*, *]), 'c': None, 'd': *})
-)
->>> with optree.dict_insertion_ordered(True, namespace='some-namespace'):
-...     optree.tree_flatten(tree, namespace='some-namespace')
-(
-    [2, 3, 4, 1, 5],
-    PyTreeSpec({'b': (*, [*, *]), 'a': *, 'c': None, 'd': *}, namespace='some-namespace')
-)
 ```
 
 > [!TIP]
@@ -167,17 +150,16 @@ To flatten [`dict`](https://docs.python.org/3/library/stdtypes.html#dict) and [`
 >     b: float
 >
 > # User code
-> In [1]: import foo
+> >>> import foo
 >
-> In [2]: foo.pytree.flatten({'a': 1, 'b': 2, 'c': foo.bar.Bar(3, 4.0)})
-> Out[2]:
+> >>> foo.pytree.flatten({'a': 1, 'b': 2, 'c': foo.bar.Bar(3, 4.0)})
 > (
 >     [1, 2, 3, 4.0],
 >     PyTreeSpec({'a': *, 'b': *, 'c': CustomTreeNode(Bar[()], [*, *])}, namespace='foo')
 > )
 >
-> In [3]: foo.pytree.functools.reduce(lambda x, y: x * y, {'a': 1, 'b': 2, 'c': foo.bar.Bar(3, 4.0)})
-> Out[3]: 24.0
+> >>> foo.pytree.functools.reduce(lambda x, y: x * y, {'a': 1, 'b': 2, 'c': foo.bar.Bar(3, 4.0)})
+> 24.0
 > ```
 
 ### Tree Nodes and Leaves
@@ -187,7 +169,7 @@ A tree is a collection of non-leaf nodes and leaf nodes, where the leaf nodes ar
 
 #### Built-in PyTree Node Types
 
-OpTree out-of-box supports the following Python container types in the global registry:
+OpTree out-of-the-box supports the following Python container types in the global registry:
 
 - [`tuple`](https://docs.python.org/3/library/stdtypes.html#tuple)
 - [`list`](https://docs.python.org/3/library/stdtypes.html#list)
@@ -198,12 +180,10 @@ OpTree out-of-box supports the following Python container types in the global re
 - [`collections.deque`](https://docs.python.org/3/library/collections.html#collections.deque)
 - [`PyStructSequence`](https://docs.python.org/3/c-api/tuple.html#struct-sequence-objects) types created by C API [`PyStructSequence_NewType`](https://docs.python.org/3/c-api/tuple.html#c.PyStructSequence_NewType)
 
-which are considered non-leaf nodes in the tree.
-
-Python objects whose type is not registered will be treated as leaf nodes.
-The registry lookup uses the `is` operator to determine whether the type is matched.
-So subclasses will need to be explicitly registered in the registry, otherwise, objects of that type will be considered leaves.
-The [`NoneType`](https://docs.python.org/3/library/constants.html#None) is a special case discussed in section [`None` is non-leaf Node vs. `None` is Leaf](#none-is-non-leaf-node-vs-none-is-leaf).
+These types are considered non-leaf nodes in the tree.
+Python objects whose type is not registered are treated as leaf nodes.
+The registry lookup uses the `is` operator to determine whether the type matches, so subclasses need to be registered explicitly; otherwise, their instances will be treated as leaves.
+The [`NoneType`](https://docs.python.org/3/library/constants.html#None) is a special case discussed in section [`None` is Non-leaf Node vs. `None` is Leaf](#none-is-non-leaf-node-vs-none-is-leaf).
 
 #### Registering a Container-like Custom Type as Non-leaf Nodes
 
@@ -214,91 +194,93 @@ A container-like Python type can be registered in the type registry with a pair 
 
 The `metadata` is some necessary data apart from the children to reconstruct the container, e.g., the keys of the dictionary (the children are values).
 
-The `entries` can be omitted (only returns a pair) or is optional to implement (returns `None`). If so, use `range(len(children))` (i.e., flat indices) as path entries of the current node. The signature for the flatten function can be one of the following:
+The `entries` can be omitted (only return a pair) or are optional to implement (return `None`). If so, use `range(len(children))` (i.e., flat indices) as path entries of the current node. The signature for the flatten function can be one of the following:
 
 - `flatten_func(container) -> (children, metadata, entries)`
 - `flatten_func(container) -> (children, metadata, None)`
 - `flatten_func(container) -> (children, metadata)`
 
-The following examples show how to register custom types and utilize them for `tree_flatten` and `tree_map`. Please refer to section [Notes about the PyTree Type Registry](#notes-about-the-pytree-type-registry) for more information.
+The following examples show how to register custom types and use them with `tree_flatten` and `tree_map`. Please refer to section [Notes about the PyTree Type Registry](#notes-about-the-pytree-type-registry) for more information.
 
 ```python
-# Register a Python type with lambda functions
+# Register a custom type with lambda functions
 optree.register_pytree_node(
     set,
-    # (set) -> (children, metadata, None)
-    lambda s: (sorted(s), None, None),
-    # (metadata, children) -> (set)
-    lambda _, children: set(children),
+    lambda s: (sorted(s), None),        # flatten: (set) -> (children, metadata)
+    lambda _, children: set(children),  # unflatten: (metadata, children) -> set
     namespace='set',
 )
 
-# Register a Python type into a namespace
-import torch
+# Register a custom type into a namespace with accessor support
+import types
 
-class Torch2NumpyEntry(optree.PyTreeEntry):
+# This can be whatever your container type is.
+class MyContainer(types.SimpleNamespace):
+    """A simple container type based on SimpleNamespace."""
+
+# (Optional) Define a custom path entry type for your container for accessor support.
+# Here we showcase how to define one. In practice, you can use the built-in `optree.GetAttrEntry`.
+class MyContainerEntry(optree.PyTreeEntry):
     def __call__(self, obj):
-        assert self.entry == 0
-        return obj.cpu().detach().numpy()
+        return getattr(obj, self.entry)
 
     def codify(self, node=''):
-        assert self.entry == 0
-        return f'{node}.cpu().detach().numpy()'
+        return f'{node}.{self.entry}'
 
 optree.register_pytree_node(
-    torch.Tensor,
-    # (tensor) -> (children, metadata)
-    flatten_func=lambda tensor: (
-        (tensor.cpu().detach().numpy(),),
-        {'dtype': tensor.dtype, 'device': tensor.device, 'requires_grad': tensor.requires_grad},
+    MyContainer,
+    flatten_func=lambda ct: (                 # flatten: (MyContainer) -> (children, metadata, entries)
+        list(vars(ct).values()),
+        list(vars(ct).keys()),
+        list(vars(ct).keys()),
     ),
-    # (metadata, children) -> tensor
-    unflatten_func=lambda metadata, children: torch.tensor(children[0], **metadata),
-    path_entry_type=Torch2NumpyEntry,
-    namespace='torch2numpy',
+    unflatten_func=lambda keys, values: (     # unflatten: (metadata, children) -> MyContainer
+        MyContainer(**dict(zip(keys, values)))
+    ),
+    path_entry_type=MyContainerEntry,
+    namespace='mycontainer',
 )
 ```
 
 ```python
->>> tree = {'weight': torch.ones(size=(1, 2)).cuda(), 'bias': torch.zeros(size=(2,))}
->>> tree
-{'weight': tensor([[1., 1.]], device='cuda:0'), 'bias': tensor([0., 0.])}
+>>> tree = {'config': MyContainer(lr=0.01, momentum=0.9), 'steps': 1000}
 
 # Flatten without specifying the namespace
->>> optree.tree_flatten(tree)  # `torch.Tensor`s are leaf nodes
-([tensor([0., 0.]), tensor([[1., 1.]], device='cuda:0')], PyTreeSpec({'bias': *, 'weight': *}))
+>>> optree.tree_flatten(tree)  # `MyContainer`s are leaf nodes
+([MyContainer(lr=0.01, momentum=0.9), 1000], PyTreeSpec({'config': *, 'steps': *}))
 
 # Flatten with the namespace
->>> leaves, treespec = optree.tree_flatten(tree, namespace='torch2numpy')
+>>> leaves, treespec = optree.tree_flatten(tree, namespace='mycontainer')
 >>> leaves, treespec
 (
-    [array([0., 0.], dtype=float32), array([[1., 1.]], dtype=float32)],
+    [0.01, 0.9, 1000],
     PyTreeSpec(
         {
-            'bias': CustomTreeNode(Tensor[{'dtype': torch.float32, 'device': device(type='cpu'), 'requires_grad': False}], [*]),
-            'weight': CustomTreeNode(Tensor[{'dtype': torch.float32, 'device': device(type='cuda', index=0), 'requires_grad': False}], [*])
+            'config': CustomTreeNode(MyContainer[['lr', 'momentum']], [*, *]),
+            'steps': *
         },
-        namespace='torch2numpy'
+        namespace='mycontainer'
     )
 )
 
-# `entries` are not defined and use `range(len(children))`
->>> optree.tree_paths(tree, namespace='torch2numpy')
-[('bias', 0), ('weight', 0)]
+# Custom `entries` are defined as attribute names
+>>> optree.tree_paths(tree, namespace='mycontainer')
+[('config', 'lr'), ('config', 'momentum'), ('steps',)]
 
 # Custom path entry type defines the pytree access behavior
->>> optree.tree_accessors(tree, namespace='torch2numpy')
+>>> optree.tree_accessors(tree, namespace='mycontainer')
 [
-    PyTreeAccessor(*['bias'].cpu().detach().numpy(), (MappingEntry(key='bias', type=<class 'dict'>), Torch2NumpyEntry(entry=0, type=<class 'torch.Tensor'>))),
-    PyTreeAccessor(*['weight'].cpu().detach().numpy(), (MappingEntry(key='weight', type=<class 'dict'>), Torch2NumpyEntry(entry=0, type=<class 'torch.Tensor'>)))
+    PyTreeAccessor(*['config'].lr, (MappingEntry(key='config', type=<class 'dict'>), MyContainerEntry(entry='lr', type=<class 'MyContainer'>))),
+    PyTreeAccessor(*['config'].momentum, (MappingEntry(key='config', type=<class 'dict'>), MyContainerEntry(entry='momentum', type=<class 'MyContainer'>))),
+    PyTreeAccessor(*['steps'], (MappingEntry(key='steps', type=<class 'dict'>),))
 ]
 
 # Unflatten back to a copy of the original object
 >>> optree.tree_unflatten(treespec, leaves)
-{'weight': tensor([[1., 1.]], device='cuda:0'), 'bias': tensor([0., 0.])}
+{'config': MyContainer(lr=0.01, momentum=0.9), 'steps': 1000}
 ```
 
-Users can also extend the pytree registry by decorating the custom class and defining an instance method `tree_flatten` and a class method `tree_unflatten`.
+Users can also extend the pytree registry by decorating the custom class and defining an instance method `__tree_flatten__` and a class method `__tree_unflatten__`.
 
 ```python
 from collections import UserDict
@@ -362,16 +344,19 @@ class MyDict(UserDict):
 
 There are several key attributes of the pytree type registry:
 
-1. **The type registry is interpreter-dependent.** This means registering a custom type in the registry affects all modules that use OpTree in the same Python interpreter.
+1. **The type registry is per-interpreter.** Registering a custom type affects all modules that use OpTree in the same interpreter. Each interpreter (including subinterpreters) maintains its own registry, while child processes forked via `multiprocessing` inherit a copy.
 
 > [!WARNING]
 > For safety reasons, a `namespace` must be specified while registering a custom type. It is
 > used to isolate the behavior of flattening and unflattening a pytree node type. This is to
 > prevent accidental collisions between different libraries that may register the same type.
 
-2. **The elements in the type registry are immutable.** Users can neither register the same type twice in the same namespace (i.e., update the type registry), nor remove a type from the type registry. To update the behavior of an already registered type, simply register it again with another `namespace`.
+2. **Duplicate registration is not allowed.** Registering the same type in the same namespace a second time raises an error. To update the behavior, first call `unregister_pytree_node(cls, namespace=...)` and then re-register. Alternatively, register the type under a different `namespace`.
 
-3. **Users cannot modify the behavior of already registered built-in types** listed in [Built-in PyTree Node Types](#built-in-pytree-node-types), such as key order sorting for `dict` and `collections.defaultdict`.
+    > [!WARNING]
+    > Any `PyTreeSpec` objects created before the unregistration still hold a reference to the old registration. Unflattening such a `PyTreeSpec` will use the **old** `unflatten_func`, not the newly registered one.
+
+3. **Built-in types cannot be re-registered.** The behavior of the types listed in [Built-in PyTree Node Types](#built-in-pytree-node-types) (e.g., key-sorted traversal for `dict` and `collections.defaultdict`) is fixed.
 
 4. **Inherited subclasses are not implicitly registered.** The registry lookup uses `type(obj) is registered_type` rather than `isinstance(obj, registered_type)`. Users need to register the subclasses explicitly. To register all subclasses, it is easy to implement with [`metaclass`](https://docs.python.org/3/reference/datamodel.html#metaclasses) or [`__init_subclass__`](https://docs.python.org/3/reference/datamodel.html#customizing-class-creation), for example:
 
@@ -425,7 +410,7 @@ There are several key attributes of the pytree type registry:
     ]
     ```
 
-5. **Be careful about the potential infinite recursion of the custom flatten function.** The returned `children` from the custom flatten function are considered subtrees. They will be further flattened recursively. The `children` can have the same type as the current node. Users must design their termination condition carefully.
+5. **Beware of infinite recursion in custom flatten functions.** The returned `children` are recursively flattened and may have the same type as the current node. Ensure your flatten function has a proper termination condition.
 
     ```python
     import numpy as np
@@ -441,106 +426,16 @@ There are several key attributes of the pytree type registry:
 
     optree.register_pytree_node(
         np.ndarray,
-        # Children are Python objects
-        lambda array: (
-            list(array.ravel()),  # list(1DArray[T]) -> List[T]
-            dict(shape=array.shape, dtype=array.dtype)
-        ),
-        lambda metadata, children: np.asarray(children, dtype=metadata['dtype']).reshape(metadata['shape']),
+        # Returns a list of `np.ndarray`s without termination condition -> RecursionError!
+        lambda array: ([array.ravel()], array.shape),
+        lambda shape, children: children[0].reshape(shape),
         namespace='numpy2',
     )
-
-    optree.register_pytree_node(
-        np.ndarray,
-        # Returns a list of `np.ndarray`s without termination condition
-        lambda array: ([array.ravel()], array.dtype),
-        lambda shape, children: children[0].reshape(shape),
-        namespace='numpy3',
-    )
-
-    optree.register_pytree_node(
-        torch.Tensor,
-        # Children are nested lists of Python objects
-        lambda tensor: (torch.atleast_1d(tensor).tolist(), tensor.ndim == 0),
-        lambda scalar, rows: torch.tensor(rows) if not scalar else torch.tensor(rows[0]),
-        namespace='torch1',
-    )
-
-    optree.register_pytree_node(
-        torch.Tensor,
-        # Returns a list of `torch.Tensor`s without termination condition
-        lambda tensor: (
-            list(tensor.view(-1)),  # list(1DTensor[T]) -> List[0DTensor[T]] (STILL TENSORS!)
-            tensor.shape
-        ),
-        lambda shape, children: torch.stack(children).reshape(shape),
-        namespace='torch2',
-    )
-    ```
-
-    ```python
-    >>> optree.tree_flatten(np.arange(9).reshape(3, 3), namespace='numpy1')
-    (
-        [0, 1, 2, 3, 4, 5, 6, 7, 8],
-        PyTreeSpec(
-            CustomTreeNode(ndarray[False], [[*, *, *], [*, *, *], [*, *, *]]),
-            namespace='numpy1'
-        )
-    )
-    # Implicitly casts `float`s to `np.float64`
-    >>> optree.tree_map(lambda x: x + 1.5, np.arange(9).reshape(3, 3), namespace='numpy1')
-    array([[1.5, 2.5, 3.5],
-           [4.5, 5.5, 6.5],
-           [7.5, 8.5, 9.5]])
-
-    >>> optree.tree_flatten(np.arange(9).reshape(3, 3), namespace='numpy2')
-    (
-        [0, 1, 2, 3, 4, 5, 6, 7, 8],
-        PyTreeSpec(
-            CustomTreeNode(ndarray[{'shape': (3, 3), 'dtype': dtype('int64')}], [*, *, *, *, *, *, *, *, *]),
-            namespace='numpy2'
-        )
-    )
-    # Explicitly casts `float`s to `np.int64`
-    >>> optree.tree_map(lambda x: x + 1.5, np.arange(9).reshape(3, 3), namespace='numpy2')
-    array([[1, 2, 3],
-           [4, 5, 6],
-           [7, 8, 9]])
-
-    # Children are also `np.ndarray`s, recurse without termination condition.
-    >>> optree.tree_flatten(np.arange(9).reshape(3, 3), namespace='numpy3')
-    Traceback (most recent call last):
-        ...
-    RecursionError: Maximum recursion depth exceeded during flattening the tree.
-
-    >>> optree.tree_flatten(torch.arange(9).reshape(3, 3), namespace='torch1')
-    (
-        [0, 1, 2, 3, 4, 5, 6, 7, 8],
-        PyTreeSpec(
-            CustomTreeNode(Tensor[False], [[*, *, *], [*, *, *], [*, *, *]]),
-            namespace='torch1'
-        )
-    )
-    # Implicitly casts `float`s to `torch.float32`
-    >>> optree.tree_map(lambda x: x + 1.5, torch.arange(9).reshape(3, 3), namespace='torch1')
-    tensor([[1.5000, 2.5000, 3.5000],
-            [4.5000, 5.5000, 6.5000],
-            [7.5000, 8.5000, 9.5000]])
-
-    # Children are also `torch.Tensor`s, recurse without termination condition.
-    >>> optree.tree_flatten(torch.arange(9).reshape(3, 3), namespace='torch2')
-    Traceback (most recent call last):
-        ...
-    RecursionError: Maximum recursion depth exceeded during flattening the tree.
     ```
 
 ### `None` is Non-leaf Node vs. `None` is Leaf
 
-The [`None`](https://docs.python.org/3/library/constants.html#None) object is a special object in the Python language.
-It serves some of the same purposes as `null` (a pointer does not point to anything) in other programming languages, which denotes a variable is empty or marks default parameters.
-However, the `None` object is a singleton object rather than a pointer.
-It may also serve as a sentinel value.
-In addition, if a function has returned without any return value or the return statement is omitted, the function will also implicitly return the `None` object.
+The [`None`](https://docs.python.org/3/library/constants.html#None) object is Python's singleton for "no value" — analogous to `null` in other languages but also commonly used as a sentinel or implicit return value.
 
 By default, the `None` object is considered a non-leaf node in the tree with arity 0, i.e., _**a non-leaf node that has no children**_.
 This is like the behavior of an empty tuple.
@@ -598,11 +493,10 @@ OrderedDict({
 
 ### Key Ordering for Dictionaries
 
-The built-in Python dictionary (i.e., [`builtins.dict`](https://docs.python.org/3/library/stdtypes.html#dict)) is an unordered mapping that holds the keys and values.
-The leaves of a dictionary are the values. Although since Python 3.6, the built-in dictionary is insertion ordered ([PEP 468](https://peps.python.org/pep-0468)).
-The dictionary equality operator (`==`) does not check for key ordering.
-To ensure [referential transparency](https://en.wikipedia.org/wiki/Referential_transparency) that "equal `dict`" implies "equal ordering of leaves", the order of values of the dictionary is sorted by the keys.
-This behavior is also applied to [`collections.defaultdict`](https://docs.python.org/3/library/collections.html#collections.defaultdict).
+The built-in Python dictionary ([`builtins.dict`](https://docs.python.org/3/library/stdtypes.html#dict)) is a mapping whose leaves are its values.
+Since [Python 3.7](https://docs.python.org/3/whatsnew/3.7.html), `dict` is guaranteed to be insertion ordered, but the equality operator (`==`) ignores key order.
+To ensure [referential transparency](https://en.wikipedia.org/wiki/Referential_transparency) — "equal `dict`" implies "equal ordering of leaves" — the leaves (values) are returned in key-sorted order.
+The same applies to [`collections.defaultdict`](https://docs.python.org/3/library/collections.html#collections.defaultdict).
 
 ```python
 >>> optree.tree_flatten({'a': [1, 2], 'b': [3]})
@@ -611,7 +505,7 @@ This behavior is also applied to [`collections.defaultdict`](https://docs.python
 ([1, 2, 3], PyTreeSpec({'a': [*, *], 'b': [*]}))
 ```
 
-If users want to keep the values in the insertion order in pytree traversal, they should use [`collections.OrderedDict`](https://docs.python.org/3/library/collections.html#collections.OrderedDict), which will take the order of keys under consideration:
+To preserve insertion order during pytree traversal, use [`collections.OrderedDict`](https://docs.python.org/3/library/collections.html#collections.OrderedDict), which considers key order in equality checks:
 
 ```python
 >>> OrderedDict([('a', [1, 2]), ('b', [3])]) == OrderedDict([('b', [3]), ('a', [1, 2])])
@@ -667,9 +561,8 @@ This property is also preserved during serialization/deserialization.
 ```
 
 > [!NOTE]
-> Note that there are no restrictions on the `dict` to require the keys to be comparable (sortable).
-> There can be multiple types of keys in the dictionary.
-> The keys are sorted in ascending order by `key=lambda k: k` first if capable otherwise fallback to `key=lambda k: (f'{k.__class__.__module__}.{k.__class__.__qualname__}', k)`. This handles most cases.
+> The `dict` keys are not required to be comparable (sortable) or of a single type.
+> Keys are sorted by `key=lambda k: k` first if possible, otherwise falling back to `key=lambda k: (f'{k.__class__.__module__}.{k.__class__.__qualname__}', k)`. This handles most cases.
 >
 > ```python
 > >>> sorted({1: 2, 1.5: 1}.keys())
@@ -694,5 +587,5 @@ See [CHANGELOG.md](https://github.com/metaopt/optree/blob/HEAD/CHANGELOG.md).
 
 OpTree is released under the Apache License 2.0.
 
-OpTree is heavily based on JAX's implementation of the PyTree utility, with deep refactoring and several improvements.
+OpTree is based on JAX's implementation of the PyTree utility, with significant refactoring and several improvements.
 The original licenses can be found at [JAX's Apache License 2.0](https://github.com/google/jax/blob/HEAD/LICENSE) and [Tensorflow's Apache License 2.0](https://github.com/tensorflow/tensorflow/blob/HEAD/LICENSE).
