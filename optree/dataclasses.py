@@ -504,13 +504,13 @@ def register(  # noqa: C901 # pylint: disable=function-redefined,too-many-branch
     Usage::
 
         # Direct function call
-        register(Point, namespace='point')
+        register(Point, namespace='my-namespace')
 
         # As a decorator
-        @register(namespace='point')
+        @register(namespace='my-namespace')
         @dataclasses.dataclass
         class Point:
-            x: int
+            x: float
             y: float
 
     Args:

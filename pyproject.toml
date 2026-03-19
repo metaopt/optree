@@ -54,6 +54,7 @@ Documentation = "https://optree.readthedocs.io"
 "Bug Report" = "https://github.com/metaopt/optree/issues"
 
 [project.optional-dependencies]
+attrs = ["attrs"]
 jax = ["jax"]
 numpy = ["numpy"]
 torch = ["torch"]
@@ -89,6 +90,7 @@ docs = [
     "sphinx-rtd-theme",
     "sphinxcontrib-bibtex",
     "docutils",
+    "attrs",
     "jax[cpu]",
     "numpy",
     "torch",

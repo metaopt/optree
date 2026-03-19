@@ -25,6 +25,7 @@ skip_covered = true
 
 [confcoverage]
 optional_modules =
+    attrs
     jax
     numpy
     torch
