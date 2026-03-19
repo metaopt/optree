@@ -44,6 +44,8 @@ Point(x=2.0, y=6.0, z=3.0)
 >>> treespec = optree.tree_structure(point, namespace='my_module')
 >>> point == optree.tree_unflatten(treespec, [2.0, 6.0, 3.0])
 True
+
+.. versionadded:: 0.20.0
 """
 
 # pragma: attrs cover file
@@ -181,6 +183,8 @@ def field(**kwargs: Any) -> Any:
 
     Returns:
         The field defined using the provided arguments with ``metadata['pytree_node']`` set.
+
+    .. versionadded:: 0.20.0
     """
     pytree_node = kwargs.pop('pytree_node', None)
     metadata = dict(kwargs.pop('metadata', None) or {})
@@ -234,6 +238,8 @@ def define(  # pylint: disable=function-redefined
 
     Returns:
         type or callable: The decorated class with PyTree integration or decorator function.
+
+    .. versionadded:: 0.20.0
     """
     if cls is None:
 
@@ -285,6 +291,8 @@ def frozen(  # pylint: disable=function-redefined
 
     Returns:
         type or callable: The decorated class with PyTree integration or decorator function.
+
+    .. versionadded:: 0.20.0
     """
     kwargs.setdefault('frozen', True)
     kwargs.setdefault('on_setattr', None)
@@ -316,6 +324,8 @@ def make_class(  # pylint: disable=redefined-outer-name
 
     Returns:
         type: A new attrs class registered as a pytree node.
+
+    .. versionadded:: 0.20.0
     """
     cls = _attrs_make_class(name, attrs, **kwargs)
     return register_node(cls, namespace=namespace)
@@ -373,6 +383,8 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
 
     Returns:
         type or callable: The same class, now registered as a pytree node, or a decorator function.
+
+    .. versionadded:: 0.20.0
     """
     # pylint: disable-next=import-outside-toplevel
     from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE

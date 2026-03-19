@@ -519,6 +519,8 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
 
     Returns:
         type or callable: The same class, now registered as a pytree node, or a decorator function.
+
+    .. versionadded:: 0.20.0
     """
     # pylint: disable-next=import-outside-toplevel
     from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
