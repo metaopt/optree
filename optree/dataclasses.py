@@ -15,8 +15,9 @@
 """PyTree integration with :mod:`dataclasses`.
 
 This module implements PyTree integration with :mod:`dataclasses` by redefining the :func:`field`,
-:func:`dataclass`, and :func:`make_dataclass` functions. Other APIs are re-exported from the
-original :mod:`dataclasses` module.
+:func:`dataclass`, and :func:`make_dataclass` functions. The :func:`register` function allows
+registering existing :func:`dataclasses.dataclass`-decorated classes as pytree nodes. Other APIs
+are re-exported from the original :mod:`dataclasses` module.
 
 The PyTree integration allows dataclasses to be flattened and unflattened recursively. The fields
 are stored in a special attribute named ``__optree_dataclass_fields__`` in the dataclass.
@@ -65,19 +66,25 @@ import dataclasses
 import functools
 import inspect
 import sys
-import types
 from dataclasses import *  # noqa: F401,F403,RUF100 # pylint: disable=wildcard-import,unused-wildcard-import
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Callable, Literal, Protocol, TypeVar, overload
 from typing_extensions import dataclass_transform  # Python 3.11+
+
+from optree.accessors import DataclassEntry
 
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
 
-# Redefine `field`, `dataclasses`, and `make_dataclasses`.
-# The remaining APIs are re-exported from the original package.
-__all__ = [*dataclasses.__all__]
+__all__ = [
+    'DataclassEntry',
+    'register',
+    # Redefine `field`, `dataclasses`, and `make_dataclasses`.
+    # The remaining APIs are re-exported from the original package.
+    *dataclasses.__all__,
+]
 
 
 _FIELDS = '__optree_dataclass_fields__'
@@ -242,7 +249,7 @@ def dataclass(
 
 
 @dataclass_transform(field_specifiers=(field,))
-def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-locals,too-many-branches
+def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined
     cls: _TypeT | None = None,
     /,
     *,
@@ -315,53 +322,7 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined,too-many-
         namespace = GLOBAL_NAMESPACE
 
     cls = dataclasses.dataclass(cls, **kwargs)  # type: ignore[assignment]
-
-    children_fields = {}
-    metadata_fields = {}
-    for f in dataclasses.fields(cls):
-        if f.metadata.get('pytree_node', _PYTREE_NODE_DEFAULT):
-            if not f.init:
-                raise TypeError(
-                    f'PyTree node field {f.name!r} must be included in `__init__()`. '
-                    f'Or you can explicitly set `{__name__}.field(init=False, pytree_node=False)`.',
-                )
-            children_fields[f.name] = f
-        elif f.init:
-            metadata_fields[f.name] = f
-
-    children_field_names = tuple(children_fields)
-    children_fields = types.MappingProxyType(children_fields)
-    metadata_fields = types.MappingProxyType(metadata_fields)
-    setattr(cls, _FIELDS, (children_fields, metadata_fields))
-
-    def flatten_func(
-        obj: _T,
-        /,
-    ) -> tuple[
-        tuple[_U, ...],
-        tuple[tuple[str, Any], ...],
-        tuple[str, ...],
-    ]:
-        children = tuple(getattr(obj, name) for name in children_field_names)
-        metadata = tuple((name, getattr(obj, name)) for name in metadata_fields)
-        return children, metadata, children_field_names
-
-    # pylint: disable-next=line-too-long
-    def unflatten_func(metadata: tuple[tuple[str, Any], ...], children: tuple[_U, ...], /) -> _T:  # type: ignore[type-var]
-        kwargs = dict(zip(children_field_names, children))
-        kwargs.update(metadata)
-        return cls(**kwargs)
-
-    from optree.accessors import DataclassEntry  # pylint: disable=import-outside-toplevel
-    from optree.registry import register_pytree_node  # pylint: disable=import-outside-toplevel
-
-    return register_pytree_node(  # type: ignore[return-value]
-        cls,
-        flatten_func,
-        unflatten_func,  # type: ignore[arg-type]
-        path_entry_type=DataclassEntry,
-        namespace=namespace,
-    )
+    return register(cls, namespace=namespace)
 
 
 class _DataclassDecorator(Protocol[_TypeT]):  # pylint: disable=too-few-public-methods
@@ -503,7 +464,138 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
         **make_dataclass_kwargs,  # type: ignore[arg-type]
     )
     if not registered_by_decorator:  # pragma: <3.14 cover
-        dataclass_kwargs.pop('slots', None)  # already defined in `make_dataclass()`
-        dataclass_kwargs.pop('weakref_slot', None)  # already used in `make_dataclass()`
-        cls = dataclass(cls, **dataclass_kwargs, namespace=namespace)  # type: ignore[call-overload]
+        cls = register(cls, namespace=namespace)
+    return cls
+
+
+@overload
+def register(
+    cls: str | None = None,
+    /,
+    *,
+    namespace: str | None = None,
+) -> Callable[[_TypeT], _TypeT]: ...
+
+
+@overload
+def register(
+    cls: _TypeT,
+    /,
+    *,
+    namespace: str,
+) -> _TypeT: ...
+
+
+def register(  # noqa: C901 # pylint: disable=function-redefined,too-many-branches
+    cls: _TypeT | str | None = None,
+    /,
+    *,
+    namespace: str | None = None,
+) -> _TypeT | Callable[[_TypeT], _TypeT]:
+    """Register an existing dataclass as a pytree node.
+
+    This function takes an existing :func:`dataclasses.dataclass`-decorated class and registers it
+    as a pytree node. It can be used as a direct function call or as a decorator.
+
+    Fields with ``metadata['pytree_node']`` set to :data:`True` (or not set, defaulting to
+    :data:`True`) are treated as children, while init fields with ``metadata['pytree_node']`` set
+    to :data:`False` are treated as metadata.
+
+    Usage::
+
+        # Direct function call
+        register(Point, namespace='point')
+
+        # As a decorator
+        @register(namespace='point')
+        @dataclasses.dataclass
+        class Point:
+            x: int
+            y: float
+
+    Args:
+        cls (type, optional): An existing dataclass. If :data:`None`, return a decorator.
+        namespace (str): The registry namespace used for the PyTree registration.
+
+    Returns:
+        type or callable: The same class, now registered as a pytree node, or a decorator function.
+    """
+    # pylint: disable-next=import-outside-toplevel
+    from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
+
+    if cls is GLOBAL_NAMESPACE or isinstance(cls, str):
+        if namespace is not None:
+            raise ValueError('Cannot specify `namespace` when the first argument is a string.')
+        if cls == '':
+            raise ValueError('The namespace cannot be an empty string.')
+        cls, namespace = None, cls
+
+    if namespace is None:
+        raise ValueError('Must specify `namespace` when the first argument is a class.')
+
+    if cls is None:
+
+        def decorator(cls: _TypeT, /) -> _TypeT:
+            return register(cls, namespace=namespace)  # type: ignore[arg-type]
+
+        return decorator
+
+    if not inspect.isclass(cls):
+        raise TypeError(f'Expected a class, got {cls!r}.')
+    if not dataclasses.is_dataclass(cls):
+        raise TypeError(f'{cls!r} is not a dataclass.')
+    if _FIELDS in cls.__dict__:
+        raise TypeError(
+            f'Cannot register {cls.__name__} as a pytree node more than once.',
+        )
+    if namespace is not GLOBAL_NAMESPACE and not isinstance(namespace, str):
+        raise TypeError(f'The namespace must be a string, got {namespace!r}.')
+    if namespace == '':
+        namespace = GLOBAL_NAMESPACE
+
+    children_fields = {}
+    metadata_fields = {}
+    for f in dataclasses.fields(cls):
+        if f.metadata.get('pytree_node', _PYTREE_NODE_DEFAULT):
+            if not f.init:
+                raise TypeError(
+                    f'PyTree node field {f.name!r} must be included in `__init__()`. '
+                    f'Or you can explicitly set `{__name__}.field(init=False, pytree_node=False)`.',
+                )
+            children_fields[f.name] = f
+        elif f.init:
+            metadata_fields[f.name] = f
+
+    children_field_names = tuple(children_fields)
+    children_fields_proxy = MappingProxyType(children_fields)
+    metadata_fields_proxy = MappingProxyType(metadata_fields)
+    setattr(cls, _FIELDS, (children_fields_proxy, metadata_fields_proxy))
+
+    def flatten_func(
+        obj: _T,
+        /,
+    ) -> tuple[
+        tuple[_U, ...],
+        tuple[tuple[str, Any], ...],
+        tuple[str, ...],
+    ]:
+        children = tuple(getattr(obj, name) for name in children_field_names)
+        metadata = tuple((name, getattr(obj, name)) for name in metadata_fields)
+        return children, metadata, children_field_names
+
+    # pylint: disable-next=line-too-long
+    def unflatten_func(metadata: tuple[tuple[str, Any], ...], children: tuple[_U, ...], /) -> _T:  # type: ignore[type-var]
+        kwargs = dict(zip(children_field_names, children))
+        kwargs.update(metadata)
+        return cls(**kwargs)  # type: ignore[return-value]
+
+    from optree.registry import register_pytree_node  # pylint: disable=import-outside-toplevel
+
+    register_pytree_node(
+        cls,  # type: ignore[arg-type]
+        flatten_func,
+        unflatten_func,  # type: ignore[arg-type]
+        path_entry_type=DataclassEntry,
+        namespace=namespace,
+    )
     return cls
