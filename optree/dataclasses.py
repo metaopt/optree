@@ -81,7 +81,7 @@ if TYPE_CHECKING:
 __all__ = [
     'DataclassEntry',
     'register',
-    # Redefine `field`, `dataclasses`, and `make_dataclasses`.
+    # Redefine `field`, `dataclass`, and `make_dataclass`.
     # The remaining APIs are re-exported from the original package.
     *dataclasses.__all__,
 ]

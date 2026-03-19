@@ -1097,3 +1097,23 @@ def test_register_missing_namespace():
         match=r'Must specify `namespace` when the first argument is a class\.',
     ):
         optree.dataclasses.register(MissingNs)
+
+
+def test_dataclass_entry():
+    @dataclasses.dataclass
+    class EntryTest:
+        x: int
+        y: float
+        z: int = dataclasses.field(init=False, default=0)
+
+    entry_str = optree.DataclassEntry('x', EntryTest, optree.PyTreeKind.CUSTOM)
+    assert entry_str.field == 'x'
+    assert entry_str.name == 'x'
+    assert entry_str.fields == ('x', 'y', 'z')
+    assert entry_str.init_fields == ('x', 'y')
+    assert 'DataclassEntry' in repr(entry_str)
+    assert "'x'" in repr(entry_str)
+
+    entry_int = optree.DataclassEntry(1, EntryTest, optree.PyTreeKind.CUSTOM)
+    assert entry_int.field == 'y'
+    assert entry_int.name == 'y'

@@ -27,7 +27,7 @@ def test_imports():
         optree.integrations.abc  # noqa: B018
 
     try:
-        import attr  # noqa: F401
+        import attrs  # noqa: F401
     except ImportError:
         with pytest.raises(ImportError):
             optree.integrations.attrs  # noqa: B018

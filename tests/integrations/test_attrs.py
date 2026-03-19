@@ -323,6 +323,26 @@ def test_accessor_support():
     assert treespec.type is AccessorTest
 
 
+def test_attrs_entry():
+    @attrs.define
+    class EntryTest:
+        x: int
+        y: float
+        z: int = attrs.field(init=False, default=0)
+
+    entry_str = optree.integrations.attrs.AttrsEntry('x', EntryTest, optree.PyTreeKind.CUSTOM)
+    assert entry_str.field == 'x'
+    assert entry_str.name == 'x'
+    assert entry_str.fields == ('x', 'y', 'z')
+    assert entry_str.init_fields == ('x', 'y')
+    assert 'AttrsEntry' in repr(entry_str)
+    assert "'x'" in repr(entry_str)
+
+    entry_int = optree.integrations.attrs.AttrsEntry(1, EntryTest, optree.PyTreeKind.CUSTOM)
+    assert entry_int.field == 'y'
+    assert entry_int.name == 'y'
+
+
 def test_accessor_codify():
     @optree.integrations.attrs.define(namespace='test-attrs-codify')
     class CodifyTest:

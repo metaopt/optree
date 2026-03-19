@@ -19,6 +19,9 @@ Integration for `attrs <https://github.com/python-attrs/attrs>`_
 .. autofunction:: field
 .. autofunction:: define
 .. autofunction:: frozen
+.. data:: mutable
+
+   Alias for :func:`define`.
 .. autofunction:: make_class
 .. autofunction:: register
 .. autoclass:: AttrsEntry

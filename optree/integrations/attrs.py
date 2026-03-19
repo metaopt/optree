@@ -131,7 +131,7 @@ class AttrsEntry(GetAttrEntry):
     entry: str | int  # type: ignore[assignment]
 
     @property
-    def fields(self, /) -> tuple[str, ...]:  # pragma: no cover
+    def fields(self, /) -> tuple[str, ...]:
         """Get all field names."""
         return tuple(a.name for a in self.type.__attrs_attrs__)  # type: ignore[attr-defined]
 
