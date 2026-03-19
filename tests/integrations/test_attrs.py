@@ -248,7 +248,7 @@ def test_register_existing_class():
         x: float
         y: float
 
-    optree.integrations.attrs.register(Existing, namespace='test-attrs-register')
+    optree.integrations.attrs.register_node(Existing, namespace='test-attrs-register')
 
     obj = Existing(1.0, 2.0)
     leaves, treespec = optree.tree_flatten(obj, namespace='test-attrs-register')
@@ -262,7 +262,7 @@ def test_register_existing_class_with_metadata():
         a: int
         b: int = attrs.field(metadata={'pytree_node': False})
 
-    optree.integrations.attrs.register(ExistingMixed, namespace='test-attrs-register-meta')
+    optree.integrations.attrs.register_node(ExistingMixed, namespace='test-attrs-register-meta')
 
     obj = ExistingMixed(1, 2)
     leaves, treespec = optree.tree_flatten(obj, namespace='test-attrs-register-meta')
@@ -275,12 +275,12 @@ def test_register_non_attrs_class():
         pass
 
     with pytest.raises(TypeError, match='is not an attrs-decorated class'):
-        optree.integrations.attrs.register(NotAttrs, namespace='error')
+        optree.integrations.attrs.register_node(NotAttrs, namespace='error')
 
 
 def test_register_non_class():
     with pytest.raises(TypeError, match='Expected a class'):
-        optree.integrations.attrs.register(42, namespace='error')
+        optree.integrations.attrs.register_node(42, namespace='error')
 
 
 def test_register_double_registration():
@@ -288,13 +288,13 @@ def test_register_double_registration():
     class Double:
         x: int
 
-    optree.integrations.attrs.register(Double, namespace='test-attrs-double')
+    optree.integrations.attrs.register_node(Double, namespace='test-attrs-double')
 
     with pytest.raises(
         TypeError,
         match=r'Cannot register .* as a pytree node more than once\.',
     ):
-        optree.integrations.attrs.register(Double, namespace='test-attrs-double-2')
+        optree.integrations.attrs.register_node(Double, namespace='test-attrs-double-2')
 
 
 def test_accessor_support():
@@ -373,7 +373,7 @@ def test_define_as_decorator_factory():
 
 
 def test_register_as_decorator():
-    @optree.integrations.attrs.register(namespace='test-attrs-register-dec')
+    @optree.integrations.attrs.register_node(namespace='test-attrs-register-dec')
     @attrs.define
     class DecoratorTest:
         x: float
@@ -386,7 +386,7 @@ def test_register_as_decorator():
 
 
 def test_register_as_decorator_with_metadata():
-    @optree.integrations.attrs.register(namespace='test-attrs-register-dec-meta')
+    @optree.integrations.attrs.register_node(namespace='test-attrs-register-dec-meta')
     @attrs.define
     class DecoratorMixed:
         a: int
@@ -399,7 +399,7 @@ def test_register_as_decorator_with_metadata():
 
 
 def test_register_namespace_as_positional():
-    @optree.integrations.attrs.register('test-attrs-register-pos')
+    @optree.integrations.attrs.register_node('test-attrs-register-pos')
     @attrs.define
     class PosNsTest:
         x: int
@@ -415,7 +415,7 @@ def test_register_namespace_as_positional_with_kwarg_error():
         ValueError,
         match=r'Cannot specify `namespace` when the first argument is a string\.',
     ):
-        optree.integrations.attrs.register('ns1', namespace='ns2')
+        optree.integrations.attrs.register_node('ns1', namespace='ns2')
 
 
 def test_register_namespace_empty_string_as_positional():
@@ -423,7 +423,7 @@ def test_register_namespace_empty_string_as_positional():
         ValueError,
         match=r'The namespace cannot be an empty string\.',
     ):
-        optree.integrations.attrs.register('')
+        optree.integrations.attrs.register_node('')
 
 
 def test_register_missing_namespace():
@@ -435,7 +435,7 @@ def test_register_missing_namespace():
         ValueError,
         match=r'Must specify `namespace` when the first argument is a class\.',
     ):
-        optree.integrations.attrs.register(MissingNs)
+        optree.integrations.attrs.register_node(MissingNs)
 
 
 def test_register_invalid_namespace():
@@ -444,14 +444,14 @@ def test_register_invalid_namespace():
         x: int
 
     with pytest.raises(TypeError, match='The namespace must be a string'):
-        optree.integrations.attrs.register(Foo1, namespace=1)
+        optree.integrations.attrs.register_node(Foo1, namespace=1)
 
     @attrs.define
     class Foo2:
         x: int
         y: float
 
-    optree.integrations.attrs.register(Foo2, namespace='')
+    optree.integrations.attrs.register_node(Foo2, namespace='')
 
     foo = Foo2(1, 2.0)
     leaves, treespec = optree.tree_flatten(foo)
@@ -463,7 +463,7 @@ def test_register_invalid_namespace():
         x: int
         y: float
 
-    optree.integrations.attrs.register(Foo3, namespace=GLOBAL_NAMESPACE)
+    optree.integrations.attrs.register_node(Foo3, namespace=GLOBAL_NAMESPACE)
 
     foo = Foo3(1, 2.0)
     leaves, treespec = optree.tree_flatten(foo)

@@ -29,14 +29,14 @@ from helpers import GLOBAL_NAMESPACE
 
 
 def test_public_api():
-    assert optree.dataclasses.__all__ == ['DataclassEntry', 'register', *dataclasses.__all__]
+    assert optree.dataclasses.__all__ == ['DataclassEntry', 'register_node', *dataclasses.__all__]
     for name in dataclasses.__all__:
         if name in {'field', 'dataclass', 'make_dataclass'}:
             assert getattr(optree.dataclasses, name) != getattr(dataclasses, name)
         else:
             assert getattr(optree.dataclasses, name) is getattr(dataclasses, name)
     assert optree.dataclasses.DataclassEntry is optree.DataclassEntry
-    assert callable(optree.dataclasses.register)
+    assert callable(optree.dataclasses.register_node)
 
 
 def test_same_signature():
@@ -906,7 +906,7 @@ def test_register_existing_class():
         x: float
         y: float
 
-    optree.dataclasses.register(Existing, namespace='test-dc-register')
+    optree.dataclasses.register_node(Existing, namespace='test-dc-register')
 
     obj = Existing(1.0, 2.0)
     leaves, treespec = optree.tree_flatten(obj, namespace='test-dc-register')
@@ -924,7 +924,7 @@ def test_register_existing_class_with_metadata():
         def __post_init__(self):
             self.c = self.a + self.b
 
-    optree.dataclasses.register(ExistingMixed, namespace='test-dc-register-meta')
+    optree.dataclasses.register_node(ExistingMixed, namespace='test-dc-register-meta')
 
     obj = ExistingMixed(1, 2)
     leaves, treespec = optree.tree_flatten(obj, namespace='test-dc-register-meta')
@@ -934,7 +934,7 @@ def test_register_existing_class_with_metadata():
 
 def test_register_non_class():
     with pytest.raises(TypeError, match='Expected a class'):
-        optree.dataclasses.register(42, namespace='error')
+        optree.dataclasses.register_node(42, namespace='error')
 
 
 def test_register_non_dataclass():
@@ -942,7 +942,7 @@ def test_register_non_dataclass():
         pass
 
     with pytest.raises(TypeError, match='is not a dataclass'):
-        optree.dataclasses.register(NotDataclass, namespace='error')
+        optree.dataclasses.register_node(NotDataclass, namespace='error')
 
 
 def test_register_double_registration():
@@ -950,13 +950,13 @@ def test_register_double_registration():
     class Double:
         x: int
 
-    optree.dataclasses.register(Double, namespace='test-dc-double')
+    optree.dataclasses.register_node(Double, namespace='test-dc-double')
 
     with pytest.raises(
         TypeError,
         match=r'Cannot register .* as a pytree node more than once\.',
     ):
-        optree.dataclasses.register(Double, namespace='test-dc-double-2')
+        optree.dataclasses.register_node(Double, namespace='test-dc-double-2')
 
 
 def test_register_init_false_field():
@@ -969,7 +969,7 @@ def test_register_init_false_field():
         TypeError,
         match=r'PyTree node field .* must be included in `__init__\(\)`\.',
     ):
-        optree.dataclasses.register(BadInit, namespace='error')
+        optree.dataclasses.register_node(BadInit, namespace='error')
 
 
 def test_register_invalid_namespace():
@@ -978,14 +978,14 @@ def test_register_invalid_namespace():
         x: int
 
     with pytest.raises(TypeError, match='The namespace must be a string'):
-        optree.dataclasses.register(Foo1, namespace=1)
+        optree.dataclasses.register_node(Foo1, namespace=1)
 
     @dataclasses.dataclass
     class Foo2:
         x: int
         y: float
 
-    optree.dataclasses.register(Foo2, namespace='')
+    optree.dataclasses.register_node(Foo2, namespace='')
 
     foo = Foo2(1, 2.0)
     leaves, treespec = optree.tree_flatten(foo)
@@ -997,7 +997,7 @@ def test_register_invalid_namespace():
         x: int
         y: float
 
-    optree.dataclasses.register(Foo3, namespace=GLOBAL_NAMESPACE)
+    optree.dataclasses.register_node(Foo3, namespace=GLOBAL_NAMESPACE)
 
     foo = Foo3(1, 2.0)
     leaves, treespec = optree.tree_flatten(foo)
@@ -1011,7 +1011,7 @@ def test_register_accessor_support():
         x: int
         y: float
 
-    optree.dataclasses.register(AccessorTest, namespace='test-dc-register-accessor')
+    optree.dataclasses.register_node(AccessorTest, namespace='test-dc-register-accessor')
 
     obj = AccessorTest(1, 2.0)
     accessors, leaves, treespec = optree.tree_flatten_with_accessor(
@@ -1034,7 +1034,7 @@ def test_register_accessor_support():
 
 
 def test_register_as_decorator():
-    @optree.dataclasses.register(namespace='test-dc-register-dec')
+    @optree.dataclasses.register_node(namespace='test-dc-register-dec')
     @dataclasses.dataclass
     class DecoratorTest:
         x: float
@@ -1047,7 +1047,7 @@ def test_register_as_decorator():
 
 
 def test_register_as_decorator_with_metadata():
-    @optree.dataclasses.register(namespace='test-dc-register-dec-meta')
+    @optree.dataclasses.register_node(namespace='test-dc-register-dec-meta')
     @dataclasses.dataclass
     class DecoratorMixed:
         a: int
@@ -1060,7 +1060,7 @@ def test_register_as_decorator_with_metadata():
 
 
 def test_register_namespace_as_positional():
-    @optree.dataclasses.register('test-dc-register-pos')
+    @optree.dataclasses.register_node('test-dc-register-pos')
     @dataclasses.dataclass
     class PosNsTest:
         x: int
@@ -1076,7 +1076,7 @@ def test_register_namespace_as_positional_with_kwarg_error():
         ValueError,
         match=r'Cannot specify `namespace` when the first argument is a string\.',
     ):
-        optree.dataclasses.register('ns1', namespace='ns2')
+        optree.dataclasses.register_node('ns1', namespace='ns2')
 
 
 def test_register_namespace_empty_string_as_positional():
@@ -1084,7 +1084,7 @@ def test_register_namespace_empty_string_as_positional():
         ValueError,
         match=r'The namespace cannot be an empty string\.',
     ):
-        optree.dataclasses.register('')
+        optree.dataclasses.register_node('')
 
 
 def test_register_missing_namespace():
@@ -1096,7 +1096,7 @@ def test_register_missing_namespace():
         ValueError,
         match=r'Must specify `namespace` when the first argument is a class\.',
     ):
-        optree.dataclasses.register(MissingNs)
+        optree.dataclasses.register_node(MissingNs)
 
 
 def test_dataclass_entry():

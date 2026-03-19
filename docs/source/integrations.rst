@@ -13,7 +13,7 @@ Integration for `attrs <https://github.com/python-attrs/attrs>`_
     frozen
     mutable
     make_class
-    register
+    register_node
     AttrsEntry
 
 .. autofunction:: field
@@ -23,7 +23,7 @@ Integration for `attrs <https://github.com/python-attrs/attrs>`_
 
    Alias for :func:`define`.
 .. autofunction:: make_class
-.. autofunction:: register
+.. autofunction:: register_node
 .. autoclass:: AttrsEntry
 
 ------

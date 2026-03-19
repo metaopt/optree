@@ -15,7 +15,7 @@
 """PyTree integration with :mod:`dataclasses`.
 
 This module implements PyTree integration with :mod:`dataclasses` by redefining the :func:`field`,
-:func:`dataclass`, and :func:`make_dataclass` functions. The :func:`register` function allows
+:func:`dataclass`, and :func:`make_dataclass` functions. The :func:`register_node` function allows
 registering existing :func:`dataclasses.dataclass`-decorated classes as pytree nodes. Other APIs
 are re-exported from the original :mod:`dataclasses` module.
 
@@ -80,7 +80,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     'DataclassEntry',
-    'register',
+    'register_node',
     # Redefine `field`, `dataclass`, and `make_dataclass`.
     # The remaining APIs are re-exported from the original package.
     *dataclasses.__all__,
@@ -322,7 +322,7 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined
         namespace = GLOBAL_NAMESPACE
 
     cls = dataclasses.dataclass(cls, **kwargs)  # type: ignore[assignment]
-    return register(cls, namespace=namespace)
+    return register_node(cls, namespace=namespace)
 
 
 class _DataclassDecorator(Protocol[_TypeT]):  # pylint: disable=too-few-public-methods
@@ -464,12 +464,12 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
         **make_dataclass_kwargs,  # type: ignore[arg-type]
     )
     if not registered_by_decorator:  # pragma: <3.14 cover
-        cls = register(cls, namespace=namespace)
+        cls = register_node(cls, namespace=namespace)
     return cls
 
 
 @overload
-def register(
+def register_node(
     cls: str | None = None,
     /,
     *,
@@ -478,7 +478,7 @@ def register(
 
 
 @overload
-def register(
+def register_node(
     cls: _TypeT,
     /,
     *,
@@ -486,7 +486,7 @@ def register(
 ) -> _TypeT: ...
 
 
-def register(  # noqa: C901 # pylint: disable=function-redefined,too-many-branches
+def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-branches
     cls: _TypeT | str | None = None,
     /,
     *,
@@ -504,10 +504,10 @@ def register(  # noqa: C901 # pylint: disable=function-redefined,too-many-branch
     Usage::
 
         # Direct function call
-        register(Point, namespace='my-namespace')
+        register_node(Point, namespace='my-namespace')
 
         # As a decorator
-        @register(namespace='my-namespace')
+        @register_node(namespace='my-namespace')
         @dataclasses.dataclass
         class Point:
             x: float
@@ -536,7 +536,7 @@ def register(  # noqa: C901 # pylint: disable=function-redefined,too-many-branch
     if cls is None:
 
         def decorator(cls: _TypeT, /) -> _TypeT:
-            return register(cls, namespace=namespace)  # type: ignore[arg-type]
+            return register_node(cls, namespace=namespace)  # type: ignore[arg-type]
 
         return decorator
 

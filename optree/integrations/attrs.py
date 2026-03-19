@@ -15,10 +15,10 @@
 """Integration with :mod:`attrs`.
 
 This module implements PyTree integration with :mod:`attrs` by providing :func:`field`,
-:func:`define`, :func:`frozen`, and :func:`register` functions. The :func:`field` and
+:func:`define`, :func:`frozen`, and :func:`register_node` functions. The :func:`field` and
 :func:`define` functions wrap the corresponding :mod:`attrs` functions with an additional
 ``pytree_node`` parameter for controlling which fields are tree children versus metadata.
-The :func:`register` function allows registering existing :mod:`attrs` classes as pytree nodes.
+The :func:`register_node` function allows registering existing :mod:`attrs` classes as pytree nodes.
 
 The PyTree integration allows attrs classes to be flattened and unflattened recursively. The fields
 are stored in a special attribute named ``__optree_attrs_fields__`` in the attrs class.
@@ -92,7 +92,7 @@ __all__ = [
     'frozen',
     'mutable',
     'make_class',
-    'register',
+    'register_node',
     # Re-export commonly used APIs from the original package.
     'NOTHING',
     'Attribute',
@@ -246,7 +246,7 @@ def define(  # pylint: disable=function-redefined
         raise TypeError(f'@{__name__}.define() can only be used with classes, not {cls!r}.')
 
     cls = attrs.define(cls, **kwargs)
-    return register(cls, namespace=namespace)
+    return register_node(cls, namespace=namespace)
 
 
 @overload
@@ -318,11 +318,11 @@ def make_class(  # pylint: disable=redefined-outer-name
         type: A new attrs class registered as a pytree node.
     """
     cls = _attrs_make_class(name, attrs, **kwargs)
-    return register(cls, namespace=namespace)
+    return register_node(cls, namespace=namespace)
 
 
 @overload
-def register(
+def register_node(
     cls: str | None = None,
     /,
     *,
@@ -331,7 +331,7 @@ def register(
 
 
 @overload
-def register(
+def register_node(
     cls: _TypeT,
     /,
     *,
@@ -339,7 +339,7 @@ def register(
 ) -> _TypeT: ...
 
 
-def register(  # noqa: C901 # pylint: disable=function-redefined,too-many-branches
+def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-branches
     cls: _TypeT | str | None = None,
     /,
     *,
@@ -357,10 +357,10 @@ def register(  # noqa: C901 # pylint: disable=function-redefined,too-many-branch
     Usage::
 
         # Direct function call
-        register(Point, namespace='my-namespace')
+        register_node(Point, namespace='my-namespace')
 
         # As a decorator
-        @register(namespace='my-namespace')
+        @register_node(namespace='my-namespace')
         @attrs.define
         class Point:
             x: float
@@ -390,7 +390,7 @@ def register(  # noqa: C901 # pylint: disable=function-redefined,too-many-branch
     if cls is None:
 
         def decorator(cls: _TypeT, /) -> _TypeT:
-            return register(cls, namespace=namespace)  # type: ignore[arg-type]
+            return register_node(cls, namespace=namespace)  # type: ignore[arg-type]
 
         return decorator
 
