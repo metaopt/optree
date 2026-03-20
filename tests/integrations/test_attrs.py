@@ -297,6 +297,24 @@ def test_register_double_registration():
         optree.integrations.attrs.register_node(Double, namespace='test-attrs-double-2')
 
 
+def test_register_init_false_class_warns():
+    @attrs.define(init=False)
+    class InitFalse:
+        x: int
+        y: int
+
+    with pytest.warns(
+        UserWarning,
+        match=re.escape(
+            "Attrs class 'InitFalse' does not use an attrs-generated `__init__` "
+            '(for example, `init=False`). '
+            '`tree_unflatten()` may fail because '
+            '`optree.integrations.attrs.register_node()` reconstructs instances with `cls(**kwargs)`.',
+        ),
+    ):
+        optree.integrations.attrs.register_node(InitFalse, namespace='test-attrs-init-false')
+
+
 def test_accessor_support():
     @optree.integrations.attrs.define(namespace='test-attrs-accessor')
     class AccessorTest:

@@ -66,6 +66,7 @@ import dataclasses
 import functools
 import inspect
 import sys
+import warnings
 from dataclasses import *  # noqa: F401,F403,RUF100 # pylint: disable=wildcard-import,unused-wildcard-import
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Callable, Literal, Protocol, TypeVar, overload
@@ -554,6 +555,14 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
         raise TypeError(f'The namespace must be a string, got {namespace!r}.')
     if namespace == '':
         namespace = GLOBAL_NAMESPACE
+    if not cls.__dataclass_params__.init:  # type: ignore[attr-defined]
+        warnings.warn(
+            f'Dataclass {cls.__name__!r} was defined with `init=False`. '
+            '`tree_unflatten()` may fail because '
+            f'`{__name__}.register_node()` reconstructs instances with `cls(**kwargs)`.',
+            UserWarning,
+            stacklevel=2,
+        )
 
     children_fields = {}
     metadata_fields = {}

@@ -959,6 +959,23 @@ def test_register_double_registration():
         optree.dataclasses.register_node(Double, namespace='test-dc-double-2')
 
 
+def test_register_init_false_class_warns():
+    @dataclasses.dataclass(init=False)
+    class InitFalse:
+        x: int
+        y: int
+
+    with pytest.warns(
+        UserWarning,
+        match=re.escape(
+            "Dataclass 'InitFalse' was defined with `init=False`. "
+            '`tree_unflatten()` may fail because '
+            '`optree.dataclasses.register_node()` reconstructs instances with `cls(**kwargs)`.',
+        ),
+    ):
+        optree.dataclasses.register_node(InitFalse, namespace='test-dc-init-false')
+
+
 def test_register_init_false_field():
     @dataclasses.dataclass
     class BadInit:
