@@ -222,6 +222,12 @@ builtins.typing = typing
 
 
 def get_pytree_typing_instance(annotation):  # noqa: C901
+    if not (
+        isinstance(annotation, type(typing.Union[int, str]))
+        and typing.get_origin(annotation) is typing.Union
+    ):
+        return None
+
     if 'optree' not in sys.modules:
         sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -290,14 +296,58 @@ def get_pytree_typing_instance(annotation):  # noqa: C901
     return None
 
 
+def format_pytree_typing_instance(pytree_instance, config=None):
+    param, name = pytree_instance
+    if name is not None:
+        return f':py:class:`{name}`'
+
+    from sphinx_autodoc_typehints import format_annotation
+
+    return rf':py:class:`PyTree` \[{format_annotation(param, config=config)}]'
+
+
+def format_pytree_typing_union(annotation_args, config=None):
+    from sphinx_autodoc_typehints import format_annotation
+
+    if 'optree' not in sys.modules:
+        sys.path.insert(0, str(PROJECT_ROOT))
+
+    from optree import PyTree
+
+    min_pytree_union_width = len(typing.get_args(PyTree[int]))
+    formatted_args = []
+    index = 0
+    while index < len(annotation_args):
+        pytree_instance = None
+        next_index = index
+        for end in range(len(annotation_args), index + min_pytree_union_width - 1, -1):
+            pytree_instance = get_pytree_typing_instance(typing.Union[annotation_args[index:end]])
+            if pytree_instance is not None:
+                next_index = end
+                break
+
+        if pytree_instance is not None:
+            formatted_args.append(format_pytree_typing_instance(pytree_instance, config=config))
+            index = next_index
+            continue
+
+        formatted_args.append(format_annotation(annotation_args[index], config=config))
+        index += 1
+
+    if len(formatted_args) == len(annotation_args):
+        return None
+    return ' | '.join(formatted_args)
+
+
 def typehints_formatter(annotation, config=None):
     pytree_instance = get_pytree_typing_instance(annotation)
     if pytree_instance is not None:
-        param, name = pytree_instance
-        if name is not None:
-            return f':py:class:`{name}`'
+        return format_pytree_typing_instance(pytree_instance, config=config)
 
-        from sphinx_autodoc_typehints import format_annotation
+    if typing.get_origin(annotation) is typing.Union:
+        annotation_args = typing.get_args(annotation)
+        formatted_annotation = format_pytree_typing_union(annotation_args, config=config)
+        if formatted_annotation is not None:
+            return formatted_annotation
 
-        return rf':py:class:`PyTree` \[{format_annotation(param, config=config)}]'
     return None
