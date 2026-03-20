@@ -221,18 +221,79 @@ typehints_use_signature_return = False
 builtins.typing = typing
 
 
-def typehints_formatter(annotation, config=None):
+def get_pytree_typing_instance(annotation):  # noqa: C901
     if 'optree' not in sys.modules:
         sys.path.insert(0, str(PROJECT_ROOT))
 
-    import optree
+    from optree import PyTree
 
-    if (
-        isinstance(annotation, type(typing.Union[int, str]))
-        and typing.get_origin(annotation) is typing.Union
-        and annotation in optree.PyTree.__instances__
+    try:
+        pytree_instance = PyTree.__instances__.get(annotation)
+    except TypeError:
+        pytree_instance = None
+    else:
+        if pytree_instance is not None:
+            return pytree_instance
+
+    def collect_forward_refs(annotation):
+        if isinstance(annotation, typing.ForwardRef):
+            return {annotation.__forward_arg__}
+
+        forward_refs = set()
+        for arg in typing.get_args(annotation):
+            forward_refs.update(collect_forward_refs(arg))
+        return forward_refs
+
+    def matches_pytree_typing_alias(
+        annotation,
+        pattern,
+        recursive_pattern,
+        recursive_ref_names,
     ):
-        param, name = optree.PyTree.__instances__[annotation]
+        if isinstance(pattern, typing.ForwardRef):
+            if isinstance(annotation, typing.ForwardRef):
+                return annotation.__forward_arg__ in recursive_ref_names
+            return matches_pytree_typing_alias(
+                annotation,
+                recursive_pattern,
+                recursive_pattern,
+                recursive_ref_names,
+            )
+
+        if annotation == pattern:
+            return True
+
+        if typing.get_origin(annotation) != typing.get_origin(pattern):
+            return False
+
+        annotation_args = typing.get_args(annotation)
+        pattern_args = typing.get_args(pattern)
+        if len(annotation_args) != len(pattern_args):
+            return False
+        if not annotation_args:
+            return False  # non-parameterized types must match by equality (checked above)
+
+        return all(
+            matches_pytree_typing_alias(arg, pat, recursive_pattern, recursive_ref_names)
+            for arg, pat in zip(annotation_args, pattern_args)
+        )
+
+    for pytree_alias, pytree_instance in tuple(PyTree.__instances__.items()):
+        recursive_ref_names = collect_forward_refs(pytree_alias)
+        if matches_pytree_typing_alias(
+            annotation,
+            pytree_alias,
+            pytree_alias,
+            recursive_ref_names,
+        ):
+            return pytree_instance
+    return None
+
+
+def typehints_formatter(annotation, config=None):
+    pytree_instance = get_pytree_typing_instance(annotation)
+    if pytree_instance is not None:
+        param, name = pytree_instance
         if name is not None:
             return f':py:class:`{name}`'
 
