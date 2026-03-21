@@ -113,14 +113,13 @@ def test_pytree_typing():
     T = TypeVar('T')
 
     optree.PyTree[int]
-    optree.PyTree[Union[int, str]]
+    optree.PyTree[Union[int, str]]  # noqa: UP007
     optree.PyTree[T]
     assert optree.PyTree[optree.PyTree[int]] == optree.PyTree[int]
-    assert optree.PyTree[optree.PyTree[Union[int, str]]] == optree.PyTree[Union[int, str]]
+    assert optree.PyTree[optree.PyTree[Union[int, str]]] == optree.PyTree[Union[int, str]]  # noqa: UP007
     assert optree.PyTree[optree.PyTree[T]] == optree.PyTree[T]
-    if sys.version_info >= (3, 10):
-        optree.PyTree[int | str]
-        assert optree.PyTree[optree.PyTree[int | str]] == optree.PyTree[int | str]
+    optree.PyTree[float | bytes]
+    assert optree.PyTree[optree.PyTree[float | bytes]] == optree.PyTree[float | bytes]
 
     IntTree = optree.PyTreeTypeVar('IntTree', int)  # noqa: N806
     assert IntTree == optree.PyTree[IntTree]

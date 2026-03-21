@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 name = "optree"
 description = "Optimized PyTree Utilities."
 readme = "README.md"
-requires-python = ">= 3.9"
+requires-python = ">= 3.10"
 authors = [{ name = "OpTree Contributors" }]
 license = "Apache-2.0"
 keywords = [
@@ -21,7 +21,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: C++",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -155,7 +154,7 @@ environment = { CMAKE_OSX_SYSROOT = "iphonesimulator" }
 # Linter tools #################################################################
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 exclude = ['^tests/.*\.py$', '^(third|3rd)[_\-]?party/.*$', '^\.?venv/.*$']
 pretty = true
 show_column_numbers = true
@@ -178,7 +177,7 @@ warn_unused_ignores = true
 no_site_packages = true
 
 [tool.pylint]
-main.py-version = "3.9"
+main.py-version = "3.10"
 main.extension-pkg-allow-list = ["optree._C"]
 main.ignore-paths = ['^tests/$', '^(third|3rd)[_\-]?party/$']
 basic.good-names = []
@@ -204,7 +203,7 @@ builtin = "clear,rare,en-GB_to_en-US"
 ignore-words = "docs/source/spelling_wordlist.txt"
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 line-length = 100
 output-format = "full"
 src = ["optree", "tests"]
