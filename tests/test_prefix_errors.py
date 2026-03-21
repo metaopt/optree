@@ -25,6 +25,7 @@ import pytest
 import optree
 from helpers import (
     GLOBAL_NAMESPACE,
+    STANDARD_DICT_TYPES,
     TREES,
     CustomTuple,
     FlatCache,
@@ -58,7 +59,8 @@ def test_different_types():
     with pytest.raises(
         ValueError,
         match=(
-            r'Expected an instance of dict, collections.OrderedDict, or collections.defaultdict, '
+            r'Expected an instance of dict, collections.OrderedDict, '
+            r'(collections.defaultdict, or frozendict|or collections.defaultdict), '
             r'got .*\.'
         ),
     ):
@@ -484,10 +486,10 @@ def test_standard_dictionary(
             return
 
         def shuffle_dictionary(x):
-            if type(x) in {dict, OrderedDict, defaultdict}:
+            if type(x) in STANDARD_DICT_TYPES:
                 items = list(x.items())
                 random.shuffle(items)
-                dict_type = random.choice([dict, OrderedDict, defaultdict])
+                dict_type = random.choice(list(STANDARD_DICT_TYPES))
                 if dict_type is defaultdict:
                     return defaultdict(getattr(x, 'default_factory', int), items)
                 return dict_type(items)
@@ -496,7 +498,7 @@ def test_standard_dictionary(
         shuffled_tree = optree.tree_map(
             shuffle_dictionary,
             tree,
-            is_leaf=lambda x: type(x) in {dict, OrderedDict, defaultdict},
+            is_leaf=lambda x: type(x) in STANDARD_DICT_TYPES,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
@@ -508,7 +510,7 @@ def test_standard_dictionary(
         shuffled_suffix_tree = optree.tree_map(
             shuffle_dictionary,
             suffix_tree,
-            is_leaf=lambda x: type(x) in {dict, OrderedDict, defaultdict},
+            is_leaf=lambda x: type(x) in STANDARD_DICT_TYPES,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )

@@ -61,6 +61,9 @@ template <bool NoneIsLeaf>
             add_builtin_type(PyOrderedDictTypeObject, PyTreeKind::OrderedDict);
             add_builtin_type(PyDefaultDictTypeObject, PyTreeKind::DefaultDict);
             add_builtin_type(PyDequeTypeObject, PyTreeKind::Deque);
+#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+            add_builtin_type(PyFrozenDictTypeObject, PyTreeKind::FrozenDict);
+#endif
             return registry;
         })
         .get_stored();

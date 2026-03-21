@@ -73,9 +73,11 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec &other, const bool &strict) const {
 
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::FrozenDict: {
                 if (b->kind != PyTreeKind::Dict && b->kind != PyTreeKind::OrderedDict &&
-                    b->kind != PyTreeKind::DefaultDict) [[likely]] {
+                    b->kind != PyTreeKind::DefaultDict && b->kind != PyTreeKind::FrozenDict)
+                    [[likely]] {
                     return false;
                 }
                 const scoped_critical_section2 cs(a->node_data, b->node_data);

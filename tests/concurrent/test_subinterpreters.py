@@ -81,6 +81,7 @@ def concurrent_run(func, /, *args, **kwargs):
 
 def check_module_importable():
     import collections
+    import sys
     import time
 
     import optree
@@ -93,7 +94,9 @@ def check_module_importable():
     if is_current_interpreter_main != (main_interpreter_id == current_interpreter_id):
         raise RuntimeError('interpreter identity mismatch')
 
-    if not is_current_interpreter_main and optree._C.get_registry_size() != 8:
+    if not is_current_interpreter_main and optree._C.get_registry_size() != (
+        9 if sys.version_info >= (3, 15) else 8
+    ):
         raise RuntimeError('registry size mismatch')
 
     tree = {
@@ -106,23 +109,8 @@ def check_module_importable():
         ),
         'g': collections.defaultdict(list, h=collections.deque([7, 8, 9], maxlen=10)),
     }
-
-    leaves1, treespec1 = optree.tree_flatten(tree, none_is_leaf=False)
-    reconstructed1 = optree.tree_unflatten(treespec1, leaves1)
-    if reconstructed1 != tree:
-        raise RuntimeError('unflatten/flatten mismatch')
-    if treespec1.num_leaves != len(leaves1):
-        raise RuntimeError(f'num_leaves mismatch: ({leaves1}, {treespec1})')
-    if leaves1 != [1, 2, 3, 4, 5, 6, 7, 8, 9]:
-        raise RuntimeError(f'flattened leaves mismatch: ({leaves1}, {treespec1})')
-
-    leaves2, treespec2 = optree.tree_flatten(tree, none_is_leaf=True)
-    reconstructed2 = optree.tree_unflatten(treespec2, leaves2)
-    if reconstructed2 != tree:
-        raise RuntimeError('unflatten/flatten mismatch')
-    if treespec2.num_leaves != len(leaves2):
-        raise RuntimeError(f'num_leaves mismatch: ({leaves2}, {treespec2})')
-    if leaves2 != [
+    expected_leaves1 = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    expected_leaves2 = [
         1,
         2,
         3,
@@ -134,7 +122,30 @@ def check_module_importable():
         7,
         8,
         9,
-    ]:
+    ]
+    if sys.version_info >= (3, 15):
+        from builtins import frozendict  # pylint: disable=no-name-in-module
+
+        tree['i'] = frozendict({'k': 11, 'j': 10})
+        expected_leaves1.extend([10, 11])
+        expected_leaves2.extend([10, 11])
+
+    leaves1, treespec1 = optree.tree_flatten(tree, none_is_leaf=False)
+    reconstructed1 = optree.tree_unflatten(treespec1, leaves1)
+    if reconstructed1 != tree:
+        raise RuntimeError('unflatten/flatten mismatch')
+    if treespec1.num_leaves != len(leaves1):
+        raise RuntimeError(f'num_leaves mismatch: ({leaves1}, {treespec1})')
+    if leaves1 != expected_leaves1:
+        raise RuntimeError(f'flattened leaves mismatch: ({leaves1}, {treespec1})')
+
+    leaves2, treespec2 = optree.tree_flatten(tree, none_is_leaf=True)
+    reconstructed2 = optree.tree_unflatten(treespec2, leaves2)
+    if reconstructed2 != tree:
+        raise RuntimeError('unflatten/flatten mismatch')
+    if treespec2.num_leaves != len(leaves2):
+        raise RuntimeError(f'num_leaves mismatch: ({leaves2}, {treespec2})')
+    if leaves2 != expected_leaves2:
         raise RuntimeError(f'flattened leaves mismatch: ({leaves2}, {treespec2})')
 
     _ = optree.tree_flatten_with_path(tree, none_is_leaf=False)
@@ -328,9 +339,10 @@ def test_import_in_subinterpreters_concurrently():
         from concurrent.futures import InterpreterPoolExecutor, as_completed
 
         def check_import():
+            import sys
             import optree
 
-            if optree._C.get_registry_size() != 8:
+            if optree._C.get_registry_size() != (9 if sys.version_info >= (3, 15) else 8):
                 raise RuntimeError('registry size mismatch')
             if optree._C.is_current_interpreter_main():
                 raise RuntimeError('expected subinterpreter')
