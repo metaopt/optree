@@ -99,7 +99,7 @@ ssize_t PyTreeSpec::HashValue() const {
     const ThreadedIdentity ident{this, std::this_thread::get_id()};
     {
         const scoped_read_lock lock{mutex};
-        if (running.find(ident) != running.end()) [[unlikely]] {
+        if (running.contains(ident)) [[unlikely]] {
             return 0;
         }
     }
