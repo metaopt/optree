@@ -14,6 +14,8 @@
 # ==============================================================================
 """OpTree: Optimized PyTree Utilities."""
 
+import sys
+
 from optree import accessors, dataclasses, functools, integrations, pytree, treespec, typing
 from optree.accessors import (
     AutoEntry,
@@ -224,6 +226,13 @@ __all__ = [
     'is_structseq_instance',
     'structseq_fields',
 ]
+
+
+if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+    from optree.ops import treespec_frozendict
+
+    __all__.insert(__all__.index('treespec_from_collection'), 'treespec_frozendict')
+
 
 MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH
 """Maximum recursion depth for pytree traversal.
