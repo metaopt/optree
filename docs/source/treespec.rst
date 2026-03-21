@@ -22,5 +22,6 @@ Check section :ref:`PyTreeSpec Functions` for more detailed documentation.
     defaultdict
     deque
     structseq
-    frozendict
     from_collection
+
+.. TODO(frozendict): Add ``frozendict`` to the autosummary when building with Python 3.15+.
