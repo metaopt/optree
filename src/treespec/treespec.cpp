@@ -1008,8 +1008,8 @@ py::object PyTreeSpec::GetType(const std::optional<Node> &node) const {
             return PyDefaultDictTypeObject;
         case PyTreeKind::Deque:
             return PyDequeTypeObject;
-#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
         case PyTreeKind::FrozenDict:
+#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
             return PyFrozenDictTypeObject;
 #endif
         case PyTreeKind::NumKinds:
