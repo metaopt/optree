@@ -22,10 +22,10 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from types import ModuleType
 
-    from optree.integrations import jax, numpy, torch
+    from optree.integrations import attrs, jax, numpy, torch
 
 
-SUBMODULES: frozenset[str] = frozenset({'jax', 'numpy', 'torch'})
+SUBMODULES: frozenset[str] = frozenset({'attrs', 'jax', 'numpy', 'torch'})
 
 
 def __dir__() -> list[str]:

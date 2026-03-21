@@ -11,6 +11,7 @@ docutils
 
 --extra-index-url https://download.pytorch.org/whl/cpu
 
+attrs
 jax[cpu]
 numpy
 torch

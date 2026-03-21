@@ -259,6 +259,7 @@ inline bool IsNamedTupleClass(const py::handle &type) {
 
     static auto cache = std::unordered_map<py::handle, bool>{};
     static read_write_mutex mutex{};
+    bool cache_inserted = false;
 
     {
 #if !defined(Py_GIL_DISABLED)
@@ -278,17 +279,16 @@ inline bool IsNamedTupleClass(const py::handle &type) {
 #endif
         const scoped_write_lock lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-#if !defined(Py_GIL_DISABLED)
-            const py::gil_scoped_acquire_simple gil_acquire{};
-#endif
-            cache.emplace(type, result);
-            (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                                  const scoped_write_lock lock{mutex};
-                                  cache.erase(type);
-                                  weakref.dec_ref();
-                              }))
-                .release();
+            cache_inserted = cache.emplace(type, result).second;
         }
+    }
+    if (cache_inserted) [[likely]] {
+        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                              const scoped_write_lock lock{mutex};
+                              cache.erase(type);
+                              weakref.dec_ref();
+                          }))
+            .release();
     }
     return result;
 }
@@ -370,6 +370,7 @@ inline bool IsStructSequenceClass(const py::handle &type) {
 
     static auto cache = std::unordered_map<py::handle, bool>{};
     static read_write_mutex mutex{};
+    bool cache_inserted = false;
 
     {
 #if !defined(Py_GIL_DISABLED)
@@ -389,17 +390,16 @@ inline bool IsStructSequenceClass(const py::handle &type) {
 #endif
         const scoped_write_lock lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-#if !defined(Py_GIL_DISABLED)
-            const py::gil_scoped_acquire_simple gil_acquire{};
-#endif
-            cache.emplace(type, result);
-            (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                                  const scoped_write_lock lock{mutex};
-                                  cache.erase(type);
-                                  weakref.dec_ref();
-                              }))
-                .release();
+            cache_inserted = cache.emplace(type, result).second;
         }
+    }
+    if (cache_inserted) [[likely]] {
+        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                              const scoped_write_lock lock{mutex};
+                              cache.erase(type);
+                              weakref.dec_ref();
+                          }))
+            .release();
     }
     return result;
 }
@@ -462,6 +462,7 @@ inline py::tuple StructSequenceGetFields(const py::handle &object) {
 
     static auto cache = std::unordered_map<py::handle, py::handle>{};
     static read_write_mutex mutex{};
+    bool cache_inserted = false;
 
     {
 #if !defined(Py_GIL_DISABLED)
@@ -484,22 +485,21 @@ inline py::tuple StructSequenceGetFields(const py::handle &object) {
 #endif
         const scoped_write_lock lock{mutex};
         if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-#if !defined(Py_GIL_DISABLED)
-            const py::gil_scoped_acquire_simple gil_acquire{};
-#endif
-            cache.emplace(type, fields);
-            fields.inc_ref();
-            (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                                  const scoped_write_lock lock{mutex};
-                                  const auto it = cache.find(type);
-                                  if (it != cache.end()) [[likely]] {
-                                      it->second.dec_ref();
-                                      cache.erase(it);
-                                  }
-                                  weakref.dec_ref();
-                              }))
-                .release();
+            cache_inserted = cache.emplace(type, fields).second;
         }
+    }
+    if (cache_inserted) [[likely]] {
+        fields.inc_ref();
+        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
+                              const scoped_write_lock lock{mutex};
+                              const auto it = cache.find(type);
+                              if (it != cache.end()) [[likely]] {
+                                  it->second.dec_ref();
+                                  cache.erase(it);
+                              }
+                              weakref.dec_ref();
+                          }))
+            .release();
     }
     return fields;
 }
