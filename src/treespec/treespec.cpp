@@ -79,7 +79,8 @@ namespace optree {
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
-        case PyTreeKind::DefaultDict: {
+        case PyTreeKind::DefaultDict:
+        case PyTreeKind::FrozenDict: {
             py::dict dict{};
             const scoped_critical_section2 cs{node.node_data, node.original_keys};
             if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
@@ -109,6 +110,11 @@ namespace optree {
                     PyDefaultDictTypeObject(default_factory, std::move(dict)),
                     default_factory);
             }
+#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+            if (node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
+                return PyFrozenDictTypeObject(std::move(dict));
+            }
+#endif
             return dict;
         }
 
@@ -148,7 +154,8 @@ namespace optree {
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
-        case PyTreeKind::DefaultDict: {
+        case PyTreeKind::DefaultDict:
+        case PyTreeKind::FrozenDict: {
             PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
             return storage
                 .call_once_and_store_result(
@@ -262,9 +269,11 @@ namespace optree {
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
-        case PyTreeKind::DefaultDict: {
+        case PyTreeKind::DefaultDict:
+        case PyTreeKind::FrozenDict: {
             if (other_root.kind != PyTreeKind::Dict && other_root.kind != PyTreeKind::OrderedDict &&
-                other_root.kind != PyTreeKind::DefaultDict) [[unlikely]] {
+                other_root.kind != PyTreeKind::DefaultDict &&
+                other_root.kind != PyTreeKind::FrozenDict) [[unlikely]] {
                 std::ostringstream oss{};
                 oss << "PyTreeSpecs have incompatible node types; expected type: "
                     << NodeKindToString(root) << ", got: " << NodeKindToString(other_root) << ".";
@@ -680,7 +689,8 @@ ssize_t PyTreeSpec::PathsImpl(PathVector &paths,  // NOLINT[misc-no-recursion]
 
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::FrozenDict: {
                 const scoped_critical_section cs{root.node_data};
                 const auto keys = (root.kind != PyTreeKind::DefaultDict
                                        ? py::reinterpret_borrow<py::list>(root.node_data)
@@ -790,7 +800,8 @@ ssize_t PyTreeSpec::AccessorsImpl(Span &accessors,  // NOLINT[misc-no-recursion]
 
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::FrozenDict: {
                 const scoped_critical_section cs{root.node_data};
                 const auto keys = (root.kind != PyTreeKind::DefaultDict
                                        ? py::reinterpret_borrow<py::list>(root.node_data)
@@ -857,7 +868,8 @@ py::list PyTreeSpec::Entries() const {
         }
 
         case PyTreeKind::Dict:
-        case PyTreeKind::OrderedDict: {
+        case PyTreeKind::OrderedDict:
+        case PyTreeKind::FrozenDict: {
             const scoped_critical_section cs{root.node_data};
             return py::getattr(root.node_data, "copy")();
         }
@@ -897,7 +909,8 @@ py::object PyTreeSpec::Entry(ssize_t index) const {
         }
 
         case PyTreeKind::Dict:
-        case PyTreeKind::OrderedDict: {
+        case PyTreeKind::OrderedDict:
+        case PyTreeKind::FrozenDict: {
             const scoped_critical_section cs{root.node_data};
             return ListGetItem(root.node_data, index);
         }
@@ -998,6 +1011,10 @@ py::object PyTreeSpec::GetType(const std::optional<Node> &node) const {
             return PyDefaultDictTypeObject;
         case PyTreeKind::Deque:
             return PyDequeTypeObject;
+#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+        case PyTreeKind::FrozenDict:
+            return PyFrozenDictTypeObject;
+#endif
         case PyTreeKind::NumKinds:
         default:
             INTERNAL_ERROR();

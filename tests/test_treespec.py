@@ -15,6 +15,7 @@
 
 # pylint: disable=missing-function-docstring,invalid-name
 
+import builtins
 import contextlib
 import itertools
 import os
@@ -1660,6 +1661,56 @@ def test_treespec_constructor(  # noqa: C901
                                     optree.treespec_from_collection(
                                         defaultdict(
                                             node.default_factory,
+                                            zip(node, children_treespecs),
+                                        ),
+                                        none_is_leaf=none_is_leaf,
+                                        namespace=passed_namespace,
+                                    )
+                                    == expected_treespec
+                                )
+                    elif (
+                        sys.version_info >= (3, 15) and node_type is builtins.frozendict  # type: ignore[attr-defined]
+                    ):
+                        if use_sorted_keys:
+                            assert (
+                                optree.treespec_frozendict(
+                                    zip(sorted(node), children_treespecs),
+                                    none_is_leaf=none_is_leaf,
+                                    namespace=passed_namespace,
+                                )
+                                == expected_treespec
+                            )
+                            assert (
+                                optree.treespec_from_collection(
+                                    builtins.frozendict(  # type: ignore[attr-defined]
+                                        zip(sorted(node), children_treespecs),
+                                    ),
+                                    none_is_leaf=none_is_leaf,
+                                    namespace=passed_namespace,
+                                )
+                                == expected_treespec
+                            )
+                        else:
+                            context = (
+                                optree.dict_insertion_ordered(
+                                    True,
+                                    namespace=passed_namespace or GLOBAL_NAMESPACE,
+                                )
+                                if dict_session_namespace != passed_namespace
+                                else contextlib.nullcontext()
+                            )
+                            with context:
+                                assert (
+                                    optree.treespec_frozendict(
+                                        zip(node, children_treespecs),
+                                        none_is_leaf=none_is_leaf,
+                                        namespace=passed_namespace,
+                                    )
+                                    == expected_treespec
+                                )
+                                assert (
+                                    optree.treespec_from_collection(
+                                        builtins.frozendict(  # type: ignore[attr-defined]
                                             zip(node, children_treespecs),
                                         ),
                                         none_is_leaf=none_is_leaf,

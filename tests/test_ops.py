@@ -15,6 +15,7 @@
 
 # pylint: disable=missing-function-docstring,invalid-name
 
+import builtins
 import copy
 import functools
 import itertools
@@ -3387,6 +3388,15 @@ def test_tree_flatten_one_level(  # noqa: C901
                         assert metadata == (node.default_factory, list(node.keys()))
                     assert list(reconstructed_node.keys()) == list(node.keys())
                     assert node_kind == optree.PyTreeKind.DEFAULTDICT
+                elif (
+                    sys.version_info >= (3, 15) and node_type is builtins.frozendict  # type: ignore[attr-defined]
+                ):
+                    if use_sorted_keys:
+                        assert metadata == sorted(node.keys())
+                    else:
+                        assert metadata == list(node.keys())
+                    assert list(reconstructed_node.keys()) == list(node.keys())
+                    assert node_kind == optree.PyTreeKind.FROZENDICT
                 elif node_type is deque:
                     assert metadata == node.maxlen
                     assert node_kind == optree.PyTreeKind.DEQUE

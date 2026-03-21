@@ -290,6 +290,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
         .value("DEFAULTDICT", PyTreeKind::DefaultDict, "A collections.defaultdict.")
         .value("DEQUE", PyTreeKind::Deque, "A collections.deque.")
         .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.")
+        .value("FROZENDICT", PyTreeKind::FrozenDict, "A frozendict.")
         .finalize();
     auto PyTreeKindTypeObject = py::getattr(mod, "PyTreeKind");
 #else
@@ -305,7 +306,8 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             .value("ORDEREDDICT", PyTreeKind::OrderedDict, "A collections.OrderedDict.")
             .value("DEFAULTDICT", PyTreeKind::DefaultDict, "A collections.defaultdict.")
             .value("DEQUE", PyTreeKind::Deque, "A collections.deque.")
-            .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.");
+            .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.")
+            .value("FROZENDICT", PyTreeKind::FrozenDict, "A frozendict.");
 #endif
     auto * const PyTreeKind_Type = reinterpret_cast<PyTypeObject *>(PyTreeKindTypeObject.ptr());
     PyTreeKind_Type->tp_name = "optree.PyTreeKind";

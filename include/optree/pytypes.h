@@ -66,6 +66,10 @@ constexpr py::ssize_t MAX_TYPE_CACHE_SIZE = 4096;
 #define PyOrderedDict_Type (reinterpret_cast<PyTypeObject *>(PyOrderedDictTypeObject.ptr()))
 #define PyDefaultDict_Type (reinterpret_cast<PyTypeObject *>(PyDefaultDictTypeObject.ptr()))
 #define PyDeque_Type (reinterpret_cast<PyTypeObject *>(PyDequeTypeObject.ptr()))
+#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+#    define PyFrozenDictTypeObject                                                                 \
+        (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject *>(&PyFrozenDict_Type)))
+#endif
 
 inline const py::object &ImportOrderedDict() {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
@@ -198,13 +202,30 @@ inline Py_ALWAYS_INLINE void AssertExactDefaultDict(const py::handle &object) {
 inline Py_ALWAYS_INLINE void AssertExactStandardDict(const py::handle &object) {
     if (!(PyDict_CheckExact(object.ptr()) ||
           py::type::handle_of(object).is(PyOrderedDictTypeObject) ||
-          py::type::handle_of(object).is(PyDefaultDictTypeObject))) [[unlikely]] {
+          py::type::handle_of(object).is(PyDefaultDictTypeObject)
+#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+          || PyFrozenDict_CheckExact(object.ptr())
+#endif
+              )) [[unlikely]] {
         throw py::value_error(
-            "Expected an instance of dict, collections.OrderedDict, or collections.defaultdict, "
-            "got " +
+            "Expected an instance of dict, collections.OrderedDict, "
+#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+            "collections.defaultdict, or frozendict"
+#else
+            "or collections.defaultdict"
+#endif
+            ", got " +
             PyRepr(object) + ".");
     }
 }
+
+#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+inline Py_ALWAYS_INLINE void AssertExactFrozenDict(const py::handle &object) {
+    if (!PyFrozenDict_CheckExact(object.ptr())) [[unlikely]] {
+        throw py::value_error("Expected an instance of frozendict, got " + PyRepr(object) + ".");
+    }
+}
+#endif
 
 inline Py_ALWAYS_INLINE void AssertExactDeque(const py::handle &object) {
     if (!py::type::handle_of(object).is(PyDequeTypeObject)) [[unlikely]] {

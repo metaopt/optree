@@ -49,6 +49,8 @@ namespace optree {
             return PyRepr(node.node_data);
         case PyTreeKind::Deque:
             return "deque";
+        case PyTreeKind::FrozenDict:
+            return "frozendict";
         case PyTreeKind::Custom:
             EXPECT_NE(node.custom, nullptr, "The custom registration is null.");
             return PyRepr(node.custom->type);
@@ -105,13 +107,16 @@ std::string PyTreeSpec::ToStringImpl() const {
             }
 
             case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict: {
+            case PyTreeKind::OrderedDict:
+            case PyTreeKind::FrozenDict: {
                 const scoped_critical_section cs{node.node_data};
                 EXPECT_EQ(ListGetSize(node.node_data),
                           node.arity,
                           "Number of keys and entries does not match.");
                 if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
                     sstream << "OrderedDict(";
+                } else if (node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
+                    sstream << "frozendict(";
                 }
                 if (node.kind == PyTreeKind::Dict || node.arity > 0) [[likely]] {
                     sstream << "{";
@@ -129,7 +134,8 @@ std::string PyTreeSpec::ToStringImpl() const {
                 if (node.kind == PyTreeKind::Dict || node.arity > 0) [[likely]] {
                     sstream << "}";
                 }
-                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
+                if (node.kind == PyTreeKind::OrderedDict || node.kind == PyTreeKind::FrozenDict)
+                    [[unlikely]] {
                     sstream << ")";
                 }
                 break;
@@ -340,13 +346,13 @@ py::object PyTreeSpec::ToPickleable() const {
         if (t.size() != 7) [[unlikely]] {
             if (t.size() == 8) [[likely]] {
                 if (t[7].is_none()) [[likely]] {
-                    if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict)
-                        [[unlikely]] {
+                    if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict ||
+                        node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
                         throw std::runtime_error("Malformed pickled PyTreeSpec.");
                     }
                 } else [[unlikely]] {
-                    if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict)
-                        [[likely]] {
+                    if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict ||
+                        node.kind == PyTreeKind::FrozenDict) [[likely]] {
                         node.original_keys = DictFromKeys(t[7]);
                     } else [[unlikely]] {
                         throw std::runtime_error("Malformed pickled PyTreeSpec.");
@@ -368,7 +374,8 @@ py::object PyTreeSpec::ToPickleable() const {
             }
 
             case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict: {
+            case PyTreeKind::OrderedDict:
+            case PyTreeKind::FrozenDict: {
                 node.node_data = thread_safe_cast<py::list>(t[2]);
                 break;
             }

@@ -75,6 +75,7 @@ class PyTreeKind(enum.IntEnum):
     DEFAULTDICT = enum.auto()  # a collections.defaultdict
     DEQUE = enum.auto()  # a collections.deque
     STRUCTSEQUENCE = enum.auto()  # a PyStructSequence
+    FROZENDICT = enum.auto()  # a frozendict (Python 3.15+)
 
     NUM_KINDS: ClassVar[int]
 

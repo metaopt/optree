@@ -27,6 +27,8 @@ PyTreeSpec({'a': *, 'b': *})
 
 from __future__ import annotations
 
+import sys
+
 from optree.ops import treespec_defaultdict as defaultdict
 from optree.ops import treespec_deque as deque
 from optree.ops import treespec_dict as dict  # pylint: disable=redefined-builtin
@@ -53,3 +55,10 @@ __all__ = [
     'structseq',
     'from_collection',
 ]
+
+
+if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+    # pylint: disable-next=unused-import,redefined-builtin
+    from optree.ops import treespec_frozendict as frozendict  # noqa: F401
+
+    __all__.insert(__all__.index('from_collection'), 'frozendict')

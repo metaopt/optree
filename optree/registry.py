@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import builtins
 import contextlib
 import dataclasses
 import functools
@@ -51,7 +52,6 @@ from optree.utils import safe_zip, total_order_sorted, unzip2
 
 
 if TYPE_CHECKING:
-    import builtins
     from collections.abc import Collection, Generator, Iterable
 
     from optree.typing import VT, CustomTreeNode, FlattenFunc, UnflattenFunc
@@ -69,6 +69,8 @@ __all__ = [
 
 
 SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}  # Python 3.10+
+if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+    from builtins import frozendict  # type: ignore[import] # pylint: disable=no-name-in-module
 
 
 @dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, **SLOTS)
@@ -237,6 +239,8 @@ def pytree_node_registry_get(  # noqa: C901
         if _C.is_dict_insertion_ordered(namespace):
             registry[dict] = _DICT_INSERTION_ORDERED_REGISTRY_ENTRY
             registry[defaultdict] = _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY
+            if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+                registry[frozendict] = _FROZENDICT_INSERTION_ORDERED_REGISTRY_ENTRY
         return registry
 
     if namespace != '':
@@ -249,6 +253,9 @@ def pytree_node_registry_get(  # noqa: C901
             return _DICT_INSERTION_ORDERED_REGISTRY_ENTRY
         if cls is defaultdict:
             return _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY
+        if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+            if cls is builtins.frozendict:  # pylint: disable=no-member
+                return _FROZENDICT_INSERTION_ORDERED_REGISTRY_ENTRY
 
     handler = _NODETYPE_REGISTRY.get(cls)
     if handler is not None:
@@ -1014,3 +1021,46 @@ _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY = PyTreeNodeRegistryEntry(
     path_entry_type=MappingEntry,
     kind=PyTreeKind.DEFAULTDICT,
 )
+
+if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+
+    def _frozendict_flatten(
+        dct: frozendict[KT, VT],  # type: ignore[type-arg]
+        /,
+    ) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
+        return _dict_flatten(dct)
+
+    def _frozendict_unflatten(
+        metadata: list[KT],
+        values: Iterable[VT],
+        /,
+    ) -> frozendict[KT, VT]:  # type: ignore[type-arg]
+        return frozendict(_dict_unflatten(metadata, values))
+
+    def _frozendict_insertion_ordered_flatten(
+        dct: frozendict[KT, VT],  # type: ignore[type-arg]
+        /,
+    ) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
+        return _dict_insertion_ordered_flatten(dct)
+
+    def _frozendict_insertion_ordered_unflatten(
+        metadata: list[KT],
+        values: Iterable[VT],
+        /,
+    ) -> frozendict[KT, VT]:  # type: ignore[type-arg]
+        return frozendict(_dict_insertion_ordered_unflatten(metadata, values))
+
+    _NODETYPE_REGISTRY[frozendict] = PyTreeNodeRegistryEntry(
+        frozendict,
+        _frozendict_flatten,
+        _frozendict_unflatten,
+        path_entry_type=MappingEntry,
+        kind=PyTreeKind.FROZENDICT,
+    )
+    _FROZENDICT_INSERTION_ORDERED_REGISTRY_ENTRY = PyTreeNodeRegistryEntry(
+        frozendict,
+        _frozendict_insertion_ordered_flatten,
+        _frozendict_insertion_ordered_unflatten,
+        path_entry_type=MappingEntry,
+        kind=PyTreeKind.FROZENDICT,
+    )
