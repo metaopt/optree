@@ -59,8 +59,7 @@ def test_different_types():
     with pytest.raises(
         ValueError,
         match=(
-            r'Expected an instance of dict, collections.OrderedDict, '
-            r'(collections.defaultdict, or frozendict|or collections.defaultdict), '
+            r'Expected an instance of dict, (frozendict, )?collections.OrderedDict, or collections.defaultdict, '
             r'got .*\.'
         ),
     ):
