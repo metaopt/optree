@@ -185,6 +185,14 @@ inline Py_ALWAYS_INLINE void AssertExactDict(const py::handle &object) {
     }
 }
 
+#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+inline Py_ALWAYS_INLINE void AssertExactFrozenDict(const py::handle &object) {
+    if (!PyFrozenDict_CheckExact(object.ptr())) [[unlikely]] {
+        throw py::value_error("Expected an instance of frozendict, got " + PyRepr(object) + ".");
+    }
+}
+#endif
+
 inline Py_ALWAYS_INLINE void AssertExactOrderedDict(const py::handle &object) {
     if (!py::type::handle_of(object).is(PyOrderedDictTypeObject)) [[unlikely]] {
         throw py::value_error("Expected an instance of collections.OrderedDict, got " +
@@ -208,24 +216,14 @@ inline Py_ALWAYS_INLINE void AssertExactStandardDict(const py::handle &object) {
 #endif
               )) [[unlikely]] {
         throw py::value_error(
-            "Expected an instance of dict, collections.OrderedDict, "
+            "Expected an instance of dict, "
 #if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
-            "collections.defaultdict, or frozendict"
-#else
-            "or collections.defaultdict"
+            "frozendict, "
 #endif
-            ", got " +
+            "collections.OrderedDict, or collections.defaultdict, got " +
             PyRepr(object) + ".");
     }
 }
-
-#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
-inline Py_ALWAYS_INLINE void AssertExactFrozenDict(const py::handle &object) {
-    if (!PyFrozenDict_CheckExact(object.ptr())) [[unlikely]] {
-        throw py::value_error("Expected an instance of frozendict, got " + PyRepr(object) + ".");
-    }
-}
-#endif
 
 inline Py_ALWAYS_INLINE void AssertExactDeque(const py::handle &object) {
     if (!py::type::handle_of(object).is(PyDequeTypeObject)) [[unlikely]] {
