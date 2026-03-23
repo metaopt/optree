@@ -80,10 +80,6 @@ from optree.accessors import (
 )
 
 
-if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
-    from builtins import frozendict  # type: ignore[import] # pylint: disable=no-name-in-module
-
-
 __all__ = [
     'PyTreeSpec',
     'PyTreeDef',
@@ -132,6 +128,15 @@ __all__ = [
     'Deque',
     'StructSequence',
 ]
+
+
+if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+    from builtins import frozendict  # type: ignore[import] # pylint: disable=no-name-in-module
+
+    # pylint: disable-next=no-name-in-module,unused-import
+    from builtins import frozendict as FrozenDict  # type: ignore[import] # noqa: F401,N812
+
+    __all__.insert(__all__.index('Dict') + 1, 'FrozenDict')
 
 
 PyTreeDef: TypeAlias = PyTreeSpec  # alias
@@ -321,7 +326,7 @@ class PyTree(Generic[T]):  # pragma: no cover
         """Emulate sequence-like behavior."""
         raise NotImplementedError
 
-    def get(self, key: Any, /, default: S | None = None) -> PyTree[T] | T | S | None:
+    def get(self, key: Any, default: S | None = None, /) -> PyTree[T] | T | S | None:
         """Emulate mapping-like behavior."""
         raise NotImplementedError
 
