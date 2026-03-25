@@ -130,6 +130,15 @@ __all__ = [
 ]
 
 
+if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+    from builtins import frozendict  # type: ignore[import] # pylint: disable=no-name-in-module
+
+    # pylint: disable-next=no-name-in-module,unused-import
+    from builtins import frozendict as FrozenDict  # type: ignore[import] # noqa: F401,N812
+
+    __all__.insert(__all__.index('Dict') + 1, 'FrozenDict')
+
+
 PyTreeDef: TypeAlias = PyTreeSpec  # alias
 
 T = TypeVar('T')
@@ -261,14 +270,21 @@ class PyTree(Generic[T]):  # pragma: no cover
         else:
             recurse_ref = ForwardRef(f'{cls.__name__}[{param!r}]')
 
-        pytree_alias = Union[
-            param,  # type: ignore[valid-type]
+        pytree_types = [
+            param,
             Tuple[recurse_ref, ...],  # type: ignore[valid-type] # Tuple, NamedTuple, PyStructSequence
             List[recurse_ref],  # type: ignore[valid-type]
             Dict[Any, recurse_ref],  # type: ignore[valid-type] # Dict, OrderedDict, DefaultDict
-            Deque[recurse_ref],  # type: ignore[valid-type]
-            CustomTreeNode[recurse_ref],  # type: ignore[valid-type]
         ]
+        if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+            pytree_types.append(frozendict[Any, recurse_ref])  # type: ignore[valid-type]
+        pytree_types.extend(
+            [
+                Deque[recurse_ref],  # type: ignore[list-item,valid-type]
+                CustomTreeNode[recurse_ref],  # type: ignore[list-item,valid-type]
+            ],
+        )
+        pytree_alias = Union[tuple(pytree_types)]  # type: ignore[valid-type]
 
         with cls.__instance_lock__:
             cls.__instances__[pytree_alias] = (param, name)  # type: ignore[index]
@@ -310,7 +326,7 @@ class PyTree(Generic[T]):  # pragma: no cover
         """Emulate sequence-like behavior."""
         raise NotImplementedError
 
-    def get(self, key: Any, /, default: S | None = None) -> PyTree[T] | T | S | None:
+    def get(self, key: Any, default: S | None = None, /) -> PyTree[T] | T | S | None:
         """Emulate mapping-like behavior."""
         raise NotImplementedError
 
