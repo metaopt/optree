@@ -3575,7 +3575,7 @@ def treespec_from_collection(
 
 STANDARD_DICT_TYPES: frozenset[type] = frozenset({dict, OrderedDict, defaultdict})
 if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
-    STANDARD_DICT_TYPES = STANDARD_DICT_TYPES | frozenset({frozendict})
+    STANDARD_DICT_TYPES |= frozenset({frozendict})
 
 
 def prefix_errors(  # noqa: C901
