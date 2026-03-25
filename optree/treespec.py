@@ -62,3 +62,6 @@ if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
     from optree.ops import treespec_frozendict as frozendict  # noqa: F401
 
     __all__.insert(__all__.index('from_collection'), 'frozendict')
+
+
+del sys

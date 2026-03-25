@@ -244,3 +244,6 @@ NONE_IS_NODE: bool = NONE_IS_NODE  # literal constant
 """Literal constant that treats :data:`None` as a pytree non-leaf node."""
 NONE_IS_LEAF: bool = NONE_IS_LEAF  # literal constant
 """Literal constant that treats :data:`None` as a pytree leaf node."""
+
+
+del sys
