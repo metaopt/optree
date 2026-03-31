@@ -209,7 +209,9 @@ class GetAttrEntry(PyTreeEntry):
 
     def __call__(self, obj: Any, /) -> Any:
         """Get the child object."""
-        return getattr(obj, self.name)
+        for attr in self.name.split('.'):
+            obj = getattr(obj, attr)
+        return obj
 
     def codify(self, /, node: str = '') -> str:
         """Generate code for accessing the path entry."""
