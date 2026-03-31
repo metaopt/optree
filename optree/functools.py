@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import functools
 from typing import TYPE_CHECKING, Any, Callable, ClassVar
 from typing_extensions import Self  # Python 3.11+
@@ -34,6 +35,13 @@ __all__ = [
     'partial',
     'reduce',
 ]
+
+
+with contextlib.suppress(ImportError):  # pragma: >=3.14 cover
+    # pylint: disable-next=no-name-in-module,unused-import
+    from functools import Placeholder  # type: ignore[attr-defined]
+
+    __all__ += ['Placeholder']
 
 
 class _HashablePartialShim:
@@ -111,6 +119,16 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
 
     Had we passed :func:`operator.add` to ``call_func_on_cuda`` directly, it would have resulted in
     a :class:`TypeError` or :class:`AttributeError`.
+
+    On Python 3.14+, :data:`functools.Placeholder` can be used to reserve positional argument slots:
+
+    >>> from functools import Placeholder  # doctest: +SKIP
+    >>> square = partial(pow, Placeholder, 2)  # doctest: +SKIP
+    >>> square(5)
+    25
+
+    :data:`~functools.Placeholder` objects are treated as leaves in the pytree and their identity is
+    preserved through flatten/unflatten round-trips.
     """
 
     __slots__: ClassVar[tuple[()]] = ()
