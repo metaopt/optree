@@ -505,6 +505,51 @@ The same applies to [`collections.defaultdict`](https://docs.python.org/3/librar
 ([1, 2, 3], PyTreeSpec({'a': [*, *], 'b': [*]}))
 ```
 
+Sorting ensures that equal dictionaries always flatten to the same leaf sequence, regardless of insertion order. This is critical for operations that rely on positional correspondence between leaves. Consider two parameter `dict`s that are equal but constructed in different orders:
+
+```python
+>>> import numpy as np
+>>> params1 = {'weight': np.array([[1.0, 2.0], [3.0, 4.0]]), 'bias': np.array([5.0, 6.0])}
+>>> params2 = {'bias': np.array([5.0, 6.0]), 'weight': np.array([[1.0, 2.0], [3.0, 4.0]])}
+>>> optree.tree_all(optree.tree_map(np.allclose, params1, params2))
+True
+```
+
+Because `tree_map` zips leaves positionally, sorted keys guarantee correct element-wise operations:
+
+```python
+>>> optree.tree_map(lambda x, y: x - y, params1, params2)
+{
+    'weight': array([[0., 0.],
+                     [0., 0.]]),
+    'bias': array([0., 0.])
+}
+```
+
+The same applies to `tree_ravel`, which concatenates all leaves into a single 1D array:
+
+```python
+>>> from optree.integrations.numpy import tree_ravel
+>>> tree_ravel(params1)[0]
+array([5., 6., 1., 2., 3., 4.])  # 'bias' before 'weight' (sorted)
+>>> tree_ravel(params2)[0]
+array([5., 6., 1., 2., 3., 4.])  # same order, despite different insertion order
+```
+
+Without sorting, insertion order would silently corrupt the results. Here is a counterexample using `dict_insertion_ordered`:
+
+```python
+>>> with optree.dict_insertion_ordered(True, namespace='demo'):
+...     flat1, _ = tree_ravel(params1, namespace='demo')
+...     flat2, _ = tree_ravel(params2, namespace='demo')
+>>> flat1
+array([1., 2., 3., 4., 5., 6.])  # weight, bias (insertion order of params1)
+>>> flat2
+array([5., 6., 1., 2., 3., 4.])  # bias, weight (insertion order of params2)
+>>> flat1 - flat2                # WRONG! Should be all zeros for equal params
+array([-4., -4.,  2.,  2.,  2.,  2.])
+```
+
 To preserve insertion order during pytree traversal, use [`collections.OrderedDict`](https://docs.python.org/3/library/collections.html#collections.OrderedDict), which considers key order in equality checks:
 
 ```python
