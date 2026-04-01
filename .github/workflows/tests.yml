@@ -424,7 +424,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: tests/coverage-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml
@@ -435,7 +435,7 @@ jobs:
 
       - name: Upload JUnit results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: tests/junit-${{ env.PYTHON_TAG }}-${{ runner.os }}.xml

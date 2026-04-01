@@ -271,6 +271,9 @@ ignore = [
     # TRY003: avoid specifying long messages outside the exception class
     # long messages are necessary for clarity
     "TRY003",
+    # FURB152: literals that are similar to constants in `math` module.
+    # change code semantics
+    "FURB152",
     # RUF022: `__all__` is not ordered according to an "isort-style" sort
     # `__all__` contains comments to group names
     "RUF022",
@@ -303,6 +306,7 @@ typing-modules = ["optree.typing"]
 [tool.ruff.lint.isort]
 known-first-party = ["optree"]
 extra-standard-library = ["typing_extensions"]
+known-local-folder = ["tests"]
 lines-after-imports = 2
 
 [tool.ruff.lint.pydocstyle]
@@ -321,4 +325,5 @@ ban-relative-imports = "all"
 
 [tool.pytest.ini_options]
 verbosity_assertions = 3
+testpaths = ["tests"]
 filterwarnings = ["always", "error"]
