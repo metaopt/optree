@@ -16,6 +16,7 @@
 
 import sys
 
+import optree._C as _C
 from optree import accessors, dataclasses, functools, integrations, pytree, treespec, typing
 from optree.accessors import (
     AutoEntry,
@@ -228,7 +229,7 @@ __all__ = [
 ]
 
 
-if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
     from optree.ops import treespec_frozendict
 
     __all__.insert(__all__.index('treespec_from_collection'), 'treespec_frozendict')

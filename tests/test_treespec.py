@@ -37,6 +37,7 @@ import optree
 from helpers import (
     GLOBAL_NAMESPACE,
     NAMESPACED_TREE,
+    OPTREE_HAS_FROZENDICT,
     PYPY,
     STANDARD_DICT_TYPES,
     TEST_ROOT,
@@ -1669,7 +1670,9 @@ def test_treespec_constructor(  # noqa: C901
                                     == expected_treespec
                                 )
                     elif (
-                        sys.version_info >= (3, 15) and node_type is builtins.frozendict  # type: ignore[attr-defined]
+                        sys.version_info >= (3, 15)
+                        and OPTREE_HAS_FROZENDICT
+                        and node_type is builtins.frozendict  # type: ignore[attr-defined]
                     ):
                         if use_sorted_keys:
                             assert (

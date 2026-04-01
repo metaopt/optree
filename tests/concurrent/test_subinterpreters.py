@@ -95,7 +95,7 @@ def check_module_importable():
         raise RuntimeError('interpreter identity mismatch')
 
     if not is_current_interpreter_main and optree._C.get_registry_size() != (
-        9 if sys.version_info >= (3, 15) else 8
+        9 if sys.version_info >= (3, 15) and optree._C.OPTREE_HAS_FROZENDICT else 8
     ):
         raise RuntimeError('registry size mismatch')
 
@@ -123,7 +123,7 @@ def check_module_importable():
         8,
         9,
     ]
-    if sys.version_info >= (3, 15):
+    if sys.version_info >= (3, 15) and optree._C.OPTREE_HAS_FROZENDICT:
         from builtins import frozendict  # pylint: disable=no-name-in-module
 
         tree['i'] = frozendict({'k': 11, 'j': 10})
@@ -341,8 +341,11 @@ def test_import_in_subinterpreters_concurrently():
         def check_import():
             import sys
             import optree
+            import optree._C
 
-            if optree._C.get_registry_size() != (9 if sys.version_info >= (3, 15) else 8):
+            if optree._C.get_registry_size() != (
+                9 if sys.version_info >= (3, 15) and optree._C.OPTREE_HAS_FROZENDICT else 8
+            ):
                 raise RuntimeError('registry size mismatch')
             if optree._C.is_current_interpreter_main():
                 raise RuntimeError('expected subinterpreter')

@@ -66,7 +66,7 @@ constexpr py::ssize_t MAX_TYPE_CACHE_SIZE = 4096;
 #define PyOrderedDict_Type (reinterpret_cast<PyTypeObject *>(PyOrderedDictTypeObject.ptr()))
 #define PyDefaultDict_Type (reinterpret_cast<PyTypeObject *>(PyDefaultDictTypeObject.ptr()))
 #define PyDeque_Type (reinterpret_cast<PyTypeObject *>(PyDequeTypeObject.ptr()))
-#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+#if defined(OPTREE_HAS_FROZENDICT)
 #    define PyFrozenDictTypeObject                                                                 \
         (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject *>(&PyFrozenDict_Type)))
 #endif
@@ -185,7 +185,7 @@ inline Py_ALWAYS_INLINE void AssertExactDict(const py::handle &object) {
     }
 }
 
-#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+#if defined(OPTREE_HAS_FROZENDICT)
 inline Py_ALWAYS_INLINE void AssertExactFrozenDict(const py::handle &object) {
     if (!PyFrozenDict_CheckExact(object.ptr())) [[unlikely]] {
         throw py::value_error("Expected an instance of frozendict, got " + PyRepr(object) + ".");
@@ -211,13 +211,13 @@ inline Py_ALWAYS_INLINE void AssertExactStandardDict(const py::handle &object) {
     if (!(PyDict_CheckExact(object.ptr()) ||
           py::type::handle_of(object).is(PyOrderedDictTypeObject) ||
           py::type::handle_of(object).is(PyDefaultDictTypeObject)
-#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+#if defined(OPTREE_HAS_FROZENDICT)
           || PyFrozenDict_CheckExact(object.ptr())
 #endif
               )) [[unlikely]] {
         throw py::value_error(
             "Expected an instance of dict, "
-#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+#if defined(OPTREE_HAS_FROZENDICT)
             "frozendict, "
 #endif
             "collections.OrderedDict, or collections.defaultdict, got " +

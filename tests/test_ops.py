@@ -33,6 +33,7 @@ from helpers import (
     GLOBAL_NAMESPACE,
     IS_LEAF_FUNCTIONS,
     LEAVES,
+    OPTREE_HAS_FROZENDICT,
     TREE_ACCESSORS,
     TREE_PATHS,
     TREES,
@@ -3389,7 +3390,9 @@ def test_tree_flatten_one_level(  # noqa: C901
                     assert list(reconstructed_node.keys()) == list(node.keys())
                     assert node_kind == optree.PyTreeKind.DEFAULTDICT
                 elif (
-                    sys.version_info >= (3, 15) and node_type is builtins.frozendict  # type: ignore[attr-defined]
+                    sys.version_info >= (3, 15)
+                    and OPTREE_HAS_FROZENDICT
+                    and node_type is builtins.frozendict  # type: ignore[attr-defined]
                 ):
                     if use_sorted_keys:
                         assert metadata == sorted(node.keys())

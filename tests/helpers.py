@@ -36,6 +36,7 @@ import pytest
 
 import optree
 from optree._C import (
+    OPTREE_HAS_FROZENDICT,
     OPTREE_HAS_SUBINTERPRETER_SUPPORT,
     PYBIND11_HAS_NATIVE_ENUM,
     PYBIND11_HAS_SUBINTERPRETER_SUPPORT,
@@ -52,7 +53,7 @@ TEST_ROOT = Path(__file__).absolute().parent
 
 
 INITIAL_REGISTRY_SIZE = get_registry_size()
-assert INITIAL_REGISTRY_SIZE == (9 if sys.version_info >= (3, 15) else 8)
+assert INITIAL_REGISTRY_SIZE == (9 if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT else 8)
 assert INITIAL_REGISTRY_SIZE + 2 == len(NODETYPE_REGISTRY)
 
 _ = PYBIND11_HAS_NATIVE_ENUM
@@ -1611,7 +1612,7 @@ TREE_STRINGS_NONE_IS_LEAF = (
     "PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec({'a': [*, *]})], [*, *]), NoneIsLeaf)",
 )
 
-if sys.version_info >= (3, 15):
+if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT:
     from builtins import frozendict  # type: ignore[import]
 
     TREES = (  # type: ignore[no-redef]
