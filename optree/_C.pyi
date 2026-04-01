@@ -57,6 +57,7 @@ PYBIND11_HAS_SUBINTERPRETER_SUPPORT: Final[bool]
 GLIBCXX_USE_CXX11_ABI: Final[bool]
 OPTREE_HAS_SUBINTERPRETER_SUPPORT: Final[bool]
 OPTREE_HAS_READ_WRITE_LOCK: Final[bool]
+OPTREE_HAS_FROZENDICT: Final[bool]
 
 @final
 class InternalError(SystemError): ...

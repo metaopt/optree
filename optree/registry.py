@@ -68,7 +68,7 @@ __all__ = [
 
 
 SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}  # Python 3.10+
-if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
     from builtins import frozendict  # type: ignore[import] # pylint: disable=no-name-in-module
 
 
@@ -238,7 +238,7 @@ def pytree_node_registry_get(  # noqa: C901
         if _C.is_dict_insertion_ordered(namespace):
             registry[dict] = _DICT_INSERTION_ORDERED_REGISTRY_ENTRY
             registry[defaultdict] = _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY
-            if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+            if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
                 registry[frozendict] = _FROZENDICT_INSERTION_ORDERED_REGISTRY_ENTRY
         return registry
 
@@ -252,7 +252,7 @@ def pytree_node_registry_get(  # noqa: C901
             return _DICT_INSERTION_ORDERED_REGISTRY_ENTRY
         if cls is defaultdict:
             return _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY
-        if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+        if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
             if cls is builtins.frozendict:  # pylint: disable=no-member
                 return _FROZENDICT_INSERTION_ORDERED_REGISTRY_ENTRY
 
@@ -944,7 +944,7 @@ _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY = PyTreeNodeRegistryEntry(
     kind=PyTreeKind.DEFAULTDICT,
 )
 
-if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
 
     def _frozendict_flatten(
         dct: frozendict[KT, VT],  # type: ignore[type-arg]

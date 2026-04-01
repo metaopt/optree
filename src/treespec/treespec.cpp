@@ -107,7 +107,7 @@ namespace optree {
                     PyDefaultDictTypeObject(default_factory, std::move(dict)),
                     default_factory);
             }
-#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+#if defined(OPTREE_HAS_FROZENDICT)
             if (node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
                 return PyFrozenDictTypeObject(std::move(dict));
             }
@@ -1009,7 +1009,7 @@ py::object PyTreeSpec::GetType(const std::optional<Node> &node) const {
         case PyTreeKind::Deque:
             return PyDequeTypeObject;
         case PyTreeKind::FrozenDict:
-#if PY_VERSION_HEX >= 0x030F00A7  // Python 3.15.0a7+
+#if defined(OPTREE_HAS_FROZENDICT)
             return PyFrozenDictTypeObject;
 #endif
         case PyTreeKind::NumKinds:

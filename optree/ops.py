@@ -117,7 +117,7 @@ __all__ = [
 ]
 
 
-if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
     from builtins import frozendict  # type: ignore[import] # pylint: disable=no-name-in-module
 
     __all__.insert(__all__.index('treespec_from_collection'), 'treespec_frozendict')
@@ -3484,7 +3484,7 @@ def treespec_structseq(
     )
 
 
-if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
 
     def treespec_frozendict(
         mapping: Mapping[Any, PyTreeSpec] | Iterable[tuple[Any, PyTreeSpec]] = (),
@@ -3574,7 +3574,7 @@ def treespec_from_collection(
 
 
 STANDARD_DICT_TYPES: frozenset[type] = frozenset({dict, OrderedDict, defaultdict})
-if sys.version_info >= (3, 15):  # pragma: >=3.15 cover
+if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
     STANDARD_DICT_TYPES |= frozenset({frozendict})
 
 
