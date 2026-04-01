@@ -22,11 +22,10 @@ import contextlib
 import dataclasses
 import functools
 import inspect
-import sys
 from collections import OrderedDict, defaultdict, deque, namedtuple
 from operator import itemgetter, methodcaller
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, NamedTuple, TypeVar, overload
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, NamedTuple, TypeVar, overload
 
 import optree._C as _C
 from optree.accessors import (
@@ -51,7 +50,7 @@ from optree.utils import safe_zip, total_order_sorted, unzip2
 
 if TYPE_CHECKING:
     import builtins
-    from collections.abc import Collection, Generator, Iterable
+    from collections.abc import Callable, Collection, Generator, Iterable
 
     from optree.typing import KT, VT, CustomTreeNode, FlattenFunc, UnflattenFunc
 
@@ -67,10 +66,7 @@ __all__ = [
 ]
 
 
-SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}  # Python 3.10+
-
-
-@dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, **SLOTS)
+@dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, slots=True)
 class PyTreeNodeRegistryEntry(Generic[T]):
     """A dataclass that stores the information of a pytree node type."""
 
@@ -78,15 +74,11 @@ class PyTreeNodeRegistryEntry(Generic[T]):
     flatten_func: FlattenFunc[T]
     unflatten_func: UnflattenFunc[T]
 
-    if sys.version_info >= (3, 10):  # pragma: >=3.10 cover
-        _: dataclasses.KW_ONLY  # Python 3.10+
+    _: dataclasses.KW_ONLY
 
     path_entry_type: builtins.type[PyTreeEntry] = AutoEntry
     kind: PyTreeKind = PyTreeKind.CUSTOM
     namespace: str = ''
-
-
-del SLOTS
 
 
 # pylint: disable-next=missing-class-docstring,too-few-public-methods
@@ -103,7 +95,7 @@ del GlobalNamespace
 
 
 if TYPE_CHECKING:
-    from typing_extensions import ParamSpec  # Python 3.10+
+    from typing import ParamSpec
 
     _P = ParamSpec('_P')
     _T = TypeVar('_T')
@@ -219,11 +211,9 @@ def pytree_node_registry_get(  # noqa: C901
         and cls is not namedtuple  # noqa: PYI024
         and not inspect.isclass(cls)
     ):
-        raise TypeError(f'Expected a class or None, got {cls!r}.')  # pragma: !=3.9 cover
+        raise TypeError(f'Expected a class or None, got {cls!r}.')
     if not isinstance(namespace, str):
-        raise TypeError(  # pragma: !=3.9 cover
-            f'The namespace must be a string, got {namespace!r}.',
-        )
+        raise TypeError(f'The namespace must be a string, got {namespace!r}.')
 
     if cls is None:
         namespaces = frozenset({namespace, ''})

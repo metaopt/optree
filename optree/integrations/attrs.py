@@ -56,7 +56,7 @@ from __future__ import annotations
 import inspect
 import warnings
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
+from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 import attrs
 from attrs import (
@@ -84,6 +84,7 @@ from optree.accessors import GetAttrEntry
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from typing import ClassVar
 
 
@@ -462,7 +463,7 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
 
     # pylint: disable-next=line-too-long
     def unflatten_func(metadata: tuple[tuple[str, Any], ...], children: tuple[_U, ...], /) -> _T:  # type: ignore[type-var]
-        kwargs = dict(zip(children_aliases, children))
+        kwargs = dict(zip(children_aliases, children, strict=True))
         kwargs.update(metadata)
         return cls(**kwargs)
 

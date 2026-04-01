@@ -456,7 +456,7 @@ def test_flattened_entry_call():
     accessors, leaves, _ = optree.tree_flatten_with_accessor(obj, namespace='namespace')
     assert leaves == [1, 2, 3]
     assert accessors == expected_accessors
-    for a, b in zip(accessors, expected_accessors):
+    for a, b in zip(accessors, expected_accessors, strict=True):
         assert_equal_type_and_value(a, b)
 
     for accessor in accessors:
