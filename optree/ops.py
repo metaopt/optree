@@ -3578,7 +3578,10 @@ def prefix_errors(  # noqa: C901
         both_standard_dict = (
             prefix_tree_type in STANDARD_DICT_TYPES and full_tree_type in STANDARD_DICT_TYPES
         )
-        both_deque = prefix_tree_type is deque and full_tree_type is deque  # type: ignore[comparison-overlap]
+        both_deque = (
+            prefix_tree_type is deque  # type: ignore[comparison-overlap]
+            and full_tree_type is deque  # type: ignore[unreachable]
+        )
         if (
             prefix_tree_type is not full_tree_type
             and not both_standard_dict  # special handling for dictionary types
@@ -3621,12 +3624,12 @@ def prefix_errors(  # noqa: C901
             prefix_tree_keys: list[Any] = (
                 prefix_tree_metadata  # type: ignore[assignment]
                 if prefix_tree_type is not defaultdict  # type: ignore[comparison-overlap]
-                else prefix_tree_metadata[1]  # type: ignore[index]
+                else prefix_tree_metadata[1]
             )
             full_tree_keys: list[Any] = (
                 full_tree_metadata  # type: ignore[assignment]
                 if full_tree_type is not defaultdict  # type: ignore[comparison-overlap]
-                else full_tree_metadata[1]  # type: ignore[index]
+                else full_tree_metadata[1]
             )
             prefix_tree_keys_set = set(prefix_tree_keys)
             full_tree_keys_set = set(full_tree_keys)
