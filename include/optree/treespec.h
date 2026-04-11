@@ -272,7 +272,7 @@ private:
 
         // Kind-specific metadata.
         // For a NamedTuple/PyStructSequence, contains the tuple type object.
-        // For a Dict, contains a sorted list of keys.
+        // For a Dict or FrozenDict, contains a sorted list of keys.
         // For a OrderedDict, contains a list of keys.
         // For a DefaultDict, contains a tuple of (default_factory, sorted list of keys).
         // For a Deque, contains the `maxlen` attribute.
@@ -293,7 +293,7 @@ private:
         // Number of leaf and interior nodes in the subtree rooted at this node.
         ssize_t num_nodes = 0;
 
-        // For a Dict or DefaultDict, contains the keys in insertion order.
+        // For a Dict, DefaultDict, or FrozenDict, contains the keys in insertion order.
         py::object original_keys{};
     };
 

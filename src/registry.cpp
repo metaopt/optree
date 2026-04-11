@@ -61,6 +61,9 @@ template <bool NoneIsLeaf>
             add_builtin_type(PyOrderedDictTypeObject, PyTreeKind::OrderedDict);
             add_builtin_type(PyDefaultDictTypeObject, PyTreeKind::DefaultDict);
             add_builtin_type(PyDequeTypeObject, PyTreeKind::Deque);
+#if defined(OPTREE_HAS_FROZENDICT)
+            add_builtin_type(PyFrozenDictTypeObject, PyTreeKind::FrozenDict);
+#endif
             return registry;
         })
         .get_stored();

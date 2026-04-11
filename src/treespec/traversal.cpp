@@ -82,7 +82,8 @@ py::object PyTreeIter::NextImpl() {
 
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::FrozenDict: {
                 const scoped_critical_section cs{object};
                 const auto dict = py::reinterpret_borrow<py::dict>(object);
                 py::list keys = DictKeys(dict);
@@ -211,6 +212,7 @@ py::object PyTreeSpec::WalkImpl(const py::iterable &leaves,
             case PyTreeKind::DefaultDict:
             case PyTreeKind::Deque:
             case PyTreeKind::StructSequence:
+            case PyTreeKind::FrozenDict:
             case PyTreeKind::Custom: {
                 const ssize_t size = py::ssize_t_cast(agenda.size());
                 EXPECT_GE(size, node.arity, "Too few elements for custom type.");
