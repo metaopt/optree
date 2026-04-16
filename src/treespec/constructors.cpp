@@ -161,7 +161,8 @@ template <bool NoneIsLeaf>
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
-        case PyTreeKind::DefaultDict: {
+        case PyTreeKind::DefaultDict:
+        case PyTreeKind::FrozenDict: {
             py::list keys;
             {
                 const scoped_critical_section cs{handle};
