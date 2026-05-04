@@ -97,6 +97,12 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 #else
     BUILDTIME_METADATA["GLIBCXX_USE_CXX11_ABI"] = py::bool_(false);
 #endif
+#if defined(_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR) &&                                               \
+    NONZERO_OR_EMPTY(_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
+    BUILDTIME_METADATA["MSVC_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR"] = py::bool_(true);
+#else
+    BUILDTIME_METADATA["MSVC_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR"] = py::bool_(false);
+#endif
 #if defined(OPTREE_HAS_SUBINTERPRETER_SUPPORT)
     BUILDTIME_METADATA["OPTREE_HAS_SUBINTERPRETER_SUPPORT"] = py::bool_(true);
 #else

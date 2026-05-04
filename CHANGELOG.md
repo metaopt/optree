@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- Fix Windows wheels crashing when another extension preloads an older `msvcp140.dll` by disabling MSVC's constexpr `std::mutex` constructor by [@XuehaiPan](https://github.com/XuehaiPan) in [#279](https://github.com/metaopt/optree/pull/279).
 
 ### Removed
 
