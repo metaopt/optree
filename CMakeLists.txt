@@ -51,7 +51,7 @@ string(STRIP "${CMAKE_CXX_FLAGS}" CMAKE_CXX_FLAGS)
 string(STRIP "${CMAKE_CXX_FLAGS_DEBUG}" CMAKE_CXX_FLAGS_DEBUG)
 string(STRIP "${CMAKE_CXX_FLAGS_RELEASE}" CMAKE_CXX_FLAGS_RELEASE)
 
-setdefault_ifndef(_GLIBCXX_USE_CXX11_ABI)
+setdefault_ifndef(_GLIBCXX_USE_CXX11_ABI 1)
 if(NOT "${_GLIBCXX_USE_CXX11_ABI}" STREQUAL "")
     message(STATUS "Use _GLIBCXX_USE_CXX11_ABI: ${_GLIBCXX_USE_CXX11_ABI}")
     add_definitions("-D_GLIBCXX_USE_CXX11_ABI=${_GLIBCXX_USE_CXX11_ABI}")
@@ -84,6 +84,33 @@ if(MSVC)
         " /Zi"
     )
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " /O2 /Ob2")
+
+    # Force the pre-VS-2022-17.10 `std::mutex` layout on MSVC builds so the constructor's
+    # `_Mtx_init_in_situ` call and the `_Mtx_lock` body both bind to whichever `msvcp140.dll` the
+    # Windows loader resolves at runtime. Without this, if another wheel in the process preloads an
+    # older `msvcp140.dll` (e.g., pyarrow's bundled 14.28.29334.0), the older `_Mtx_lock` interprets
+    # the newer constexpr-zero-init mutex layout as the old ConcRT-backed object and dereferences a
+    # null vptr, crashing inside pybind11's `internals_pp_manager` during `PyInit__C` before any
+    # optree code runs. `_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR` is Microsoft's documented escape
+    # hatch for this newer-toolset / older-redistributable ABI mismatch:
+    #
+    #   https://github.com/microsoft/STL/releases/tag/vs-2022-17.10
+    #
+    # See also: https://github.com/metaopt/optree/issues/278.
+    #
+    # Remove once optree no longer ships wheels that may be loaded alongside an `msvcp140.dll` older
+    # than the toolset used to build the wheel.
+    if (DEFINED _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR OR DEFINED ENV{_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR})
+        setdefault_ifndef(_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
+    else()
+        setdefault_ifndef(_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR 1)
+    endif()
+    if(NOT "${_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR}" STREQUAL "")
+        message(STATUS "Use _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR: set")
+        add_definitions("-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR")
+    else()
+        message(STATUS "_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR is not set, using default MSVC mutex layout.")
+    endif()
 else()
     string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra")
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " -g -Og")

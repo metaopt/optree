@@ -30,25 +30,6 @@ set(
 
 pybind11_add_module(_C MODULE "${optree_csrc}")
 
-if(MSVC)
-    # Force the pre-VS-2022-17.10 `std::mutex` layout on the `_C` target so the constructor's
-    # `_Mtx_init_in_situ` call and the `_Mtx_lock` body both bind to whichever `msvcp140.dll` the
-    # Windows loader resolves at runtime. Without this, if another wheel in the process preloads an
-    # older `msvcp140.dll` (e.g., pyarrow's bundled 14.28.29334.0), the older `_Mtx_lock` interprets
-    # the newer constexpr-zero-init mutex layout as the old ConcRT-backed object and dereferences a
-    # null vptr, crashing inside pybind11's `internals_pp_manager` during `PyInit__C` before any
-    # optree code runs. `_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR` is Microsoft's documented escape
-    # hatch for this newer-toolset / older-redistributable ABI mismatch:
-    #
-    #   https://github.com/microsoft/STL/releases/tag/vs-2022-17.10
-    #
-    # See also: https://github.com/metaopt/optree/issues/278.
-    #
-    # Remove once optree no longer ships wheels that may be loaded alongside an `msvcp140.dll` older
-    # than the toolset used to build the wheel.
-    target_compile_definitions(_C PRIVATE _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
-endif()
-
 if(DEFINED Python_EXTRA_LIBRARIES)
     target_link_libraries(_C PRIVATE ${Python_EXTRA_LIBRARIES})
 endif()
