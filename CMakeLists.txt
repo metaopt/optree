@@ -100,16 +100,28 @@ if(MSVC)
     #
     # Remove once optree no longer ships wheels that may be loaded alongside an `msvcp140.dll` older
     # than the toolset used to build the wheel.
+    #
+    # | CMake variable       | environment variable | mutex workaround |
+    # |----------------------|----------------------|------------------|
+    # | defined as empty     | (whatever)           | disabled         |
+    # | defined as non-empty | (whatever)           | enabled          |
+    # |   defined as "ON"    | (whatever)           | enabled          |
+    # |   defined as "OFF"   | (whatever)           | enabled          |
+    # | not defined          | defined as empty     | disabled         |
+    # | not defined          | defined as non-empty | enabled          |
+    # | not defined          |   defined as "ON"    | enabled          |
+    # | not defined          |   defined as "OFF"   | enabled          |
+    # | not defined          | not defined          | enabled          |
     if (DEFINED _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR OR DEFINED ENV{_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR})
         setdefault_ifndef(_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
     else()
         setdefault_ifndef(_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR 1)
     endif()
     if(NOT "${_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR}" STREQUAL "")
-        message(STATUS "Use _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR: set")
+        message(STATUS "Use _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR: enabled")
         add_definitions("-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR")
     else()
-        message(STATUS "_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR is not set, using default MSVC mutex layout.")
+        message(STATUS "_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR is disabled, using default MSVC mutex layout.")
     endif()
 else()
     string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra")
@@ -117,7 +129,7 @@ else()
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " -O3")
 endif()
 
-setdefault_ifndef(OPTREE_CXX_WERROR)
+setdefault_ifndef(OPTREE_CXX_WERROR OFF)
 if(OPTREE_CXX_WERROR)
     message(
         AUTHOR_WARNING
