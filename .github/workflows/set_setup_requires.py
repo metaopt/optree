@@ -10,7 +10,7 @@ ROOT = Path(__file__).absolute().parents[2]
 
 PYPROJECT_FILE = ROOT / 'pyproject.toml'
 PYBIND11_GIT_URL = 'https://github.com/pybind/pybind11.git'
-PYBIND11_PACKAGE = f'pybind11 @ git+{PYBIND11_GIT_URL}#egg=pybind11'
+PYBIND11_PACKAGE = f'pybind11 @ git+{PYBIND11_GIT_URL}'
 
 
 if __name__ == '__main__':

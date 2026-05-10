@@ -43,6 +43,7 @@ from optree._C import (
     Py_GIL_DISABLED,
     get_registry_size,
 )
+from optree.ops import STANDARD_DICT_TYPES as STANDARD_DICT_TYPES
 from optree.registry import __GLOBAL_NAMESPACE as GLOBAL_NAMESPACE
 from optree.registry import _NODETYPE_REGISTRY as NODETYPE_REGISTRY
 
@@ -241,7 +242,7 @@ def is_dict(dct):
 def is_primitive_collection(obj):
     if type(obj) in {tuple, list, deque}:
         return all(isinstance(item, (int, float, str, bool, type(None))) for item in obj)
-    if type(obj) in {dict, OrderedDict, defaultdict}:
+    if type(obj) in STANDARD_DICT_TYPES:
         return all(isinstance(value, (int, float, str, bool, type(None))) for value in obj.values())
     return False
 
@@ -1552,8 +1553,8 @@ TREE_STRINGS_NONE_IS_NODE = (
     'PyTreeSpec(defaultdict(None, {}))',
     "PyTreeSpec(defaultdict(<class 'int'>, {}))",
     "PyTreeSpec(defaultdict(<class 'dict'>, {'baz': *, 'foo': *, 'something': *}))",
-    'PyTreeSpec(deque([]))',
-    'PyTreeSpec(deque([], maxlen=0))',
+    'PyTreeSpec(deque())',
+    'PyTreeSpec(deque(maxlen=0))',
     'PyTreeSpec(deque([None, *, *]))',
     'PyTreeSpec(deque([None, *], maxlen=2))',
     "PyTreeSpec(CustomTreeNode(MyDict[['foo', 'baz']], [CustomTreeNode(MyDict[['c', 'b', 'a']], [None, *, *]), *]))",
@@ -1595,8 +1596,8 @@ TREE_STRINGS_NONE_IS_LEAF = (
     'PyTreeSpec(defaultdict(None, {}), NoneIsLeaf)',
     "PyTreeSpec(defaultdict(<class 'int'>, {}), NoneIsLeaf)",
     "PyTreeSpec(defaultdict(<class 'dict'>, {'baz': *, 'foo': *, 'something': *}), NoneIsLeaf)",
-    'PyTreeSpec(deque([]), NoneIsLeaf)',
-    'PyTreeSpec(deque([], maxlen=0), NoneIsLeaf)',
+    'PyTreeSpec(deque(), NoneIsLeaf)',
+    'PyTreeSpec(deque(maxlen=0), NoneIsLeaf)',
     'PyTreeSpec(deque([*, *, *]), NoneIsLeaf)',
     'PyTreeSpec(deque([*, *], maxlen=2), NoneIsLeaf)',
     "PyTreeSpec(CustomTreeNode(MyDict[['foo', 'baz']], [CustomTreeNode(MyDict[['c', 'b', 'a']], [*, *, *]), *]), NoneIsLeaf)",

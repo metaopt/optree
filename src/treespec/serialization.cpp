@@ -181,9 +181,15 @@ std::string PyTreeSpec::ToStringImpl() const {
             }
 
             case PyTreeKind::Deque: {
-                sstream << "deque([" << children << "]";
+                sstream << "deque(";
+                if (node.arity > 0) [[likely]] {
+                    sstream << "[" << children << "]";
+                }
                 if (!node.node_data.is_none()) [[unlikely]] {
-                    sstream << ", maxlen=" << PyRepr(node.node_data);
+                    if (node.arity > 0) [[likely]] {
+                        sstream << ", ";
+                    }
+                    sstream << "maxlen=" << PyRepr(node.node_data);
                 }
                 sstream << ")";
                 break;

@@ -19,7 +19,6 @@ import atexit
 import itertools
 import pickle
 import weakref
-from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pytest
@@ -28,6 +27,7 @@ import optree
 from helpers import (
     GLOBAL_NAMESPACE,
     PYPY,
+    STANDARD_DICT_TYPES,
     TREES,
     WASM,
     Py_DEBUG,
@@ -324,7 +324,7 @@ def test_treespec_pickle_roundtrip(
             actual = pickle.loads(expected_serialized)
             concurrent_run(check1)
             concurrent_run(check2)
-            if expected.type in {dict, OrderedDict, defaultdict}:
+            if expected.type in STANDARD_DICT_TYPES:
                 concurrent_run(check3)
 
 
