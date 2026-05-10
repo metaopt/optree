@@ -37,6 +37,7 @@ from helpers import (
     GLOBAL_NAMESPACE,
     NAMESPACED_TREE,
     PYPY,
+    STANDARD_DICT_TYPES,
     TEST_ROOT,
     TREE_STRINGS,
     TREES,
@@ -511,7 +512,7 @@ def test_treespec_pickle_roundtrip(
         else:
             actual = pickle.loads(pickle.dumps(expected))
             assert actual == expected
-            if expected.type in {dict, OrderedDict, defaultdict}:
+            if expected.type in STANDARD_DICT_TYPES:
                 assert list(optree.tree_unflatten(actual, range(len(actual)))) == list(
                     optree.tree_unflatten(expected, range(len(expected))),
                 )

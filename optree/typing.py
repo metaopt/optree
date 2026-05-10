@@ -310,7 +310,7 @@ class PyTree(Generic[T]):  # pragma: no cover
         """Emulate sequence-like behavior."""
         raise NotImplementedError
 
-    def get(self, key: Any, /, default: S | None = None) -> PyTree[T] | T | S | None:
+    def get(self, key: Any, default: S | None = None, /) -> PyTree[T] | T | S | None:
         """Emulate mapping-like behavior."""
         raise NotImplementedError
 

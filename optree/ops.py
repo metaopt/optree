@@ -3413,7 +3413,7 @@ def treespec_deque(
     >>> treespec_deque([treespec_leaf(), treespec_leaf(), treespec_none()], maxlen=5)
     PyTreeSpec(deque([*, *, None], maxlen=5))
     >>> treespec_deque()
-    PyTreeSpec(deque([]))
+    PyTreeSpec(deque())
     >>> treespec_deque([treespec_leaf(), treespec_tuple([treespec_leaf(), treespec_leaf()])])
     PyTreeSpec(deque([*, (*, *)]))
     >>> treespec_deque([treespec_leaf(), tree_structure({'a': 1, 'b': 2})], maxlen=5)
