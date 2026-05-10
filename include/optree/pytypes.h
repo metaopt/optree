@@ -548,6 +548,22 @@ inline Py_ALWAYS_INLINE py::list DictKeys(const py::dict &dict) {
     return py::reinterpret_steal<py::list>(PyDict_Keys(dict.ptr()));
 }
 
+// Equivalent to Python's `dict.fromkeys(iterable)`: returns a new `dict[Key, None]` with the
+// keys taken from `iterable` in order. When `iterable` is itself a dict, this hits CPython's
+// `dict_dict_fromkeys` fast path (contiguous bucket copy, no per-key rehash).
+inline Py_ALWAYS_INLINE py::dict DictFromKeys(const py::handle &iterable) {
+    const scoped_critical_section cs{iterable};
+    // NOLINTNEXTLINE[cppcoreguidelines-pro-type-vararg]
+    PyObject *result = PyObject_CallMethod(reinterpret_cast<PyObject *>(&PyDict_Type),
+                                           "fromkeys",
+                                           "O",
+                                           iterable.ptr());
+    if (result == nullptr) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    return py::reinterpret_steal<py::dict>(result);
+}
+
 inline py::list SortedDictKeys(const py::dict &dict) {
     py::list keys = DictKeys(dict);
     TotalOrderSort(keys);

@@ -89,8 +89,11 @@ namespace optree {
                                    ? py::reinterpret_borrow<py::list>(node.node_data)
                                    : TupleGetItemAs<py::list>(node.node_data, 1));
             if (node.original_keys) [[unlikely]] {
-                for (ssize_t i = 0; i < node.arity; ++i) {
-                    DictSetItem(dict, ListGetItem(node.original_keys, i), py::none());
+                // Seed the dict with keys in original insertion order (values default to `None`);
+                // the subsequent loop overwrites with actual children. Uses the dict-to-dict fast
+                // path since `node.original_keys` is a `dict[Key, None]`.
+                if (PyDict_Update(dict.ptr(), node.original_keys.ptr()) < 0) [[unlikely]] {
+                    throw py::error_already_set();
                 }
             }
             for (ssize_t i = 0; i < node.arity; ++i) {

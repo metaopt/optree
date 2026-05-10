@@ -169,7 +169,7 @@ template <bool NoneIsLeaf>
                 node.arity = DictGetSize(dict);
                 keys = DictKeys(dict);
                 if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
-                    node.original_keys = py::getattr(keys, "copy")();
+                    node.original_keys = DictFromKeys(dict);
                     if (!PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace))
                         [[likely]] {
                         TotalOrderSort(keys);

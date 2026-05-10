@@ -293,7 +293,8 @@ private:
         // Number of leaf and interior nodes in the subtree rooted at this node.
         ssize_t num_nodes = 0;
 
-        // For a Dict or DefaultDict, contains the keys in insertion order.
+        // For a Dict or DefaultDict, captures the keys in insertion order as `dict[Key, None]`.
+        // Null-default for other node kinds. Used to preserve key order during unflattening.
         py::object original_keys{};
     };
 
