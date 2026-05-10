@@ -15,6 +15,8 @@
 
 # pylint: disable=missing-function-docstring,invalid-name
 
+import copy
+import pickle
 import re
 import sys
 import weakref
@@ -32,8 +34,10 @@ from helpers import (
     Py_GIL_DISABLED,
     disable_systrace,
     gc_collect,
+    parametrize,
     skipif_pypy,
 )
+from optree.registry import DictMetaData
 
 
 def test_register_pytree_node_class_with_no_namespace():
@@ -1314,3 +1318,165 @@ def test_registry_size():
     assert optree._C.get_registry_size(namespace='mylist') + 2 == initial_registry_size
     assert optree._C.get_registry_size(namespace='undefined') + 2 == initial_size
     assert len(optree.register_pytree_node.get(namespace='undefined')) == initial_size
+
+
+def test_dict_metadata_default_original_keys():
+    md1 = DictMetaData()
+    assert list(md1) == []
+    assert md1.original_keys == {}
+
+    md2 = DictMetaData(['a', 'b', 'c'])
+    assert list(md2) == ['a', 'b', 'c']
+    assert md2.original_keys == dict.fromkeys(md2)
+    assert list(md2.original_keys) == ['a', 'b', 'c']
+
+
+def test_dict_metadata_explicit_original_keys():
+    md = DictMetaData(['a', 'b', 'c'], original_keys=['c', 'a', 'b'])
+    assert list(md) == ['a', 'b', 'c']
+    assert list(md.original_keys) == ['c', 'a', 'b']
+
+
+def test_dict_metadata_accepts_single_pass_iterators():
+    md = DictMetaData(iter(['x', 'y']), original_keys=iter(['y', 'x']))
+    assert list(md) == ['x', 'y']
+    assert list(md.original_keys) == ['y', 'x']
+
+
+def test_dict_metadata_length_mismatch_raises():
+    with pytest.raises(
+        ValueError,
+        match=re.escape('`original_keys` must have the same length as `keys`'),
+    ):
+        DictMetaData(['a', 'b'], original_keys=['a', 'b', 'c'])
+
+
+def test_dict_metadata_keys_set_mismatch_raises():
+    with pytest.raises(
+        ValueError,
+        match=re.escape('`original_keys` must have the same keys as `keys`'),
+    ):
+        DictMetaData(['a', 'b'], original_keys=['a', 'c'])
+
+
+def test_dict_metadata_consistency_check_can_be_disabled():
+    md = DictMetaData(['a', 'b'], original_keys=['a', 'c'], check_keys_consistency=False)
+    assert list(md) == ['a', 'b']
+    assert list(md.original_keys) == ['a', 'c']
+
+
+def test_dict_metadata_is_a_list_for_backward_compat():
+    md = DictMetaData(['a', 'b'], original_keys=['b', 'a'])
+    assert isinstance(md, list)
+    assert md == ['a', 'b']
+    assert md[0] == 'a'
+    assert md[-1] == 'b'
+    assert len(md) == 2
+    assert ['a', 'b'] == md
+
+
+def test_dict_metadata_pickle_roundtrip():
+    md = DictMetaData(['a', 'b', 'c'], original_keys=['c', 'a', 'b'])
+    restored = pickle.loads(pickle.dumps(md))
+    assert isinstance(restored, DictMetaData)
+    assert list(restored) == ['a', 'b', 'c']
+    assert list(restored.original_keys) == ['c', 'a', 'b']
+    assert restored == md
+
+
+def test_dict_metadata_copy_roundtrip():
+    md = DictMetaData(['a', 'b', 'c'], original_keys=['c', 'a', 'b'])
+    shallow = copy.copy(md)
+    assert isinstance(shallow, DictMetaData)
+    assert list(shallow) == ['a', 'b', 'c']
+    assert list(shallow.original_keys) == ['c', 'a', 'b']
+    assert shallow == md
+
+
+def test_dict_metadata_deepcopy_roundtrip():
+    md = DictMetaData(['a', 'b', 'c'], original_keys=['c', 'a', 'b'])
+    deep = copy.deepcopy(md)
+    assert isinstance(deep, DictMetaData)
+    assert list(deep) == ['a', 'b', 'c']
+    assert list(deep.original_keys) == ['c', 'a', 'b']
+    assert deep == md
+    deep.append('z')
+    assert list(md) == ['a', 'b', 'c']
+
+
+@parametrize(
+    namespace=['', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'namespace'],
+)
+def test_python_dict_flatten_returns_dict_metadata(
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    use_sorted_keys = dict_should_be_sorted or dict_session_namespace not in {'', namespace}
+    dct = {'b': 2, 'a': 1, 'c': 3}
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        children, metadata, entries, _ = optree.tree_flatten_one_level(dct, namespace=namespace)
+        assert children == ([1, 2, 3] if use_sorted_keys else [2, 1, 3])
+        assert isinstance(metadata, DictMetaData)
+        assert list(metadata) == (['a', 'b', 'c'] if use_sorted_keys else ['b', 'a', 'c'])
+        assert list(metadata.original_keys) == ['b', 'a', 'c']
+        assert entries == tuple(metadata)
+
+
+@parametrize(
+    namespace=['', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'namespace'],
+)
+def test_python_dict_unflatten_preserves_original_insertion_order(
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    dct = {'b': 2, 'a': 1, 'c': 3}
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        (
+            children,
+            metadata,
+            _,
+            unflatten_func,
+        ) = optree.tree_flatten_one_level(dct, namespace=namespace)
+        restored = unflatten_func(metadata, children)
+        assert restored == dct
+        # `tree_unflatten` always reconstructs dicts in their original insertion order, regardless
+        # of whether the flatten path sorted the children.
+        assert list(restored) == ['b', 'a', 'c']
+
+
+def test_python_dict_unflatten_accepts_plain_list_metadata():
+    # `treespec.walk` exposes the C++ `node.node_data` (a plain sorted-keys list) to user-facing
+    # callbacks without `original_keys`. The registered Python `unflatten` function must accept that
+    # path and fall back to plain dict construction.
+    values, metadata, _, unflatten_func = optree.tree_flatten_one_level({'b': 2, 'a': 1, 'c': 3})
+    assert values == [1, 2, 3]
+    assert isinstance(metadata, DictMetaData)
+    assert list(metadata) == ['a', 'b', 'c']
+    assert list(metadata.original_keys) == ['b', 'a', 'c']
+    restored = unflatten_func(['b', 'a', 'c'], (2, 1, 3))
+    assert restored == {'b': 2, 'a': 1, 'c': 3}
+    assert list(restored) == ['b', 'a', 'c']
+    restored = unflatten_func(['a', 'b', 'c'], (1, 2, 3))
+    assert restored == {'a': 1, 'b': 2, 'c': 3}
+    assert list(restored) == ['a', 'b', 'c']
+
+
+def test_python_dict_flatten_equal_inputs_produce_equal_metadata():
+    _, metadata1, _, _ = optree.tree_flatten_one_level({'b': 2, 'a': 1, 'c': 3})
+    _, metadata2, _, _ = optree.tree_flatten_one_level({'a': 1, 'b': 2, 'c': 3})
+    assert metadata1 == metadata2
+    assert list(metadata1) == list(metadata2)
+    assert metadata1.original_keys == metadata2.original_keys
+    assert list(metadata1.original_keys) != list(metadata2.original_keys)

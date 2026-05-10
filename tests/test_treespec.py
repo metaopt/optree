@@ -1437,6 +1437,7 @@ def test_treespec_constructor(  # noqa: C901
     dict_should_be_sorted,
     dict_session_namespace,
 ):
+    use_sorted_keys = dict_should_be_sorted or dict_session_namespace not in {'', namespace}
     with optree.dict_insertion_ordered(
         not dict_should_be_sorted,
         namespace=dict_session_namespace or GLOBAL_NAMESPACE,
@@ -1554,7 +1555,7 @@ def test_treespec_constructor(  # noqa: C901
                                 == expected_treespec
                             )
                     elif node_type is dict:
-                        if dict_should_be_sorted or dict_session_namespace not in {'', namespace}:
+                        if use_sorted_keys:
                             assert (
                                 optree.treespec_dict(
                                     zip(sorted(node), children_treespecs),
@@ -1615,7 +1616,7 @@ def test_treespec_constructor(  # noqa: C901
                             == expected_treespec
                         )
                     elif node_type is defaultdict:
-                        if dict_should_be_sorted or dict_session_namespace not in {'', namespace}:
+                        if use_sorted_keys:
                             assert (
                                 optree.treespec_defaultdict(
                                     node.default_factory,
