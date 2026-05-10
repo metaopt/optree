@@ -108,7 +108,7 @@ def cmake_context(
             f'Could not run `{cmake}` directly. '
             'Unset the `PYTHONPATH` environment variable in the build environment.',
         )
-        spawn_context = unset_python_path  # type: ignore[assignment]
+        spawn_context = unset_python_path
         with unset_python_path():
             # CMake in the parent virtual environment
             output = subprocess.check_output(  # noqa: S603

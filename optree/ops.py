@@ -2668,15 +2668,20 @@ def tree_flatten_one_level(
     if handler is None:
         raise ValueError(f'Cannot flatten leaf-type: {node_type} (node: {tree!r}).')
 
-    flattened = tuple(handler.flatten_func(tree))
-    if len(flattened) == 2:
-        flattened = (*flattened, None)
-    elif len(flattened) != 3:
+    flattened: tuple[Iterable[PyTree[T]], MetaData, Iterable[Any] | None]
+    returned: (
+        tuple[Iterable[PyTree[T]], MetaData, Iterable[Any] | None]
+        | tuple[Iterable[PyTree[T]], MetaData]
+    ) = tuple(handler.flatten_func(tree))  # type: ignore[assignment]
+    if len(returned) == 2:
+        flattened = (*returned, None)
+    elif len(returned) != 3:
         raise RuntimeError(
             f'PyTree custom flatten function for type {node_type} should return a 2- or 3-tuple, '
-            f'got {len(flattened)}.',
+            f'got {len(returned)}.',
         )
-    flattened: tuple[Iterable[PyTree[T]], MetaData, Iterable[Any] | None]
+    else:
+        flattened = returned
     children, metadata, entries = flattened
     children = list(children)
     entries = tuple(range(len(children)) if entries is None else entries)
@@ -3656,7 +3661,7 @@ def prefix_errors(  # noqa: C901
                 return  # don't look for more errors in this subtree
 
             # If the keys agree, we should ensure that the children are in the same order:
-            full_tree_children = [full_subtree[k] for k in prefix_tree_keys]  # type: ignore[misc]
+            full_tree_children = [full_subtree[k] for k in prefix_tree_keys]
 
         if len(prefix_tree_children) != len(full_tree_children):
             yield lambda name: ValueError(
@@ -3729,6 +3734,6 @@ def prefix_errors(  # noqa: C901
         ), f'equal pytree nodes gave different keys: {entries} and {entries_}'
         # pylint: disable-next=invalid-name
         for e, t1, t2 in zip(entries, prefix_tree_children, full_tree_children):
-            yield from helper(accessor + e, t1, t2)
+            yield from helper(accessor + e, t1, t2)  # type: ignore[arg-type]
 
     return list(helper(PyTreeAccessor(), prefix_tree, full_tree))

@@ -322,7 +322,7 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined
     if namespace == '':
         namespace = GLOBAL_NAMESPACE
 
-    cls = dataclasses.dataclass(cls, **kwargs)  # type: ignore[assignment]
+    cls = dataclasses.dataclass(cls, **kwargs)
     return register_node(cls, namespace=namespace)
 
 
