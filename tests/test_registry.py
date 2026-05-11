@@ -1457,9 +1457,10 @@ def test_python_dict_unflatten_preserves_original_insertion_order(
 
 
 def test_python_dict_unflatten_accepts_plain_list_metadata():
-    # `treespec.walk` exposes the C++ `node.node_data` (a plain sorted-keys list) to user-facing
-    # callbacks without `original_keys`. The registered Python `unflatten` function must accept that
-    # path and fall back to plain dict construction.
+    # `treespec.walk` exposes the C++ `node.node_data` (a plain list of keys, possibly sorted
+    # depending on the active mode) to user-facing callbacks without `original_keys`. The
+    # registered Python `unflatten` function must accept that path and fall back to plain dict
+    # construction, regardless of whether the supplied list is in sorted or insertion order.
     values, metadata, _, unflatten_func = optree.tree_flatten_one_level({'b': 2, 'a': 1, 'c': 3})
     assert values == [1, 2, 3]
     assert isinstance(metadata, DictMetaData)

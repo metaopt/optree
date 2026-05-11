@@ -717,17 +717,20 @@ def dict_insertion_ordered(mode: bool, /, *, namespace: str) -> Generator[None]:
 class DictMetaData(list[KT]):
     """Metadata for ``dict`` and ``collections.defaultdict`` pytree nodes.
 
-    A :class:`list` subclass holding the dict keys in canonical (sorted) traversal order.
-    The list payload preserves backward compatibility with code that treats dict treespec metadata
-    as a plain ``list[KT]`` (e.g. iteration, indexing, equality with a plain list).
+    A :class:`list` subclass holding the dict keys in the canonical traversal order for the
+    active dict-ordering mode — sorted by default, or in ``dict.keys()`` insertion order when
+    :func:`dict_insertion_ordered` is active for the namespace. The list payload preserves
+    backward compatibility with code that treats dict treespec metadata as a plain ``list[KT]``
+    (e.g. iteration, indexing, equality with a plain list).
 
     The additional :attr:`original_keys` attribute records the keys in the original ``dict.keys()``
-    insertion order, captured before sorting at flatten time. It enables :func:`tree_unflatten` to
-    reconstruct dictionaries with their original key iteration order preserved, while children are
-    still traversed in sorted order so that equal dictionaries always flatten to the same leaves.
+    insertion order, captured before any sorting at flatten time. It enables :func:`tree_unflatten`
+    to reconstruct dictionaries with their original key iteration order preserved, while children
+    are still traversed in the canonical order so that equal dictionaries flatten to the same leaves
+    in sorted mode.
 
     This Python implementation mirrors the C++ ``Node`` data type, which stores ``node_data``
-    (sorted keys) and ``original_keys`` separately.
+    (traversal-order keys) and ``original_keys`` (insertion-order keys) separately.
     """
 
     __slots__: ClassVar[tuple[str, ...]] = ('original_keys',)
