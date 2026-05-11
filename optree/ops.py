@@ -2631,7 +2631,7 @@ def tree_flatten_one_level(
     >>> children, metadata, entries
     ([1, (2, [3, 4]), None, 5], ['a', 'b', 'c', 'd'], ('a', 'b', 'c', 'd'))
     >>> unflatten_func(metadata, children)
-    {'a': 1, 'b': (2, [3, 4]), 'c': None, 'd': 5}
+    {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
     >>> children, metadata, entries, unflatten_func = tree_flatten_one_level([{'a': 1, 'b': (2, 3)}, (4, 5)])
     >>> children, metadata, entries
     ([{'a': 1, 'b': (2, 3)}, (4, 5)], None, (0, 1))

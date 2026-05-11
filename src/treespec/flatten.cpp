@@ -106,7 +106,7 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle &handle,
                     node.arity = DictGetSize(dict);
                     keys = DictKeys(dict);
                     if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
-                        node.original_keys = py::getattr(keys, "copy")();
+                        node.original_keys = DictFromKeys(dict);
                         if constexpr (DictShouldBeSorted) {
                             TotalOrderSort(keys);
                         }
@@ -371,7 +371,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle &handle,
                 node.arity = DictGetSize(dict);
                 py::list keys = DictKeys(dict);
                 if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
-                    node.original_keys = py::getattr(keys, "copy")();
+                    node.original_keys = DictFromKeys(dict);
                     if constexpr (DictShouldBeSorted) {
                         TotalOrderSort(keys);
                     }

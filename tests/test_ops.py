@@ -3308,6 +3308,7 @@ def test_tree_flatten_one_level(  # noqa: C901
     dict_should_be_sorted,
     dict_session_namespace,
 ):
+    use_sorted_keys = dict_should_be_sorted or dict_session_namespace not in {'', namespace}
     with optree.dict_insertion_ordered(
         not dict_should_be_sorted,
         namespace=dict_session_namespace or GLOBAL_NAMESPACE,
@@ -3358,6 +3359,8 @@ def test_tree_flatten_one_level(  # noqa: C901
                 assert children == expected_children
                 assert output.type == one_level_treespec.type
                 assert output.kind == one_level_treespec.kind
+                reconstructed_node = unflatten_func(metadata, children)
+                assert reconstructed_node == node
                 if node_type in {type(None), tuple, list}:
                     assert metadata is None
                     if node_type is tuple:
@@ -3367,19 +3370,22 @@ def test_tree_flatten_one_level(  # noqa: C901
                     else:
                         assert node_kind == optree.PyTreeKind.NONE
                 elif node_type is dict:
-                    if dict_should_be_sorted or dict_session_namespace not in {'', namespace}:
+                    if use_sorted_keys:
                         assert metadata == sorted(node.keys())
                     else:
                         assert metadata == list(node.keys())
+                    assert list(reconstructed_node.keys()) == list(node.keys())
                     assert node_kind == optree.PyTreeKind.DICT
                 elif node_type is OrderedDict:
                     assert metadata == list(node.keys())
+                    assert list(reconstructed_node.keys()) == list(node.keys())
                     assert node_kind == optree.PyTreeKind.ORDEREDDICT
                 elif node_type is defaultdict:
-                    if dict_should_be_sorted or dict_session_namespace not in {'', namespace}:
+                    if use_sorted_keys:
                         assert metadata == (node.default_factory, sorted(node.keys()))
                     else:
                         assert metadata == (node.default_factory, list(node.keys()))
+                    assert list(reconstructed_node.keys()) == list(node.keys())
                     assert node_kind == optree.PyTreeKind.DEFAULTDICT
                 elif node_type is deque:
                     assert metadata == node.maxlen
@@ -3401,7 +3407,6 @@ def test_tree_flatten_one_level(  # noqa: C901
                     for child, entry in zip(children, entries):
                         assert node[entry] is child
 
-                assert unflatten_func(metadata, children) == node
                 if node_type is type(None):
                     assert unflatten_func(metadata, []) is None
                     with pytest.raises(ValueError, match=re.escape('Expected no children.')):

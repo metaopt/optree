@@ -24,6 +24,7 @@ limitations under the License.
 #include <unordered_set>  // std::unordered_set
 
 #include "optree/optree.h"
+#include "optree/pytypes.h"
 
 namespace optree {
 
@@ -335,6 +336,7 @@ py::object PyTreeSpec::ToPickleable() const {
         const auto t = thread_safe_cast<py::tuple>(item);
         Node &node = out->m_traversal.emplace_back();
         node.kind = static_cast<PyTreeKind>(thread_safe_cast<ssize_t>(t[0]));
+        node.arity = thread_safe_cast<ssize_t>(t[1]);
         if (t.size() != 7) [[unlikely]] {
             if (t.size() == 8) [[likely]] {
                 if (t[7].is_none()) [[likely]] {
@@ -345,7 +347,7 @@ py::object PyTreeSpec::ToPickleable() const {
                 } else [[unlikely]] {
                     if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict)
                         [[likely]] {
-                        node.original_keys = thread_safe_cast<py::list>(t[7]);
+                        node.original_keys = DictFromKeys(t[7]);
                     } else [[unlikely]] {
                         throw std::runtime_error("Malformed pickled PyTreeSpec.");
                     }
@@ -354,7 +356,6 @@ py::object PyTreeSpec::ToPickleable() const {
                 throw std::runtime_error("Malformed pickled PyTreeSpec.");
             }
         }
-        node.arity = thread_safe_cast<ssize_t>(t[1]);
         switch (node.kind) {
             case PyTreeKind::Leaf:
             case PyTreeKind::None:
@@ -418,6 +419,15 @@ py::object PyTreeSpec::ToPickleable() const {
         } else if (!t[3].is_none() || !t[4].is_none()) [[unlikely]] {
             throw std::runtime_error("Malformed pickled PyTreeSpec.");
         }
+        if (node.original_keys && DictGetSize(node.original_keys) != node.arity) [[unlikely]] {
+            throw std::runtime_error("Number of keys does not match arity in pickled PyTreeSpec.");
+        }
+        if (node.node_entries && !node.node_entries.is_none() &&
+            TupleGetSize(node.node_entries) != node.arity) [[unlikely]] {
+            throw std::runtime_error(
+                "Number of node entries does not match arity in pickled PyTreeSpec.");
+        }
+
         node.num_leaves = thread_safe_cast<ssize_t>(t[5]);
         node.num_nodes = thread_safe_cast<ssize_t>(t[6]);
     }

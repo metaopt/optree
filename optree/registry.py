@@ -38,6 +38,7 @@ from optree.accessors import (
     StructSequenceEntry,
 )
 from optree.typing import (
+    KT,
     Children,
     MetaData,
     PyTreeKind,
@@ -53,7 +54,7 @@ if TYPE_CHECKING:
     import builtins
     from collections.abc import Collection, Generator, Iterable
 
-    from optree.typing import KT, VT, CustomTreeNode, FlattenFunc, UnflattenFunc
+    from optree.typing import VT, CustomTreeNode, FlattenFunc, UnflattenFunc
 
     # pylint: disable-next=invalid-name
     CustomTreeNodeType = TypeVar('CustomTreeNodeType', bound=type[CustomTreeNode])
@@ -713,6 +714,63 @@ def dict_insertion_ordered(mode: bool, /, *, namespace: str) -> Generator[None]:
             _C.set_dict_insertion_ordered(prev, namespace)
 
 
+class DictMetaData(list[KT]):
+    """Metadata for ``dict`` and ``collections.defaultdict`` pytree nodes.
+
+    A :class:`list` subclass holding the dict keys in the canonical traversal order for the
+    active dict-ordering mode — sorted by default, or in ``dict.keys()`` insertion order when
+    :func:`dict_insertion_ordered` is active for the namespace. The list payload preserves
+    backward compatibility with code that treats dict treespec metadata as a plain ``list[KT]``
+    (e.g. iteration, indexing, equality with a plain list).
+
+    The additional :attr:`original_keys` attribute records the keys in the original ``dict.keys()``
+    insertion order, captured before any sorting at flatten time. It enables :func:`tree_unflatten`
+    to reconstruct dictionaries with their original key iteration order preserved, while children
+    are still traversed in the canonical order so that equal dictionaries flatten to the same leaves
+    in sorted mode.
+
+    This Python implementation mirrors the C++ ``Node`` data type, which stores ``node_data``
+    (traversal-order keys) and ``original_keys`` (insertion-order keys) separately.
+    """
+
+    __slots__: ClassVar[tuple[str, ...]] = ('original_keys',)
+
+    original_keys: dict[KT, None]
+
+    def __init__(
+        self,
+        keys: Iterable[KT] = (),
+        /,
+        *,
+        original_keys: Iterable[KT] | None = None,
+        check_keys_consistency: bool = True,
+    ) -> None:
+        super().__init__(keys)
+        if original_keys is None:
+            self.original_keys = dict.fromkeys(self)
+        else:
+            self.original_keys = dict.fromkeys(original_keys)
+            if len(self.original_keys) != len(self):
+                raise ValueError(
+                    f'`original_keys` must have the same length as `keys`, '
+                    f'got {len(self.original_keys)} != {len(self)}.',
+                )
+            if check_keys_consistency and set(self.original_keys) != set(self):
+                raise ValueError(
+                    '`original_keys` must have the same keys as `keys`, '
+                    f'got {set(self.original_keys)} != {set(self)}.',
+                )
+
+    def __getnewargs_ex__(self, /) -> tuple[tuple[list[KT]], dict[str, Any]]:
+        return (
+            (list(self),),
+            {
+                'original_keys': list(self.original_keys),
+                'check_keys_consistency': False,
+            },
+        )
+
+
 def _sorted_items(items: Iterable[tuple[KT, VT]], /) -> list[tuple[KT, VT]]:
     return total_order_sorted(items, key=itemgetter(0))
 
@@ -745,11 +803,22 @@ def _list_unflatten(_: None, children: Iterable[T], /) -> list[T]:
 
 def _dict_flatten(dct: dict[KT, VT], /) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
     keys, values = unzip2(_sorted_items(dct.items()))
-    return values, list(keys), keys
+    return (
+        values,
+        DictMetaData(
+            keys,
+            # Passing a dict will use CPython's `dict_dict_fromkeys` fast path in `dict.fromkeys()`
+            original_keys=dct,
+            check_keys_consistency=False,
+        ),
+        keys,
+    )
 
 
-def _dict_unflatten(keys: list[KT], values: Iterable[VT], /) -> dict[KT, VT]:
-    return dict(safe_zip(keys, values))
+def _dict_unflatten(metadata: list[KT], values: Iterable[VT], /) -> dict[KT, VT]:
+    output: dict[KT, VT] = dict.fromkeys(getattr(metadata, 'original_keys', []))  # type: ignore[assignment]
+    output.update(safe_zip(metadata, values))
+    return output
 
 
 def _dict_insertion_ordered_flatten(
@@ -761,7 +830,16 @@ def _dict_insertion_ordered_flatten(
     tuple[KT, ...],
 ]:
     keys, values = unzip2(dct.items())
-    return values, list(keys), keys
+    return (
+        values,
+        DictMetaData(
+            keys,
+            # Passing a dict will use CPython's `dict_dict_fromkeys` fast path in `dict.fromkeys()`
+            original_keys=dct,
+            check_keys_consistency=False,
+        ),
+        keys,
+    )
 
 
 def _dict_insertion_ordered_unflatten(keys: list[KT], values: Iterable[VT], /) -> dict[KT, VT]:
