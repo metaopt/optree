@@ -14,9 +14,6 @@
 # ==============================================================================
 """OpTree: Optimized PyTree Utilities."""
 
-import sys
-
-import optree._C as _C
 from optree import accessors, dataclasses, functools, integrations, pytree, treespec, typing
 from optree.accessors import (
     AutoEntry,
@@ -82,6 +79,7 @@ from optree.ops import (
     treespec_entries,
     treespec_entry,
     treespec_from_collection,
+    treespec_frozendict,
     treespec_is_leaf,
     treespec_is_one_level,
     treespec_is_prefix,
@@ -191,6 +189,7 @@ __all__ = [
     'treespec_defaultdict',
     'treespec_deque',
     'treespec_structseq',
+    'treespec_frozendict',
     'treespec_from_collection',
     # Accessor
     'PyTreeEntry',
@@ -229,12 +228,6 @@ __all__ = [
 ]
 
 
-if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
-    from optree.ops import treespec_frozendict
-
-    __all__.insert(__all__.index('treespec_from_collection'), 'treespec_frozendict')
-
-
 MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH
 """Maximum recursion depth for pytree traversal.
 
@@ -245,6 +238,3 @@ NONE_IS_NODE: bool = NONE_IS_NODE  # literal constant
 """Literal constant that treats :data:`None` as a pytree non-leaf node."""
 NONE_IS_LEAF: bool = NONE_IS_LEAF  # literal constant
 """Literal constant that treats :data:`None` as a pytree leaf node."""
-
-
-del sys

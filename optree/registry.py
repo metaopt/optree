@@ -254,7 +254,7 @@ def pytree_node_registry_get(  # noqa: C901
         if cls is defaultdict:
             return _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY
         if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
-            if cls is builtins.frozendict:  # pylint: disable=no-member
+            if cls is frozendict:
                 return _FROZENDICT_INSERTION_ORDERED_REGISTRY_ENTRY
 
     handler = _NODETYPE_REGISTRY.get(cls)
@@ -787,7 +787,7 @@ def _none_flatten(_: None, /) -> tuple[tuple[()], None]:
 
 
 def _none_unflatten(_: None, children: Iterable[Any], /) -> None:
-    sentinel = object()
+    sentinel = object()  # pylint: disable=redefined-builtin
     if next(iter(children), sentinel) is not sentinel:
         raise ValueError('Expected no children.')
 

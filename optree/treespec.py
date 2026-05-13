@@ -27,13 +27,11 @@ PyTreeSpec({'a': *, 'b': *})
 
 from __future__ import annotations
 
-import sys
-
-import optree._C as _C
 from optree.ops import treespec_defaultdict as defaultdict
 from optree.ops import treespec_deque as deque
 from optree.ops import treespec_dict as dict  # pylint: disable=redefined-builtin
 from optree.ops import treespec_from_collection as from_collection
+from optree.ops import treespec_frozendict as frozendict  # pylint: disable=redefined-builtin
 from optree.ops import treespec_leaf as leaf
 from optree.ops import treespec_list as list  # pylint: disable=redefined-builtin
 from optree.ops import treespec_namedtuple as namedtuple
@@ -54,15 +52,6 @@ __all__ = [
     'defaultdict',
     'deque',
     'structseq',
+    'frozendict',
     'from_collection',
 ]
-
-
-if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
-    # pylint: disable-next=unused-import,redefined-builtin
-    from optree.ops import treespec_frozendict as frozendict  # noqa: F401
-
-    __all__.insert(__all__.index('from_collection'), 'frozendict')
-
-
-del sys

@@ -1923,3 +1923,25 @@ def test_treespec_frozendict_dict_insertion_ordered():
         reverse_treespec = optree.tree_structure(reverse)
         assert forward_treespec != reverse_treespec
         assert hash(forward_treespec) != hash(reverse_treespec)
+
+
+@pytest.mark.skipif(
+    sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT,
+    reason='`frozendict` IS supported on this interpreter; behavior tested elsewhere',
+)
+def test_treespec_frozendict_runtime_error_on_unsupported_interpreter():
+    with pytest.raises(
+        RuntimeError,
+        match=re.escape(
+            '`optree.treespec_frozendict` requires Python 3.15+ with `frozendict` support.',
+        ),
+    ):
+        optree.treespec_frozendict()
+
+    with pytest.raises(
+        RuntimeError,
+        match=re.escape(
+            '`optree.treespec_frozendict` requires Python 3.15+ with `frozendict` support.',
+        ),
+    ):
+        optree.treespec.frozendict({'a': optree.treespec_leaf()})
