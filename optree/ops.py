@@ -3127,7 +3127,7 @@ def treespec_tuple(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a tuple treespec from an iterable of child treespecs.
+    """Make a treespec representing a :class:`tuple` node from child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3173,7 +3173,7 @@ def treespec_list(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a list treespec from an iterable of child treespecs.
+    """Make a treespec representing a :class:`list` node from child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3220,7 +3220,7 @@ def treespec_dict(
     namespace: str = '',
     **kwargs: PyTreeSpec,
 ) -> PyTreeSpec:
-    """Make a dict treespec from a dict of child treespecs.
+    """Make a treespec representing a :class:`dict` node from child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3267,7 +3267,7 @@ def treespec_namedtuple(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a namedtuple treespec from a namedtuple of child treespecs.
+    """Make a treespec representing a namedtuple node from a namedtuple of child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3314,7 +3314,7 @@ def treespec_ordereddict(
     namespace: str = '',
     **kwargs: PyTreeSpec,
 ) -> PyTreeSpec:
-    """Make an OrderedDict treespec from an OrderedDict of child treespecs.
+    """Make a treespec representing an :class:`OrderedDict` node from child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3363,7 +3363,7 @@ def treespec_defaultdict(
     namespace: str = '',
     **kwargs: PyTreeSpec,
 ) -> PyTreeSpec:
-    """Make a defaultdict treespec from a defaultdict of child treespecs.
+    """Make a treespec representing a :class:`defaultdict` node from child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3415,7 +3415,7 @@ def treespec_deque(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a deque treespec from a deque of child treespecs.
+    """Make a treespec representing a :class:`deque` node from child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3463,7 +3463,7 @@ def treespec_structseq(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a PyStructSequence treespec from a PyStructSequence of child treespecs.
+    """Make a treespec representing a PyStructSequence node from a PyStructSequence of child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3499,7 +3499,7 @@ if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 c
         namespace: str = '',
         **kwargs: PyTreeSpec,
     ) -> PyTreeSpec:
-        """Make a frozendict treespec from a frozendict of child treespecs.
+        """Make a treespec representing a :class:`frozendict` node from child treespecs.
 
         See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 

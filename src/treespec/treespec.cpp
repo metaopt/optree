@@ -114,6 +114,13 @@ namespace optree {
             if (node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
                 return PyFrozenDictTypeObject(std::move(dict));
             }
+#else
+            if (node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
+                // Reachable only via a treespec deserialized from a Python 3.15+ build. Fail loudly
+                // rather than silently demote the immutable mapping to a plain `dict`.
+                throw py::value_error(
+                    "PyTreeKind::FrozenDict requires Python 3.15+ (`frozendict` builtin).");
+            }
 #endif
             return dict;
         }
@@ -1014,6 +1021,13 @@ py::object PyTreeSpec::GetType(const std::optional<Node> &node) const {
         case PyTreeKind::FrozenDict:
 #if defined(OPTREE_HAS_FROZENDICT)
             return PyFrozenDictTypeObject;
+#else
+            // The `FrozenDict` case label exists unconditionally to keep the switch exhaustive,
+            // but no node should carry this kind on builds without `OPTREE_HAS_FROZENDICT`.
+            // Reaching here means a treespec was crafted on Python 3.15+ and loaded on an older
+            // interpreter; fail loudly rather than fall through silently.
+            throw py::value_error(
+                "PyTreeKind::FrozenDict requires Python 3.15+ (`frozendict` builtin).");
 #endif
         case PyTreeKind::NumKinds:
         default:

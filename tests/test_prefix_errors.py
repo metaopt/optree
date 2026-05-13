@@ -15,8 +15,10 @@
 
 # pylint: disable=missing-function-docstring,invalid-name
 
+import builtins
 import random
 import re
+import sys
 import textwrap
 from collections import OrderedDict, defaultdict, deque
 
@@ -25,6 +27,7 @@ import pytest
 import optree
 from helpers import (
     GLOBAL_NAMESPACE,
+    OPTREE_HAS_FROZENDICT,
     STANDARD_DICT_TYPES,
     TREES,
     CustomTuple,
@@ -85,6 +88,33 @@ def test_different_types():
     () = optree.prefix_errors(lhs, rhs)
 
     lhs, rhs = {'a': 1, 'b': 2}, defaultdict(int, {'a': 1, 'b': [2, 3]})
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
+    optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert lhs_treespec.is_prefix(rhs_treespec)
+    () = optree.prefix_errors(lhs, rhs)
+
+
+@pytest.mark.skipif(
+    not (sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT),
+    reason='`frozendict` requires Python 3.15+',
+)
+def test_different_types_frozendict():
+    # Verifies the regex relaxation at the top of `test_different_types` is not coverage-only:
+    # on Python 3.15+ the error message must actually include `frozendict` in the type list, and
+    # a `dict` prefix must be accepted as compatible with a `frozendict` (mirroring how `dict`
+    # broadcasts against `OrderedDict`/`defaultdict`).
+    frozendict = builtins.frozendict  # type: ignore[attr-defined] # pylint: disable=no-member
+
+    # `frozendict` appears in the rendered type list.
+    lhs, rhs = {'a': 1, 'b': 2}, [1, 2]
+    with pytest.raises(
+        ValueError,
+        match=r'Expected an instance of dict, frozendict, collections\.OrderedDict, .*got .*\.',
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+    # `dict` is accepted as a prefix of a `frozendict` with the same key set.
+    lhs, rhs = {'a': 1, 'b': 2}, frozendict({'a': 1, 'b': [2, 3]})
     lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
     optree.tree_map_(lambda x, y: None, lhs, rhs)
     assert lhs_treespec.is_prefix(rhs_treespec)

@@ -668,8 +668,10 @@ py::list PyTreeSpec::FlattenUpTo(const py::object &tree) const {
                         oss << "OrderedDict";
                     } else if (node.kind == PyTreeKind::DefaultDict) [[likely]] {
                         oss << "defaultdict";
-                    } else [[unlikely]] {
+                    } else if (node.kind == PyTreeKind::FrozenDict) [[likely]] {
                         oss << "frozendict";
+                    } else [[unlikely]] {
+                        INTERNAL_ERROR();
                     }
                     oss << ": " << PyRepr(object) << ".";
                     throw py::value_error(oss.str());

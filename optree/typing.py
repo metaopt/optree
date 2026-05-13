@@ -132,10 +132,7 @@ __all__ = [
 
 if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
     # pylint: disable-next=no-name-in-module,ungrouped-imports
-    from builtins import frozendict  # type: ignore[import]
-
-    # pylint: disable-next=no-name-in-module,unused-import
-    from builtins import frozendict as FrozenDict  # type: ignore[import] # noqa: F401,N812
+    from builtins import frozendict as FrozenDict  # type: ignore[import] # noqa: N812
 
     __all__.insert(__all__.index('Dict') + 1, 'FrozenDict')
 
@@ -278,7 +275,7 @@ class PyTree(Generic[T]):  # pragma: no cover
             Dict[Any, recurse_ref],  # type: ignore[valid-type] # Dict, OrderedDict, DefaultDict
         ]
         if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
-            pytree_types.append(frozendict[Any, recurse_ref])  # type: ignore[valid-type]
+            pytree_types.append(FrozenDict[Any, recurse_ref])  # type: ignore[valid-type]
         pytree_types.extend(
             [
                 Deque[recurse_ref],  # type: ignore[list-item,valid-type]

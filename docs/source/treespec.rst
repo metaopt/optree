@@ -24,4 +24,4 @@ Check section :ref:`PyTreeSpec Functions` for more detailed documentation.
     structseq
     from_collection
 
-.. TODO(frozendict): Add ``frozendict`` to the autosummary when building with Python 3.15+.
+.. TODO(frozendict): Add ``frozendict`` to the autosummary when building docs with Python 3.15+.

@@ -343,6 +343,16 @@ py::object PyTreeSpec::ToPickleable() const {
         Node &node = out->m_traversal.emplace_back();
         node.kind = static_cast<PyTreeKind>(thread_safe_cast<ssize_t>(t[0]));
         node.arity = thread_safe_cast<ssize_t>(t[1]);
+#if !defined(OPTREE_HAS_FROZENDICT)
+        // Reject `FrozenDict` at the deserialization boundary so a cross-version state produced
+        // on Python 3.15+ fails loudly here rather than silently demoting to a mutable `dict` in
+        // `MakeNode` or crashing with `INTERNAL_ERROR()` in downstream switches.
+        if (node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
+            throw py::value_error(
+                "Cannot restore a PyTreeSpec containing a `frozendict` node: this build of "
+                "optree was compiled without `frozendict` support (requires Python 3.15+).");
+        }
+#endif
         if (t.size() != 7) [[unlikely]] {
             if (t.size() == 8) [[likely]] {
                 if (t[7].is_none()) [[likely]] {
