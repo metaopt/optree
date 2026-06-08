@@ -109,7 +109,7 @@ optree = ["*.so", "*.pyd", "*.pyi", "*.typed"]
 # Reference: https://cibuildwheel.pypa.io
 [tool.cibuildwheel]
 archs = ["native"]
-enable = ["pypy", "cpython-freethreading"]
+enable = ["pypy"]
 skip = "*musllinux*"
 build-frontend = "build"
 environment = { PYTHONDEVMODE = "1", PYTHONUNBUFFERED = "1" }
