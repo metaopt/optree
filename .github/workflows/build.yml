@@ -207,11 +207,6 @@ jobs:
               platform: android
               archs: "arm64_v8a"
           # Pyodide
-          - python-version: "3.12"
-            target:
-              runner: ubuntu-latest
-              platform: pyodide
-              archs: "wasm32"
           - python-version: "3.13"
             target:
               runner: ubuntu-latest
@@ -315,17 +310,35 @@ jobs:
           platforms: all
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.4
+        if: matrix.python-version != '3.13t'
+        uses: pypa/cibuildwheel@v4.0
+        env:
+          CIBW_BUILD: ${{ env.CIBW_BUILD }}
+          CIBW_PLATFORM: ${{ matrix.target.platform }}
+          CIBW_ARCHS: ${{ matrix.target.archs }}
+          CIBW_ENABLE: pypy${{ env.ALLOW_PRERELEASES == 'true' && ' cpython-prerelease' || '' }}
+          CIBW_ALLOW_EMPTY: ${{ env.ALLOW_PRERELEASES == 'true' }}
+        with:
+          package-dir: .
+          output-dir: wheelhouse
+          config-file: "{package}/pyproject.toml"
+
+      # cibuildwheel 4.0 dropped the experimental CPython 3.13 free-threading (`cp313t`) builds and
+      # the `cpython-freethreading` enable group. Install the 3.x series via `pip` (rather than the
+      # `uses: pypa/cibuildwheel` action reference) so this target keeps building while Dependabot's
+      # `github-actions` ecosystem cannot bump it back to 4.x.
+      - name: Build wheels (with Python 3.13t)
+        if: matrix.python-version == '3.13t'
+        shell: bash
+        run: |
+          python -m pip install --ignore-installed --upgrade 'cibuildwheel~=3.4'
+          python -m cibuildwheel . --output-dir wheelhouse --config-file '{package}/pyproject.toml'
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_PLATFORM: ${{ matrix.target.platform }}
           CIBW_ARCHS: ${{ matrix.target.archs }}
           CIBW_ENABLE: pypy cpython-freethreading${{ env.ALLOW_PRERELEASES == 'true' && ' cpython-prerelease' || '' }}
           CIBW_ALLOW_EMPTY: ${{ env.ALLOW_PRERELEASES == 'true' }}
-        with:
-          package-dir: .
-          output-dir: wheelhouse
-          config-file: "{package}/pyproject.toml"
 
       - name: Upload wheels
         uses: actions/upload-artifact@v7
