@@ -30,6 +30,27 @@ set(
 
 pybind11_add_module(_C MODULE "${optree_csrc}")
 
+# Free-threaded (PEP 703) builds must compile the extension with `Py_GIL_DISABLED` in order to make
+# the `PyObject` / `PyTypeObject` header layout match the free-threaded interpreter it loads into.
+#
+# `Py_GIL_DISABLED` is not defined for extensions automatically: CPython 3.14+ dropped it from the
+# static Windows `pyconfig.h` (python/cpython#133966; its comment says "a build backend will define
+# it with the value"). CMake's `FindPython` does add it via `Python_DEFINITIONS` for a free-threaded
+# RELEASE interpreter, but misses a free-threaded DEBUG one -- an upstream CMake bug. It files the
+# debug import library `python{X}{Y}t_d.lib` in the release slot (`Python_LIBRARY_RELEASE`), while
+# its free-threaded test only matches a `...t.lib` suffix, so the `_d` debug suffix slips through.
+# Probe the interpreter directly instead -- authoritative for release/debug and GIL/free-threaded.
+execute_process(
+    COMMAND "${Python_EXECUTABLE}" -c
+            "print('ON' if __import__('sysconfig').get_config_var('Py_GIL_DISABLED') else 'OFF')"
+    OUTPUT_VARIABLE OPTREE_Py_GIL_DISABLED
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+if(OPTREE_Py_GIL_DISABLED)
+    message(STATUS "Free-threaded Python detected: defining Py_GIL_DISABLED=1 for target _C")
+    target_compile_definitions(_C PRIVATE Py_GIL_DISABLED=1)
+endif()
+
 if(DEFINED Python_EXTRA_LIBRARIES)
     target_link_libraries(_C PRIVATE ${Python_EXTRA_LIBRARIES})
 endif()

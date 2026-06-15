@@ -194,6 +194,16 @@ class cmake_build_ext(build_ext):  # noqa: N801
             f'-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{config.upper()}={ext_path.parent}',
             f'-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_{config.upper()}={build_temp}',
         ]
+        if platform.system() == 'Windows':
+            # Emit the linker `.pdb` next to the extension's *final* location so a crash dump can be
+            # symbolized. `ext_path.parent` is the throwaway `build-lib` directory, while setuptools
+            # copies only the `.pyd` from there into the package directory, orphaning the `.pdb`.
+            build_py = self.get_finalized_command('build_py')
+            # The final package directory that will receive the built extension. Emit the `.pdb`
+            # here so it can be found next to the `.pyd`. E.g., `.../site-packages/optree` for
+            # `optree._C`.
+            package_dir = Path(build_py.get_package_dir(ext.name.rpartition('.')[0])).absolute()
+            cmake_args += [f'-DCMAKE_PDB_OUTPUT_DIRECTORY_{config.upper()}={package_dir}']
 
         # Print debug information
         eprint(f'-- Building CMake extension: {ext.name} ({config})')
