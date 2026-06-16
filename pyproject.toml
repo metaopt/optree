@@ -42,7 +42,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "typing-extensions >= 4.6.0",
+    "typing-extensions >= 4.10.0",
     "typing-extensions >= 4.12.0; python_version >= '3.13'",
 ]
 dynamic = ["version"]
@@ -74,9 +74,9 @@ test = [
     "covdefaults",
     "rich",
     # Pin to minimum for compatibility test
-    "typing-extensions == 4.6.0; python_version < '3.13' and platform_system == 'Linux'",
-    "typing-extensions == 4.6.0; python_version < '3.13' and platform_system == 'Darwin'",
-    "typing-extensions == 4.6.0; python_version < '3.13' and platform_system == 'Windows'",
+    "typing-extensions == 4.10.0; python_version < '3.13' and platform_system == 'Linux'",
+    "typing-extensions == 4.10.0; python_version < '3.13' and platform_system == 'Darwin'",
+    "typing-extensions == 4.10.0; python_version < '3.13' and platform_system == 'Windows'",
     "typing-extensions == 4.12.0; python_version >= '3.13' and platform_system == 'Linux'",
     "typing-extensions == 4.12.0; python_version >= '3.13' and platform_system == 'Darwin'",
     "typing-extensions == 4.12.0; python_version >= '3.13' and platform_system == 'Windows'",
