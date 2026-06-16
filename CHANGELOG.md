@@ -17,11 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--
+- Update minimal version of `typing-extensions` to 4.10.0 for `typing_extensions.TypeIs` by [@XuehaiPan](https://github.com/XuehaiPan) in [#285](https://github.com/metaopt/optree/pull/285).
 
 ### Fixed
 
--
+- Define `Py_GIL_DISABLED` for free-threaded debug builds on Windows when building the C extension to work around an upstream CMake `FindPython` bug by [@XuehaiPan](https://github.com/XuehaiPan) in [#285](https://github.com/metaopt/optree/pull/285).
 
 ### Removed
 

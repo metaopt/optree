@@ -347,6 +347,29 @@ jobs:
           source "venv/${VENV_BIN_NAME}/activate"
           ${{ env.PYTHON }} -m pip install -v --editable '.[test]'
 
+          PYTHON_EXE=("${{ env.PYTHON }}")
+          if [[ "${{ runner.os }}" == 'Windows' ]]; then
+            PYTHON_EXE=(
+              cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q"
+              "${{ env.PYTHON }}"
+            )
+          fi
+
+          pushd tests
+          "${PYTHON_EXE[@]}" -X dev -Walways -Werror -c 'import optree'
+          popd
+
+          CORE_DUMP_FILES="$(
+            find . -type d -path "./venv" -prune \
+              -o '(' -iname "core.*.[1-9]*" -o -iname "core_*.dmp" ')' -print
+          )"
+          if [[ -n "${CORE_DUMP_FILES}" ]]; then
+            echo "::error::Coredump files found, indicating a crash during tests." >&2
+            echo "Coredump files:" >&2
+            ls -alh ${CORE_DUMP_FILES} >&2
+            exit 1
+          fi
+
       - name: Test with pytest
         shell: bash
         run: |

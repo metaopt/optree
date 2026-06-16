@@ -329,17 +329,28 @@ foreach(
     CMAKE_OSX_DEPLOYMENT_TARGET
     CMAKE_OSX_ARCHITECTURES
     Python_ROOT_DIR
+    Python_SOABI
+    Python_SOSABI
     Python_INCLUDE_DIR
     Python_INCLUDE_DIRS
     Python_LIBRARY
+    Python_LIBRARY_DEBUG
+    Python_LIBRARY_RELEASE
     Python_LIBRARIES
+    Python_LIBRARY_DIRS
+    Python_RUNTIME_LIBRARY_DIRS
+    Python_DEFINITIONS
+    Python_FREE_THREADED
+    Python_DEBUG_POSTFIX
     PYTHON_MODULE_DEBUG_POSTFIX
     PYTHON_MODULE_EXTENSION
     PYTHON_IS_DEBUG
     SETUPTOOLS_EXT_SUFFIX
 )
-    if(NOT "${${varname}}" STREQUAL "")
+    if(DEFINED "${varname}")
         message(STATUS "Use ${varname}: \"${${varname}}\"")
+    else()
+        message(STATUS "Use ${varname}: (not defined)")
     endif()
 endforeach()
 
