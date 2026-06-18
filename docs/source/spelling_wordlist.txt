@@ -83,6 +83,7 @@ recurse
 redef
 sequenceentry
 setattr
+setuptools
 sortable
 str
 structseq
