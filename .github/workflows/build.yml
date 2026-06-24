@@ -58,6 +58,8 @@ env:
   COLUMNS: "100"
   FORCE_COLOR: "1"
   CLICOLOR_FORCE: "1"
+  PIP_RETRIES: "10"
+  PIP_TIMEOUT: "120"
   ALLOW_PRERELEASES: "true"
 
 jobs:
