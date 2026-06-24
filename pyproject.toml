@@ -122,6 +122,8 @@ environment-pass = [
     "COLUMNS",
     "FORCE_COLOR",
     "CLICOLOR_FORCE",
+    "PIP_RETRIES",
+    "PIP_TIMEOUT",
 ]
 xbuild-tools = ["cmake"]
 before-build = "env -0 | sort -z | tr '\\0' '\\n'"
