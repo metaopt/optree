@@ -58,6 +58,8 @@ env:
   CLICOLOR_FORCE: "1"
   XDG_CACHE_HOME: "${{ github.workspace }}/.cache"
   PIP_CACHE_DIR: "${{ github.workspace }}/.cache/pip"
+  PIP_RETRIES: "10"
+  PIP_TIMEOUT: "120"
   PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
 
 jobs:
@@ -88,7 +90,7 @@ jobs:
     timeout-minutes: 180
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
