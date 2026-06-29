@@ -165,7 +165,7 @@ jobs:
 
       - name: Set up pyenv cache
         id: pyenv-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ env.PYENV_ROOT }}
           key: pyenv-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ env.PYTHON_VERSION }}$
@@ -232,7 +232,7 @@ jobs:
 
       - name: Set up pip cache
         id: pip-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ env.PIP_CACHE_DIR }}
           key: pip-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python-version }}${{ matrix.python-abiflags }}-${{ hashFiles('pyproject.toml', 'requirements*.txt', '*/requirements*.txt') }}$
