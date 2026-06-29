@@ -29,6 +29,7 @@ from collections import OrderedDict
 from collections import defaultdict as DefaultDict  # noqa: N812
 from collections import deque as Deque  # noqa: N812
 from collections.abc import (
+    Callable,
     Collection,
     Hashable,
     ItemsView,
@@ -40,13 +41,13 @@ from collections.abc import (
 )
 from typing import (
     Any,
-    Callable,
     ClassVar,
     Final,
     ForwardRef,
     Generic,
-    Optional,
+    ParamSpec,
     Protocol,
+    TypeAlias,
     TypeVar,
     Union,
     final,
@@ -56,9 +57,7 @@ from typing import (
 from typing_extensions import (
     NamedTuple,  # Generic NamedTuple: Python 3.11+
     Never,  # Python 3.11+
-    ParamSpec,  # Python 3.10+
     Self,  # Python 3.11+
-    TypeAlias,  # Python 3.10+
     TypeAliasType,  # Python 3.12+
 )
 from weakref import WeakKeyDictionary
@@ -142,7 +141,7 @@ F = TypeVar('F', bound=Callable[..., Any])
 
 
 Children: TypeAlias = Iterable[T]
-MetaData: TypeAlias = Optional[Hashable]
+MetaData: TypeAlias = Hashable | None
 
 
 @runtime_checkable
@@ -166,7 +165,12 @@ class CustomTreeNode(Protocol[T]):  # pylint: disable=too-few-public-methods
         """Unflatten the children and metadata into the custom pytree node."""
 
 
-_UnionType = type(Union[int, str])
+# Before Python 3.14, `Union[int, str]` produces `typing._UnionGenericAlias` while `int | str`
+# produces `types.UnionType` -- they are different types. On Python 3.14+, the two are unified and
+# `Union[int, str]` also produces `types.UnionType`. Using `type(Union[int, str])` here ensures
+# `_UnionType` automatically matches the pytree alias type on all supported Python versions. See
+# the comment at `__class_getitem__` below for why the pytree aliases use `Union[...]`.
+_UnionType = type(Union[int, str])  # noqa: UP007
 
 
 try:  # pragma: no cover
@@ -261,7 +265,12 @@ class PyTree(Generic[T]):  # pragma: no cover
         else:
             recurse_ref = ForwardRef(f'{cls.__name__}[{param!r}]')
 
-        pytree_alias = Union[
+        # We use `Union[...]` explicitly rather than chained `|` for clarity. Before Python 3.14,
+        # chained `|` with `typing._GenericAlias` operands (e.g., `Tuple[x]`, `List[y]`) would still
+        # produce `typing._UnionGenericAlias` (not `types.UnionType`) via `__or__`/`__ror__`.
+        # On Python 3.14+, both `Union[...]` and `|` produce `types.UnionType`.
+        # TODO(PEP 604): migrate to `|` when minimum Python is raised to 3.14+.
+        pytree_alias = Union[  # noqa: UP007
             param,  # type: ignore[valid-type]
             Tuple[recurse_ref, ...],  # type: ignore[valid-type] # Tuple, NamedTuple, PyStructSequence
             List[recurse_ref],  # type: ignore[valid-type]
