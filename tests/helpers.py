@@ -36,6 +36,7 @@ import pytest
 
 import optree
 from optree._C import (
+    OPTREE_HAS_FROZENDICT,
     OPTREE_HAS_SUBINTERPRETER_SUPPORT,
     PYBIND11_HAS_NATIVE_ENUM,
     PYBIND11_HAS_SUBINTERPRETER_SUPPORT,
@@ -52,7 +53,7 @@ TEST_ROOT = Path(__file__).absolute().parent
 
 
 INITIAL_REGISTRY_SIZE = get_registry_size()
-assert INITIAL_REGISTRY_SIZE == 8
+assert INITIAL_REGISTRY_SIZE == (9 if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT else 8)
 assert INITIAL_REGISTRY_SIZE + 2 == len(NODETYPE_REGISTRY)
 
 _ = PYBIND11_HAS_NATIVE_ENUM
@@ -1610,6 +1611,87 @@ TREE_STRINGS_NONE_IS_LEAF = (
     'PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec(*)], [*]), NoneIsLeaf)',
     "PyTreeSpec(CustomTreeNode(FlatCache[PyTreeSpec({'a': [*, *]})], [*, *]), NoneIsLeaf)",
 )
+
+if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT:
+    from builtins import frozendict  # type: ignore[import]
+
+    TREES = (  # type: ignore[no-redef]
+        *TREES,
+        frozendict(),
+        frozendict({'a': 1, 'b': 2}),
+        frozendict({'baz': 101, 'foo': -42, 'something': 7}),
+    )
+    TREE_PATHS_NONE_IS_NODE = [
+        *TREE_PATHS_NONE_IS_NODE,
+        [],
+        [('a',), ('b',)],
+        [('baz',), ('foo',), ('something',)],
+    ]
+    TREE_PATHS_NONE_IS_LEAF = [
+        *TREE_PATHS_NONE_IS_LEAF,
+        [],
+        [('a',), ('b',)],
+        [('baz',), ('foo',), ('something',)],
+    ]
+    TREE_ACCESSORS_NONE_IS_NODE = [
+        *TREE_ACCESSORS_NONE_IS_NODE,
+        [],
+        [
+            optree.PyTreeAccessor(
+                (optree.MappingEntry('a', frozendict, optree.PyTreeKind.FROZENDICT),),
+            ),
+            optree.PyTreeAccessor(
+                (optree.MappingEntry('b', frozendict, optree.PyTreeKind.FROZENDICT),),
+            ),
+        ],
+        [
+            optree.PyTreeAccessor(
+                (optree.MappingEntry('baz', frozendict, optree.PyTreeKind.FROZENDICT),),
+            ),
+            optree.PyTreeAccessor(
+                (optree.MappingEntry('foo', frozendict, optree.PyTreeKind.FROZENDICT),),
+            ),
+            optree.PyTreeAccessor(
+                (optree.MappingEntry('something', frozendict, optree.PyTreeKind.FROZENDICT),),
+            ),
+        ],
+    ]
+    TREE_ACCESSORS_NONE_IS_LEAF = [
+        *TREE_ACCESSORS_NONE_IS_LEAF,
+        [],
+        [
+            optree.PyTreeAccessor(
+                (optree.MappingEntry('a', frozendict, optree.PyTreeKind.FROZENDICT),),
+            ),
+            optree.PyTreeAccessor(
+                (optree.MappingEntry('b', frozendict, optree.PyTreeKind.FROZENDICT),),
+            ),
+        ],
+        [
+            optree.PyTreeAccessor(
+                (optree.MappingEntry('baz', frozendict, optree.PyTreeKind.FROZENDICT),),
+            ),
+            optree.PyTreeAccessor(
+                (optree.MappingEntry('foo', frozendict, optree.PyTreeKind.FROZENDICT),),
+            ),
+            optree.PyTreeAccessor(
+                (optree.MappingEntry('something', frozendict, optree.PyTreeKind.FROZENDICT),),
+            ),
+        ],
+    ]
+    TREE_STRINGS_NONE_IS_NODE = (
+        *TREE_STRINGS_NONE_IS_NODE,
+        'PyTreeSpec(frozendict())',
+        "PyTreeSpec(frozendict({'a': *, 'b': *}))",
+        "PyTreeSpec(frozendict({'baz': *, 'foo': *, 'something': *}))",
+    )
+    TREE_STRINGS_NONE_IS_LEAF = (
+        *TREE_STRINGS_NONE_IS_LEAF,
+        'PyTreeSpec(frozendict(), NoneIsLeaf)',
+        "PyTreeSpec(frozendict({'a': *, 'b': *}), NoneIsLeaf)",
+        "PyTreeSpec(frozendict({'baz': *, 'foo': *, 'something': *}), NoneIsLeaf)",
+    )
+
 
 TREE_STRINGS = {
     optree.NONE_IS_NODE: TREE_STRINGS_NONE_IS_NODE,

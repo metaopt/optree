@@ -61,7 +61,8 @@ ssize_t PyTreeSpec::HashValueImpl() const {
 
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::FrozenDict: {
                 const scoped_critical_section cs{node.node_data};
                 if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
                     EXPECT_EQ(TupleGetSize(node.node_data), 2, "Number of metadata mismatch.");

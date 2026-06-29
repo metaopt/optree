@@ -180,6 +180,7 @@ OpTree out-of-the-box supports the following Python container types in the globa
 - [`collections.defaultdict`](https://docs.python.org/3/library/collections.html#collections.defaultdict)
 - [`collections.deque`](https://docs.python.org/3/library/collections.html#collections.deque)
 - [`PyStructSequence`](https://docs.python.org/3/c-api/tuple.html#struct-sequence-objects) types created by C API [`PyStructSequence_NewType`](https://docs.python.org/3/c-api/tuple.html#c.PyStructSequence_NewType)
+- [`frozendict`](https://docs.python.org/3/library/stdtypes.html#frozendict) (Python 3.15+)
 
 These types are considered non-leaf nodes in the tree.
 Python objects whose type is not registered are treated as leaf nodes.
@@ -357,7 +358,7 @@ There are several key attributes of the pytree type registry:
     > [!WARNING]
     > Any `PyTreeSpec` objects created before the unregistration still hold a reference to the old registration. Unflattening such a `PyTreeSpec` will use the **old** `unflatten_func`, not the newly registered one.
 
-3. **Built-in types cannot be re-registered.** The behavior of the types listed in [Built-in PyTree Node Types](#built-in-pytree-node-types) (e.g., key-sorted traversal for `dict` and `collections.defaultdict`) is fixed.
+3. **Built-in types cannot be re-registered.** The behavior of the types listed in [Built-in PyTree Node Types](#built-in-pytree-node-types) (e.g., key-sorted traversal for `dict`, `collections.defaultdict`, and `frozendict`) is fixed.
 
 4. **Inherited subclasses are not implicitly registered.** The registry lookup uses `type(obj) is registered_type` rather than `isinstance(obj, registered_type)`. Users need to register the subclasses explicitly. To register all subclasses, it is easy to implement with [`metaclass`](https://docs.python.org/3/reference/datamodel.html#metaclasses) or [`__init_subclass__`](https://docs.python.org/3/reference/datamodel.html#customizing-class-creation), for example:
 
@@ -497,7 +498,7 @@ OrderedDict({
 The built-in Python dictionary ([`builtins.dict`](https://docs.python.org/3/library/stdtypes.html#dict)) is a mapping whose leaves are its values.
 Since [Python 3.7](https://docs.python.org/3/whatsnew/3.7.html), `dict` is guaranteed to be insertion ordered, but the equality operator (`==`) ignores key order.
 To ensure [referential transparency](https://en.wikipedia.org/wiki/Referential_transparency) — "equal `dict`" implies "equal ordering of leaves" — the leaves (values) are returned in key-sorted order.
-The same applies to [`collections.defaultdict`](https://docs.python.org/3/library/collections.html#collections.defaultdict).
+The same applies to [`collections.defaultdict`](https://docs.python.org/3/library/collections.html#collections.defaultdict) and [`frozendict`](https://docs.python.org/3/library/stdtypes.html#frozendict) (Python 3.15+).
 
 ```python
 >>> optree.tree_flatten({'a': [1, 2], 'b': [3]})
@@ -562,7 +563,7 @@ False
 ([3, 1, 2], PyTreeSpec(OrderedDict({'b': [*], 'a': [*, *]})))
 ```
 
-To flatten [`builtins.dict`](https://docs.python.org/3/library/stdtypes.html#dict) and [`collections.defaultdict`](https://docs.python.org/3/library/collections.html#collections.defaultdict) objects with the insertion order preserved, use the `dict_insertion_ordered` context manager:
+To flatten [`builtins.dict`](https://docs.python.org/3/library/stdtypes.html#dict), [`collections.defaultdict`](https://docs.python.org/3/library/collections.html#collections.defaultdict), and [`frozendict`](https://docs.python.org/3/library/stdtypes.html#frozendict) (Python 3.15+) objects with the insertion order preserved, use the `dict_insertion_ordered` context manager:
 
 ```python
 >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
