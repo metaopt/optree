@@ -17,6 +17,7 @@ limitations under the License.
 
 #include "optree/optree.h"
 
+#include <format>      // std::format
 #include <functional>  // std::{not_,}equal_to, std::less{,_equal}, std::greater{,_equal}
 #include <memory>      // std::unique_ptr
 #include <optional>    // std::optional, std::nullopt
@@ -48,8 +49,8 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 
     GetCxxModule(mod);
 
-    mod.doc() = "Optimized PyTree Utilities. (C extension module built from " +
-                std::string(__FILE_RELPATH_FROM_PROJECT_ROOT__) + ")";
+    mod.doc() = std::format("Optimized PyTree Utilities. (C extension module built from {})",
+                            RelpathFromProjectRoot());
     mod.attr("Py_TPFLAGS_BASETYPE") = py::int_(Py_TPFLAGS_BASETYPE);
 
     // Meta information during build

@@ -15,8 +15,9 @@ limitations under the License.
 ================================================================================
 */
 
+#include <format>     // std::format
 #include <optional>   // std::optional
-#include <sstream>    // std::ostringstream
+#include <span>       // std::span
 #include <stdexcept>  // std::runtime_error
 #include <utility>    // std::move
 
@@ -124,10 +125,11 @@ py::object PyTreeIter::NextImpl() {
                     custom->flatten_func);
                 const ssize_t num_out = TupleGetSize(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
-                    std::ostringstream oss{};
-                    oss << "PyTree custom flatten function for type " << PyRepr(custom->type)
-                        << " should return a 2- or 3-tuple, got " << num_out << ".";
-                    throw std::runtime_error(oss.str());
+                    throw std::runtime_error(
+                        std::format("PyTree custom flatten function for type {} should "
+                                    "return a 2- or 3-tuple, got {}.",
+                                    custom->type,
+                                    num_out));
                 }
                 auto children = thread_safe_cast<py::tuple>(TupleGetItem(out, 0));
                 const ssize_t arity = TupleGetSize(children);
@@ -137,12 +139,13 @@ py::object PyTreeIter::NextImpl() {
                         const ssize_t num_entries =
                             TupleGetSize(thread_safe_cast<py::tuple>(node_entries));
                         if (num_entries != arity) [[unlikely]] {
-                            std::ostringstream oss{};
-                            oss << "PyTree custom flatten function for type "
-                                << PyRepr(custom->type)
-                                << " returned inconsistent number of children (" << arity
-                                << ") and number of entries (" << num_entries << ").";
-                            throw std::runtime_error(oss.str());
+                            throw std::runtime_error(
+                                std::format("PyTree custom flatten function for type {} returned "
+                                            "inconsistent number of children ({}) and "
+                                            "number of entries ({}).",
+                                            custom->type,
+                                            arity,
+                                            num_entries));
                         }
                     }
                 }
@@ -235,8 +238,8 @@ py::object PyTreeSpec::WalkImpl(const py::iterable &leaves,
                 } else [[unlikely]] {
                     const py::object out =
                         MakeNode(node,
-                                 node.arity > 0 ? &agenda[size - node.arity] : nullptr,
-                                 node.arity);
+                                 node.arity > 0 ? std::span(&agenda[size - node.arity], node.arity)
+                                                : std::span<py::object>{});
                     agenda.resize(size - node.arity);
                     agenda.emplace_back(
                         f_node ? EVALUATE_WITH_LOCK_HELD2((*f_node)(out), out, *f_node) : out);
