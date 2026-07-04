@@ -128,9 +128,15 @@ jobs:
         shell: pwsh
         run: |
           $Env:PYENV_ROOT = "${Env:USERPROFILE}\.pyenv"
+          git clone https://github.com/pyenv-win/pyenv-win.git "${Env:PYENV_ROOT}"
+
+          # Refresh the version manifest to allow `pyenv install` to see newer releases.
+          # pyenv-win's bundled `.versions_cache.xml` lags and its `pyenv update` is not usable due
+          # to an upstream bug.
+          python "${Env:PYENV_ROOT}\.github\scripts\update_versions_cache.py"
+
           $Env:PATH = "${Env:PYENV_ROOT}\pyenv-win\bin;${Env:PYENV_ROOT}\pyenv-win\shims;${Env:PATH}"
           $Env:PATH = "$(Get-Location)\venv\Scripts;${Env:PATH}"
-          git clone https://github.com/pyenv-win/pyenv-win.git "${Env:PYENV_ROOT}"
           Write-Output "PYENV_ROOT=${Env:PYENV_ROOT}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
           Write-Output "VENV_BIN_NAME=Scripts" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
           Write-Output "PATH=${Env:PATH}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
