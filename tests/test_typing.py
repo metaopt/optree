@@ -15,18 +15,20 @@
 
 # pylint: disable=missing-function-docstring
 
+import builtins
 import enum
 import re
 import sys
 import time
 import weakref
 from collections import namedtuple
-from typing import TypeVar, Union
+from typing import TypeVar, Union, get_args, get_origin
 
 import pytest
 
 import optree
 from helpers import (
+    OPTREE_HAS_FROZENDICT,
     PYBIND11_HAS_NATIVE_ENUM,
     CustomNamedTupleSubclass,
     CustomTuple,
@@ -124,6 +126,18 @@ def test_pytree_typing():
 
     IntTree = optree.PyTreeTypeVar('IntTree', int)  # noqa: N806
     assert IntTree == optree.PyTree[IntTree]
+
+    if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT:
+        frozendict = builtins.frozendict  # type: ignore[attr-defined] # pylint: disable=no-member
+
+        assert optree.typing.FrozenDict is frozendict  # type: ignore[attr-defined]
+        assert 'FrozenDict' in optree.typing.__all__
+        # `FrozenDict` is inserted immediately after `Dict` in `__all__`.
+        assert optree.typing.__all__[optree.typing.__all__.index('Dict') + 1] == 'FrozenDict'
+        assert optree.PyTreeKind.FROZENDICT.name == 'FROZENDICT'
+
+        # The `PyTree` generic alias includes a `frozendict[Any, ...]` member on Python 3.15+.
+        assert any(get_origin(arg) is frozendict for arg in get_args(optree.PyTree[int]))
 
 
 def test_is_namedtuple():

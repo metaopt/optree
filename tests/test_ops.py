@@ -3121,6 +3121,23 @@ def test_tree_broadcast_common():
         [(5, 6), OrderedDict(b=9, c=(0, 0), a=(7, 8))],
     )
 
+    if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT:
+        frozendict = builtins.frozendict  # type: ignore[attr-defined] # pylint: disable=no-member
+        assert optree.tree_broadcast_common(
+            frozendict({'a': 1, 'b': (2, 3), 'c': 4}),
+            frozendict({'a': 5, 'b': 6, 'c': (7, 8)}),
+        ) == (
+            frozendict({'a': 1, 'b': (2, 3), 'c': (4, 4)}),
+            frozendict({'a': 5, 'b': (6, 6), 'c': (7, 8)}),
+        )
+        assert optree.tree_broadcast_common(
+            [1, frozendict({'a': 2, 'b': 3})],
+            [(4, 5), frozendict({'a': 6, 'b': (7, 8)})],
+        ) == (
+            [(1, 1), frozendict({'a': 2, 'b': (3, 3)})],
+            [(4, 5), frozendict({'a': 6, 'b': (7, 8)})],
+        )
+
 
 def test_broadcast_common():
     assert optree.broadcast_common(1, [2, 3, 4]) == ([1, 1, 1], [2, 3, 4])
