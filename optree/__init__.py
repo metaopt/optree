@@ -225,6 +225,7 @@ __all__ = [
     'structseq_fields',
 ]
 
+
 MAX_RECURSION_DEPTH: int = MAX_RECURSION_DEPTH
 """Maximum recursion depth for pytree traversal.
 

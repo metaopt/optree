@@ -115,6 +115,7 @@ __all__ = [
     'prefix_errors',
 ]
 
+
 MAX_RECURSION_DEPTH: int = _C.MAX_RECURSION_DEPTH
 """Maximum recursion depth for pytree traversal.
 
@@ -3116,7 +3117,7 @@ def treespec_tuple(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a tuple treespec from an iterable of child treespecs.
+    """Make a treespec representing a :class:`tuple` node from child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3146,7 +3147,7 @@ def treespec_tuple(
             (default: :const:`''`, i.e., the global namespace)
 
     Returns:
-        A treespec representing a tuple node with the given children.
+        A treespec representing a :class:`tuple` node with the given children.
     """
     return _C.make_from_collection(
         tuple(iterable),
@@ -3162,7 +3163,7 @@ def treespec_list(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a list treespec from an iterable of child treespecs.
+    """Make a treespec representing a :class:`list` node from child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3192,7 +3193,7 @@ def treespec_list(
             (default: :const:`''`, i.e., the global namespace)
 
     Returns:
-        A treespec representing a list node with the given children.
+        A treespec representing a :class:`list` node with the given children.
     """
     return _C.make_from_collection(
         list(iterable),
@@ -3209,7 +3210,7 @@ def treespec_dict(
     namespace: str = '',
     **kwargs: PyTreeSpec,
 ) -> PyTreeSpec:
-    """Make a dict treespec from a dict of child treespecs.
+    """Make a treespec representing a :class:`dict` node from child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3240,7 +3241,7 @@ def treespec_dict(
         **kwargs (PyTreeSpec, optional): Additional child treespecs to add to the mapping.
 
     Returns:
-        A treespec representing a dict node with the given children.
+        A treespec representing a :class:`dict` node with the given children.
     """
     return _C.make_from_collection(
         dict(mapping, **kwargs),
@@ -3256,7 +3257,7 @@ def treespec_namedtuple(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a namedtuple treespec from a namedtuple of child treespecs.
+    """Make a treespec representing a namedtuple node from a namedtuple of child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3303,7 +3304,7 @@ def treespec_ordereddict(
     namespace: str = '',
     **kwargs: PyTreeSpec,
 ) -> PyTreeSpec:
-    """Make an OrderedDict treespec from an OrderedDict of child treespecs.
+    """Make a treespec representing an :class:`OrderedDict` node from child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3334,7 +3335,7 @@ def treespec_ordereddict(
         **kwargs (PyTreeSpec, optional): Additional child treespecs to add to the mapping.
 
     Returns:
-        A treespec representing an OrderedDict node with the given children.
+        A treespec representing an :class:`OrderedDict` node with the given children.
     """
     return _C.make_from_collection(
         OrderedDict(mapping, **kwargs),
@@ -3352,7 +3353,7 @@ def treespec_defaultdict(
     namespace: str = '',
     **kwargs: PyTreeSpec,
 ) -> PyTreeSpec:
-    """Make a defaultdict treespec from a defaultdict of child treespecs.
+    """Make a treespec representing a :class:`defaultdict` node from child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3387,7 +3388,7 @@ def treespec_defaultdict(
         **kwargs (PyTreeSpec, optional): Additional child treespecs to add to the mapping.
 
     Returns:
-        A treespec representing a defaultdict node with the given children.
+        A treespec representing a :class:`defaultdict` node with the given children.
     """
     return _C.make_from_collection(
         defaultdict(default_factory, mapping, **kwargs),
@@ -3404,7 +3405,7 @@ def treespec_deque(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a deque treespec from a deque of child treespecs.
+    """Make a treespec representing a :class:`deque` node from child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
@@ -3436,7 +3437,7 @@ def treespec_deque(
             (default: :const:`''`, i.e., the global namespace)
 
     Returns:
-        A treespec representing a deque node with the given children.
+        A treespec representing a :class:`deque` node with the given children.
     """
     return _C.make_from_collection(
         deque(iterable, maxlen=maxlen),
@@ -3452,7 +3453,7 @@ def treespec_structseq(
     none_is_leaf: bool = False,
     namespace: str = '',
 ) -> PyTreeSpec:
-    """Make a PyStructSequence treespec from a PyStructSequence of child treespecs.
+    """Make a treespec representing a PyStructSequence node from a PyStructSequence of child treespecs.
 
     See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
 
