@@ -464,12 +464,12 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
     def unflatten_func(metadata: tuple[tuple[str, Any], ...], children: tuple[_U, ...], /) -> _T:  # type: ignore[type-var]
         kwargs = dict(zip(children_aliases, children))
         kwargs.update(metadata)
-        return cls(**kwargs)
+        return cls(**kwargs)  # type: ignore[return-value]
 
     from optree.registry import register_pytree_node  # pylint: disable=import-outside-toplevel
 
     register_pytree_node(
-        cls,
+        cls,  # type: ignore[arg-type]
         flatten_func,
         unflatten_func,  # type: ignore[arg-type]
         path_entry_type=AttrsEntry,
