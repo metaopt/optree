@@ -589,7 +589,7 @@ def register_pytree_node_class(  # noqa: C901
         # Add dunder-styled wrapper methods to the class
         # pylint: disable=no-member
 
-        @functools.wraps(cls.tree_flatten)
+        @functools.wraps(cls.tree_flatten)  # type: ignore[attr-defined]
         def __tree_flatten__(  # noqa: N807
             self: CustomTreeNode[T],
             /,
@@ -597,7 +597,13 @@ def register_pytree_node_class(  # noqa: C901
             return self.tree_flatten()  # type: ignore[attr-defined]
 
         @classmethod  # type: ignore[misc]
-        @functools.wraps(getattr(cls.tree_unflatten, '__func__', cls.tree_unflatten))
+        @functools.wraps(
+            getattr(  # type: ignore[arg-type]
+                cls.tree_unflatten,  # type: ignore[attr-defined]
+                '__func__',
+                cls.tree_unflatten,  # type: ignore[attr-defined]
+            ),
+        )
         def __tree_unflatten__(  # noqa: N807
             cls: type[CustomTreeNode[T]],
             metadata: MetaData,
@@ -608,13 +614,13 @@ def register_pytree_node_class(  # noqa: C901
 
         # pylint: enable=no-member
 
-        cls.__tree_flatten__ = __tree_flatten__
-        cls.__tree_unflatten__ = __tree_unflatten__
+        cls.__tree_flatten__ = __tree_flatten__  # type: ignore[method-assign]
+        cls.__tree_unflatten__ = __tree_unflatten__  # type: ignore[method-assign,assignment]
 
     register_pytree_node(
-        cls,
+        cls,  # type: ignore[arg-type]
         methodcaller('__tree_flatten__'),
-        cls.__tree_unflatten__,
+        cls.__tree_unflatten__,  # type: ignore[arg-type]
         path_entry_type=path_entry_type,
         namespace=namespace,
     )

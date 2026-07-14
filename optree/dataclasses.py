@@ -323,7 +323,7 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined
         namespace = GLOBAL_NAMESPACE
 
     cls = dataclasses.dataclass(cls, **kwargs)
-    return register_node(cls, namespace=namespace)
+    return register_node(cls, namespace=namespace)  # type: ignore[return-value]
 
 
 class _DataclassDecorator(Protocol[_TypeT]):  # pylint: disable=too-few-public-methods
