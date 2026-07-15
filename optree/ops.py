@@ -23,7 +23,7 @@ import functools
 import itertools
 import textwrap
 from collections import OrderedDict, defaultdict, deque
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, overload
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, overload
 
 import optree._C as _C
 from optree.accessors import PyTreeAccessor
@@ -32,7 +32,7 @@ from optree.typing import NamedTuple, T, is_namedtuple_instance, is_structseq_in
 
 if TYPE_CHECKING:
     import builtins
-    from collections.abc import Collection, Iterable, Mapping
+    from collections.abc import Callable, Collection, Iterable, Mapping
 
     from optree.accessors import PyTreeEntry
     from optree.typing import (
@@ -1234,7 +1234,7 @@ def tree_transpose(
         leaves[offset : offset + inner_size]
         for offset in range(0, outer_size * inner_size, inner_size)
     ]
-    transposed = zip(*grouped)
+    transposed = zip(*grouped, strict=True)
     subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
@@ -1336,7 +1336,7 @@ def tree_transpose_map(
         raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
 
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
-    transposed = zip(*grouped)
+    transposed = zip(*grouped, strict=True)
     subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
@@ -1423,7 +1423,7 @@ def tree_transpose_map_with_path(
         raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
 
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
-    transposed = zip(*grouped)
+    transposed = zip(*grouped, strict=True)
     subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
@@ -1537,7 +1537,7 @@ def tree_transpose_map_with_accessor(
         raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
 
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
-    transposed = zip(*grouped)
+    transposed = zip(*grouped, strict=True)
     subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
@@ -3731,7 +3731,7 @@ def prefix_errors(  # noqa: C901
             or entries == entries_
         ), f'equal pytree nodes gave different keys: {entries} and {entries_}'
         # pylint: disable-next=invalid-name
-        for e, t1, t2 in zip(entries, prefix_tree_children, full_tree_children):
+        for e, t1, t2 in zip(entries, prefix_tree_children, full_tree_children, strict=True):
             yield from helper(accessor + e, t1, t2)  # type: ignore[arg-type]
 
     return list(helper(PyTreeAccessor(), prefix_tree, full_tree))
