@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - diagnose/py314-win-debug-findpython # [diagnose] remove before merging
   schedule:
     # Run at 12:00 Asia/Shanghai (04:00 UTC) every three days with nightly pybind11
     - cron: "0 4 */3 * *"
@@ -39,7 +40,7 @@ permissions:
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   CMAKE_BUILD_TYPE: "Debug"
@@ -69,23 +70,15 @@ jobs:
     strategy:
       matrix:
         runner: [ubuntu-latest, macos-latest, windows-latest]
+        # NOTE(diagnose/py314-win-debug-findpython): trimmed to 3.13 (passing control), 3.14 (fix
+        # target), and 3.15 (added to gather info on the CMake 4.4 `FindPython` behavior) to reduce
+        # CI pressure while iterating. Restore the full 3.9-3.15 matrix (and the `td` excludes)
+        # before merging.
         python-version:
-          - "3.9"
-          - "3.10"
-          - "3.11"
-          - "3.12"
           - "3.13"
           - "3.14"
+          - "3.15"
         python-abiflags: ["d", "td"]
-        exclude:
-          - python-version: "3.9"
-            python-abiflags: "td"
-          - python-version: "3.10"
-            python-abiflags: "td"
-          - python-version: "3.11"
-            python-abiflags: "td"
-          - python-version: "3.12"
-            python-abiflags: "td"
       fail-fast: false
     timeout-minutes: 180
     steps:
@@ -348,6 +341,37 @@ jobs:
         run: |
           source "venv/${VENV_BIN_NAME}/activate"
           make cmake-build PYTHON="${{ env.PYTHON }}" && make clean
+
+      - name: CMake FindPython trace (Windows diagnostic for upstream issue)
+        # Reproduce the CMake 4.4 `find_package(Python ... Development.Module)` failure in isolation
+        # (no optree / pybind11 / scikit-build) with `--debug-find` + `--trace-expand`, to capture
+        # the "Wrong ABI for the library" reason and the ABI-validation logic for the upstream CMake
+        # issue. Runs on every Windows debug job: 3.13* pass (control), 3.14*/3.15* reproduce.
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          source "venv/${VENV_BIN_NAME}/activate"
+          repro="findpython-repro"
+          mkdir -p "${repro}"
+          printf '%s\n' \
+            'cmake_minimum_required(VERSION 3.18)' \
+            'project(findpython_repro LANGUAGES CXX)' \
+            'find_package(Python 3.9 REQUIRED COMPONENTS Interpreter Development.Module)' \
+            'message(STATUS "Python_LIBRARIES = ${Python_LIBRARIES}")' \
+            > "${repro}/CMakeLists.txt"
+          PYEXE="$(command -v "${{ env.PYTHON }}")"
+          PYROOT="$(${{ env.PYTHON }} -c 'import sysconfig; print(sysconfig.get_config_var("installed_platbase"))')"
+          echo "cmake: $(command -v cmake) ($(cmake --version | head -n 1))"
+          echo "Python_EXECUTABLE=${PYEXE}"
+          echo "Python_ROOT_DIR=${PYROOT}"
+          echo "::group::configure --debug-find --trace-expand (find diagnostics + failure reason)"
+          cmake -S "${repro}" -B "${repro}/build" -A x64 \
+            --debug-find --trace-expand --trace-redirect="${repro}/trace.log" \
+            -DPython_EXECUTABLE="${PYEXE}" -DPython_ROOT_DIR="${PYROOT}" 2>&1 || true
+          echo "::endgroup::"
+          echo "::group::FindPython ABI decision (from trace.log)"
+          grep -nE "FIND_ABI|ABIFLAGS|lib_ABI|VALIDATE_LIBRARY|Wrong ABI|LIBRARY_RELEASE|LIBRARY_DEBUG|python3[0-9]+t?_?d?[.]lib" "${repro}/trace.log" 2>/dev/null | tail -n 150 || echo "(no trace.log)"
+          echo "::endgroup::"
 
       - name: Install OpTree
         shell: bash

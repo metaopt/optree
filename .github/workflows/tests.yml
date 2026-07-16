@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - diagnose/py314-win-debug-findpython # [diagnose] remove before merging
   pull_request:
     types:
       - labeled
@@ -37,7 +38,7 @@ permissions:
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   CMAKE_BUILD_TYPE: "Debug"
@@ -68,16 +69,17 @@ jobs:
     strategy:
       matrix:
         runner: [ubuntu-latest, macos-latest, windows-latest]
+        # NOTE(diagnose/py314-win-debug-findpython): trimmed 3.9-3.12 to reduce CI pressure while
+        # iterating on the CMake 4.4 `FindPython` fix; 3.15/3.15t added to gather info. Windows here
+        # builds Release, so these jobs also guard the fix against regressing the non-debug path.
+        # Restore the full matrix before merging.
         python-version:
-          - "3.9"
-          - "3.10"
-          - "3.11"
-          - "3.12"
           - "3.13"
           - "3.13t"
           - "3.14"
           - "3.14t"
-          - "pypy-3.11"
+          - "3.15"
+          - "3.15t"
       fail-fast: false
     timeout-minutes: 120
     steps:
