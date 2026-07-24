@@ -58,7 +58,9 @@ def total_order_sorted(
             # it sortable between different types (e.g., `int` vs. `str`)
             return sorted(sequence, key=key_fn, reverse=reverse)
         except TypeError:  # cannot sort the keys (e.g., user-defined types)
-            return sequence  # fallback to original order
+            # Fall back to the original order. `reverse` is intentionally not applied: like a stable
+            # sort, incomparable elements (treated as "all equal") keep their original order.
+            return sequence
 
 
 @overload

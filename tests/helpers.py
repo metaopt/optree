@@ -22,6 +22,7 @@ import gc
 import itertools
 import os
 import platform
+import re
 import subprocess
 import sys
 import sysconfig
@@ -180,6 +181,7 @@ def check_script_in_subprocess(
     cwd=TEST_ROOT,
     env=None,
     rerun=1,
+    rstrip=False,
 ):
     script = textwrap.dedent(script).strip()
     result = ''
@@ -203,8 +205,15 @@ def check_script_in_subprocess(
             )
         except subprocess.CalledProcessError as ex:
             raise CalledProcessError(ex.returncode, ex.cmd, ex.output, ex.stderr) from None
+        if rstrip:
+            result = result.rstrip()
         if output is not None:
-            assert result == output
+            if isinstance(output, re.Pattern):
+                assert output.search(result) is not None, (
+                    f'output {result!r} does not match pattern {output.pattern!r}'
+                )
+            else:
+                assert result == output
     return result
 
 

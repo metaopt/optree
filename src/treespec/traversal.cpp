@@ -18,7 +18,6 @@ limitations under the License.
 #include <optional>   // std::optional
 #include <sstream>    // std::ostringstream
 #include <stdexcept>  // std::runtime_error
-#include <utility>    // std::move
 
 #include "optree/optree.h"
 

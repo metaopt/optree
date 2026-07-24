@@ -17,7 +17,6 @@
 
 import contextlib
 import itertools
-import os
 import pickle
 import platform
 import re
@@ -25,7 +24,6 @@ import signal
 import subprocess
 import sys
 import tempfile
-import textwrap
 import weakref
 from collections import OrderedDict, UserList, defaultdict, deque
 
@@ -131,6 +129,31 @@ def test_treespec_equal_hash():
                 assert hash(treespec1_none_is_leaf) != hash(treespec2_none_is_leaf)
             assert hash(treespec1) != hash(treespec2_none_is_leaf)
             assert hash(treespec1_none_is_leaf) != hash(treespec2)
+
+
+def test_treespec_equal_hash_with_namespace():
+    # `optree.functools.partial` is registered in the global namespace, so it is recognized under
+    # any namespace. Flattening the same object with and without an explicit namespace yields
+    # structurally identical treespecs that compare equal, because an empty namespace is treated as
+    # a wildcard compatible with any namespace (see `PyTreeSpec::EqualTo`). Equal treespecs MUST
+    # hash equally, otherwise hash-based containers (`dict` / `set`) break.
+    obj = optree.functools.partial(int, base=2)
+
+    treespec_no_namespace = optree.tree_structure(obj)
+    treespec_namespace = optree.tree_structure(obj, namespace='namespace')
+
+    assert treespec_no_namespace.namespace == ''
+    assert treespec_namespace.namespace == 'namespace'
+
+    # The empty namespace is a wildcard compatible with any namespace: these compare equal.
+    assert treespec_no_namespace == treespec_namespace
+
+    # Hash/equality contract: equal objects must have equal hashes.
+    assert hash(treespec_no_namespace) == hash(treespec_namespace)
+
+    # Consequences for hash-based containers when the contract is honored.
+    assert treespec_namespace in {treespec_no_namespace: 'value'}
+    assert len({treespec_no_namespace, treespec_namespace}) == 1
 
 
 @parametrize(
@@ -541,50 +564,24 @@ def test_treespec_pickle_missing_registration():
     treespec = optree.tree_structure(Foo(0, 1), namespace='foo')
     serialized = pickle.dumps(treespec)
 
-    try:
-        output = subprocess.run(
-            [
-                sys.executable,
-                '-c',
-                textwrap.dedent(
-                    f"""
-                    import pickle
-                    import sys
+    check_script_in_subprocess(
+        f"""
+        import pickle
+        import sys
 
-                    sys.path.insert(0, {str(TEST_ROOT)!r})
+        sys.path.insert(0, {str(TEST_ROOT)!r})
 
-                    try:
-                        treespec = pickle.loads({serialized!r})
-                    except Exception as ex:
-                        print(ex)
-                    else:
-                        print('No exception was raised.', file=sys.stderr)
-                        sys.exit(1)
-                    """,
-                ).strip(),
-            ],
-            capture_output=True,
-            check=True,
-            text=True,
-            encoding='utf-8',
-            cwd=TEST_ROOT,
-            env={
-                key: value
-                for key, value in os.environ.items()
-                if (
-                    not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
-                    or key in ('PYTHON_GIL', 'PYTHONDEVMODE', 'PYTHONHASHSEED')
-                )
-            },
-            timeout=120.0,
-        )
-        message = output.stdout.strip()
-    except subprocess.CalledProcessError as ex:
-        raise RuntimeError(ex.stderr) from ex
-
-    assert re.match(
-        r"^Unknown custom type in pickled PyTreeSpec: <class '.*'> in namespace 'foo'\.$",
-        string=message,
+        try:
+            treespec = pickle.loads({serialized!r})
+        except Exception as ex:
+            print(ex)
+        else:
+            print('No exception was raised.', file=sys.stderr)
+            sys.exit(1)
+        """,
+        output=re.compile(
+            r"Unknown custom type in pickled PyTreeSpec: <class '.*'> in namespace 'foo'\.",
+        ),
     )
 
     optree.unregister_pytree_node(Foo, namespace='foo')

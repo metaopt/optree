@@ -3231,6 +3231,14 @@ def test_tree_sum():
         optree.tree_sum({'x': 1, 'y': (2, None), 'z': 3}, none_is_leaf=True)
     assert optree.tree_sum({'x': 'a', 'y': ('b', None), 'z': 'c'}, start='') == 'abc'
     assert optree.tree_sum({'x': b'a', 'y': (b'b', None), 'z': b'c'}, start=b'') == b'abc'
+    # `tree_sum` preserves the `start` type: a `bytearray` start must stay a `bytearray`, not be
+    # coerced to `bytes` (mirroring the `str` case above, which stays `str`). `bytes == bytearray`
+    # compares equal by value, so only the type check catches the coercion.
+    bytearray_result = optree.tree_sum({'x': b'a', 'y': (b'b', None), 'z': b'c'}, start=bytearray())
+    assert bytearray_result == bytearray(b'abc')
+    assert type(bytearray_result) is bytearray
+    bytes_result = optree.tree_sum({'x': b'a', 'y': (b'b', None), 'z': b'c'}, start=b'')
+    assert type(bytes_result) is bytes
     assert optree.tree_sum(
         {'x': [1], 'y': ([2], [None]), 'z': [3]},
         start=[],

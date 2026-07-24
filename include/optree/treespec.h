@@ -234,13 +234,13 @@ public:
     // Return the hash value of the PyTreeSpec.
     [[nodiscard]] ssize_t HashValue() const;
 
-    // Transform the PyTreeSpec into a pickleable object.
+    // Transform the PyTreeSpec into a picklable object.
     // Used to implement `PyTreeSpec.__getstate__`.
-    [[nodiscard]] py::object ToPickleable() const;
+    [[nodiscard]] py::object ToPicklable() const;
 
-    // Transform the object returned by `ToPickleable()` back to PyTreeSpec.
+    // Transform the object returned by `ToPicklable()` back to PyTreeSpec.
     // Used to implement `PyTreeSpec.__setstate__`.
-    [[nodiscard]] static std::unique_ptr<PyTreeSpec> FromPickleable(const py::object &pickleable);
+    [[nodiscard]] static std::unique_ptr<PyTreeSpec> FromPicklable(const py::object &picklable);
 
     // Make a PyTreeSpec representing a leaf node.
     [[nodiscard]] static std::unique_ptr<PyTreeSpec> MakeLeaf(

@@ -152,3 +152,18 @@ def test_tree_ravel_single_dtype(tree):
         unravel_func(jnp.concatenate([flat, jnp.zeros((1,))]))
 
     unravel_func(flat.astype(jnp.complex128))
+
+
+def test_tree_ravel_preserves_mixed_scalar_and_array_leaves():
+    jax.config.update('jax_enable_x64', True)
+    flat, unravel_func = optree.integrations.jax.tree_ravel(
+        {'a': jnp.array([1, 2], dtype=jnp.int8), 'b': 200},
+    )
+    reconstructed = unravel_func(flat)
+    assert int(reconstructed['b']) == 200  # not -56 (int8 wrap-around)
+
+    flat, unravel_func = optree.integrations.jax.tree_ravel(
+        {'w': jnp.array([1.0, 2.0], dtype=jnp.float32), 'b': 0.1},
+    )
+    reconstructed = unravel_func(flat)
+    assert float(reconstructed['b']) == 0.1  # not float32-truncated
