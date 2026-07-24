@@ -22,7 +22,7 @@ limitations under the License.
 #include <sstream>    // std::ostringstream
 #include <string>     // std::string
 #include <tuple>      // std::tuple
-#include <utility>    // std::move
+#include <utility>    // std::move, std::pair
 #include <vector>     // std::vector
 
 #include "optree/optree.h"
@@ -250,6 +250,7 @@ namespace optree {
         .kind = root.kind,
         .arity = root.arity,
         .node_data = root.node_data,
+        .node_entries = root.node_entries,
         .custom = root.custom,
         .num_leaves = 0,
         .num_nodes = 1,
@@ -552,7 +553,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
             subroot.num_leaves = 0;
             subroot.num_nodes = 1;
             for (ssize_t i = 0; i < node.arity; ++i) {
-                const auto &[num_leaves, num_nodes] = pending_num_leaves_nodes.back();
+                const auto [num_leaves, num_nodes] = pending_num_leaves_nodes.back();
                 pending_num_leaves_nodes.pop_back();
                 subroot.num_leaves += num_leaves;
                 subroot.num_nodes += num_nodes;

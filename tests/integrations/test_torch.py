@@ -171,3 +171,20 @@ def test_tree_ravel_non_tensor():
         optree.integrations.torch.tree_ravel((torch.tensor(1), 2))
 
     optree.integrations.torch.tree_ravel((torch.tensor(1), torch.tensor(2)))
+
+
+def test_tree_ravel_preserves_mixed_dtype_leaves():
+    flat, unravel_func = optree.integrations.torch.tree_ravel(
+        {'a': torch.tensor([1, 2], dtype=torch.int8), 'b': torch.tensor(200, dtype=torch.int64)},
+    )
+    reconstructed = unravel_func(flat)
+    assert int(reconstructed['b']) == 200  # not -56 (int8 wrap-around)
+
+    flat, unravel_func = optree.integrations.torch.tree_ravel(
+        {
+            'w': torch.tensor([1.0, 2.0], dtype=torch.float32),
+            'b': torch.tensor(0.1, dtype=torch.float64),
+        },
+    )
+    reconstructed = unravel_func(flat)
+    assert float(reconstructed['b']) == pytest.approx(0.1)  # not float32-truncated

@@ -229,13 +229,22 @@ def pytree_node_registry_get(  # noqa: C901
         )
 
     if cls is None:
-        namespaces = frozenset({namespace, ''})
         with __REGISTRY_LOCK:
+            # Collect the global handlers first, then let the named namespace override them for the
+            # same type, mirroring the single-class lookup below, which checks the named namespace
+            # before falling back to the global one. Otherwise a later global registration would
+            # shadow the named handler in the returned dict.
             registry = {
                 handler.type: handler
                 for handler in _NODETYPE_REGISTRY.values()
-                if handler.namespace in namespaces
+                if handler.namespace == ''
             }
+            if namespace != '':
+                registry.update(
+                    (handler.type, handler)
+                    for handler in _NODETYPE_REGISTRY.values()
+                    if handler.namespace == namespace
+                )
         if _C.is_dict_insertion_ordered(namespace):
             registry[dict] = _DICT_INSERTION_ORDERED_REGISTRY_ENTRY
             registry[defaultdict] = _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY

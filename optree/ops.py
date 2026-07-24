@@ -2299,8 +2299,11 @@ def tree_sum(
     # sum() rejects string values for `start` parameter
     if isinstance(start, str):
         return ''.join([start, *leaves])  # type: ignore[list-item,return-value]
-    if isinstance(start, (bytes, bytearray)):
+    if isinstance(start, bytes):
         return b''.join([start, *leaves])  # type: ignore[list-item,return-value]
+    if isinstance(start, bytearray):
+        # `b''.join(...)` returns `bytes`; use `bytearray().join(...)` to preserve the `bytearray`.
+        return bytearray().join([start, *leaves])  # type: ignore[list-item,return-value]
     return sum(leaves, start)  # type: ignore[call-overload]
 
 

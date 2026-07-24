@@ -62,6 +62,15 @@ def test_total_order_sorted():
         NonSortable(2),
         NonSortable(3),
     ]
+    # The incomparable fallback keeps the original order even with `reverse=True`: `reverse` is not
+    # applied there (like a stable sort leaving equal elements unmoved).
+    assert total_order_sorted([1, 5, 4, NonSortable(2), NonSortable(3)], reverse=True) == [
+        1,
+        5,
+        4,
+        NonSortable(2),
+        NonSortable(3),
+    ]
 
 
 def test_safe_zip():

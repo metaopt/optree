@@ -22,7 +22,8 @@ limitations under the License.
 #include <sstream>      // std::ostringstream
 #include <stdexcept>    // std::logic_error
 #include <string>       // std::string, std::char_traits, std::to_string
-#include <type_traits>  // std::declval, std::void_t, std::{true,false}_type
+#include <type_traits>  // std::void_t, std::{true,false}_type
+#include <utility>      // std::declval
 
 namespace optree {
 

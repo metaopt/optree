@@ -330,7 +330,8 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
         EXPECT_EQ(registry1.m_named_registrations.size(), registry2.m_named_registrations.size());
     }
 
-    py::getattr(py::module_::import("atexit"), "register")(py::cpp_function(&Clear));
+    auto atexit_register = py::getattr(py::module_::import("atexit"), "register");
+    atexit_register(py::cpp_function(&Clear));
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]

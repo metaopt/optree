@@ -343,6 +343,18 @@ jobs:
           cat pyproject.toml
           echo "::endgroup::"
 
+      - name: Install CMake < 4.4 (Windows)
+        # Workaround for a CMake 4.4 `FindPython` regression on Windows: `find_package(Python ...
+        # COMPONENTS Development.Module)` rejects the `_d` debug import library for CPython 3.14+
+        # (surfaced as `missing: Development.Module`), which breaks the debug builds here. It is a
+        # re-regression of CMake issue #27192; remove this pin once it is fixed upstream. Reported
+        # at https://gitlab.kitware.com/cmake/cmake/-/work_items/27969.
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          source "venv/${VENV_BIN_NAME}/activate"
+          ${{ env.PYTHON }} -m pip install --upgrade 'cmake < 4.4'
+
       - name: Test buildable without Python frontend
         if: runner.os != 'Windows'
         shell: bash

@@ -511,9 +511,9 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
                              "Return a string representation of the treespec.")
         .def_method_pos_only("__hash__", &PyTreeSpec::HashValue, "Return the hash of the treespec.")
         .def_method_pos_only("__len__", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
-        .def(py::pickle([](const PyTreeSpec &t) -> py::object { return t.ToPickleable(); },
+        .def(py::pickle([](const PyTreeSpec &t) -> py::object { return t.ToPicklable(); },
                         [](const py::object &o) -> std::unique_ptr<PyTreeSpec> {
-                            return PyTreeSpec::FromPickleable(o);
+                            return PyTreeSpec::FromPicklable(o);
                         }),
              "Serialization support for PyTreeSpec.",
              py::arg("state"),
