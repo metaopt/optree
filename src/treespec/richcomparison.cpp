@@ -73,9 +73,15 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec &other, const bool &strict) const {
 
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::FrozenDict: {
+                // All dict-family kinds (`dict`, `OrderedDict`, `defaultdict`, `frozendict`) are
+                // considered prefix-compatible with one another so a single concrete mapping can
+                // act as a prefix for any of them. Mismatched dict variants are still compared by
+                // key set below; only non-mapping kinds short-circuit to `false` here.
                 if (b->kind != PyTreeKind::Dict && b->kind != PyTreeKind::OrderedDict &&
-                    b->kind != PyTreeKind::DefaultDict) [[likely]] {
+                    b->kind != PyTreeKind::DefaultDict && b->kind != PyTreeKind::FrozenDict)
+                    [[likely]] {
                     return false;
                 }
                 const scoped_critical_section2 cs(a->node_data, b->node_data);

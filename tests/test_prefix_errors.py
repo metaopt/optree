@@ -15,8 +15,10 @@
 
 # pylint: disable=missing-function-docstring,invalid-name
 
+import builtins
 import random
 import re
+import sys
 import textwrap
 from collections import OrderedDict, defaultdict, deque
 
@@ -25,6 +27,7 @@ import pytest
 import optree
 from helpers import (
     GLOBAL_NAMESPACE,
+    OPTREE_HAS_FROZENDICT,
     STANDARD_DICT_TYPES,
     TREES,
     CustomTuple,
@@ -59,7 +62,7 @@ def test_different_types():
     with pytest.raises(
         ValueError,
         match=(
-            r'Expected an instance of dict, collections.OrderedDict, or collections.defaultdict, '
+            r'Expected an instance of dict, (frozendict, )?collections.OrderedDict, or collections.defaultdict, '
             r'got .*\.'
         ),
     ):
@@ -89,6 +92,24 @@ def test_different_types():
     optree.tree_map_(lambda x, y: None, lhs, rhs)
     assert lhs_treespec.is_prefix(rhs_treespec)
     () = optree.prefix_errors(lhs, rhs)
+
+    if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT:
+        frozendict = builtins.frozendict  # type: ignore[attr-defined] # pylint: disable=no-member
+
+        # `frozendict` appears in the rendered type list.
+        lhs, rhs = {'a': 1, 'b': 2}, [1, 2]
+        with pytest.raises(
+            ValueError,
+            match=r'Expected an instance of dict, frozendict, collections\.OrderedDict, .*got .*\.',
+        ):
+            optree.tree_map_(lambda x, y: None, lhs, rhs)
+
+        # `dict` is accepted as a prefix of a `frozendict` with the same key set.
+        lhs, rhs = {'a': 1, 'b': 2}, frozendict({'a': 1, 'b': [2, 3]})
+        lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+        assert lhs_treespec.is_prefix(rhs_treespec)
+        () = optree.prefix_errors(lhs, rhs)
 
 
 def test_different_types_nested():
@@ -388,6 +409,33 @@ def test_different_metadata():
     )
     with pytest.raises(ValueError, match=expected):
         raise e('in_axes')
+
+    if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT:
+        frozendict = builtins.frozendict  # type: ignore[attr-defined] # pylint: disable=no-member
+
+        lhs, rhs = frozendict({'a': 1, 'b': 2}), frozendict({'a': 3, 'c': 4})
+        lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
+        with pytest.raises(
+            ValueError,
+            match=(
+                r'dictionary key mismatch; expected key\(s\): .*, '
+                r'got key\(s\): .*; frozendict: .*\.'
+            ),
+        ):
+            optree.tree_map_(lambda x, y: None, lhs, rhs)
+        assert not lhs_treespec.is_prefix(rhs_treespec)
+
+        (e,) = optree.prefix_errors(lhs, rhs)
+        expected = re.escape(
+            textwrap.dedent(
+                """
+                pytree structure error: different pytree keys at key path
+                    in_axes tree root
+                """,
+            ).strip(),
+        )
+        with pytest.raises(ValueError, match=expected):
+            raise e('in_axes')
 
 
 def test_different_metadata_nested():

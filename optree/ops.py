@@ -18,9 +18,11 @@
 
 from __future__ import annotations
 
+import builtins
 import difflib
 import functools
 import itertools
+import sys
 import textwrap
 from collections import OrderedDict, defaultdict, deque
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, overload
@@ -31,7 +33,6 @@ from optree.typing import NamedTuple, T, is_namedtuple_instance, is_structseq_in
 
 
 if TYPE_CHECKING:
-    import builtins
     from collections.abc import Collection, Iterable, Mapping
 
     from optree.accessors import PyTreeEntry
@@ -111,6 +112,7 @@ __all__ = [
     'treespec_defaultdict',
     'treespec_deque',
     'treespec_structseq',
+    'treespec_frozendict',
     'treespec_from_collection',
     'prefix_errors',
 ]
@@ -161,9 +163,10 @@ def tree_flatten(
     >>> tree_flatten(None, none_is_leaf=True)
     ([None], PyTreeSpec(*, NoneIsLeaf))
 
-    For unordered dictionaries, :class:`dict` and :class:`collections.defaultdict`, the order is
-    dependent on the **sorted** keys in the dictionary. Please use :class:`collections.OrderedDict`
-    if you want to keep the keys in the insertion order.
+    For unordered dictionaries, :class:`dict`, :class:`collections.defaultdict`, and
+    :class:`frozendict` (Python 3.15+), the order is dependent on the **sorted** keys in the
+    dictionary. Please use :class:`collections.OrderedDict` if you want to keep the keys in the
+    insertion order.
 
     >>> from collections import OrderedDict
     >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
@@ -233,9 +236,10 @@ def tree_flatten_with_path(
     >>> tree_flatten_with_path(None, none_is_leaf=True)
     ([()], [None], PyTreeSpec(*, NoneIsLeaf))
 
-    For unordered dictionaries, :class:`dict` and :class:`collections.defaultdict`, the order is
-    dependent on the **sorted** keys in the dictionary. Please use :class:`collections.OrderedDict`
-    if you want to keep the keys in the insertion order.
+    For unordered dictionaries, :class:`dict`, :class:`collections.defaultdict`, and
+    :class:`frozendict` (Python 3.15+), the order is dependent on the **sorted** keys in the
+    dictionary. Please use :class:`collections.OrderedDict` if you want to keep the keys in the
+    insertion order.
 
     >>> from collections import OrderedDict
     >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
@@ -321,9 +325,10 @@ def tree_flatten_with_accessor(
     >>> tree_flatten_with_accessor(None, none_is_leaf=True)
     ([PyTreeAccessor(*, ())], [None], PyTreeSpec(*, NoneIsLeaf))
 
-    For unordered dictionaries, :class:`dict` and :class:`collections.defaultdict`, the order is
-    dependent on the **sorted** keys in the dictionary. Please use :class:`collections.OrderedDict`
-    if you want to keep the keys in the insertion order.
+    For unordered dictionaries, :class:`dict`, :class:`collections.defaultdict`, and
+    :class:`frozendict` (Python 3.15+), the order is dependent on the **sorted** keys in the
+    dictionary. Please use :class:`collections.OrderedDict` if you want to keep the keys in the
+    insertion order.
 
     >>> from collections import OrderedDict
     >>> tree = OrderedDict([('b', (2, [3, 4])), ('a', 1), ('c', None), ('d', 5)])
@@ -1039,7 +1044,7 @@ def tree_map_with_accessor_(
 
 
 def tree_replace_nones(
-    sentinel: S,
+    sentinel: S,  # pylint: disable=redefined-builtin
     tree: PyTree[T | None],
     /,
     namespace: str = '',
@@ -1769,6 +1774,7 @@ def tree_broadcast_common(
     other_leaves, other_treespec = _C.flatten(other_tree, is_leaf, none_is_leaf, namespace)
     common_suffix_treespec = treespec.broadcast_to_common_suffix(other_treespec)
 
+    # pylint: disable-next=redefined-builtin
     sentinel: T = object()  # type: ignore[assignment]
     common_suffix_tree: PyTree[T] = common_suffix_treespec.unflatten(
         itertools.repeat(sentinel, common_suffix_treespec.num_leaves),
@@ -3482,6 +3488,55 @@ def treespec_structseq(
     )
 
 
+def treespec_frozendict(
+    mapping: Mapping[Any, PyTreeSpec] | Iterable[tuple[Any, PyTreeSpec]] = (),
+    /,
+    *,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+    **kwargs: PyTreeSpec,
+) -> PyTreeSpec:
+    """Make a treespec representing a :class:`frozendict` node from child treespecs.
+
+    See also :func:`tree_structure`, :func:`treespec_leaf`, and :func:`treespec_none`.
+
+    .. note::
+
+        Requires Python 3.15+ with built-in :class:`frozendict` support (see :pep:`814`).
+        Calling this function on earlier interpreters raises :exc:`RuntimeError`. The symbol
+        itself is always present so it can be introspected and documented uniformly.
+
+    >>> treespec_frozendict({'a': treespec_leaf(), 'b': treespec_leaf()})  # doctest: +SKIP
+    PyTreeSpec(frozendict({'a': *, 'b': *}))
+    >>> treespec_frozendict()  # doctest: +SKIP
+    PyTreeSpec(frozendict())
+
+    Args:
+        mapping (mapping of PyTreeSpec, optional): A mapping of child treespecs. They must have
+            the same ``none_is_leaf`` and ``namespace`` values.
+        none_is_leaf (bool, optional): Whether to treat :data:`None` as a leaf. If :data:`False`,
+            :data:`None` is a non-leaf node with arity 0. Thus :data:`None` is contained in the
+            treespec rather than in the leaves list and :data:`None` will remain in the result
+            pytree. (default: :data:`False`)
+        namespace (str, optional): The registry namespace used for custom pytree node types.
+            (default: :const:`''`, i.e., the global namespace)
+        **kwargs (PyTreeSpec, optional): Additional child treespecs to add to the mapping.
+
+    Returns:
+        A treespec representing a frozendict node with the given children.
+    """
+    if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
+        return _C.make_from_collection(
+            # pylint: disable-next=no-member
+            builtins.frozendict(mapping, **kwargs),
+            none_is_leaf,
+            namespace,
+        )
+    raise RuntimeError(
+        '`optree.treespec_frozendict` requires Python 3.15+ with `frozendict` support.',
+    )
+
+
 def treespec_from_collection(
     collection: Collection[PyTreeSpec],
     /,
@@ -3532,6 +3587,11 @@ def treespec_from_collection(
 
 
 STANDARD_DICT_TYPES: frozenset[type] = frozenset({dict, OrderedDict, defaultdict})
+if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
+    # pylint: disable-next=no-name-in-module
+    from builtins import frozendict  # type: ignore[import]
+
+    STANDARD_DICT_TYPES |= frozenset({frozendict})
 
 
 def prefix_errors(  # noqa: C901

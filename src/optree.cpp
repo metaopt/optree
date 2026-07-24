@@ -112,6 +112,11 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
 #else
     BUILDTIME_METADATA["OPTREE_HAS_READ_WRITE_LOCK"] = py::bool_(false);
 #endif
+#if defined(OPTREE_HAS_FROZENDICT)
+    BUILDTIME_METADATA["OPTREE_HAS_FROZENDICT"] = py::bool_(true);
+#else
+    BUILDTIME_METADATA["OPTREE_HAS_FROZENDICT"] = py::bool_(false);
+#endif
 
     mod.attr("BUILDTIME_METADATA") = std::move(BUILDTIME_METADATA);
     py::exec(
@@ -290,6 +295,7 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
         .value("DEFAULTDICT", PyTreeKind::DefaultDict, "A collections.defaultdict.")
         .value("DEQUE", PyTreeKind::Deque, "A collections.deque.")
         .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.")
+        .value("FROZENDICT", PyTreeKind::FrozenDict, "A frozendict.")
         .finalize();
     auto PyTreeKindTypeObject = py::getattr(mod, "PyTreeKind");
 #else
@@ -305,7 +311,8 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
             .value("ORDEREDDICT", PyTreeKind::OrderedDict, "A collections.OrderedDict.")
             .value("DEFAULTDICT", PyTreeKind::DefaultDict, "A collections.defaultdict.")
             .value("DEQUE", PyTreeKind::Deque, "A collections.deque.")
-            .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.");
+            .value("STRUCTSEQUENCE", PyTreeKind::StructSequence, "A PyStructSequence.")
+            .value("FROZENDICT", PyTreeKind::FrozenDict, "A frozendict.");
 #endif
     auto * const PyTreeKind_Type = reinterpret_cast<PyTypeObject *>(PyTreeKindTypeObject.ptr());
     PyTreeKind_Type->tp_name = "optree.PyTreeKind";

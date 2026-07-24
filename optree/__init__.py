@@ -79,6 +79,7 @@ from optree.ops import (
     treespec_entries,
     treespec_entry,
     treespec_from_collection,
+    treespec_frozendict,
     treespec_is_leaf,
     treespec_is_one_level,
     treespec_is_prefix,
@@ -188,6 +189,7 @@ __all__ = [
     'treespec_defaultdict',
     'treespec_deque',
     'treespec_structseq',
+    'treespec_frozendict',
     'treespec_from_collection',
     # Accessor
     'PyTreeEntry',

@@ -272,9 +272,11 @@ private:
 
         // Kind-specific metadata.
         // For a NamedTuple/PyStructSequence, contains the tuple type object.
-        // For a Dict, contains a sorted list of keys.
+        // For a Dict or FrozenDict, contains a sorted list of keys by default and `original_keys`
+        //   (below) records the original keys; the keys are kept in insertion order instead when
+        //   the `dict_insertion_ordered` context manager is active.
         // For a OrderedDict, contains a list of keys.
-        // For a DefaultDict, contains a tuple of (default_factory, sorted list of keys).
+        // For a DefaultDict, contains a tuple of (default_factory, keys in sorted/insertion order).
         // For a Deque, contains the `maxlen` attribute.
         // For a Custom type, contains the metadata returned by the `flatten_func` function.
         py::object node_data{};
@@ -293,7 +295,7 @@ private:
         // Number of leaf and interior nodes in the subtree rooted at this node.
         ssize_t num_nodes = 0;
 
-        // For a Dict or DefaultDict, captures the keys in insertion order as `dict[Key, None]`.
+        // For a Dict/DefaultDict/FrozenDict, captures the insertion order as `dict[Key, None]`.
         // Null-default for other node kinds. Used to preserve key order during unflattening.
         py::object original_keys{};
     };

@@ -15,6 +15,7 @@
 
 # pylint: disable=missing-function-docstring,invalid-name
 
+import builtins
 import copy
 import functools
 import itertools
@@ -32,6 +33,7 @@ from helpers import (
     GLOBAL_NAMESPACE,
     IS_LEAF_FUNCTIONS,
     LEAVES,
+    OPTREE_HAS_FROZENDICT,
     TREE_ACCESSORS,
     TREE_PATHS,
     TREES,
@@ -3119,6 +3121,23 @@ def test_tree_broadcast_common():
         [(5, 6), OrderedDict(b=9, c=(0, 0), a=(7, 8))],
     )
 
+    if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT:
+        frozendict = builtins.frozendict  # type: ignore[attr-defined] # pylint: disable=no-member
+        assert optree.tree_broadcast_common(
+            frozendict({'a': 1, 'b': (2, 3), 'c': 4}),
+            frozendict({'a': 5, 'b': 6, 'c': (7, 8)}),
+        ) == (
+            frozendict({'a': 1, 'b': (2, 3), 'c': (4, 4)}),
+            frozendict({'a': 5, 'b': (6, 6), 'c': (7, 8)}),
+        )
+        assert optree.tree_broadcast_common(
+            [1, frozendict({'a': 2, 'b': 3})],
+            [(4, 5), frozendict({'a': 6, 'b': (7, 8)})],
+        ) == (
+            [(1, 1), frozendict({'a': 2, 'b': (3, 3)})],
+            [(4, 5), frozendict({'a': 6, 'b': (7, 8)})],
+        )
+
 
 def test_broadcast_common():
     assert optree.broadcast_common(1, [2, 3, 4]) == ([1, 1, 1], [2, 3, 4])
@@ -3395,6 +3414,17 @@ def test_tree_flatten_one_level(  # noqa: C901
                         assert metadata == (node.default_factory, list(node.keys()))
                     assert list(reconstructed_node.keys()) == list(node.keys())
                     assert node_kind == optree.PyTreeKind.DEFAULTDICT
+                elif (
+                    sys.version_info >= (3, 15)
+                    and OPTREE_HAS_FROZENDICT
+                    and node_type is builtins.frozendict  # type: ignore[attr-defined]
+                ):
+                    if use_sorted_keys:
+                        assert metadata == sorted(node.keys())
+                    else:
+                        assert metadata == list(node.keys())
+                    assert list(reconstructed_node.keys()) == list(node.keys())
+                    assert node_kind == optree.PyTreeKind.FROZENDICT
                 elif node_type is deque:
                     assert metadata == node.maxlen
                     assert node_kind == optree.PyTreeKind.DEQUE

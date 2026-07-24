@@ -31,6 +31,7 @@ from optree.ops import treespec_defaultdict as defaultdict
 from optree.ops import treespec_deque as deque
 from optree.ops import treespec_dict as dict  # pylint: disable=redefined-builtin
 from optree.ops import treespec_from_collection as from_collection
+from optree.ops import treespec_frozendict as frozendict  # pylint: disable=redefined-builtin
 from optree.ops import treespec_leaf as leaf
 from optree.ops import treespec_list as list  # pylint: disable=redefined-builtin
 from optree.ops import treespec_namedtuple as namedtuple
@@ -51,5 +52,6 @@ __all__ = [
     'defaultdict',
     'deque',
     'structseq',
+    'frozendict',
     'from_collection',
 ]

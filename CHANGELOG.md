@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Preserve dict insertion order on `unflatten` for the Python `tree_flatten_one_level` path mirroring the C++ path by [@XuehaiPan](https://github.com/XuehaiPan) in [#280](https://github.com/metaopt/optree/pull/280).
+- Add built-in `frozendict` support for Python 3.15+ (PEP 814) by [@XuehaiPan](https://github.com/XuehaiPan) in [#274](https://github.com/metaopt/optree/pull/274).
 
 ### Changed
 
