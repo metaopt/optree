@@ -19,6 +19,7 @@ import copy
 import pickle
 import re
 import sys
+import warnings
 import weakref
 from collections import UserDict, UserList, namedtuple
 from dataclasses import dataclass
@@ -32,10 +33,14 @@ from helpers import (
     NODETYPE_REGISTRY,
     PYPY,
     Py_GIL_DISABLED,
+    check_script_in_subprocess,
     disable_systrace,
     gc_collect,
     parametrize,
+    skipif_android,
+    skipif_ios,
     skipif_pypy,
+    skipif_wasm,
 )
 from optree.registry import DictMetaData
 
@@ -133,6 +138,36 @@ def test_register_pytree_node_class_with_duplicate_registrations():
         optree.register_pytree_node_class(MyList2, namespace='mylist2')
 
     optree.register_pytree_node_class(namespace='mylist3')(MyList1)
+
+
+def test_register_pytree_node_duplicate_registration_does_not_warn():
+    # A rejected re-registration overrides nothing, so it must raise and emit no override warning.
+    mytuple = namedtuple('mytuple_duplicate', ['a', 'b'])  # noqa: PYI024
+
+    with pytest.warns(UserWarning, match=re.escape('is a subclass of `collections.namedtuple`')):
+        optree.register_pytree_node(
+            mytuple,
+            lambda t: (tuple(t), None, None),
+            lambda _, t: mytuple(*t),
+            namespace='mytuple_duplicate',
+        )
+
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            with pytest.raises(
+                ValueError,
+                match=r"PyTree type.*is already registered in namespace 'mytuple_duplicate'\.",
+            ):
+                optree.register_pytree_node(
+                    mytuple,
+                    lambda t: (tuple(t), None, None),
+                    lambda _, t: mytuple(*t),
+                    namespace='mytuple_duplicate',
+                )
+        assert [str(w.message) for w in caught] == []
+    finally:
+        optree.unregister_pytree_node(mytuple, namespace='mytuple_duplicate')
 
 
 def test_register_pytree_node_with_invalid_namespace():
@@ -401,6 +436,334 @@ def test_register_pytree_node_namedtuple():
     assert treespec1 != treespec3
 
 
+def test_register_pytree_node_warning_as_error_does_not_corrupt_registry():
+    # Registering a `namedtuple` / `PyStructSequence` subclass emits a `UserWarning`. Under
+    # warnings-as-errors that warning is raised as an exception; previously the C++ registry had
+    # already committed the registration and ignored the escalation, leaving corrupt state and a
+    # `SystemError`. The registration must instead be rolled back and the escalated warning raised.
+    mytuple = namedtuple('mytuple_warn_error', ['a', 'b'])  # noqa: PYI024
+    tree = mytuple(1, 2)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        with pytest.raises(UserWarning):
+            optree.register_pytree_node(
+                mytuple,
+                lambda t: (tuple(t), None, None),
+                lambda _, t: mytuple(*t),
+                namespace='mytuple_warn_error',
+            )
+
+    # The escalated registration must not have stuck (no custom node registered).
+    assert 'CustomTreeNode' not in str(
+        optree.tree_structure(tree, namespace='mytuple_warn_error'),
+    )
+
+    # A subsequent non-error registration must succeed cleanly, proving no half-committed state.
+    with pytest.warns(UserWarning, match=re.escape('is a subclass of `collections.namedtuple`')):
+        optree.register_pytree_node(
+            mytuple,
+            lambda t: (tuple(t), None, None),
+            lambda _, t: mytuple(*t),
+            namespace='mytuple_warn_error',
+        )
+    assert 'CustomTreeNode' in str(
+        optree.tree_structure(tree, namespace='mytuple_warn_error'),
+    )
+    optree.unregister_pytree_node(mytuple, namespace='mytuple_warn_error')
+
+
+@skipif_wasm
+@skipif_android
+@skipif_ios
+def test_register_pytree_node_no_deadlock_with_concurrent_flatten():
+    # Regression: `register_pytree_node` takes the registry write lock, and the namedtuple /
+    # PyStructSequence detection it runs releases the GIL. Holding the registry lock across that GIL
+    # release inverts the GIL <-> lock order and deadlocks a concurrent `tree_flatten` that holds
+    # the GIL while waiting on the registry read lock, wedging the whole interpreter. Run register /
+    # unregister concurrently with flatten in a subprocess under a watchdog; the process must finish.
+    check_script_in_subprocess(
+        """
+        import faulthandler
+        import threading
+
+        import optree
+
+        class MyType:
+            def __init__(self, children):
+                self.children = children
+
+        faulthandler.dump_traceback_later(30, exit=True)  # watchdog: abort the process on a hang
+
+        def register_loop():
+            for _ in range(5000):
+                try:
+                    optree.register_pytree_node(
+                        MyType,
+                        lambda o: (tuple(o.children), None, None),
+                        lambda _, c: MyType(list(c)),
+                        namespace='deadlock',
+                    )
+                except ValueError:
+                    pass
+                try:
+                    optree.unregister_pytree_node(MyType, namespace='deadlock')
+                except ValueError:
+                    pass
+
+        def flatten_loop():
+            tree = {'a': 1, 'b': 2, 'c': 3}
+            for _ in range(5000):
+                optree.tree_flatten(tree)
+
+        threads = [
+            threading.Thread(target=register_loop),
+            threading.Thread(target=flatten_loop),
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        print('COMPLETED')
+        """,
+        output='COMPLETED',
+        rstrip=True,
+    )
+
+
+@skipif_wasm
+@skipif_android
+@skipif_ios
+def test_unregister_pytree_node_not_found_no_deadlock_with_concurrent_flatten():
+    # Regression: `unregister_pytree_node` takes the registry write lock, and on the NOT-FOUND path
+    # it builds its error message using the namedtuple / PyStructSequence detection, which releases
+    # the GIL. Holding the registry lock across that GIL release inverts the GIL <-> lock order and
+    # deadlocks a concurrent `tree_flatten` that holds the GIL while waiting on the registry read
+    # lock (the symmetric twin of the `register_pytree_node` deadlock). Unregister a never-registered
+    # type (always not-found) concurrently with flatten in a subprocess under a watchdog; the process
+    # must finish.
+    check_script_in_subprocess(
+        """
+        import faulthandler
+        import threading
+
+        import optree
+
+        class NeverRegistered:  # never registered -> unregister always hits the not-found path
+            pass
+
+        faulthandler.dump_traceback_later(30, exit=True)  # watchdog: abort the process on a hang
+
+        def unregister_loop():
+            for _ in range(5000):
+                try:
+                    optree.unregister_pytree_node(NeverRegistered, namespace='deadlock')
+                except ValueError:
+                    pass
+
+        def flatten_loop():
+            tree = {'a': 1, 'b': 2, 'c': 3}
+            for _ in range(5000):
+                optree.tree_flatten(tree)
+
+        threads = [threading.Thread(target=unregister_loop) for _ in range(2)]
+        threads += [threading.Thread(target=flatten_loop) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        print('COMPLETED')
+        """,
+        output='COMPLETED',
+        rstrip=True,
+    )
+
+
+@skipif_wasm
+@skipif_android
+@skipif_ios
+def test_registry_error_paths_no_deadlock_with_reentrant_repr():
+    # Regression: the duplicate-registration and not-found error messages call `repr()` on the type
+    # while the registry WRITE lock is held. A metaclass `__repr__` that re-enters optree then takes
+    # the registry READ lock on the same thread, and the lock is not recursive, so it self-deadlocked
+    # before the error was even raised. Run under a watchdog in a subprocess.
+    check_script_in_subprocess(
+        """
+        import faulthandler
+
+        import optree
+
+        faulthandler.dump_traceback_later(30, exit=True)  # watchdog: abort the process on a hang
+
+        class Meta(type):
+            def __repr__(cls):
+                optree.tree_flatten({'a': 1})  # -> registry lookup -> registry read lock
+                return f'<{cls.__name__}>'
+
+        class MyType(metaclass=Meta):
+            pass
+
+        class NeverRegistered(metaclass=Meta):
+            pass
+
+        optree.register_pytree_node(
+            MyType,
+            lambda obj: ((), None, None),
+            lambda metadata, children: MyType(),
+            namespace='reentrant_repr',
+        )
+        try:
+            optree.register_pytree_node(
+                MyType,
+                lambda obj: ((), None, None),
+                lambda metadata, children: MyType(),
+                namespace='reentrant_repr',
+            )
+        except ValueError as ex:
+            assert '<MyType>' in str(ex), ex
+        else:
+            raise AssertionError('duplicate registration did not raise')
+
+        try:
+            optree.unregister_pytree_node(NeverRegistered, namespace='reentrant_repr')
+        except ValueError as ex:
+            assert '<NeverRegistered>' in str(ex), ex
+        else:
+            raise AssertionError('unregistering an unregistered type did not raise')
+
+        optree.unregister_pytree_node(MyType, namespace='reentrant_repr')
+        print('COMPLETED')
+        """,
+        output='COMPLETED',
+        rstrip=True,
+    )
+
+
+@skipif_wasm
+@skipif_android
+@skipif_ios
+@skipif_pypy  # `ref() is None` right after `unregister_node` needs CPython refcounting
+def test_unregister_node_no_deadlock_with_reentrant_weakref_callback():
+    # Regression: `Unregister` dropped the last references to the registration's Python objects
+    # while still holding the registry WRITE lock. That runs arbitrary user code (`__del__`, weakref
+    # callbacks), and a callback re-entering optree took the registry READ lock on the same
+    # non-recursive lock. Register through `_C` so the C++ registration holds the only references.
+    # Run under a watchdog in a subprocess.
+    check_script_in_subprocess(
+        """
+        import faulthandler
+        import weakref
+
+        import optree
+        import optree._C as _C
+        from optree.accessors import PyTreeEntry
+
+        faulthandler.dump_traceback_later(30, exit=True)  # watchdog: abort the process on a hang
+
+        class Foo:
+            pass
+
+        def make_funcs():
+            return lambda obj: ((), None, None), lambda metadata, children: Foo()
+
+        flatten_func, unflatten_func = make_funcs()
+        _C.register_node(Foo, flatten_func, unflatten_func, PyTreeEntry, 'reentrant_decref')
+
+        fired = []
+
+        def on_death(ref):
+            fired.append(optree.tree_flatten({'a': 1}))  # -> registry lookup -> read lock
+
+        ref = weakref.ref(flatten_func, on_death)
+        del flatten_func, unflatten_func
+
+        _C.unregister_node(Foo, 'reentrant_decref')
+        assert ref() is None
+        assert len(fired) == 1, fired
+        print('COMPLETED')
+        """,
+        output='COMPLETED',
+        rstrip=True,
+    )
+
+
+@skipif_wasm
+@skipif_android
+@skipif_ios
+def test_get_registry_size_concurrent_no_spurious_error():
+    # Regression: `GetRegistrySize()` reads the two internal registries (NoneIsNode / NoneIsLeaf)
+    # and checks they differ by exactly one (the extra `None` node). Reading them in two separate
+    # locked `Size()` calls dropped the lock between the reads, so a concurrent (un)registration
+    # could slip in and spuriously trip that check, surfacing as a `SystemError`. This manifests on
+    # free-threading builds (the GIL otherwise serializes the two reads). Hammer `get_registry_size()`
+    # while a type churns in and out of the registry, in a subprocess under a watchdog; the process
+    # must finish with no error recorded.
+    check_script_in_subprocess(
+        """
+        import faulthandler
+        import threading
+        import time
+
+        import optree
+        import optree._C as _C
+
+        class MyType:
+            def __init__(self, children):
+                self.children = children
+
+        faulthandler.dump_traceback_later(30, exit=True)  # watchdog: abort the process on a hang
+
+        errors = []
+        stop = threading.Event()
+
+        def register_loop():
+            for _ in range(5000):
+                try:
+                    optree.register_pytree_node(
+                        MyType,
+                        lambda o: (tuple(o.children), None, None),
+                        lambda _, c: MyType(list(c)),
+                        namespace='size-race',
+                    )
+                except ValueError:
+                    pass
+                try:
+                    optree.unregister_pytree_node(MyType, namespace='size-race')
+                except ValueError:
+                    pass
+            stop.set()
+
+        def size_loop():
+            while not stop.is_set():
+                try:
+                    _C.get_registry_size()
+                    _C.get_registry_size('size-race')
+                except Exception as exc:  # noqa: BLE001
+                    errors.append(repr(exc))
+                    return
+                # `get_registry_size()` takes the registry lock in read mode, so spinning here keeps
+                # overlapping shared holds on it and starves `register_loop`: `stop` is never set
+                # and the watchdog fires. The sleep must be non-zero, since `time.sleep(0)` maps to
+                # `Sleep(0)` on Windows and can return without ever dropping the lock.
+                time.sleep(0.001)
+
+        threads = [
+            threading.Thread(target=register_loop),
+            threading.Thread(target=size_loop),
+            threading.Thread(target=size_loop),
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        assert not errors, errors
+        print('COMPLETED')
+        """,
+        output='COMPLETED',
+        rstrip=True,
+    )
+
+
 def test_flatten_with_wrong_number_of_returns():
     @optree.register_pytree_node_class(namespace='error')
     class MyList1(UserList):
@@ -577,6 +940,36 @@ def test_pytree_node_registry_get():
         else:
             assert handler.namespace == ''
             assert handler is registry3[cls]
+
+
+def test_pytree_node_registry_get_named_namespace_takes_precedence_over_global():
+    # When a type is registered in BOTH the global namespace and a named namespace, the dict form of
+    # `.get(namespace=...)` must return the NAMED handler for that type, matching the single-class
+    # lookup, which checks the named namespace before falling back to the global one. Registering
+    # the global entry LAST would otherwise let it shadow the named one in the returned dict.
+    class Both:
+        def __init__(self, a):
+            self.a = a
+
+    def flatten(both):
+        return (both.a,), None, None
+
+    def unflatten(metadata, children):
+        return Both(*children)
+
+    optree.register_pytree_node(Both, flatten, unflatten, namespace='both-ns')
+    optree.register_pytree_node(Both, flatten, unflatten, namespace=GLOBAL_NAMESPACE)
+    try:
+        # Single-class lookup already prefers the named namespace.
+        assert optree.register_pytree_node.get(Both, namespace='both-ns').namespace == 'both-ns'
+        # The dict form must agree: the named handler wins over the global one.
+        registry = optree.register_pytree_node.get(namespace='both-ns')
+        assert registry[Both].namespace == 'both-ns'
+        # The global-only view still shows the global handler.
+        assert optree.register_pytree_node.get(namespace=GLOBAL_NAMESPACE)[Both].namespace == ''
+    finally:
+        optree.unregister_pytree_node(Both, namespace='both-ns')
+        optree.unregister_pytree_node(Both, namespace=GLOBAL_NAMESPACE)
 
 
 def test_pytree_node_registry_get_with_invalid_arguments():
