@@ -17,6 +17,7 @@
 
 import contextlib
 import itertools
+import os
 import pickle
 import platform
 import re
@@ -24,8 +25,9 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 import weakref
-from collections import OrderedDict, UserList, defaultdict, deque
+from collections import OrderedDict, UserList, defaultdict, deque, namedtuple
 
 import pytest
 
@@ -260,6 +262,25 @@ def test_treespec_string_representation(data):
         assert new_tree == reconstructed_tree
 
 
+@skipif_pypy  # CPython-only: `os.stat_result` slots 7, 8, 9 are unnamed; PyPy names them
+def test_treespec_structseq_unnamed_field_string_representation():
+    # `os.stat_result` renders its UNNAMED sequence slots (7, 8, 9) with the synthetic `<unnamed@N>`
+    # placeholder, following CPython's `<lambda>` convention for names that are not identifiers,
+    # rather than the bare `unnamed field` marker which reads as an invalid keyword. CPython's
+    # `stat_result_desc` has pinned the 7 named + 3 unnamed sequence fields for 16 years, so the
+    # repr is asserted exactly; the hidden float `st_atime` fields (indices >= 10) are not part of
+    # the sequence and must not leak into it.
+    assert os.stat_result.n_sequence_fields == 10
+    assert os.stat_result.n_unnamed_fields == 3
+    st = os.stat_result(range(os.stat_result.n_fields))
+    representation = str(optree.tree_structure(st))
+    assert representation == (
+        'PyTreeSpec(os.stat_result('
+        'st_mode=*, st_ino=*, st_dev=*, st_nlink=*, st_uid=*, st_gid=*, st_size=*, '
+        '<unnamed@7>=*, <unnamed@8>=*, <unnamed@9>=*))'
+    )
+
+
 def test_treespec_with_empty_tuple_string_representation():
     assert str(optree.tree_structure(())) == r'PyTreeSpec(())'
 
@@ -274,6 +295,50 @@ def test_treespec_with_empty_list_string_representation():
 
 def test_treespec_with_empty_dict_string_representation():
     assert str(optree.tree_structure({})) == r'PyTreeSpec({})'
+
+
+def test_treespec_namedtuple_repr_with_divergent_fields_raises_value_error():
+    # If a namedtuple's `_fields` is mutated after the treespec is built, the recorded arity and the
+    # now-divergent field count disagree. The repr must raise a clear `ValueError` attributing the
+    # cause, not an `InternalError` telling the user to file a bug report.
+    Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
+    treespec = optree.tree_structure(Point(1, 2))
+    assert str(treespec) == 'PyTreeSpec(Point(x=*, y=*))'
+
+    Point._fields = ('x', 'y', 'z')  # diverge: 3 fields vs the treespec's arity of 2
+    with pytest.raises(ValueError, match=r'does not match the arity'):
+        repr(treespec)
+
+
+def test_treespec_setstate_rejects_structseq_field_arity_mismatch():
+    # A PyStructSequence type's sequence-field count is fixed in C, so a node's arity must equal it
+    # (unlike a namedtuple, whose `_fields` can be mutated after the fact). `FromPicklable` (via
+    # `__setstate__`/`pickle`) must reject a crafted state pairing a PyStructSequence type with a
+    # mismatched arity at load time, rather than build a corrupt treespec that later aborts (e.g. in
+    # repr with an `InternalError`).
+    spec = optree.tree_structure(time.gmtime())  # struct_time: 9 sequence fields
+    node_states, none_is_leaf, namespace = spec.__getstate__()
+    # Swap the type to os.stat_result (10 sequence fields) while keeping the arity of 9.
+    crafted = tuple(
+        (kind, arity, os.stat_result if data is time.struct_time else data, *remaining)
+        for (kind, arity, data, *remaining) in node_states
+    )
+    obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+    with pytest.raises(RuntimeError, match=r'does not match the arity'):
+        obj.__setstate__((crafted, none_is_leaf, namespace))
+
+
+def test_treespec_setstate_rejects_namedtuple_field_arity_mismatch():
+    # A namedtuple's `_fields` can be mutated, so a crafted state can pair the type with an arity
+    # that no longer matches its field count. `FromPicklable` must reject it at load, rather than
+    # build a corrupt spec (the repr guards the post-load mutation case separately).
+    Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
+    state = optree.tree_structure(Point(1, 2)).__getstate__()  # arity 2
+    Point._fields = ('x', 'y', 'z')  # diverge: 3 fields vs the pickled arity of 2
+
+    obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+    with pytest.raises(RuntimeError, match=r'does not match the arity'):
+        obj.__setstate__(state)
 
 
 @disable_systrace
@@ -541,6 +606,29 @@ def test_treespec_pickle_roundtrip(
                 )
 
 
+@skipif_wasm
+@skipif_android
+@skipif_ios
+def test_treespec_pickle_all_protocols_roundtrip():
+    # pybind11's pickle support reconstructs cleanly only at protocol >= 2. Protocols 0 and 1 used
+    # to reconstruct via `object.__new__`, which pybind11 rejects with an untranslated C++ exception
+    # that aborts the interpreter (SIGABRT). Run in a subprocess so a regression fails this test
+    # rather than killing the whole suite.
+    check_script_in_subprocess(
+        r"""
+        import pickle
+
+        import optree
+
+        spec = optree.tree_structure({'a': [1, 2], 'b': (3, 4)})
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            restored = pickle.loads(pickle.dumps(spec, protocol=protocol))
+            assert restored == spec, (protocol, restored, spec)
+        """,
+        output=None,
+    )
+
+
 class Foo:
     def __init__(self, x, y):
         self.x = x
@@ -590,6 +678,402 @@ def test_treespec_pickle_missing_registration():
         match=r"^Unknown custom type in pickled PyTreeSpec: <class '.*'> in namespace 'foo'\.$",
     ):
         treespec = pickle.loads(serialized)
+
+
+def test_treespec_getstate_does_not_alias_internal_node_data():
+    # `__getstate__` (used by `pickle`) must return a snapshot, not aliases of the immutable spec's
+    # internal mutable containers: the keys of a dict/OrderedDict/defaultdict node and its
+    # insertion-order keys dict. Mutating the returned state otherwise reaches back into the spec,
+    # desyncing the keys from the arity (repr raises an InternalError) or adding a spurious
+    # original key (unflatten returns an extra entry). A custom node's entries are immutable.
+    class Custom:
+        def __init__(self, *values):
+            self.values = values
+
+    optree.register_pytree_node(
+        Custom,
+        lambda custom: (custom.values, None, tuple(range(len(custom.values)))),
+        lambda metadata, children: Custom(*children),
+        namespace='getstate_snapshot',
+    )
+    try:
+        tree = {
+            'b': Custom(1, 2),
+            'a': 3,
+            'od': OrderedDict([('y', 4), ('x', 5)]),
+            'dd': defaultdict(int, {'q': 6, 'p': 7}),
+        }
+        spec = optree.tree_structure(tree, namespace='getstate_snapshot')
+        node_states, _, _ = state = spec.__getstate__()
+        before = repr(state)
+
+        for node in node_states:
+            kind, node_data, node_entries, original_keys = node[0], node[2], node[3], node[7]
+            if kind in {optree.PyTreeKind.DICT, optree.PyTreeKind.ORDEREDDICT}:
+                node_data.append('injected')  # a dict/OrderedDict node's keys list
+            elif kind == optree.PyTreeKind.DEFAULTDICT:
+                node_data[1].append('injected')  # a defaultdict's (default_factory, keys) tuple
+            if isinstance(original_keys, dict):
+                original_keys['injected'] = None
+            assert node_entries is None or isinstance(node_entries, tuple)  # entries are immutable
+
+        assert repr(spec.__getstate__()) == before, 'mutating the pickled state corrupted the spec'
+    finally:
+        optree.unregister_pytree_node(Custom, namespace='getstate_snapshot')
+
+
+def test_treespec_getstate_aliases_custom_node_data():
+    # Limitation (characterization test): a custom node's `node_data` is the user-provided metadata,
+    # which `__getstate__` passes through by reference. optree copies its own dict/defaultdict keys
+    # (see `test_treespec_getstate_does_not_alias_internal_node_data`) but cannot generically
+    # deep-copy arbitrary metadata, so mutating it via the pickled state reaches back into the spec.
+    # Protecting custom metadata is the caller's responsibility; this pins the behavior.
+    class Custom:
+        def __init__(self, *children, alpha, beta=None):
+            self.children = children
+            self.metadata = {'alpha': alpha, 'beta': beta}
+
+        def __eq__(self, other):
+            return (
+                isinstance(other, Custom)
+                and self.children == other.children
+                and self.metadata == other.metadata
+            )
+
+        __hash__ = None
+
+    optree.register_pytree_node(
+        Custom,
+        lambda custom: (custom.children, custom.metadata),  # mutable dict metadata
+        lambda metadata, children: Custom(*children, **metadata),
+        namespace='getstate_alias_custom',
+    )
+    try:
+        leaves, treespec = optree.tree_flatten(
+            Custom(1, 2, alpha=3, beta=4),
+            namespace='getstate_alias_custom',
+        )
+        before = repr(treespec)
+        custom_state = next(
+            node for node in treespec.__getstate__()[0] if node[0] == optree.PyTreeKind.CUSTOM
+        )
+        assert custom_state[2] == {'alpha': 3, 'beta': 4}
+
+        # Mutate the aliased metadata in place via the pickled state.
+        custom_state[2]['gamma'] = 5  # mutate the aliased metadata in place
+
+        aliased = next(
+            node for node in treespec.__getstate__()[0] if node[0] == optree.PyTreeKind.CUSTOM
+        )
+        assert aliased[2] is custom_state[2]
+        assert aliased[2] == {'alpha': 3, 'beta': 4, 'gamma': 5}  # the mutation reached the spec
+        assert repr(treespec) == before.replace(
+            repr({'alpha': 3, 'beta': 4}),
+            repr({'alpha': 3, 'beta': 4, 'gamma': 5}),
+        )
+        # The corruption even reaches what `tree_unflatten` rebuilds, not just repr/getstate.
+        with pytest.raises(TypeError, match=r'unexpected keyword argument'):
+            optree.tree_unflatten(treespec, leaves)
+
+        # Replacing the metadata wholesale reaches the spec the same way, but here unflatten
+        # succeeds and rebuilds a different object: the corruption is silent, not an error.
+        custom_state[2].clear()
+        custom_state[2]['alpha'] = 42
+        aliased = next(
+            node for node in treespec.__getstate__()[0] if node[0] == optree.PyTreeKind.CUSTOM
+        )
+        assert aliased[2] is custom_state[2]
+        assert aliased[2] == {'alpha': 42}
+        assert repr(treespec) == before.replace(
+            repr({'alpha': 3, 'beta': 4}),
+            repr({'alpha': 42}),
+        )
+        reconstructed = optree.tree_unflatten(treespec, leaves)
+        reconstructed_treespec = optree.tree_structure(
+            reconstructed,
+            namespace='getstate_alias_custom',
+        )
+        assert reconstructed == Custom(1, 2, alpha=42)
+        assert reconstructed.metadata == {'alpha': 42, 'beta': None}
+        assert reconstructed_treespec != treespec
+        assert repr(reconstructed_treespec) == before.replace(
+            repr({'alpha': 3, 'beta': 4}),
+            repr({'alpha': 42, 'beta': None}),
+        )
+    finally:
+        optree.unregister_pytree_node(Custom, namespace='getstate_alias_custom')
+
+
+def test_treespec_setstate_does_not_alias_supplied_node_data():
+    # The symmetric half of `test_treespec_getstate_does_not_alias_internal_node_data`:
+    # `__setstate__` validated the supplied key list and then BORROWED it into the node, so
+    # mutating the state afterwards silently corrupted an already-restored treespec (the keys
+    # desync from the children, and `unflatten` pairs them up wrongly). It must copy instead.
+    # `original_keys` is already rebuilt via `dict.fromkeys`, so it is covered too.
+    def setstate(state):
+        obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+        obj.__setstate__(state)
+        return obj
+
+    trees = [
+        {'a': 0, 'b': 0},
+        OrderedDict([('a', 0), ('b', 0)]),
+        defaultdict(int, {'a': 0, 'b': 0}),
+        {'b': 0, 'a': 0},  # sorted keys differ from the insertion order recorded in original_keys
+    ]
+    for tree in trees:
+        spec = optree.tree_structure(tree)
+        state = spec.__getstate__()
+        restored = setstate(state)
+        before = repr(restored)
+        expected_entries = restored.entries()
+        expected_tree = restored.unflatten([10, 20])
+
+        for node in state[0]:
+            kind, node_data, original_keys = node[0], node[2], node[7]
+            if kind in {optree.PyTreeKind.DICT, optree.PyTreeKind.ORDEREDDICT}:
+                node_data.reverse()  # a dict/OrderedDict node's keys list
+                node_data.append('injected')
+            elif kind == optree.PyTreeKind.DEFAULTDICT:
+                node_data[1].reverse()  # a defaultdict's (default_factory, keys) tuple
+                node_data[1].append('injected')
+            if isinstance(original_keys, dict):
+                original_keys['injected'] = None
+
+        assert repr(restored) == before, tree
+        assert restored.entries() == expected_entries, tree
+        assert restored.unflatten([10, 20]) == expected_tree, tree
+        assert restored == spec, tree
+
+
+def test_treespec_setstate_rejects_malformed_state():
+    # `PyTreeSpec.__setstate__` (used by `pickle`) must reject structurally malformed state rather
+    # than build a corrupt spec that triggers out-of-bounds reads / crashes when later used. The
+    # per-node tuple layout is (kind, arity, node_data, node_entries, custom, num_leaves, num_nodes,
+    # original_keys); see `PyTreeSpec::FromPicklable`.
+    def setstate(state):
+        obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+        obj.__setstate__(state)
+        return obj
+
+    CUSTOM = int(optree.PyTreeKind.CUSTOM)  # noqa: N806
+    LEAF = int(optree.PyTreeKind.LEAF)  # noqa: N806
+    NONE = int(optree.PyTreeKind.NONE)  # noqa: N806
+    TUPLE = int(optree.PyTreeKind.TUPLE)  # noqa: N806
+    DICT = int(optree.PyTreeKind.DICT)  # noqa: N806
+    NAMEDTUPLE = int(optree.PyTreeKind.NAMEDTUPLE)  # noqa: N806
+    DEFAULTDICT = int(optree.PyTreeKind.DEFAULTDICT)  # noqa: N806
+    DEQUE = int(optree.PyTreeKind.DEQUE)  # noqa: N806
+    STRUCTSEQUENCE = int(optree.PyTreeKind.STRUCTSEQUENCE)  # noqa: N806
+    NUM_KINDS = int(optree.PyTreeKind.NUM_KINDS)  # noqa: N806
+    leaf_node = (LEAF, 0, None, None, None, 1, 1, None)  # arity 0, 1 leaf, 1 node
+    keys_ab = {'a': None, 'b': None}  # original_keys for a 2-key ('a', 'b') dict node
+
+    # Sanity: well-formed states still round-trip.
+    for spec in [
+        optree.tree_structure((0, 0)),
+        optree.tree_structure({'a': 0, 'b': 0}),
+        optree.tree_structure(defaultdict(int, {'a': 0, 'b': 0})),
+    ]:
+        assert setstate(spec.__getstate__()) == spec
+
+    malformed_exceptions = (RuntimeError, ValueError, TypeError)
+
+    # The rejection cases below follow the order of the checks in `PyTreeSpec::FromPicklable`.
+
+    # A state that is not a 3-tuple.
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node,), False))
+
+    # A node state that is not a 7- or 8-tuple.
+    with pytest.raises(malformed_exceptions):
+        setstate((((LEAF, 0, None, None, None, 1),), False, ''))
+
+    # Kind out of range: the raw integer is validated before the narrowing `uint8_t` enum cast,
+    # which would otherwise wrap a bogus value to a valid-looking kind.
+    with pytest.raises(malformed_exceptions):
+        setstate((((NUM_KINDS, 0, None, None, None, 0, 1, None),), False, ''))
+
+    # Negative arity.
+    with pytest.raises(malformed_exceptions):
+        setstate((((TUPLE, -1, None, None, None, 0, 1, None),), False, ''))
+
+    # A dict node missing its original keys, and a non-dict node carrying them.
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, (DICT, 2, ['a', 'b'], None, None, 2, 3, None)), False, ''))
+    with pytest.raises(malformed_exceptions):
+        setstate((((LEAF, 0, None, None, None, 1, 1, keys_ab),), False, ''))
+
+    # A negative leaf count, or a non-positive node count.
+    with pytest.raises(malformed_exceptions):
+        setstate((((LEAF, 0, None, None, None, -1, 1, None),), False, ''))
+    with pytest.raises(malformed_exceptions):
+        setstate((((LEAF, 0, None, None, None, 1, 0, None),), False, ''))
+
+    # Node data on a leaf or none node (childless kinds that must not carry any).
+    with pytest.raises(malformed_exceptions):
+        setstate((((LEAF, 0, 'data', None, None, 1, 1, None),), False, ''))
+
+    # Leaf or none nodes are childless; a nonzero arity absorbs the preceding subtrees while still
+    # folding consistently, so the reconstructed spec reports a leaf/None while its num_leaves counts
+    # the absorbed children and unflatten silently drops them.
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, (NONE, 1, None, None, None, 1, 2, None)), False, ''))
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, (LEAF, 1, None, None, None, 1, 2, None)), False, ''))
+
+    # A None-kind node cannot appear when none_is_leaf is set (None is flattened as a leaf then, so
+    # a flattened tree never contains a None node); accepting one later raises an InternalError.
+    with pytest.raises(malformed_exceptions):
+        setstate((((NONE, 0, None, None, None, 0, 1, None),), True, ''))
+
+    # Node data on a tuple or list node.
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, (TUPLE, 2, 'data', None, None, 2, 3, None)), False, ''))
+
+    # Dict key list shorter than arity (MakeNode would index past the list end).
+    short_keys = (DICT, 2, ['a'], None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, short_keys), False, ''))
+
+    # Dict with duplicate keys (would collapse the rebuilt dict), and with an unhashable key.
+    dup_keys = (DICT, 2, ['a', 'a'], None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, dup_keys), False, ''))
+    unhashable_key = (DICT, 2, [[], []], None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, unhashable_key), False, ''))
+
+    # NamedTuple / StructSequence node_data that is not the expected kind of type.
+    with pytest.raises(malformed_exceptions):
+        setstate((((NAMEDTUPLE, 0, int, None, None, 0, 1, None),), False, ''))
+    with pytest.raises(malformed_exceptions):
+        setstate((((STRUCTSEQUENCE, 0, int, None, None, 0, 1, None),), False, ''))
+
+    # DefaultDict metadata as a list where a 2-tuple is expected previously caused a raw tuple-item
+    # read to segfault; it is now coerced to a tuple and used safely.
+    restored = setstate(
+        (
+            (
+                leaf_node,
+                leaf_node,
+                (DEFAULTDICT, 2, [int, ['a', 'b']], None, None, 2, 3, keys_ab),
+            ),
+            False,
+            '',
+        ),
+    )
+    assert optree.tree_unflatten(restored, [10, 20]) == defaultdict(int, {'a': 10, 'b': 20})
+
+    # DefaultDict metadata with the wrong tuple size is rejected.
+    wrong_metadata = (DEFAULTDICT, 2, (int, ['a', 'b'], 'extra'), None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, wrong_metadata), False, ''))
+
+    # DefaultDict default_factory that is neither None nor callable.
+    bad_factory = (DEFAULTDICT, 2, (42, ['a', 'b']), None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, bad_factory), False, ''))
+
+    # DefaultDict keys too few, and DefaultDict keys not distinct (the Dict variants are above).
+    defaultdict_short = (DEFAULTDICT, 2, (int, ['a']), None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, defaultdict_short), False, ''))
+    defaultdict_dup = (DEFAULTDICT, 2, (int, ['a', 'a']), None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, defaultdict_dup), False, ''))
+
+    # Deque maxlen that is neither None nor an int, and maxlen smaller than the arity (a deque holds
+    # at most maxlen items, so arity <= maxlen).
+    with pytest.raises(malformed_exceptions):
+        setstate((((DEQUE, 0, 'x', None, None, 0, 1, None),), False, ''))
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, (DEQUE, 2, 1, None, None, 2, 3, None)), False, ''))
+
+    # A non-custom node carrying node entries or a custom type.
+    with pytest.raises(malformed_exceptions):
+        setstate(
+            ((leaf_node, leaf_node, (TUPLE, 2, None, ('a', 'b'), None, 2, 3, None)), False, ''),
+        )
+
+    # Original keys whose count (not just key set) disagrees with the arity.
+    short_original = (DICT, 2, ['a', 'b'], None, None, 2, 3, {'a': None})
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, short_original), False, ''))
+
+    # Dict original_keys whose key set differs from the sorted key list.
+    mismatched_original = (DICT, 2, ['a', 'b'], None, None, 2, 3, {'a': None, 'c': None})
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, mismatched_original), False, ''))
+
+    # A custom node whose node-entries count disagrees with the arity (needs a registered type).
+    class MalformedCustomNode:
+        pass
+
+    optree.register_pytree_node(
+        MalformedCustomNode,
+        lambda obj: ((), None),
+        lambda metadata, children: MalformedCustomNode(),
+        namespace='malformed',
+    )
+    try:
+        custom_node = (CUSTOM, 2, None, ('one-entry',), MalformedCustomNode, 2, 3, None)
+        with pytest.raises(malformed_exceptions):
+            setstate(((leaf_node, leaf_node, custom_node), False, 'malformed'))
+    finally:
+        optree.unregister_pytree_node(MalformedCustomNode, namespace='malformed')
+
+    # A node claiming more children than the traversal provides.
+    with pytest.raises(malformed_exceptions):
+        setstate((((TUPLE, 2, None, None, None, 2, 3, None),), False, ''))
+
+    # Inconsistent intermediate num_nodes (previously only the last node was checked).
+    with pytest.raises(malformed_exceptions):
+        setstate(
+            (
+                (
+                    (LEAF, 0, None, None, None, 1, 5, None),  # leaf claims num_nodes == 5
+                    leaf_node,
+                    (TUPLE, 2, None, None, None, 2, 3, None),
+                ),
+                False,
+                '',
+            ),
+        )
+
+    # A traversal that yields more than one tree.
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node), False, ''))
+
+
+def test_treespec_setstate_rejects_builtin_custom_type():
+    # Regression: `FromPicklable` accepted any registration found for a CUSTOM node's custom type.
+    # The built-in registrations (NoneType/tuple/list/dict/...) live in the same map but carry empty
+    # flatten/unflatten callables, so the reconstructed node later called a null function pointer
+    # and crashed the interpreter. Both `__setstate__` and `pickle.loads` must reject it.
+    CUSTOM = int(optree.PyTreeKind.CUSTOM)  # noqa: N806
+    LEAF = int(optree.PyTreeKind.LEAF)  # noqa: N806
+    leaf_node = (LEAF, 0, None, None, None, 1, 1, None)
+
+    for builtin_type in (list, dict, tuple, deque, OrderedDict, defaultdict, type(None)):
+        state = ((leaf_node, (CUSTOM, 1, None, None, builtin_type, 1, 2, None)), False, '')
+        obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+        with pytest.raises(RuntimeError, match=r'the custom type is a built-in type'):
+            obj.__setstate__(state)
+
+        # The same state shipped as a pickle payload, hand-assembled the way an attacker would:
+        # `NEWOBJ` an empty spec, then `BUILD` it from the crafted state.
+        blob = b''.join(
+            [
+                pickle.PROTO + bytes([2]),
+                pickle.GLOBAL + b'optree\nPyTreeSpec\n',
+                pickle.EMPTY_TUPLE + pickle.NEWOBJ,
+                pickle.dumps(state, protocol=2)[2:-1],  # strip the PROTO / STOP framing
+                pickle.BUILD + pickle.STOP,
+            ],
+        )
+        with pytest.raises(RuntimeError, match=r'the custom type is a built-in type'):
+            pickle.loads(blob)  # crafted payload, the point of the test
 
 
 @parametrize(

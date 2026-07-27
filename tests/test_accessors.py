@@ -17,6 +17,7 @@
 
 import dataclasses
 import itertools
+import os
 import re
 from collections import OrderedDict, UserDict, UserList, defaultdict, deque
 from typing import Any, NamedTuple
@@ -24,7 +25,13 @@ from typing import Any, NamedTuple
 import pytest
 
 import optree
-from helpers import TREE_ACCESSORS, SysFloatInfoType, assert_equal_type_and_value, parametrize
+from helpers import (
+    TREE_ACCESSORS,
+    SysFloatInfoType,
+    assert_equal_type_and_value,
+    parametrize,
+    skipif_pypy,
+)
 
 
 def test_pytree_accessor_new():
@@ -226,6 +233,22 @@ def test_pytree_accessor_equal_hash(none_is_leaf):
                 assert hash(accessor1) == hash(accessor2)
             else:
                 assert hash(accessor1) != hash(accessor2)
+
+
+@skipif_pypy  # PyPy names every sequence slot, so there is no unnamed slot to report
+def test_structsequence_entry_repr_unnamed_slot():
+    # An unnamed slot has no field name, so the repr shows the index it stands for rather than
+    # printing the marker as if it were a keyword argument.
+    st = os.stat_result(range(os.stat_result.n_fields))
+    entries = [accessor[-1] for accessor in optree.tree_accessors(st)]
+    unnamed = [entry for entry in entries if entry.is_unnamed]
+    named = [entry for entry in entries if not entry.is_unnamed]
+    assert unnamed, 'expected at least one unnamed sequence slot'
+
+    for entry in unnamed:
+        assert repr(entry) == f'StructSequenceEntry(entry={entry.entry!r}, type={os.stat_result!r})'
+    for entry in named:
+        assert repr(entry) == f'StructSequenceEntry(field={entry.field!r}, type={os.stat_result!r})'
 
 
 def test_pytree_entry_init():

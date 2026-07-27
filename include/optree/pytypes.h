@@ -24,6 +24,7 @@ limitations under the License.
 #include <type_traits>    // std::enable_if_t, std::is_same_v, std::is_base_of_v, std::conditional_t
 #include <unordered_map>  // std::unordered_map
 #include <utility>        // std::forward, std::pair, std::make_pair, std::move
+#include <vector>         // std::vector
 
 #include <Python.h>
 
@@ -170,6 +171,25 @@ inline Py_ALWAYS_INLINE void DictSetItem(const py::handle &dict,
     if (PyDict_SetItem(dict.ptr(), key.ptr(), value.ptr()) < 0) [[unlikely]] {
         throw py::error_already_set();
     }
+}
+
+// Shallow copies through the C API. A Python-level `.copy()` would cost an attribute lookup, a
+// bound-method allocation and a vectorcall per call.
+[[nodiscard]] inline py::list ListCopy(const py::handle &list) {
+    const scoped_critical_section cs{list};
+    auto copy = py::reinterpret_steal<py::list>(PyList_GetSlice(list.ptr(), 0, ListGetSize(list)));
+    if (!copy) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    return copy;
+}
+[[nodiscard]] inline py::dict DictCopy(const py::handle &dict) {
+    const scoped_critical_section cs{dict};
+    auto copy = py::reinterpret_steal<py::dict>(PyDict_Copy(dict.ptr()));
+    if (!copy) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    return copy;
 }
 
 inline Py_ALWAYS_INLINE void AssertExactList(const py::handle &object) {
@@ -557,23 +577,50 @@ inline Py_ALWAYS_INLINE void AssertExactStructSequence(const py::handle &object)
         import sys
 
         StructSequenceFieldType = type(type(sys.version_info).major)
-        indices_by_name = {
-            name: member.index
+        # PyPy has no unnamed fields; a descriptor's `.index` is its sequence position.
+        # Map index -> name and defensively fill any missing (unnamed) slot with the marker.
+        names_by_index = {
+            member.index: name
             for name, member in vars(cls).items()
             if isinstance(member, StructSequenceFieldType)
         }
-        fields.extend(sorted(indices_by_name, key=indices_by_name.get)[:cls.n_sequence_fields])
+        fields.extend(
+            names_by_index.get(index, unnamed_field) for index in range(cls.n_sequence_fields)
+        )
         )py",
-        py::dict(py::arg("cls") = type, py::arg("fields") = fields));
+        py::dict(py::arg("cls") = type,
+                 py::arg("fields") = fields,
+                 py::arg("unnamed_field") = py::str(PyStructSequenceUnnamedField())));
     return py::tuple{fields};
 #else
     const auto n_sequence_fields = thread_safe_cast<py::ssize_t>(
         EVALUATE_WITH_LOCK_HELD(py::getattr(type, "n_sequence_fields"), type));
     const auto * const members = reinterpret_cast<PyTypeObject *>(type.ptr())->tp_members;
+    // `tp_members` lists only the NAMED fields, but each carries a byte `offset` encoding its
+    // sequence index, relative to `offsetof(PyTupleObject, ob_item)`. Map each member back to its
+    // slot by offset: indexing `members[i]` by position mislabels every slot after the first
+    // unnamed one (e.g. `os.stat_result` slots 7/8/9 reported as `st_atime`/`st_mtime`/`st_ctime`).
     py::tuple fields{n_sequence_fields};
+    // Fill the named slots first, then default the remaining (unnamed) slots to the marker.
+    // Pre-filling every slot with the marker and overwriting the named ones would leak each
+    // overwritten marker: `TupleSetItem` uses `PyTuple_SET_ITEM`, which does not decref what it
+    // replaces.
+    std::vector<bool> named(n_sequence_fields, false);
+    for (const PyMemberDef *member = members; member != nullptr && member->name != nullptr;
+         // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+         ++member) {
+        const py::ssize_t index =
+            (member->offset - py::ssize_t_cast(offsetof(PyTupleObject, ob_item))) /
+            py::ssize_t_cast(sizeof(PyObject *));
+        if (index >= 0 && index < n_sequence_fields) [[likely]] {
+            TupleSetItem(fields, index, py::str(member->name));
+            named[index] = true;
+        }
+    }
     for (py::ssize_t i = 0; i < n_sequence_fields; ++i) {
-        // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
-        TupleSetItem(fields, i, py::str(members[i].name));
+        if (!named[i]) [[unlikely]] {
+            TupleSetItem(fields, i, py::str(PyStructSequenceUnnamedField()));
+        }
     }
     return fields;
 #endif

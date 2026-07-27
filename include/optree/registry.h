@@ -17,7 +17,7 @@ limitations under the License.
 
 #pragma once
 
-#include <cstdint>        // std::uint8_t
+#include <cstdint>        // std::uint8_t, UINT8_MAX
 #include <memory>         // std::shared_ptr
 #include <optional>       // std::optional, std::nullopt
 #include <string>         // std::string
@@ -55,6 +55,12 @@ enum class PyTreeKind : std::uint8_t {
     StructSequence,  // A PyStructSequence
     NumKinds,        // Number of kinds (placed at the end)
 };
+
+// A new pytree kind must keep `NumKinds` within the `std::uint8_t` underlying type; otherwise the
+// enum cannot represent every value and code that narrows a kind to `std::uint8_t` (e.g. pickle
+// deserialization in `PyTreeSpec::FromPicklable`) would silently wrap.
+static_assert(static_cast<ssize_t>(PyTreeKind::NumKinds) <= UINT8_MAX,
+              "PyTreeKind::NumKinds overflows its std::uint8_t underlying type.");
 
 constexpr PyTreeKind kCustom = PyTreeKind::Custom;
 constexpr PyTreeKind kLeaf = PyTreeKind::Leaf;

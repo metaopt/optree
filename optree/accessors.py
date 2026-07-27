@@ -319,12 +319,26 @@ class StructSequenceEntry(SequenceEntry[_T]):
         """Get the field name."""
         return self.fields[self.entry]
 
+    @property
+    def is_unnamed(self, /) -> bool:
+        """Whether the entry addresses an unnamed :class:`PyStructSequence` slot."""
+        # pylint: disable-next=import-outside-toplevel
+        from optree.typing import PyStructSequence_UnnamedField
+
+        return self.field == PyStructSequence_UnnamedField
+
     def __repr__(self, /) -> str:
         """Get the representation of the path entry."""
+        if self.is_unnamed:  # pragma: pypy no cover
+            # The marker is not a field name, so show the index it stands for.
+            return f'{self.__class__.__name__}(entry={self.entry!r}, type={self.type!r})'
         return f'{self.__class__.__name__}(field={self.field!r}, type={self.type!r})'
 
     def codify(self, /, node: str = '') -> str:
         """Generate code for accessing the path entry."""
+        if self.is_unnamed:  # pragma: pypy no cover
+            # An unnamed slot is only reachable by index.
+            return super().codify(node)
         return f'{node}.{self.field}'
 
 
