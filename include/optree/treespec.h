@@ -17,6 +17,7 @@ limitations under the License.
 
 #pragma once
 
+#include <atomic>    // std::atomic
 #include <memory>    // std::unique_ptr
 #include <optional>  // std::optional, std::nullopt
 #include <string>    // std::string
@@ -29,6 +30,7 @@ limitations under the License.
 
 #include "optree/exceptions.h"
 #include "optree/hashing.h"
+#include "optree/pymacros.h"
 #include "optree/registry.h"
 #include "optree/synchronization.h"
 
@@ -314,7 +316,7 @@ private:
     // Manufacture an instance of a node given its children.
     [[nodiscard]] static py::object MakeNode(
         const Node &node,
-        const py::object children[],  // NOLINT[hicpp-avoid-c-arrays]
+        const py::object children[],  // NOLINT[cppcoreguidelines-avoid-c-arrays]
         const size_t &num_children);
 
     // Identify the path entry class for a node.
@@ -436,6 +438,9 @@ private:
     const std::string m_namespace;
     const bool m_is_dict_insertion_ordered;
     mutable mutex m_mutex{};
+    // The thread currently running `Next()`, or a default-constructed id when idle. Used to reject
+    // re-entrant iteration instead of deadlocking on the non-recursive `m_mutex`.
+    std::atomic<std::thread::id> m_running_thread_id{};
 
     template <bool NoneIsLeaf>
     [[nodiscard]] py::object NextImpl();

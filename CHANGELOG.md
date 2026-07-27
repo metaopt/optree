@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Define `Py_GIL_DISABLED` for free-threaded debug builds on Windows when building the C extension to work around an upstream CMake `FindPython` bug by [@XuehaiPan](https://github.com/XuehaiPan) in [#285](https://github.com/metaopt/optree/pull/285).
+- Fix a deadlock when registering or unregistering a pytree node concurrently with flattening, caused by releasing the GIL while holding the registry lock by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
+- Fix a deadlock when a duplicate registration or an unregistration of an unregistered type formats its error message, which runs the type's `__repr__` while the registry lock is held and wedges any thread that is flattening by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
+- Fix registering an already-registered `collections.namedtuple` subclass or `PyStructSequence` emitting the override warning even though the registration is rejected, which raised `UserWarning` instead of `ValueError` under warnings-as-errors by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
+- Fix a deadlock when unregistering a pytree node drops the last reference to its flatten or unflatten function, so a `__del__` or weakref callback re-entered the registry while its lock was held by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
+- Fix a deadlock while flattening on free-threading builds, caused by acquiring the non-recursive dictionary insertion order lock twice by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
+- Fix a spurious `SystemError` from `optree._C.get_registry_size()` when a concurrent registration slipped between its two reads by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
+- Fix `optree.tree_iter()` hanging uninterruptibly when the `is_leaf` predicate or a custom flatten function advances the same iterator, now reported as a `RuntimeError` by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
 
 ### Removed
 

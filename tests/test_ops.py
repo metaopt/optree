@@ -227,6 +227,44 @@ def test_tree_iter(
             next(it)
 
 
+@skipif_wasm
+@skipif_android
+@skipif_ios
+def test_tree_iter_reentrant_next():
+    # Regression: `PyTreeIter::Next()` takes a non-recursive mutex and then runs user code
+    # (`is_leaf` and any custom `flatten_func`). Calling `next()` on the same iterator from there
+    # blocked on a mutex the thread already held, hanging the interpreter uninterruptibly. It must
+    # raise instead, mirroring CPython's "generator already executing". Run under a watchdog in a
+    # subprocess so a regression fails instead of wedging the test session.
+    check_script_in_subprocess(
+        """
+        import faulthandler
+
+        import optree
+
+        faulthandler.dump_traceback_later(30, exit=True)  # watchdog: abort the process on a hang
+
+        it = None
+
+        def is_leaf(x):
+            if x == 1:
+                try:
+                    next(it)
+                except RuntimeError as ex:
+                    assert str(ex) == 'PyTreeIter is already iterating.', ex
+                else:
+                    raise AssertionError('re-entrant next() did not raise')
+            return False
+
+        it = optree.tree_iter([1, 2, 3], is_leaf=is_leaf)
+        assert list(it) == [1, 2, 3]
+        print('COMPLETED')
+        """,
+        output='COMPLETED',
+        rstrip=True,
+    )
+
+
 def test_traverse():
     tree = {'b': 2, 'a': 1, 'c': {'f': None, 'e': 3, 'g': 4}}
     #          tree

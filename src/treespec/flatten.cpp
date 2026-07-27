@@ -204,17 +204,11 @@ bool PyTreeSpec::FlattenInto(const py::handle &handle,
                              const bool &none_is_leaf,
                              const std::string &registry_namespace) {
     bool found_custom = false;
-    bool is_dict_insertion_ordered = false;
-    bool is_dict_insertion_ordered_in_current_namespace = false;
-    {
-#if defined(OPTREE_HAS_READ_WRITE_LOCK)
-        const scoped_read_lock lock{PyTreeTypeRegistry::sm_dict_order_mutex};
-#endif
-        is_dict_insertion_ordered = PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace);
-        is_dict_insertion_ordered_in_current_namespace =
-            PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace,
-                                                       /*inherit_global_namespace=*/false);
-    }
+    const auto dict_order_flags =
+        PyTreeTypeRegistry::GetDictInsertionOrderedFlags(registry_namespace);
+    const bool is_dict_insertion_ordered = dict_order_flags.with_inherited_global_namespace;
+    const bool is_dict_insertion_ordered_in_current_namespace =
+        dict_order_flags.in_current_namespace;
 
     if (none_is_leaf) [[unlikely]] {
         if (!is_dict_insertion_ordered) [[likely]] {
@@ -481,17 +475,11 @@ bool PyTreeSpec::FlattenIntoWithPath(const py::handle &handle,
                                      const bool &none_is_leaf,
                                      const std::string &registry_namespace) {
     bool found_custom = false;
-    bool is_dict_insertion_ordered = false;
-    bool is_dict_insertion_ordered_in_current_namespace = false;
-    {
-#if defined(OPTREE_HAS_READ_WRITE_LOCK)
-        const scoped_read_lock lock{PyTreeTypeRegistry::sm_dict_order_mutex};
-#endif
-        is_dict_insertion_ordered = PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace);
-        is_dict_insertion_ordered_in_current_namespace =
-            PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace,
-                                                       /*inherit_global_namespace=*/false);
-    }
+    const auto dict_order_flags =
+        PyTreeTypeRegistry::GetDictInsertionOrderedFlags(registry_namespace);
+    const bool is_dict_insertion_ordered = dict_order_flags.with_inherited_global_namespace;
+    const bool is_dict_insertion_ordered_in_current_namespace =
+        dict_order_flags.in_current_namespace;
 
     auto stack = reserved_vector<py::handle>(4);
     if (none_is_leaf) [[unlikely]] {
@@ -571,7 +559,7 @@ py::list PyTreeSpec::FlattenUpTo(const py::object &tree) const {
     const ssize_t num_leaves = GetNumLeaves();
     py::list leaves{num_leaves};
     ssize_t leaf = num_leaves - 1;
-    while (!agenda.empty()) {
+    while (!agenda.empty()) [[likely]] {
         if (it == m_traversal.crend()) [[unlikely]] {
             std::ostringstream oss{};
             oss << "Tree structures did not match; expected: " << ToString()
