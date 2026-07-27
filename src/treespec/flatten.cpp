@@ -557,8 +557,10 @@ py::list PyTreeSpec::FlattenUpTo(const py::object &tree) const {
 
     auto it = m_traversal.crbegin();
     const ssize_t num_leaves = GetNumLeaves();
-    py::list leaves{num_leaves};
-    ssize_t leaf = num_leaves - 1;
+    // A pre-sized `py::list` is GC-tracked with NULL slots from creation, and the walk below runs
+    // arbitrary user code (custom `flatten_func`, dict key `__hash__`/`__eq__`, `__repr__`) that
+    // can reach it via `gc.get_objects()`. Collect into a reversed vector instead.
+    auto leaves = reserved_vector<py::object>(num_leaves);
     while (!agenda.empty()) [[likely]] {
         if (it == m_traversal.crend()) [[unlikely]] {
             std::ostringstream oss{};
@@ -573,9 +575,8 @@ py::list PyTreeSpec::FlattenUpTo(const py::object &tree) const {
 
         switch (node.kind) {
             case PyTreeKind::Leaf: {
-                EXPECT_GE(leaf, 0, "Leaf count mismatch.");
-                ListSetItem(leaves, leaf, object);
-                --leaf;
+                EXPECT_LT(py::ssize_t_cast(leaves.size()), num_leaves, "Leaf count mismatch.");
+                leaves.emplace_back(object);
                 break;
             }
 
@@ -784,13 +785,18 @@ py::list PyTreeSpec::FlattenUpTo(const py::object &tree) const {
                 INTERNAL_ERROR();
         }
     }
-    if (it != m_traversal.crend() || leaf != -1) [[unlikely]] {
+    if (it != m_traversal.crend() || py::ssize_t_cast(leaves.size()) != num_leaves) [[unlikely]] {
         std::ostringstream oss{};
         oss << "Tree structures did not match; expected: " << ToString()
             << ", got: " << PyRepr(tree) << ".";
         throw py::value_error(oss.str());
     }
-    return leaves;
+    py::list result{num_leaves};
+    ssize_t index = num_leaves;
+    for (const py::object &leaf : leaves) {
+        ListSetItem(result, --index, leaf);
+    }
+    return result;
 }
 
 template <bool NoneIsLeaf>

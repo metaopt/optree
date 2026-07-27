@@ -518,6 +518,54 @@ def test_flatten_up_to_none_is_leaf():
     assert subtrees == [accessor(tree) for accessor in optree.treespec_accessors(treespec)]
 
 
+@skipif_wasm
+@skipif_android
+@skipif_ios
+def test_flatten_up_to_does_not_expose_a_partially_filled_leaves_list():
+    # Regression: `flatten_up_to` filled a pre-sized list, which is GC-tracked with NULL slots from
+    # the moment it is created, while running user code (a custom `flatten_func`, a dict key's
+    # `__hash__`/`__eq__`, `__repr__` on the error paths). Such code can reach the list through
+    # `gc.get_objects()`, and reading an unwritten slot crashes the interpreter. Run in a subprocess:
+    # a regression aborts rather than fails.
+    check_script_in_subprocess(
+        """
+        import gc
+
+        import optree
+
+        NUM_LEAVES = 1237
+        captured = []
+
+        class Key:
+            def __hash__(self):
+                captured.extend(
+                    obj for obj in gc.get_objects()
+                    if type(obj) is list and len(obj) == NUM_LEAVES
+                )
+                return 0
+
+            def __eq__(self, other):
+                return isinstance(other, Key)
+
+        treespec = optree.tree_structure(({Key(): (1, 2, 3)}, tuple(range(NUM_LEAVES - 3))))
+        assert treespec.num_leaves == NUM_LEAVES
+        # An arity mismatch deep in the tree: the walk runs `Key.__hash__` well before the last leaf.
+        try:
+            treespec.flatten_up_to(({Key(): (1, 2)}, tuple(range(NUM_LEAVES - 3))))
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('flatten_up_to did not report the arity mismatch')
+
+        for lst in captured:
+            list(lst)  # a NULL slot here crashes or raises `SystemError`
+        print('COMPLETED')
+        """,
+        output='COMPLETED',
+        rstrip=True,
+    )
+
+
 @parametrize(
     leaves_fn=[
         optree.tree_leaves,
@@ -545,6 +593,23 @@ def test_flatten_is_leaf(leaves_fn):
     z = [(1, 2), (3, 4), None, (5, None)]
     leaves = leaves_fn(z, is_leaf=is_none)
     assert leaves == [1, 2, 3, 4, None, 5, None]
+
+
+def test_flatten_is_leaf_shrinking_the_list():
+    # Regression: the flattener reads the list length once and then indexes it while running
+    # `is_leaf` in between. Shrinking the list from the predicate used to read past the end on
+    # Python < 3.13, which uses the unchecked `PyList_GET_ITEM`. It must raise `IndexError` on every
+    # supported version.
+    lst = [0, 1, 2, 3, 4, 5, 6, 7]
+
+    def is_leaf(x):
+        if x == 0:
+            del lst[1:]  # shrink while the flattener is looping over indices 0..7
+        return False
+
+    with pytest.raises(IndexError, match=re.escape('list index out of range')):
+        optree.tree_flatten(lst, is_leaf=is_leaf)
+    assert lst == [0]
 
 
 @parametrize(

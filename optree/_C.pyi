@@ -20,7 +20,7 @@ import enum
 import sys
 from collections.abc import Callable, Collection, Iterable, Iterator
 from types import MappingProxyType
-from typing import Any, ClassVar, Final, final
+from typing import Any, ClassVar, Final, final, overload
 from typing_extensions import Self  # Python 3.11+
 
 from optree.typing import (
@@ -102,18 +102,36 @@ class PyTreeSpec:
         f_leaf: Callable[[Self], Self] | None = None,
     ) -> Self: ...
     def compose(self, inner: Self, /) -> Self: ...
+    @overload
     def traverse(
         self,
         leaves: Iterable[T],
         /,
-        f_node: Callable[[Collection[U]], U] | None = None,
+        f_node: None = None,
+        f_leaf: Callable[[T], U] | None = None,
+    ) -> PyTree[U]: ...
+    @overload
+    def traverse(
+        self,
+        leaves: Iterable[T],
+        /,
+        f_node: Callable[[Collection[U]], U] = ...,
         f_leaf: Callable[[T], U] | None = None,
     ) -> U: ...
+    @overload
     def walk(
         self,
         leaves: Iterable[T],
         /,
-        f_node: Callable[[builtins.type, MetaData, tuple[U, ...]], U] | None = None,
+        f_node: None = None,
+        f_leaf: Callable[[T], U] | None = None,
+    ) -> PyTree[U]: ...
+    @overload
+    def walk(
+        self,
+        leaves: Iterable[T],
+        /,
+        f_node: Callable[[builtins.type, MetaData, tuple[U, ...]], U] = ...,
         f_leaf: Callable[[T], U] | None = None,
     ) -> U: ...
     def paths(self, /) -> list[tuple[Any, ...]]: ...

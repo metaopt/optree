@@ -16,6 +16,7 @@ limitations under the License.
 */
 
 #include <algorithm>      // std::copy, std::reverse
+#include <iterator>       // std::make_reverse_iterator
 #include <unordered_map>  // std::unordered_map
 #include <vector>         // std::vector
 
@@ -129,7 +130,13 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec &other, const bool &strict) const {
                     EXPECT_EQ(reordered_other_offsets.front(),
                               b->num_nodes,
                               "PyTreeSpec traversal out of range.");
-                    auto original_b = other.m_traversal.crbegin() + (b - other_traversal.crbegin());
+                    // Snapshot `b`'s subtree from the working copy before permuting its children
+                    // below. The permutation copies overlapping child ranges, so the source must be
+                    // a stable snapshot. It must be taken from the working copy (not the pristine
+                    // `other.m_traversal`): a previously-processed ancestor dict may have relocated
+                    // this subtree, so `b`'s offset no longer matches the pristine traversal.
+                    const std::vector<Node> b_subtree(b.base() - b->num_nodes, b.base());
+                    const auto original_b = std::make_reverse_iterator(b_subtree.cend());
                     for (const auto &[i, j] : reordered_index_to_index) {
                         std::copy(original_b + other_offsets[j + 1],
                                   original_b + other_offsets[j],
