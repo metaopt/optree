@@ -58,6 +58,8 @@ env:
   COLUMNS: "100"
   FORCE_COLOR: "1"
   CLICOLOR_FORCE: "1"
+  XDG_CACHE_HOME: "${{ github.workspace }}/.cache"
+  PIP_CACHE_DIR: "${{ github.workspace }}/.cache/pip"
   PIP_RETRIES: "10"
   PIP_TIMEOUT: "120"
   ALLOW_PRERELEASES: "true"
@@ -78,7 +80,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.9 - 3.15"
           update-environment: true
@@ -257,7 +259,7 @@ jobs:
           echo "PYTHON_VERSION=${PYTHON_VERSION}" | tee -a "${GITHUB_ENV}"
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           update-environment: true
@@ -418,7 +420,7 @@ jobs:
 
       - name: Set up Python
         if: startsWith(github.ref, 'refs/tags/')
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.9 - 3.15"
           update-environment: true
