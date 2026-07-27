@@ -52,6 +52,7 @@ from helpers import (
     skipif_ios,
     skipif_wasm,
 )
+from optree.utils import total_order_sorted
 
 
 @skipif_wasm
@@ -185,6 +186,48 @@ def test_flatten_dict_order():
     assert str(restored_treespec) == str(sorted_treespec)
     restored_tree = optree.tree_unflatten(restored_treespec, leaves)
     assert list(restored_tree) == ['b', 'a', 'c']
+
+
+def test_flatten_dict_order_keys_that_fail_to_compare_midway():
+    # Regression: the C++ `TotalOrderSort` sorted the key list IN PLACE, caught the `TypeError`, and
+    # then ran the total-order fallback on the same, already partially reordered list. `list.sort`
+    # leaves the list in an undefined order when a comparison raises, so a second failure committed
+    # that partial order instead of the documented insertion order. Each attempt must sort a copy.
+    #
+    # `Key.__lt__` raises only for the single pair that `list.sort` reaches after it has already
+    # moved elements, so both the direct sort and the total-order fallback fail on the same list.
+    class Key:
+        def __init__(self, value):
+            self.value = value
+
+        def __repr__(self):
+            return f'Key({self.value})'
+
+        def __eq__(self, other):
+            return isinstance(other, Key) and self.value == other.value
+
+        def __hash__(self):
+            return hash(self.value)
+
+        def __lt__(self, other):
+            if not isinstance(other, Key):
+                return NotImplemented
+            if (self.value, other.value) == (2, 1):
+                raise TypeError('Key(2) < Key(1) is undefined')
+            return self.value < other.value
+
+    tree = {Key(1): 1, Key(0): 0, Key(2): 2}
+    insertion_order = [Key(1), Key(0), Key(2)]
+
+    assert total_order_sorted(tree) == insertion_order
+    _, metadata, entries, _ = optree.tree_flatten_one_level(tree)
+    assert metadata == insertion_order
+    assert list(entries) == insertion_order
+
+    leaves, treespec = optree.tree_flatten(tree)
+    assert treespec.entries() == insertion_order  # the recursive walk must agree with one level
+    assert leaves == [1, 0, 2]
+    assert optree.tree_unflatten(treespec, leaves) == tree
 
 
 @parametrize(
@@ -2927,6 +2970,45 @@ def test_tree_partition(fillvalue, none_is_leaf):
     assert right == {'x': 7, 'y': (fillvalue, fillvalue)}
 
 
+def test_tree_partition_with_no_leaves():
+    # Regression: the zero-leaf guard belongs to inferring the inner structure from the first
+    # output. `tree_partition` passes an explicit inner treespec, so a leafless tree partitions into
+    # two copies of itself and the predicate is never called. The guard also hid a second bug:
+    # transposing zero outputs yielded no subtrees at all rather than one empty subtree per inner
+    # leaf, so removing it alone raised `Too few leaves for PyTreeSpec`.
+    for tree in [(), [], {}, {'a': [], 'b': ()}, [(), {}]]:
+        calls = []
+        left, right = optree.tree_partition(
+            lambda x, calls=calls: calls.append(x) or True,
+            tree,
+        )
+        assert left == tree, (tree, left)
+        assert right == tree, (tree, right)
+        assert calls == [], (tree, calls)
+
+    # A tree whose only leaf is `None` has no leaves at all unless `none_is_leaf` is set, so the
+    # predicate is never called and both halves keep the `None`.
+    calls = []
+    left, right = optree.tree_partition(lambda x: calls.append(x) or True, {'a': None})
+    assert (left, right) == ({'a': None}, {'a': None})
+    assert calls == []
+    # With `none_is_leaf`, `None` is a real leaf: the predicate runs and the fill value is `None`
+    # either way, so both halves still read as `{'a': None}`.
+    calls = []
+    left, right = optree.tree_partition(
+        lambda x: calls.append(x) or True,
+        {'a': None},
+        none_is_leaf=True,
+    )
+    assert (left, right) == ({'a': None}, {'a': None})
+    assert calls == [None]
+
+    # Non-empty trees are unaffected.
+    left, right = optree.tree_partition(lambda x: x > 1, [1, 2, 3])
+    assert left == [None, 2, 3]
+    assert right == [1, None, None]
+
+
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
@@ -3221,6 +3303,207 @@ def test_tree_broadcast_common():
         [(1, 1), {'c': (None, 4), 'b': 3, 'a': (2, 2)}],
         [(5, 6), OrderedDict(b=9, c=(0, 0), a=(7, 8))],
     )
+
+
+def test_tree_broadcast_common_does_not_apply_is_leaf_to_internal_sentinel():
+    # `tree_broadcast_common` fills an internal `common_suffix_tree` with a private `object()`
+    # sentinel, then replicates each leaf across the matching subtree. The user's `is_leaf` must run
+    # only on values from the input trees, never the sentinel: a value-dependent predicate would
+    # otherwise mis-structure the placeholder subtree or crash while inspecting it.
+
+    # Collapses a list unless every element is an int. When the predicate keeps the other's list
+    # (all ints), the fix must not re-apply the predicate to the sentinel subtree, which would
+    # collapse `[<obj>, <obj>]` and under-replicate. When the predicate collapses the real other
+    # tree to a leaf (a list holding a tuple), there is simply nothing to broadcast and the inputs
+    # pass through unchanged.
+    def collapse_non_int_lists(x):
+        return isinstance(x, list) and not all(isinstance(e, int) for e in x)
+
+    assert optree.tree_broadcast_common(
+        1,
+        [2, 3],
+        is_leaf=collapse_non_int_lists,
+    ) == ([1, 1], [2, 3])
+    assert optree.tree_broadcast_common(
+        1,
+        [2, (3, 4)],
+        is_leaf=collapse_non_int_lists,
+    ) == (1, [2, (3, 4)])
+    assert optree.tree_broadcast_common(
+        {'a': 1},
+        {'a': [2, 3]},
+        is_leaf=collapse_non_int_lists,
+    ) == ({'a': [1, 1]}, {'a': [2, 3]})
+    assert optree.tree_broadcast_common(
+        {'a': 1},
+        {'a': [2, (3, 4)]},
+        is_leaf=collapse_non_int_lists,
+    ) == ({'a': 1}, {'a': [2, (3, 4)]})
+
+    # Inspects the value; must not crash on the sentinel (`object() < 0` raises `TypeError`),
+    # regardless of the container (list, tuple, nested) the sentinel subtree takes.
+    def negative_scalar(x):
+        return not isinstance(x, (list, tuple, dict)) and x < 0
+
+    assert optree.tree_broadcast_common(
+        1,
+        [2, 3],
+        is_leaf=negative_scalar,
+    ) == ([1, 1], [2, 3])
+    assert optree.tree_broadcast_common(
+        [1],
+        [(2, 3)],
+        is_leaf=negative_scalar,
+    ) == ([(1, 1)], [(2, 3)])
+    assert optree.tree_broadcast_common(
+        [1, 1],
+        [[2], [3, 4]],
+        is_leaf=negative_scalar,
+    ) == ([[1], [1, 1]], [[2], [3, 4]])
+    # `broadcast_common` delegates to `tree_broadcast_common`, so it must not crash either.
+    assert optree.broadcast_common(1, [2, 3], is_leaf=negative_scalar) == ([1, 1], [2, 3])
+
+
+def test_tree_broadcast_common_value_dependent_is_leaf_is_lossy():
+    # Characterization, separate from the R18 sentinel fix: a `is_leaf` that classifies by leaf
+    # *value* rather than type/structure can be lossy under broadcasting. `is_shape_like` treats a
+    # tuple of ints as one leaf, so broadcasting the scalar `5` into a two-slot yields `(5, 5)`,
+    # which the predicate re-reads as a single shape. Such a result still shares the literal
+    # common-suffix structure, but re-flattens to a different leaf count under the predicate. The
+    # cases below show it is lossy for a number yet faithful for a shape or a list slot. This pins
+    # the known limitation; prefer type/structure predicates for broadcasting.
+    def is_shape_like(x):
+        return type(x) is tuple and all(isinstance(v, int) for v in x)
+
+    # A tuple slot is lossy: `(5, 5)` re-reads as a shape leaf.
+    assert optree.tree_broadcast_common(
+        [5],
+        [(1, 'x')],
+        is_leaf=is_shape_like,
+    ) == ([(5, 5)], [(1, 'x')])
+    # A list slot is not: `[5, 5]` is not a shape tuple, so it stays consistent.
+    assert optree.tree_broadcast_common(
+        [5],
+        [[1, 2]],
+        is_leaf=is_shape_like,
+    ) == ([[5, 5]], [[1, 2]])
+
+    # A mixed tree shows both outcomes at once. The shape `(5, 5)` broadcast into a two-slot becomes
+    # `((5, 5), (5, 5))`, two shape leaves, faithful; the number `3` broadcast the same way becomes
+    # `(3, 3)`, which the predicate re-reads as one shape leaf, lossy.
+    assert optree.tree_broadcast_common(
+        [(5, 5), (1.0, 2)],
+        [(2, 'x'), 3],
+        is_leaf=is_shape_like,
+    ) == ([((5, 5), (5, 5)), (1.0, 2)], [(2, 'x'), (3, 3)])
+
+
+def test_tree_broadcast_map_does_not_reapply_is_leaf_to_broadcast_subtrees():
+    # Regression: the broadcast result was re-flattened with the caller's `is_leaf`. A predicate
+    # that classifies by leaf VALUE then treated a subtree broadcasting had just created as a leaf,
+    # so `func` was called once on the whole subtree instead of once per common-suffix leaf. The
+    # common structure now comes from the input trees, where `is_leaf` describes the caller's data.
+    def is_shape_like(x):
+        return type(x) is tuple and all(isinstance(v, int) for v in x)
+
+    calls = []
+
+    def func(x, y):
+        calls.append((x, y))
+        return f'{x}:{y}'
+
+    assert optree.tree_broadcast_map(
+        func,
+        [5],
+        [(1, 'x')],
+        is_leaf=is_shape_like,
+    ) == [('5:1', '5:x')]
+    assert calls == [(5, 1), (5, 'x')]
+
+    paths = []
+    assert optree.tree_broadcast_map_with_path(
+        lambda p, x, y: (paths.append(p), f'{x}:{y}')[1],
+        [5],
+        [(1, 'x')],
+        is_leaf=is_shape_like,
+    ) == [('5:1', '5:x')]
+    assert paths == [(0, 0), (0, 1)]
+
+    accessors = []
+    assert optree.tree_broadcast_map_with_accessor(
+        lambda a, x, y: (accessors.append(len(a)), f'{x}:{y}')[1],
+        [5],
+        [(1, 'x')],
+        is_leaf=is_shape_like,
+    ) == [('5:1', '5:x')]
+    assert accessors == [2, 2]
+
+
+def test_tree_broadcast_map_unchanged_for_structural_predicates():
+    # The common structure still honors `is_leaf` where it describes the INPUT trees, and plain
+    # broadcasting is unaffected by the change.
+    assert optree.tree_broadcast_map(
+        lambda x, y: x + y,
+        [1, 2],
+        [[3, 4], [5, 6]],
+    ) == [[4, 5], [7, 8]]
+    assert optree.tree_broadcast_map(lambda x: x * 2, {'a': 1, 'b': 2}) == {'a': 2, 'b': 4}
+    assert optree.tree_broadcast_map(
+        lambda a, b, c: a + b + c,
+        [1],
+        [[2, 3]],
+        [[4, 5]],
+    ) == [[7, 9]]
+    # A type-based predicate keeps a marked subtree intact on both sides.
+    assert optree.tree_broadcast_map(
+        lambda x, y: (x, y),
+        [1],
+        [[2, 3]],
+        is_leaf=lambda x: isinstance(x, list) and len(x) == 2,
+    ) == [(1, [2, 3])]
+
+
+def test_tree_broadcast_map_single_input_flattens_only_once():
+    # Regression: with no `rests` to broadcast against, the tree was flattened twice (once to derive
+    # the common structure, once by `flatten_up_to`). The docstrings promise equivalence to
+    # `tree_map`, which flattens once, so a one-shot `flatten_func` broke here but not there.
+    counter = Counter()
+
+    class OneShot:
+        def __init__(self, x):
+            self.x = x
+
+        def __eq__(self, other):
+            return isinstance(other, OneShot) and self.x == other.x
+
+    def flatten_func(node):
+        if counter.increment() > 1:
+            raise RuntimeError(f'`flatten_func` called {counter.count} times')
+        return (node.x,), None
+
+    namespace = 'broadcast-map-one-shot'
+    optree.register_pytree_node(
+        OneShot,
+        flatten_func,
+        lambda _, children: OneShot(*children),
+        namespace=namespace,
+    )
+
+    for name, func in (
+        ('tree_broadcast_map', lambda x: x + 1),
+        ('tree_broadcast_map_with_path', lambda p, x: (p, x + 1)),
+        ('tree_broadcast_map_with_accessor', lambda a, x: (a, x + 1)),
+    ):
+        broadcast_map = getattr(optree, name)
+        map_ = getattr(optree, name.replace('tree_broadcast_map', 'tree_map'))
+
+        counter.count = 0
+        expected = map_(func, OneShot(1), namespace=namespace)
+        assert counter.count == 1, name
+
+        counter.count = 0
+        assert broadcast_map(func, OneShot(1), namespace=namespace) == expected, name
+        assert counter.count == 1, name
 
 
 def test_broadcast_common():

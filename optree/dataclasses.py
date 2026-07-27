@@ -268,6 +268,9 @@ def dataclass(  # noqa: C901,D417 # pylint: disable=function-redefined
 ) -> _TypeT | Callable[[_TypeT], _TypeT]:
     """Dataclass decorator with PyTree integration.
 
+    See also :func:`register_node` for how instances are reconstructed and when a class needs an
+    explicit registration with custom flatten/unflatten functions instead.
+
     Args:
         cls (type or None, optional): The class to decorate. If :data:`None`, return a decorator.
         namespace (str): The registry namespace used for the PyTree registration.
@@ -502,6 +505,14 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
     :data:`True`) are treated as children, while init fields with ``metadata['pytree_node']`` set
     to :data:`False` are treated as metadata.
 
+    .. note::
+        These generated functions cover the straightforward case where a class merely stores its
+        fields. Instances are rebuilt with ``cls(**fields)``, which re-runs ``__init__`` and any
+        ``__post_init__``. The :func:`tree_unflatten` round-trip is exact only when they leave each
+        field value unchanged from what it is given. Register a class that needs any other
+        reconstruction behavior explicitly with :func:`optree.register_pytree_node` or
+        :func:`optree.register_pytree_node_class` using custom flatten/unflatten functions.
+
     Usage::
 
         # Direct function call
@@ -549,7 +560,10 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
         raise TypeError(f'{cls!r} is not a dataclass.')
     if _FIELDS in cls.__dict__:
         raise TypeError(
-            f'Cannot register {cls.__name__} as a pytree node more than once.',
+            f'Cannot register {cls.__name__} as a pytree node more than once with '
+            f'`{__name__}.register_node()`. '
+            'Use `optree.register_pytree_node()` or `optree.register_pytree_node_class()` '
+            'with explicit flatten/unflatten functions to register it in a different namespace.',
         )
     if namespace is not GLOBAL_NAMESPACE and not isinstance(namespace, str):
         raise TypeError(f'The namespace must be a string, got {namespace!r}.')
@@ -562,6 +576,25 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
             f'`{__name__}.register_node()` reconstructs instances with `cls(**kwargs)`.',
             UserWarning,
             stacklevel=2,
+        )
+
+    # `InitVar` pseudo-fields are excluded from `dataclasses.fields()` (so they are neither children
+    # nor metadata) but remain required `__init__` parameters that `cls(**kwargs)` cannot restore.
+    # `__dataclass_fields__` includes them, tagged with the private `_FIELD_INITVAR` field type.
+    init_var_names = [
+        name
+        # pylint: disable-next=protected-access
+        for name, dc_field in getattr(cls, dataclasses._FIELDS).items()  # type: ignore[attr-defined]
+        # pylint: disable-next=protected-access
+        if dc_field._field_type is dataclasses._FIELD_INITVAR  # type: ignore[attr-defined]
+    ]
+    if init_var_names:
+        raise TypeError(
+            f'Dataclass {cls.__name__!r} has `InitVar` field(s) {init_var_names!r}, which the '
+            'auto-generated flatten/unflatten functions cannot round-trip '
+            f'(`{__name__}.register_node()` reconstructs instances with `cls(**kwargs)` and cannot '
+            'restore `InitVar` values). Use `optree.register_pytree_node()` or '
+            '`optree.register_pytree_node_class()` with explicit flatten/unflatten functions instead.',
         )
 
     children_fields = {}
@@ -578,9 +611,6 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
             metadata_fields[f.name] = f
 
     children_field_names = tuple(children_fields)
-    children_fields_proxy = MappingProxyType(children_fields)
-    metadata_fields_proxy = MappingProxyType(metadata_fields)
-    setattr(cls, _FIELDS, (children_fields_proxy, metadata_fields_proxy))
 
     def flatten_func(
         obj: _T,
@@ -600,7 +630,8 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
         kwargs.update(metadata)
         return cls(**kwargs)  # type: ignore[return-value]
 
-    from optree.registry import register_pytree_node  # pylint: disable=import-outside-toplevel
+    # pylint: disable-next=import-outside-toplevel
+    from optree.registry import register_pytree_node, unregister_pytree_node
 
     register_pytree_node(
         cls,  # type: ignore[arg-type]
@@ -609,4 +640,18 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
         path_entry_type=DataclassEntry,
         namespace=namespace,
     )
+    # Mark the class as registered only AFTER `register_pytree_node()` succeeds: `_FIELDS` is the
+    # "already registered" guard, so setting it before a failed registration would leave the class
+    # impossible to register ever again. The registration and the marker must land together: a
+    # registered but unmarked class cannot be registered again, so roll the registration back if
+    # setting the marker fails.
+    try:
+        setattr(
+            cls,
+            _FIELDS,
+            (MappingProxyType(children_fields), MappingProxyType(metadata_fields)),
+        )
+    except BaseException:
+        unregister_pytree_node(cls, namespace=namespace)
+        raise
     return cls

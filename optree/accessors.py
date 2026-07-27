@@ -89,15 +89,15 @@ class PyTreeEntry:
                 self.entry,
                 self.type,
                 self.kind,
-                self.__class__.__call__.__code__.co_code,
-                self.__class__.codify.__code__.co_code,
+                self.__class__.__call__,
+                self.__class__.codify,
             )
             == (
                 other.entry,
                 other.type,
                 other.kind,
-                other.__class__.__call__.__code__.co_code,
-                other.__class__.codify.__code__.co_code,
+                other.__class__.__call__,
+                other.__class__.codify,
             )
         )
 
@@ -108,8 +108,8 @@ class PyTreeEntry:
                 self.entry,
                 self.type,
                 self.kind,
-                self.__class__.__call__.__code__.co_code,
-                self.__class__.codify.__code__.co_code,
+                self.__class__.__call__,
+                self.__class__.codify,
             ),
         )
 
@@ -215,7 +215,9 @@ class GetAttrEntry(PyTreeEntry):
 
     def codify(self, /, node: str = '') -> str:
         """Generate code for accessing the path entry."""
-        return f'{node}.{self.name}'
+        for name in self.name.split('.'):
+            node = f'{node}.{name}' if name.isidentifier() else f'getattr({node}, {name!r})'
+        return node
 
 
 class FlattenedEntry(PyTreeEntry):  # pylint: disable=too-few-public-methods
@@ -360,10 +362,30 @@ class DataclassEntry(GetAttrEntry):
         return tuple(f.name for f in dataclasses.fields(self.type) if f.init)
 
     @property
+    def children_fields(self, /) -> tuple[str, ...]:
+        """Get the field names that an integer entry indexes.
+
+        An integer entry addresses a child by position among those the registered flatten function
+        emitted. :func:`optree.dataclasses.register_node` records exactly which fields those are on
+        the class, so they are used verbatim. A class registered through the generic
+        :func:`optree.register_pytree_node` keeps no such record and its flatten function may emit
+        anything, so the declared field order is used instead.
+        """
+        # pylint: disable-next=import-outside-toplevel,cyclic-import
+        from optree.dataclasses import _FIELDS
+
+        # Read the class's own `__dict__`: a subclass of a registered dataclass inherits the
+        # attribute but not the registration.
+        registration = self.type.__dict__.get(_FIELDS)
+        if registration is None:
+            return self.fields
+        return tuple(registration[0])
+
+    @property
     def field(self, /) -> str:
         """Get the field name."""
         if isinstance(self.entry, int):
-            return self.init_fields[self.entry]
+            return self.children_fields[self.entry]
         return self.entry
 
     @property
@@ -431,6 +453,10 @@ class PyTreeAccessor(tuple[PyTreeEntry, ...]):
     def __eq__(self, other: object, /) -> bool:
         """Check if the accessors are equal."""
         return isinstance(other, PyTreeAccessor) and super().__eq__(other)
+
+    def __ne__(self, other: object, /) -> bool:
+        """Check if the accessors are not equal."""
+        return not self == other
 
     def __hash__(self, /) -> int:
         """Get the hash of the accessor."""

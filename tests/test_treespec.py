@@ -2204,6 +2204,26 @@ def test_treespec_child(
         ]
 
 
+def test_treespec_entry_and_child_accept_int_like_indices():
+    # The compiled signatures advertise `SupportsInt | SupportsIndex`, and the runtime honors both,
+    # so the stubs must not narrow them to `int`.
+    class OnlyIndex:
+        def __index__(self):
+            return 1
+
+    class OnlyInt:
+        def __int__(self):
+            return 1
+
+    treespec = optree.tree_structure({'a': 1, 'b': 2})
+    for index in (1, OnlyIndex(), OnlyInt()):
+        assert treespec.entry(index) == treespec.entry(1), index
+        assert treespec.child(index) == treespec.child(1), index
+        # The public wrappers must not narrow what the methods they forward to accept.
+        assert optree.treespec_entry(treespec, index) == treespec.entry(1), index
+        assert optree.treespec_child(treespec, index) == treespec.child(1), index
+
+
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],

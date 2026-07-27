@@ -23,11 +23,21 @@ import functools
 import itertools
 import textwrap
 from collections import OrderedDict, defaultdict, deque
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Generic,
+    SupportsIndex,
+    SupportsInt,
+    overload,
+)
 
 import optree._C as _C
 from optree.accessors import PyTreeAccessor
 from optree.typing import NamedTuple, T, is_namedtuple_instance, is_structseq_instance
+from optree.utils import total_order_sorted
 
 
 if TYPE_CHECKING:
@@ -1320,7 +1330,9 @@ def tree_transpose_map(
         and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
     """
     leaves, outer_treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
-    if outer_treespec.num_leaves == 0:
+    # A leaf is only needed to infer the inner structure from the first output. With an explicit
+    # `inner_treespec`, a leafless outer structure transposes fine and `func` is never called.
+    if inner_treespec is None and outer_treespec.num_leaves == 0:
         raise ValueError(f'The outer structure must have at least one leaf. Got: {outer_treespec}.')
     flat_args = [leaves] + [outer_treespec.flatten_up_to(r) for r in rests]
     outputs = list(map(func, *flat_args))
@@ -1336,7 +1348,7 @@ def tree_transpose_map(
         raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
 
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
-    transposed = zip(*grouped)
+    transposed = zip(*grouped) if grouped else [()] * inner_treespec.num_leaves
     subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
@@ -1407,7 +1419,7 @@ def tree_transpose_map_with_path(
         leaf in ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
     """  # pylint: disable=line-too-long
     paths, leaves, outer_treespec = _C.flatten_with_path(tree, is_leaf, none_is_leaf, namespace)
-    if outer_treespec.num_leaves == 0:
+    if inner_treespec is None and outer_treespec.num_leaves == 0:
         raise ValueError(f'The outer structure must have at least one leaf. Got: {outer_treespec}.')
     flat_args = [leaves] + [outer_treespec.flatten_up_to(r) for r in rests]
     outputs = list(map(func, paths, *flat_args))
@@ -1423,7 +1435,7 @@ def tree_transpose_map_with_path(
         raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
 
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
-    transposed = zip(*grouped)
+    transposed = zip(*grouped) if grouped else [()] * inner_treespec.num_leaves
     subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
@@ -1521,7 +1533,7 @@ def tree_transpose_map_with_accessor(
         leaf in ``tree`` and ``xs`` is the tuple of values at corresponding nodes in ``rests``.
     """  # pylint: disable=line-too-long
     leaves, outer_treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
-    if outer_treespec.num_leaves == 0:
+    if inner_treespec is None and outer_treespec.num_leaves == 0:
         raise ValueError(f'The outer structure must have at least one leaf. Got: {outer_treespec}.')
     flat_args = [leaves] + [outer_treespec.flatten_up_to(r) for r in rests]
     outputs = list(map(func, outer_treespec.accessors(), *flat_args))
@@ -1537,7 +1549,7 @@ def tree_transpose_map_with_accessor(
         raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
 
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
-    transposed = zip(*grouped)
+    transposed = zip(*grouped) if grouped else [()] * inner_treespec.num_leaves
     subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
@@ -1706,6 +1718,64 @@ def broadcast_prefix(
     return result
 
 
+def _tree_broadcast_common_with_treespec(
+    tree: PyTree[T],
+    /,
+    *rests: PyTree[T],
+    is_leaf: Callable[[T], bool] | None = None,
+    none_is_leaf: bool = False,
+    namespace: str = '',
+) -> tuple[tuple[PyTree[T], ...], PyTreeSpec]:
+    """Broadcast to a common suffix and return the trees together with that common structure.
+
+    The structure is derived from the input trees, where ``is_leaf`` describes the caller's data.
+    Re-deriving it from the broadcast result instead would let a predicate that classifies by leaf
+    value treat a subtree broadcasting just created as a leaf, silently mapping over fewer leaves
+    than the common suffix has. Each input is flattened once and broadcast straight to the common
+    suffix of all of them.
+    """
+    if not rests:  # pragma: no cover
+        return (tree,), tree_structure(
+            tree,
+            is_leaf=is_leaf,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+
+    flattened = [_C.flatten(t, is_leaf, none_is_leaf, namespace) for t in (tree, *rests)]
+    common_suffix_treespec: PyTreeSpec = flattened[0][1]
+    for _, treespec in flattened[1:]:
+        common_suffix_treespec = common_suffix_treespec.broadcast_to_common_suffix(treespec)
+
+    sentinel: T = object()  # type: ignore[assignment]
+    common_suffix_tree: PyTree[T] = common_suffix_treespec.unflatten(
+        itertools.repeat(sentinel, common_suffix_treespec.num_leaves),
+    )
+
+    def broadcast_leaves(x: T, subtree: PyTree[T]) -> PyTree[T]:
+        # `subtree`'s leaves are the private `sentinel`, not real values, so the user's `is_leaf`
+        # must not see them: its structure is already fixed by `common_suffix_treespec`.
+        subtreespec = tree_structure(
+            subtree,
+            is_leaf=None,
+            none_is_leaf=none_is_leaf,
+            namespace=namespace,
+        )
+        return subtreespec.unflatten(itertools.repeat(x, subtreespec.num_leaves))
+
+    broadcasted: tuple[PyTree[T], ...] = tuple(
+        treespec.unflatten(
+            map(
+                broadcast_leaves,  # type: ignore[arg-type]
+                leaves,
+                treespec.flatten_up_to(common_suffix_tree),
+            ),
+        )
+        for leaves, treespec in flattened
+    )
+    return broadcasted, common_suffix_treespec
+
+
 def tree_broadcast_common(
     tree: PyTree[T],
     other_tree: PyTree[T],
@@ -1722,10 +1792,18 @@ def tree_broadcast_common(
     If a ``suffix_tree`` is a suffix of a ``tree``, this means the ``suffix_tree`` can be
     constructed by replacing the leaves of ``tree`` with appropriate **subtrees**.
 
-    This function returns two pytrees with the same structure. The tree structure is the common
-    suffix structure of ``tree`` and ``other_tree``. The leaves are replicated from ``tree`` and
-    ``other_tree``. The number of replicas is determined by the corresponding subtree in the suffix
-    structure.
+    This function returns two pytrees broadcasted to the common suffix structure of ``tree`` and
+    ``other_tree``. Each is valid input to that common treespec, but the two need not share a
+    treespec with each other: a dictionary node keeps the key order and node type of its own input.
+    The leaves are replicated from ``tree`` and ``other_tree``. The number of replicas is determined
+    by the corresponding subtree in the suffix structure.
+
+    .. note::
+        If ``is_leaf`` classifies nodes by their leaf **value** rather than by type or structure
+        (e.g., treating an integer tuple as a leaf), broadcasting may replicate a value into a slot
+        whose filled form the predicate then re-classifies, yielding two trees that re-flatten to
+        different structures under the same ``is_leaf``. Prefer type- or structure-based predicates
+        when broadcasting.
 
     >>> tree_broadcast_common(1, [2, 3, 4])
     ([1, 1, 1], [2, 3, 4])
@@ -1765,37 +1843,12 @@ def tree_broadcast_common(
     Returns:
         Two pytrees of common suffix structure of ``tree`` and ``other_tree`` with broadcasted subtrees.
     """
-    leaves, treespec = _C.flatten(tree, is_leaf, none_is_leaf, namespace)
-    other_leaves, other_treespec = _C.flatten(other_tree, is_leaf, none_is_leaf, namespace)
-    common_suffix_treespec = treespec.broadcast_to_common_suffix(other_treespec)
-
-    sentinel: T = object()  # type: ignore[assignment]
-    common_suffix_tree: PyTree[T] = common_suffix_treespec.unflatten(
-        itertools.repeat(sentinel, common_suffix_treespec.num_leaves),
-    )
-
-    def broadcast_leaves(x: T, subtree: PyTree[T]) -> PyTree[T]:
-        subtreespec = tree_structure(
-            subtree,
-            is_leaf=is_leaf,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-        return subtreespec.unflatten(itertools.repeat(x, subtreespec.num_leaves))
-
-    broadcasted_tree: PyTree[T] = treespec.unflatten(
-        map(
-            broadcast_leaves,  # type: ignore[arg-type]
-            leaves,
-            treespec.flatten_up_to(common_suffix_tree),
-        ),
-    )
-    other_broadcasted_tree: PyTree[T] = other_treespec.unflatten(
-        map(
-            broadcast_leaves,  # type: ignore[arg-type]
-            other_leaves,
-            other_treespec.flatten_up_to(common_suffix_tree),
-        ),
+    (broadcasted_tree, other_broadcasted_tree), _ = _tree_broadcast_common_with_treespec(
+        tree,
+        other_tree,
+        is_leaf=is_leaf,
+        none_is_leaf=none_is_leaf,
+        namespace=namespace,
     )
     return broadcasted_tree, other_broadcasted_tree
 
@@ -1816,10 +1869,10 @@ def broadcast_common(
     If a ``suffix_tree`` is a suffix of a ``tree``, this means the ``suffix_tree`` can be
     constructed by replacing the leaves of ``tree`` with appropriate **subtrees**.
 
-    This function returns two pytrees with the same structure. The tree structure is the common
-    suffix structure of ``tree`` and ``other_tree``. The leaves are replicated from ``tree`` and
-    ``other_tree``. The number of replicas is determined by the corresponding subtree in the suffix
-    structure.
+    This function returns two lists of leaves of the same length, both in the leaf order of the
+    common suffix structure of ``tree`` and ``other_tree``. The leaves are replicated from ``tree``
+    and ``other_tree``. The number of replicas is determined by the corresponding subtree in the
+    suffix structure.
 
     >>> broadcast_common(1, [2, 3, 4])
     ([1, 1, 1], [2, 3, 4])
@@ -1858,67 +1911,20 @@ def broadcast_common(
         Two lists of leaves in ``tree`` and ``other_tree`` broadcasted to match the number of leaves
         in the common suffix structure.
     """  # pylint: disable=line-too-long
-    broadcasted_tree, other_broadcasted_tree = tree_broadcast_common(
+    (broadcasted_tree, other_broadcasted_tree), treespec = _tree_broadcast_common_with_treespec(
         tree,
         other_tree,
         is_leaf=is_leaf,
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
-
-    broadcasted_leaves: list[T] = []
-    other_broadcasted_leaves: list[T] = []
-
-    def add_leaves(x: T, y: T) -> None:
-        broadcasted_leaves.append(x)
-        other_broadcasted_leaves.append(y)
-
-    tree_map_(
-        add_leaves,
-        broadcasted_tree,
-        other_broadcasted_tree,
-        is_leaf=is_leaf,
-        none_is_leaf=none_is_leaf,
-        namespace=namespace,
+    # The common suffix treespec bottoms out at the caller's leaves, so these are `T`, not subtrees.
+    return (  # type: ignore[return-value]
+        treespec.flatten_up_to(broadcasted_tree),
+        treespec.flatten_up_to(other_broadcasted_tree),
     )
-    return broadcasted_leaves, other_broadcasted_leaves
 
 
-def _tree_broadcast_common(
-    tree: PyTree[T],
-    /,
-    *rests: PyTree[T],
-    is_leaf: Callable[[T], bool] | None = None,
-    none_is_leaf: bool = False,
-    namespace: str = '',
-) -> tuple[PyTree[T], ...]:
-    if not rests:
-        return (tree,)
-    if len(rests) == 1:
-        return tree_broadcast_common(
-            tree,
-            rests[0],
-            is_leaf=is_leaf,
-            none_is_leaf=none_is_leaf,
-            namespace=namespace,
-        )
-
-    broadcasted_tree = tree
-    broadcasted_rests = list(rests)
-    for _ in range(2):
-        for i, rest in enumerate(rests):
-            broadcasted_tree, broadcasted_rests[i] = tree_broadcast_common(
-                broadcasted_tree,
-                rest,
-                is_leaf=is_leaf,
-                none_is_leaf=none_is_leaf,
-                namespace=namespace,
-            )
-
-    return (broadcasted_tree, *broadcasted_rests)
-
-
-# pylint: disable-next=too-many-locals
 def tree_broadcast_map(
     func: Callable[..., U],
     tree: PyTree[T],
@@ -1974,22 +1980,26 @@ def tree_broadcast_map(
         corresponding leaf (may be broadcasted) in ``tree`` and ``xs`` is the tuple of values at
         corresponding leaves (may be broadcasted) in ``rests``.
     """
-    return tree_map(
-        func,
-        *_tree_broadcast_common(
+    if not rests:
+        return tree_map(
+            func,
             tree,
-            *rests,
             is_leaf=is_leaf,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
-        ),
+        )
+
+    broadcasted, treespec = _tree_broadcast_common_with_treespec(
+        tree,
+        *rests,
         is_leaf=is_leaf,
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
+    flat_args = [treespec.flatten_up_to(broadcasted_tree) for broadcasted_tree in broadcasted]
+    return treespec.unflatten(map(func, *flat_args))
 
 
-# pylint: disable-next=too-many-locals
 def tree_broadcast_map_with_path(
     func: Callable[..., U],
     tree: PyTree[T],
@@ -2053,19 +2063,24 @@ def tree_broadcast_map_with_path(
         value at the corresponding leaf (may be broadcasted) in ``tree`` and ``xs`` is the tuple of
         values at corresponding leaves (may be broadcasted) in ``rests``.
     """
-    return tree_map_with_path(
-        func,
-        *_tree_broadcast_common(
+    if not rests:
+        return tree_map_with_path(
+            func,
             tree,
-            *rests,
             is_leaf=is_leaf,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
-        ),
+        )
+
+    broadcasted, treespec = _tree_broadcast_common_with_treespec(
+        tree,
+        *rests,
         is_leaf=is_leaf,
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
+    flat_args = [treespec.flatten_up_to(broadcasted_tree) for broadcasted_tree in broadcasted]
+    return treespec.unflatten(map(func, treespec.paths(), *flat_args))
 
 
 def tree_broadcast_map_with_accessor(
@@ -2146,19 +2161,24 @@ def tree_broadcast_map_with_accessor(
         and value at the corresponding leaf (may be broadcasted) in ``tree`` and ``xs`` is the tuple
         of values at corresponding leaves (may be broadcasted) in ``rests``.
     """
-    return tree_map_with_accessor(
-        func,
-        *_tree_broadcast_common(
+    if not rests:
+        return tree_map_with_accessor(
+            func,
             tree,
-            *rests,
             is_leaf=is_leaf,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
-        ),
+        )
+
+    broadcasted, treespec = _tree_broadcast_common_with_treespec(
+        tree,
+        *rests,
         is_leaf=is_leaf,
         none_is_leaf=none_is_leaf,
         namespace=namespace,
     )
+    flat_args = [treespec.flatten_up_to(broadcasted_tree) for broadcasted_tree in broadcasted]
+    return treespec.unflatten(map(func, treespec.accessors(), *flat_args))
 
 
 # pylint: disable-next=missing-class-docstring,too-few-public-methods
@@ -2761,7 +2781,7 @@ def treespec_entries(treespec: PyTreeSpec, /) -> list[Any]:
     return treespec.entries()
 
 
-def treespec_entry(treespec: PyTreeSpec, index: int, /) -> Any:
+def treespec_entry(treespec: PyTreeSpec, index: SupportsInt | SupportsIndex, /) -> Any:
     """Return the entry of a treespec at the given index.
 
     See also :func:`treespec_entries`, :func:`treespec_children`, and :meth:`PyTreeSpec.entry`.
@@ -2784,7 +2804,7 @@ def treespec_children(treespec: PyTreeSpec, /) -> list[PyTreeSpec]:
     return treespec.children()
 
 
-def treespec_child(treespec: PyTreeSpec, index: int, /) -> PyTreeSpec:
+def treespec_child(treespec: PyTreeSpec, index: SupportsInt | SupportsIndex, /) -> PyTreeSpec:
     """Return the treespec of the child of a treespec at the given index.
 
     See also :func:`treespec_children`, :func:`treespec_entries`, and :meth:`PyTreeSpec.child`.
@@ -2974,9 +2994,67 @@ def treespec_is_prefix(
     *,
     strict: bool = False,
 ) -> bool:
-    """Return whether ``treespec`` is a prefix of ``other_treespec``.
+    r"""Return whether ``treespec`` is a prefix of ``other_treespec``.
+
+    A treespec is a *prefix* of another when the latter can be built by replacing some of the
+    former's leaves with subtrees. This is the broadcasting-compatibility relation behind
+    multi-input :func:`tree_map` and :func:`tree_broadcast_prefix`: a prefix treespec broadcasts
+    over any tree it is a prefix of, pairing each of its leaves with the corresponding subtree of
+    the fuller structure.
 
     See also :func:`treespec_is_suffix` and :meth:`PyTreeSpec.is_prefix`.
+
+    The prefix relation, together with :func:`treespec_is_suffix` and the ``<``, ``<=``, ``>``,
+    ``>=`` operators (``<`` and ``>`` are the ``strict=True`` variants), is a **preorder**:
+    reflexive (every treespec is a non-strict prefix of itself) and transitive, but **neither a
+    partial order nor a total order**.
+
+    - Not antisymmetric (so not a partial order): ``a <= b and b <= a`` does **not** imply
+      ``a == b``. Metadata that does not change how children are partitioned, such as a
+      :class:`collections.deque` ``maxlen`` or a :class:`dict` key order, is transparent to the
+      prefix relation but significant to equality, so they are mutual prefixes yet unequal.
+    - Not total: two treespecs can be incomparable, with neither a prefix of the other. Examples
+      are a :class:`tuple` and a same-arity :class:`list`, or :class:`dict`\s with different key
+      sets.
+
+    >>> treespec_is_prefix(tree_structure(1), tree_structure([1, 2, 3]))
+    True
+    >>> treespec_is_prefix(tree_structure([1, 2, 3]), tree_structure(1))
+    False
+
+    Mutual prefixes need not be equal, since the relation is a preorder, not a partial order. A
+    :class:`collections.deque` ``maxlen`` is transparent to the prefix relation but significant to
+    equality:
+
+    >>> from collections import deque
+    >>> a = tree_structure(deque([1, 2], maxlen=2))
+    >>> b = tree_structure(deque([1, 2], maxlen=5))
+    >>> treespec_is_prefix(a, b) and treespec_is_prefix(b, a)
+    True
+    >>> a <= b and b <= a
+    True
+    >>> a == b
+    False
+
+    Two treespecs can be incomparable, since the relation is not a total order. A :class:`tuple`
+    and a same-arity :class:`list` are neither a prefix of the other:
+
+    >>> a = tree_structure((1, 2))
+    >>> b = tree_structure([1, 2])
+    >>> treespec_is_prefix(a, b)
+    False
+    >>> treespec_is_prefix(b, a)
+    False
+    >>> a <= b
+    False
+    >>> b <= a
+    False
+    >>> a < b
+    False
+    >>> b < a
+    False
+    >>> a == b
+    False
 
     Args:
         treespec (PyTreeSpec): A treespec.
@@ -2999,7 +3077,18 @@ def treespec_is_suffix(
 ) -> bool:
     """Return whether ``treespec`` is a suffix of ``other_treespec``.
 
+    This is the reverse of :func:`treespec_is_prefix`: ``treespec_is_suffix(a, b)`` is equivalent to
+    ``treespec_is_prefix(b, a)``. Like the prefix relation, it is a **preorder**: reflexive and
+    transitive, but neither a partial order (mutual suffixes need not be equal) nor a total order
+    (two treespecs can be incomparable). See :func:`treespec_is_prefix` for the full discussion and
+    examples.
+
     See also :func:`treespec_is_prefix` and :meth:`PyTreeSpec.is_suffix`.
+
+    >>> treespec_is_suffix(tree_structure([1, 2, 3]), tree_structure(1))
+    True
+    >>> treespec_is_suffix(tree_structure(1), tree_structure([1, 2, 3]))
+    False
 
     Args:
         treespec (PyTreeSpec): A treespec.
@@ -3615,12 +3704,7 @@ def prefix_errors(  # noqa: C901
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
-        full_tree_one_level_output = (
-            full_tree_children,
-            full_tree_metadata,
-            full_tree_entries,
-            _,
-        ) = tree_flatten_one_level(
+        full_tree_children, full_tree_metadata, _, _ = tree_flatten_one_level(
             full_subtree,
             none_is_leaf=none_is_leaf,
             namespace=namespace,
@@ -3640,13 +3724,13 @@ def prefix_errors(  # noqa: C901
             prefix_tree_keys_set = set(prefix_tree_keys)
             full_tree_keys_set = set(full_tree_keys)
             if prefix_tree_keys_set != full_tree_keys_set:
-                missing_keys = sorted(prefix_tree_keys_set.difference(full_tree_keys_set))
-                extra_keys = sorted(full_tree_keys_set.difference(prefix_tree_keys_set))
+                missing_keys = prefix_tree_keys_set.difference(full_tree_keys_set)
+                extra_keys = full_tree_keys_set.difference(prefix_tree_keys_set)
                 key_difference = ''
                 if missing_keys:
-                    key_difference += f'\nmissing key(s):\n    {missing_keys}'
+                    key_difference += f'\nmissing key(s):\n    {total_order_sorted(missing_keys)}'
                 if extra_keys:
-                    key_difference += f'\nextra key(s):\n    {extra_keys}'
+                    key_difference += f'\nextra key(s):\n    {total_order_sorted(extra_keys)}'
                 yield lambda name: ValueError(
                     f'pytree structure error: different pytree keys at key path\n'
                     f'    {accessor.codify(name) if accessor else name + " tree root"}\n'
@@ -3712,7 +3796,8 @@ def prefix_errors(  # noqa: C901
             return  # don't look for more errors in this subtree
 
         # If the root types and numbers of children agree, there must be an error in a subtree,
-        # so recurse:
+        # so recurse. A custom node type may report per-instance entries that differ from the full
+        # tree's while its metadata does not; `broadcast_prefix` accepts that, so it is not an error.
         entries = [
             prefix_tree_one_level_output.path_entry_type(
                 e,
@@ -3721,18 +3806,6 @@ def prefix_errors(  # noqa: C901
             )
             for e in prefix_tree_entries
         ]
-        entries_ = [
-            full_tree_one_level_output.path_entry_type(
-                e,
-                full_tree_type,
-                full_tree_one_level_output.kind,
-            )
-            for e in full_tree_entries
-        ]
-        assert (
-            both_standard_dict  # special handling for dictionary types already done in the keys check above
-            or entries == entries_
-        ), f'equal pytree nodes gave different keys: {entries} and {entries_}'
         # pylint: disable-next=invalid-name
         for e, t1, t2 in zip(entries, prefix_tree_children, full_tree_children):
             yield from helper(accessor + e, t1, t2)  # type: ignore[arg-type]

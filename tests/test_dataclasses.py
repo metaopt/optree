@@ -932,6 +932,25 @@ def test_register_existing_class_with_metadata():
     assert obj == optree.tree_unflatten(treespec, leaves)
 
 
+def test_dataclass_post_init_rewriting_a_field_does_not_round_trip():
+    # Characterization: the generated unflatten rebuilds via `cls(**fields)`, re-running `__init__`
+    # and `__post_init__`. A `__post_init__` that only derives non-field state round-trips (see
+    # `test_register_existing_class_with_metadata` above), but one that rewrites a stored field does
+    # not: flatten reads the rewritten value and unflatten rewrites it again. Such a class should
+    # register explicitly with custom flatten/unflatten (see `register_node`).
+    @optree.dataclasses.dataclass(namespace='test-dc-post-init-rewrite')
+    class Shift:
+        x: int
+
+        def __post_init__(self):
+            self.x = self.x + 1
+
+    obj = Shift(5)  # __post_init__: x = 5 + 1 = 6
+    leaves, treespec = optree.tree_flatten(obj, namespace='test-dc-post-init-rewrite')
+    assert leaves == [6]
+    assert optree.tree_unflatten(treespec, leaves).x == 7  # re-applied: 6 + 1 = 7, not 6
+
+
 def test_register_non_class():
     with pytest.raises(TypeError, match='Expected a class'):
         optree.dataclasses.register_node(42, namespace='error')
@@ -954,9 +973,124 @@ def test_register_double_registration():
 
     with pytest.raises(
         TypeError,
-        match=r'Cannot register .* as a pytree node more than once\.',
+        match=(
+            r'Cannot register .* as a pytree node more than once with '
+            r'`optree\.dataclasses\.register_node\(\)`\. '
+            r'Use `optree\.register_pytree_node\(\)` or `optree\.register_pytree_node_class\(\)` '
+            r'with explicit flatten/unflatten functions'
+        ),
     ):
         optree.dataclasses.register_node(Double, namespace='test-dc-double-2')
+
+    # As the error suggests, the class can still be registered in another namespace via the generic
+    # API with explicit flatten/unflatten functions.
+    optree.register_pytree_node(
+        Double,
+        lambda d: ((d.x,), None, None),
+        lambda _, children: Double(*children),
+        namespace='test-dc-double-2',
+    )
+    optree.unregister_pytree_node(Double, namespace='test-dc-double-2')
+
+
+def test_register_dataclass_with_initvar_rejected():
+    # A dataclass with an `InitVar` cannot round-trip via the auto-generated flatten/unflatten:
+    # `InitVar`s are excluded from `dataclasses.fields()` (so they are neither flattened nor stored)
+    # yet remain required `__init__` parameters that `cls(**kwargs)` cannot restore. `register_node()`
+    # rejects it and points to the generic API with explicit flatten/unflatten functions.
+    @dataclasses.dataclass
+    class WithInitVar:
+        x: float
+        scale: dataclasses.InitVar[float]
+        scaled: float = optree.dataclasses.field(init=False, pytree_node=False, default=0.0)
+
+        def __post_init__(self, scale):
+            self.scaled = self.x * scale
+
+    with pytest.raises(
+        TypeError,
+        match=(
+            r'has `InitVar` field\(s\) .*cannot round-trip.*'
+            r'Use `optree\.register_pytree_node\(\)` or `optree\.register_pytree_node_class\(\)`'
+        ),
+    ):
+        optree.dataclasses.register_node(WithInitVar, namespace='test-dc-initvar')
+
+    # The generic API with explicit flatten/unflatten works: keep the derived value as metadata and
+    # rebuild the instance without re-running `__init__`/`__post_init__`.
+    def flatten(obj):
+        return (obj.x,), obj.scaled
+
+    def unflatten(scaled, children):
+        rebuilt = WithInitVar.__new__(WithInitVar)
+        rebuilt.x = children[0]
+        rebuilt.scaled = scaled
+        return rebuilt
+
+    optree.register_pytree_node(WithInitVar, flatten, unflatten, namespace='test-dc-initvar')
+    obj = WithInitVar(3.0, 10.0)
+    leaves, treespec = optree.tree_flatten(obj, namespace='test-dc-initvar')
+    assert leaves == [3.0]
+    assert optree.tree_unflatten(treespec, leaves) == obj
+    optree.unregister_pytree_node(WithInitVar, namespace='test-dc-initvar')
+
+
+def test_register_node_failure_does_not_leak_fields_guard():
+    @dataclasses.dataclass
+    class Leak:
+        x: int
+
+    namespace = 'test-dc-register-leak'
+    # Occupy the (class, namespace) slot directly so the dataclass `register_node()`'s internal
+    # `register_pytree_node()` call fails, after `register_node()` would set its `_FIELDS` guard.
+    optree.register_pytree_node(
+        Leak,
+        lambda leak: ((leak.x,), None, None),
+        lambda _, children: Leak(*children),
+        namespace=namespace,
+    )
+    try:
+        with pytest.raises(ValueError, match='already registered'):
+            optree.dataclasses.register_node(Leak, namespace=namespace)
+    finally:
+        optree.unregister_pytree_node(Leak, namespace=namespace)
+
+    # A failed registration must not leave the `_FIELDS` guard behind, or the class becomes
+    # impossible to register ever again: every retry would raise "... more than once".
+    # Re-registration after clearing the conflicting entry must succeed.
+    optree.dataclasses.register_node(Leak, namespace=namespace)
+    optree.unregister_pytree_node(Leak, namespace=namespace)
+
+
+def test_register_node_rolls_back_when_the_guard_cannot_be_set():
+    # `register_node()` commits the registry entry first and sets the `__optree_dataclass_fields__`
+    # guard afterwards. If the class refuses the guard, both must be rolled back: a class left
+    # registered but unguarded is just as unrecoverable, because the retry then fails with
+    # "already registered" instead.
+    class RejectGuardOnce(type):
+        rejected = False
+
+        def __setattr__(cls, name, value, /):
+            if name == '__optree_dataclass_fields__' and not RejectGuardOnce.rejected:
+                RejectGuardOnce.rejected = True  # a transient failure: reject only the first time
+                raise RuntimeError('cannot set the guard attribute')
+            super().__setattr__(name, value)
+
+    @dataclasses.dataclass
+    class Rejecting(metaclass=RejectGuardOnce):
+        x: int
+
+    namespace = 'test-dc-register-rollback'
+    with pytest.raises(RuntimeError, match=r'cannot set the guard attribute'):
+        optree.dataclasses.register_node(Rejecting, namespace=namespace)
+
+    assert '__optree_dataclass_fields__' not in Rejecting.__dict__
+    with pytest.raises(ValueError, match=r'is not registered'):
+        optree.unregister_pytree_node(Rejecting, namespace=namespace)
+
+    # The class is left exactly as it was, so the retry succeeds.
+    optree.dataclasses.register_node(Rejecting, namespace=namespace)
+    optree.unregister_pytree_node(Rejecting, namespace=namespace)
 
 
 def test_register_init_false_class_warns():
@@ -1131,6 +1265,60 @@ def test_dataclass_entry():
     assert 'DataclassEntry' in repr(entry_str)
     assert "'x'" in repr(entry_str)
 
-    entry_int = optree.DataclassEntry(1, EntryTest, optree.PyTreeKind.CUSTOM)
-    assert entry_int.field == 'y'
-    assert entry_int.name == 'y'
+
+def test_dataclass_entry_integer_indexes_children():
+    # For a class registered with `optree.dataclasses.register_node()`, an integer entry indexes the
+    # children that registration emits (the fields that are BOTH `pytree_node=True` and `init`). A
+    # non-child field interleaved between children must not shift the mapping.
+    @optree.dataclasses.register_node(namespace='test-dataclass-entry-integer')
+    @dataclasses.dataclass
+    class Foo:
+        a: int
+        # metadata (init, not a child)
+        b: int = optree.dataclasses.field(default=0, pytree_node=False)
+        # non-init -> not a tree child
+        d: int = optree.dataclasses.field(init=False, default=0, pytree_node=False)
+        c: int = 0
+
+    foo = Foo(1, 2, 3)  # a=1, b=2, c=3 (d defaults to 0, not an init parameter)
+    assert tuple(f.name for f in dataclasses.fields(Foo)) == ('a', 'b', 'd', 'c')
+
+    entry_int = optree.DataclassEntry(1, Foo, optree.PyTreeKind.CUSTOM)
+    assert entry_int.init_fields == ('a', 'b', 'c')  # `d` is not an init field
+    assert entry_int.children_fields == ('a', 'c')  # `b` is metadata and `d` is non-init
+    # The 2nd child is `c` (not the metadata field `b` nor the non-init field `d`).
+    assert entry_int.field == 'c'
+    assert entry_int.name == 'c'
+    assert entry_int.codify('x') == 'x.c'
+    assert entry_int(foo) == foo.c == 3
+
+
+def test_dataclass_entry_integer_follows_generic_flatten_func():
+    # Regression: an integer entry was resolved with the `optree.dataclasses` field predicate, which
+    # does not apply to a class registered with the generic `register_pytree_node()`. There the
+    # flatten function alone decides the children, so `pytree_node=False` must not drop a field and
+    # leave the entry indexing past the end of an internal list.
+    @dataclasses.dataclass
+    class Foo:
+        a: int
+        b: int = optree.dataclasses.field(default=0, pytree_node=False)
+
+    optree.register_pytree_node(
+        Foo,
+        lambda foo: ((foo.a, foo.b), None, None),  # both fields are children, entries default
+        lambda _, children: Foo(*children),
+        namespace='test-dataclass-entry-generic',
+    )
+
+    foo = Foo(1, 2)
+    paths, leaves, treespec = optree.tree_flatten_with_path(
+        foo,
+        namespace='test-dataclass-entry-generic',
+    )
+    assert paths == [(0,), (1,)]
+    assert leaves == [1, 2]
+
+    accessors = treespec.accessors()
+    assert [accessor(foo) for accessor in accessors] == [1, 2]
+    assert [accessor[0].field for accessor in accessors] == ['a', 'b']
+    assert [accessor.codify('x') for accessor in accessors] == ['x.a', 'x.b']
