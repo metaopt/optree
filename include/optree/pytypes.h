@@ -652,39 +652,46 @@ inline Py_ALWAYS_INLINE void AssertExactStructSequence(const py::handle &object)
     });
 }
 
+// `list.sort()` leaves the list partially reordered when a comparison raises, so each attempt sorts
+// a copy and only a fully sorted one is committed (mirrors `optree.utils.total_order_sorted`).
 inline void TotalOrderSort(py::list &list) {  // NOLINT[runtime/references]
+    py::list sorted = ListCopy(list);
     try {
         // Sort directly if possible.
-        if (static_cast<bool>(EVALUATE_WITH_LOCK_HELD(PyList_Sort(list.ptr()), list)))
+        if (static_cast<bool>(EVALUATE_WITH_LOCK_HELD(PyList_Sort(sorted.ptr()), sorted)))
             [[unlikely]] {
             throw py::error_already_set();
         }
+        list = std::move(sorted);
+        return;
     } catch (py::error_already_set &ex1) {
-        if (ex1.matches(PyExc_TypeError)) [[likely]] {
-            // Found incomparable keys (e.g. `int` vs. `str`, or user-defined types).
-            try {
-                // Sort with `(f'{obj.__class__.__module__}.{obj.__class__.__qualname__}', obj)`
-                const auto sort_key_fn = py::cpp_function([](const py::object &obj) -> py::tuple {
-                    const py::handle cls = py::type::handle_of(obj);
-                    const py::str qualname{
-                        EVALUATE_WITH_LOCK_HELD(PyStr(py::getattr(cls, "__module__")) + "." +
-                                                    PyStr(py::getattr(cls, "__qualname__")),
-                                                cls)};
-                    return py::make_tuple(qualname, obj);
-                });
-                {
-                    const scoped_critical_section cs{list};
-                    py::getattr(list, "sort")(py::arg("key") = sort_key_fn);
-                }
-            } catch (py::error_already_set &ex2) {
-                if (ex2.matches(PyExc_TypeError)) [[likely]] {
-                    // Found incomparable user-defined key types.
-                    // The keys remain in the insertion order.
-                    PyErr_Clear();
-                } else [[unlikely]] {
-                    std::rethrow_exception(std::current_exception());
-                }
-            }
+        if (!ex1.matches(PyExc_TypeError)) [[unlikely]] {
+            std::rethrow_exception(std::current_exception());
+        }
+        // Found incomparable keys (e.g. `int` vs. `str`, or user-defined types).
+    }
+
+    sorted = ListCopy(list);
+    try {
+        // Sort with `(f'{obj.__class__.__module__}.{obj.__class__.__qualname__}', obj)`
+        const auto sort_key_fn = py::cpp_function([](const py::object &obj) -> py::tuple {
+            const py::handle cls = py::type::handle_of(obj);
+            const py::str qualname{
+                EVALUATE_WITH_LOCK_HELD(PyStr(py::getattr(cls, "__module__")) + "." +
+                                            PyStr(py::getattr(cls, "__qualname__")),
+                                        cls)};
+            return py::make_tuple(qualname, obj);
+        });
+        {
+            const scoped_critical_section cs{sorted};
+            py::getattr(sorted, "sort")(py::arg("key") = sort_key_fn);
+        }
+        list = std::move(sorted);
+    } catch (py::error_already_set &ex2) {
+        if (ex2.matches(PyExc_TypeError)) [[likely]] {
+            // Found incomparable user-defined key types.
+            // The keys remain in the insertion order.
+            PyErr_Clear();
         } else [[unlikely]] {
             std::rethrow_exception(std::current_exception());
         }

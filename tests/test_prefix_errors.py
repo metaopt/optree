@@ -390,6 +390,46 @@ def test_different_metadata():
         raise e('in_axes')
 
 
+def test_different_metadata_heterogeneous_keys():
+    # Regression: formatting the key difference sorted the keys directly, so a dictionary with
+    # mutually incomparable keys raised a `TypeError` out of `prefix_errors()` instead of returning
+    # the error factories. Flattening supports such keys, so the message must too.
+    lhs, rhs = {1: 1, 'a': 2}, {2: 3, 'b': 4}
+    lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
+    with pytest.raises(
+        ValueError,
+        match=r'dictionary key mismatch; expected key\(s\): .*, got key\(s\): .*; dict: .*\.',
+    ):
+        optree.tree_map_(lambda x, y: None, lhs, rhs)
+    assert not lhs_treespec.is_prefix(rhs_treespec)
+
+    (e,) = optree.prefix_errors(lhs, rhs)
+    # `total_order_sorted()` groups by `{module}.{qualname}`, so `builtins.int` precedes
+    # `builtins.str`.
+    expected = re.escape(
+        textwrap.dedent(
+            """
+            pytree structure error: different pytree keys at key path
+                in_axes tree root
+            At that key path, the prefix pytree in_axes has a subtree of type
+                <class 'dict'>
+            with 2 key(s)
+                [1, 'a']
+            but at the same key path the full pytree has a subtree of type
+                <class 'dict'>
+            but with 2 key(s)
+                [2, 'b']
+            missing key(s):
+                [1, 'a']
+            extra key(s):
+                [2, 'b']
+            """,
+        ).strip(),
+    )
+    with pytest.raises(ValueError, match=expected):
+        raise e('in_axes')
+
+
 def test_different_metadata_nested():
     lhs, rhs = [{1: 2}], [{3: 4}]
     lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
@@ -605,6 +645,37 @@ def test_no_errors():
         lhs_treespec, rhs_treespec = optree.tree_structure(lhs), optree.tree_structure(rhs)
         assert lhs_treespec.is_prefix(rhs_treespec)
         () = optree.prefix_errors(lhs, rhs)
+
+
+def test_no_errors_for_custom_node_with_value_dependent_entries():
+    # Regression: a bare `assert` fired on a VALID prefix pair whose custom node reported different
+    # per-instance entries while its metadata agreed. `entries` is an independent element of the
+    # flatten output, so that registration is legal and `broadcast_prefix` accepts it;
+    # `prefix_errors` must return an empty list rather than raise (and it was elided under `-O`).
+    class Tagged:
+        def __init__(self, tags, values):
+            self.tags = list(tags)
+            self.values = list(values)
+
+    optree.register_pytree_node(
+        Tagged,
+        lambda tagged: (tagged.values, None, tagged.tags),  # metadata is always None, entries vary
+        lambda metadata, children: Tagged(range(len(list(children))), children),
+        namespace='value_dependent_entries',
+    )
+    try:
+        kwargs = {'namespace': 'value_dependent_entries'}
+        lhs = Tagged(['x', 'y'], [1, 2])
+        rhs = Tagged(['p', 'q'], [(1, 1), (2, 2)])
+        assert optree.broadcast_prefix(lhs, rhs, **kwargs) == [1, 1, 2, 2]
+        () = optree.prefix_errors(lhs, rhs, **kwargs)
+
+        # A genuine arity mismatch is still reported.
+        (e,) = optree.prefix_errors(lhs, Tagged(['x', 'y', 'z'], [1, 2, 3]), **kwargs)
+        with pytest.raises(ValueError, match=r'different numbers of pytree children'):
+            raise e('in_axes')
+    finally:
+        optree.unregister_pytree_node(Tagged, namespace='value_dependent_entries')
 
 
 def test_different_structure_no_children():
