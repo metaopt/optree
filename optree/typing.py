@@ -418,7 +418,7 @@ def is_namedtuple_instance(obj: object, /) -> bool:
 
 
 @_override_with_(_C.is_namedtuple_class)
-def is_namedtuple_class(cls: type, /) -> bool:
+def is_namedtuple_class(cls: object, /) -> bool:
     """Return whether the class is a subclass of namedtuple."""
     return (
         isinstance(cls, type)
@@ -525,7 +525,7 @@ Py_TPFLAGS_BASETYPE: int = _C.Py_TPFLAGS_BASETYPE  # (1UL << 10)  # pylint: disa
 
 
 @_override_with_(_C.is_structseq_class)
-def is_structseq_class(cls: type, /) -> bool:
+def is_structseq_class(cls: object, /) -> bool:
     """Return whether the class is a class of PyStructSequence."""
     if (
         isinstance(cls, type)
@@ -550,6 +550,11 @@ def is_structseq_class(cls: type, /) -> bool:
 # pylint: disable-next=line-too-long
 StructSequenceFieldType: type[types.MemberDescriptorType] = type(type(sys.version_info).major)  # type: ignore[assignment]
 
+# The name reported for an unnamed PyStructSequence slot; CPython's C-level marker (not a valid
+# identifier, so accessors fall back to index access for such slots).
+# pylint: disable-next=invalid-name
+PyStructSequence_UnnamedField: str = _C.PyStructSequence_UnnamedField  # 'unnamed field'
+
 
 @_override_with_(_C.structseq_fields)
 def structseq_fields(obj: tuple | type[tuple], /) -> tuple[str, ...]:
@@ -563,20 +568,45 @@ def structseq_fields(obj: tuple | type[tuple], /) -> tuple[str, ...]:
         if not is_structseq_class(cls):
             raise TypeError(f'Expected an instance of PyStructSequence type, got {obj!r}.')
 
+    n_sequence_fields: int = cls.n_sequence_fields  # type: ignore[attr-defined]
+    n_unnamed_fields: int = cls.n_unnamed_fields  # type: ignore[attr-defined]
+
     if platform.python_implementation() == 'PyPy':  # pragma: pypy cover
-        indices_by_name = {
-            name: member.index  # type: ignore[attr-defined]
+        # PyPy has no unnamed sequence fields: a field descriptor exposes `.index` as its sequence
+        # position, and hidden fields have an index >= n_sequence_fields. (`n_unnamed_fields == 0`,
+        # see PyPy's `lib_pypy/_structseq.py`) Map index -> name and defensively fill any missing
+        # (i.e. unnamed) sequence slot with the marker, should that invariant ever change.
+        names_by_index: dict[int, str] = {
+            member.index: name  # type: ignore[attr-defined]
             for name, member in vars(cls).items()
             if isinstance(member, StructSequenceFieldType)
         }
-        fields = sorted(indices_by_name, key=indices_by_name.get)  # type: ignore[arg-type]
     else:  # pragma: pypy no cover
-        fields = [
+        # CPython's `member_descriptor` hides the field offset, so positions are unreadable in pure
+        # Python. `vars()` yields members in field order, and only sequence slots can be unnamed.
+        named = [
             name
             for name, member in vars(cls).items()
             if isinstance(member, StructSequenceFieldType)
-        ]
-    return tuple(fields[: cls.n_sequence_fields])  # type: ignore[attr-defined]
+        ][: n_sequence_fields - n_unnamed_fields]
+
+        positions: Iterable[int] = range(n_sequence_fields)
+        if n_unnamed_fields > 0:
+            # Unnamed slots may sit anywhere, not only at the tail, so recover each named field's
+            # position from a probe whose slots hold distinct sentinels and match them by identity.
+            sentinels = [object() for _ in range(n_sequence_fields)]
+            try:
+                probe = cls(sentinels)
+                index_of = {id(sentinel): index for index, sentinel in enumerate(sentinels)}
+                positions = [index_of[id(getattr(probe, name))] for name in named]
+            except (TypeError, ValueError, KeyError, AttributeError):  # pragma: no cover
+                pass  # the type rejects placeholder values, fall back to assuming a trailing layout
+        names_by_index = dict(zip(positions, named))
+
+    return tuple(
+        names_by_index.get(index, PyStructSequence_UnnamedField)
+        for index in range(n_sequence_fields)
+    )
 
 
 del _tp_cache

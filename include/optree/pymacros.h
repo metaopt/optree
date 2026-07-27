@@ -71,6 +71,19 @@ inline constexpr Py_ALWAYS_INLINE bool Py_IsConstant(PyObject *x) noexcept {
 }
 #define Py_IsConstant(x) Py_IsConstant(x)
 
+// `PyStructSequence_UnnamedField` is declared `extern` with hidden visibility (so it is not an
+// exported dynamic symbol for extension modules) before Python 3.11.0a2, where it became
+// `PyAPI_DATA`. Referencing it directly leaves an undefined symbol that makes the module fail to
+// import on those versions. Its value is the stable marker "unnamed field", and callers only ever
+// use it by value (never by pointer identity), so fall back to that literal there.
+inline const char *PyStructSequenceUnnamedField() noexcept {
+#if PY_VERSION_HEX >= 0x030B00A2  // Python 3.11.0a2
+    return PyStructSequence_UnnamedField;
+#else
+    return "unnamed field";
+#endif
+}
+
 using interpid_t = decltype(PyInterpreterState_GetID(nullptr));
 
 #if defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                                \

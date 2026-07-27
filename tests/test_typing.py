@@ -16,6 +16,7 @@
 # pylint: disable=missing-function-docstring
 
 import enum
+import os
 import re
 import sys
 import time
@@ -28,6 +29,7 @@ import pytest
 import optree
 from helpers import (
     PYBIND11_HAS_NATIVE_ENUM,
+    PYPY,
     CustomNamedTupleSubclass,
     CustomTuple,
     Py_GIL_DISABLED,
@@ -551,6 +553,27 @@ def test_structseq_fields():
             'tm_yday',
             'tm_isdst',
         )
+        # On CPython, `os.stat_result` has UNNAMED sequence slots 7, 8, 9 (the integer
+        # atime/mtime/ctime); the st_atime/st_mtime/st_ctime attributes are hidden FLOAT fields at
+        # higher field indices. `tp_members` must be mapped by offset, not by position, or those
+        # slots get mislabeled with the trailing hidden float names.
+        stat_fields = structseq_fields(os.stat_result)
+        assert len(stat_fields) == os.stat_result.n_sequence_fields
+        assert stat_fields[:7] == (
+            'st_mode',
+            'st_ino',
+            'st_dev',
+            'st_nlink',
+            'st_uid',
+            'st_gid',
+            'st_size',
+        )
+        if not PYPY:
+            # PyPy has no unnamed fields: it names slots 7-9 `_integer_atime`/etc. and puts the
+            # hidden float `st_atime` at a later index, so this CPython-only check does not apply.
+            for name in stat_fields[7:10]:
+                assert name not in {'st_atime', 'st_mtime', 'st_ctime'}
+                assert not name.isidentifier()  # the PyStructSequence unnamed-field marker
 
         with pytest.raises(
             TypeError,
@@ -599,6 +622,36 @@ def test_structseq_fields():
             match=r"Expected a PyStructSequence type, got <class '.*\.FakeStructSequence'>\.",
         ):
             structseq_fields(FakeStructSequence)
+
+
+def test_structseq_accessor_unnamed_fields_codify_by_index():
+    # The accessor round-trip (the generated code evaluates to the accessed value) must hold for
+    # every slot on every implementation. It exercises both codify styles: CPython leaves
+    # `os.stat_result` slots 7, 8, 9 UNNAMED, so their accessors codify to index access (matching the
+    # index-based `__call__`); PyPy names those slots (`_integer_atime` etc.) and codifies them by
+    # attribute. Either way `accessor.codify(...)` and `accessor(...)` resolve to the same `st[i]`.
+    st = os.stat(os.curdir)  # a real stat_result, valid on both CPython and PyPy
+    accessors = optree.tree_accessors(st)
+    assert len(accessors) == os.stat_result.n_sequence_fields
+    for i, accessor in enumerate(accessors):
+        assert eval(accessor.codify('__st'), {'__st': st}, {}) == accessor(st) == st[i]
+    assert accessors[6].codify('__st') == '__st.st_size'  # a named slot -> attribute access
+
+    # Repeat with DISTINCT per-field values (`st[i] == i`) so the round-trip reliably catches the
+    # unnamed-slot mislabel: a real stat's whole-second atime could coincide with integer slot 7. On
+    # CPython slots 7, 8, 9 are UNNAMED, so their accessors must codify to index access; codifying slot
+    # 7 as `.st_atime` (the hidden FLOAT field CPython's own repr mislabels it with) would eval to
+    # that wrong value. PyPy names those slots (`_integer_atime` etc.) and aliases `st_atime` back to
+    # `self[7]`, so the unnamed-slot specifics below are asserted CPython-only.
+    st = os.stat_result(range(os.stat_result.n_fields))
+    accessors = optree.tree_accessors(st)
+    assert len(accessors) == os.stat_result.n_sequence_fields
+    for i, accessor in enumerate(accessors):
+        assert eval(accessor.codify('__st'), {'__st': st}, {}) == accessor(st) == i
+    if not PYPY:
+        assert st.st_atime != st[7]  # a different (hidden) field, not sequence slot 7
+        for i in (7, 8, 9):
+            assert accessors[i].codify('__st') == f'__st[{i}]'
 
 
 @skipif_pypy
