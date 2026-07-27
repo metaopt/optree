@@ -75,6 +75,14 @@ skipif_freethreading = pytest.mark.skipif(
     reason='Py_GIL_DISABLED is set',
 )
 
+# Free-threaded builds before 3.14 hold deferred references to type objects in per-thread caches, so
+# `gc_collect()` cannot force a heap type to be reclaimed there.
+HAS_DEFERRED_TYPE_REFS = Py_GIL_DISABLED and sys.version_info < (3, 14)
+skipif_deferred_type_refs = pytest.mark.skipif(
+    HAS_DEFERRED_TYPE_REFS,
+    reason='free-threaded builds before 3.14 keep deferred references to type objects',
+)
+
 PYPY = platform.python_implementation() == 'PyPy'
 skipif_pypy = pytest.mark.skipif(
     PYPY,

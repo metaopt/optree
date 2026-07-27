@@ -505,6 +505,10 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
                              "Return a string representation of the treespec.")
         .def_method_pos_only("__hash__", &PyTreeSpec::HashValue, "Return the hash of the treespec.")
         .def_method_pos_only("__len__", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
+        // Known limitation: pybind11's `tp_new` only allocates the wrapper, so between
+        // `cls.__new__(cls)` and `__setstate__` a method call reads uninitialized memory (undefined
+        // behavior, and `PYTREESPEC_SANITY_CHECK` cannot catch it). Only the GC is covered, by the
+        // `is_holder_constructed` guards in `PyTpTraverse` / `PyTpClear`.
         .def(py::pickle([](const PyTreeSpec &t) -> py::object { return t.ToPicklable(); },
                         [](const py::object &o) -> std::unique_ptr<PyTreeSpec> {
                             return PyTreeSpec::FromPicklable(o);
@@ -559,6 +563,8 @@ void BuildModule(py::module_ &mod) {  // NOLINT[runtime/references]
              py::arg("leaf_predicate") = std::nullopt,
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
+        // Known limitation: `PyTreeIter.__new__(PyTreeIter)` leaves the C++ iterator unbuilt, so
+        // the methods below would read uninitialized memory (see the `PyTreeSpec` note above).
         .def_method_pos_only("__iter__", &PyTreeIter::Iter, "Return the iterator object itself.")
         .def_method_pos_only("__next__", &PyTreeIter::Next, "Return the next leaf in the pytree.");
 

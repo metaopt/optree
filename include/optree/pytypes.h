@@ -126,6 +126,12 @@ template <typename T, typename = std::enable_if_t<std::is_base_of_v<py::object, 
     }
     return py::reinterpret_steal<T>(item);
 #else
+    // Bounds-check like `PyList_GetItemRef` does: callers read the length once and then run user
+    // code, so the list can shrink mid-loop and the unchecked macro would read out of bounds.
+    if (index < 0 || index >= PyList_GET_SIZE(list.ptr())) [[unlikely]] {
+        py::set_error(PyExc_IndexError, "list index out of range");
+        throw py::error_already_set();
+    }
     return py::reinterpret_borrow<T>(PyList_GET_ITEM(list.ptr(), index));
 #endif
 }
