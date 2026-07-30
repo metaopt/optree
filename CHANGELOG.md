@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix a deadlock while flattening on free-threading builds, caused by acquiring the non-recursive dictionary insertion order lock twice by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
 - Fix a spurious `SystemError` from `optree._C.get_registry_size()` when a concurrent registration slipped between its two reads by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
 - Fix `optree.tree_iter()` hanging uninterruptibly when the `is_leaf` predicate or a custom flatten function advances the same iterator, now reported as a `RuntimeError` by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
+- Fix the type caches handing an interpreter a value owned by another one, by keying them on the interpreter in addition to the type address by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
+- Fix the type caches retaining entries for a finalized interpreter, which leaked immortal keys and could be inherited by a fresh interpreter reusing the same ID by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
+- Fix a deadlock in the `PyStructSequence` field cache, caused by re-acquiring the GIL while still holding the cache lock by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
+- Fix the type caches publishing an entry that a failed cleanup registration would orphan, leaving a value owned by an interpreter with no callback able to evict it, whether the publish preceded that registration or raced another thread still performing it by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
 
 ### Removed
 

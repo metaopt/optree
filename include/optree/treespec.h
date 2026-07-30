@@ -26,6 +26,8 @@ limitations under the License.
 #include <utility>   // std::pair
 #include <vector>    // std::vector
 
+#include <Python.h>
+
 #include <pybind11/pybind11.h>
 
 #include "optree/exceptions.h"

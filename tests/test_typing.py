@@ -32,10 +32,14 @@ from helpers import (
     CustomTuple,
     Py_GIL_DISABLED,
     Vector2D,
+    check_script_in_subprocess,
     disable_systrace,
     gc_collect,
     getrefcount,
+    skipif_android,
+    skipif_ios,
     skipif_pypy,
+    skipif_wasm,
 )
 
 
@@ -660,3 +664,123 @@ def test_structseq_fields_cache():
     if not Py_GIL_DISABLED:
         assert called_with == 'Foo'
         assert wr() is None
+
+
+@skipif_wasm
+@skipif_android
+@skipif_ios
+@skipif_pypy  # CPython-only: uses `atexit._ncallbacks()` and CPython type caches
+def test_type_caches_register_interpreter_cleanup():
+    # optree keeps three process-global type caches: namedtuple classification, PyStructSequence
+    # classification, and PyStructSequence field names. Each registers one per-interpreter `atexit`
+    # cleanup on its first insert (the classification caches at import via the registry, the
+    # field-name cache on first use). Measuring in a clean subprocess before importing optree pins
+    # optree's whole footprint: one callback for the registry plus one per cache.
+    check_script_in_subprocess(
+        r"""
+        import atexit
+        import time
+
+        n0 = atexit._ncallbacks()
+        import optree
+        n1 = atexit._ncallbacks()
+        optree.is_namedtuple(int)
+        n2 = atexit._ncallbacks()
+        optree.is_structseq(int)
+        n3 = atexit._ncallbacks()
+        optree.structseq_fields(time.struct_time)
+        n4 = atexit._ncallbacks()
+
+        assert n0 < n1, (n0, n1)
+        assert n1 <= n2, (n1, n2)
+        assert n2 <= n3, (n2, n3)
+        assert n3 <= n4, (n3, n4)
+        assert n4 - n0 == 4, (n0, n1, n2, n3, n4)
+        """,
+        output=None,
+    )
+
+
+@skipif_wasm
+@skipif_android
+@skipif_ios
+@skipif_pypy  # CPython-only: uses the CPython type caches
+def test_type_cache_insert_failure_does_not_leave_a_dangling_entry():
+    # Regression: the caches published an entry before taking a reference to the value and before
+    # creating the weakref that evicts it. If registering the per-interpreter `atexit` cleanup
+    # raised in between, the entry survived owning nothing and with no eviction hook, so the next
+    # lookup read the freed value and segfaulted. Run in a subprocess so a crash is a non-zero exit
+    # rather than a lost test session.
+    check_script_in_subprocess(
+        r"""
+        import atexit
+        import time
+
+        import optree
+
+        real_register = atexit.register
+
+        def failing_register(*args, **kwargs):
+            raise RuntimeError('injected atexit failure')
+
+        atexit.register = failing_register
+        try:
+            optree.structseq_fields(time.struct_time)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError('the injected failure did not propagate')
+        finally:
+            atexit.register = real_register
+
+        # The interpreter must not be marked as cleaned-up-registered by the failed attempt, or the
+        # cleanup would never be retried. Sample before the retry, which is the call that registers.
+        before = atexit._ncallbacks()
+
+        # The failed insert must not be observable: the value is recomputed, not read back from a
+        # dangling entry.
+        fields = optree.structseq_fields(time.struct_time)
+        after = atexit._ncallbacks()
+        assert fields[:2] == ('tm_year', 'tm_mon'), fields
+        assert after == before + 1, (before, after)
+        """,
+        output=None,
+    )
+
+
+@skipif_wasm
+@skipif_android
+@skipif_ios
+@skipif_pypy  # CPython-only: uses the CPython type caches
+def test_type_cache_insert_failure_before_import_does_not_crash():
+    # The same hazard on the import-time path: the registry and the classification caches take their
+    # first entries while `optree` is being imported, so break `atexit.register` before the import
+    # rather than after. The initialization must fail as a normal `ImportError` and leave nothing
+    # half-registered behind, rather than caching an entry it does not own and crashing later.
+    # Re-importing in the same process is not possible once initialization has failed part way
+    # through, which is a pybind11 module-init limitation rather than something optree controls.
+    check_script_in_subprocess(
+        r"""
+        import atexit
+        import sys
+
+        real_register = atexit.register
+
+        def failing_register(*args, **kwargs):
+            raise RuntimeError('injected atexit failure')
+
+        atexit.register = failing_register
+        try:
+            import optree
+        except ImportError:
+            pass
+        else:
+            raise AssertionError('the injected failure did not propagate')
+        finally:
+            atexit.register = real_register
+
+        assert 'optree' not in sys.modules
+        assert 'optree._C' not in sys.modules
+        """,
+        output=None,
+    )
