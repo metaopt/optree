@@ -217,13 +217,22 @@ def pytree_node_registry_get(  # noqa: C901
         raise TypeError(f'The namespace must be a string, got {namespace!r}.')
 
     if cls is None:
-        namespaces = frozenset({namespace, ''})
         with __REGISTRY_LOCK:
+            # Collect the global handlers first, then let the named namespace override them for the
+            # same type, mirroring the single-class lookup below, which checks the named namespace
+            # before falling back to the global one. Otherwise a later global registration would
+            # shadow the named handler in the returned dict.
             registry = {
                 handler.type: handler
                 for handler in _NODETYPE_REGISTRY.values()
-                if handler.namespace in namespaces
+                if handler.namespace == ''
             }
+            if namespace != '':
+                registry.update(
+                    (handler.type, handler)
+                    for handler in _NODETYPE_REGISTRY.values()
+                    if handler.namespace == namespace
+                )
         if _C.is_dict_insertion_ordered(namespace):
             registry[dict] = _DICT_INSERTION_ORDERED_REGISTRY_ENTRY
             registry[defaultdict] = _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY
@@ -335,7 +344,9 @@ def register_pytree_node(
         ...         list(vars(ct).keys()),
         ...         list(vars(ct).keys()),
         ...     ),
-        ...     unflatten_func=lambda keys, values: MyContainer(**dict(zip(keys, values))),
+        ...     unflatten_func=lambda keys, values: MyContainer(
+        ...         **dict(zip(keys, values, strict=True)),
+        ...     ),
         ...     path_entry_type=MyContainerEntry,
         ...     namespace='mycontainer',
         ... )
@@ -572,7 +583,7 @@ def register_pytree_node_class(  # noqa: C901
         # Add dunder-styled wrapper methods to the class
         # pylint: disable=no-member
 
-        @functools.wraps(cls.tree_flatten)
+        @functools.wraps(cls.tree_flatten)  # type: ignore[attr-defined]
         def __tree_flatten__(  # noqa: N807
             self: CustomTreeNode[T],
             /,
@@ -580,7 +591,13 @@ def register_pytree_node_class(  # noqa: C901
             return self.tree_flatten()  # type: ignore[attr-defined]
 
         @classmethod  # type: ignore[misc]
-        @functools.wraps(getattr(cls.tree_unflatten, '__func__', cls.tree_unflatten))
+        @functools.wraps(
+            getattr(  # type: ignore[arg-type]
+                cls.tree_unflatten,  # type: ignore[attr-defined]
+                '__func__',
+                cls.tree_unflatten,  # type: ignore[attr-defined]
+            ),
+        )
         def __tree_unflatten__(  # noqa: N807
             cls: type[CustomTreeNode[T]],
             metadata: MetaData,
@@ -591,13 +608,13 @@ def register_pytree_node_class(  # noqa: C901
 
         # pylint: enable=no-member
 
-        cls.__tree_flatten__ = __tree_flatten__
-        cls.__tree_unflatten__ = __tree_unflatten__
+        cls.__tree_flatten__ = __tree_flatten__  # type: ignore[method-assign]
+        cls.__tree_unflatten__ = __tree_unflatten__  # type: ignore[method-assign,assignment]
 
     register_pytree_node(
-        cls,
+        cls,  # type: ignore[arg-type]
         methodcaller('__tree_flatten__'),
-        cls.__tree_unflatten__,
+        cls.__tree_unflatten__,  # type: ignore[arg-type]
         path_entry_type=path_entry_type,
         namespace=namespace,
     )

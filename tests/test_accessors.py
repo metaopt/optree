@@ -17,14 +17,22 @@
 
 import dataclasses
 import itertools
+import os
 import re
 from collections import OrderedDict, UserDict, UserList, defaultdict, deque
+from operator import itemgetter
 from typing import Any, NamedTuple
 
 import pytest
 
 import optree
-from helpers import TREE_ACCESSORS, SysFloatInfoType, assert_equal_type_and_value, parametrize
+from helpers import (
+    TREE_ACCESSORS,
+    SysFloatInfoType,
+    assert_equal_type_and_value,
+    parametrize,
+    skipif_pypy,
+)
 
 
 def test_pytree_accessor_new():
@@ -226,6 +234,111 @@ def test_pytree_accessor_equal_hash(none_is_leaf):
                 assert hash(accessor1) == hash(accessor2)
             else:
                 assert hash(accessor1) != hash(accessor2)
+
+
+def test_pytree_accessor_not_equal_is_the_negation_of_equal():
+    # Regression: `PyTreeAccessor` overrode `__eq__` but inherited `tuple.__ne__`, which compares
+    # element-wise and ignores the type check. Against a plain tuple holding the same entries, both
+    # `==` and `!=` were false, so a guard written with `!=` never fired.
+    entries = (
+        optree.SequenceEntry(0, tuple, optree.PyTreeKind.TUPLE),
+        optree.MappingEntry('c', dict, optree.PyTreeKind.DICT),
+    )
+    accessor = optree.PyTreeAccessor(entries)
+
+    assert accessor == optree.PyTreeAccessor(entries)
+    assert not accessor != optree.PyTreeAccessor(entries)
+    assert accessor != optree.PyTreeAccessor(entries[:1])
+    for other in (entries, list(entries), entries[:1], 'not-an-accessor'):
+        assert not accessor == other
+        assert accessor != other
+        assert not other == accessor
+        assert other != accessor
+
+    # `PyTreeEntry` subclasses `object`, whose `__ne__` already negates `__eq__`.
+    for other in (entries, entries[0].entry, 'not-an-entry'):
+        assert (entries[0] == other) != (entries[0] != other)
+        assert (other == entries[0]) != (other != entries[0])
+
+
+def test_pytree_entry_equal_hash_with_non_function_call():
+    # Regression: equality and hashing read `self.__class__.__call__.__code__`, which does not exist
+    # for a valid non-function implementation such as `itemgetter`, so both raised `AttributeError`
+    # on an entry that works perfectly well when called.
+    class ItemGetterEntry(optree.SequenceEntry):
+        __call__ = itemgetter(0)
+
+    entry = ItemGetterEntry(0, list, optree.PyTreeKind.LIST)
+    assert entry([11, 22]) == 11
+    assert entry == entry
+    assert isinstance(hash(entry), int)
+    assert len({entry, ItemGetterEntry(0, list, optree.PyTreeKind.LIST)}) == 1
+
+
+def test_pytree_entry_equal_hash_distinguishes_implementations():
+    # Regression: comparing the bytecode alone collapsed entries whose implementations differ only
+    # in their defaults, so two entries that access different children compared equal and shared a
+    # hash bucket.
+    class FirstEntry(optree.SequenceEntry):
+        def __call__(self, obj, /, index=0):
+            return obj[index]
+
+    class SecondEntry(optree.SequenceEntry):
+        def __call__(self, obj, /, index=1):
+            return obj[index]
+
+    first = FirstEntry(0, list, optree.PyTreeKind.LIST)
+    second = SecondEntry(0, list, optree.PyTreeKind.LIST)
+    assert first([11, 22]) != second([11, 22])
+    assert first != second
+    assert len({first, second}) == 2
+
+    # A subclass that does not override anything shares the very same implementations, so it stays
+    # equal to its base.
+    class Inherited(optree.SequenceEntry):
+        pass
+
+    base = optree.SequenceEntry(0, list, optree.PyTreeKind.LIST)
+    assert Inherited(0, list, optree.PyTreeKind.LIST) == base
+
+
+def test_getattr_entry_codify_non_identifier_name():
+    # Regression: `codify()` emitted `node.x-y` for an attribute name that is not an identifier,
+    # which is not executable. `setattr` accepts any string, so fall back to `getattr` calls.
+    class Node:
+        pass
+
+    node = Node()
+    setattr(node, 'x-y', 3)
+    entry = optree.GetAttrEntry('x-y', Node, optree.PyTreeKind.CUSTOM)
+    assert entry(node) == 3
+    code = entry.codify('node')
+    assert code == "getattr(node, 'x-y')"
+    assert eval(code) == entry(node)
+
+    # An identifier name, dotted or not, keeps the readable attribute form.
+    assert optree.GetAttrEntry('a', Node, optree.PyTreeKind.CUSTOM).codify('node') == 'node.a'
+    assert optree.GetAttrEntry('a.b', Node, optree.PyTreeKind.CUSTOM).codify('node') == 'node.a.b'
+
+    # A mixed path only escapes the segments that need it.
+    mixed = optree.GetAttrEntry('a.x-y', Node, optree.PyTreeKind.CUSTOM)
+    assert mixed.codify('node') == "getattr(node.a, 'x-y')"
+
+
+@skipif_pypy  # PyPy names every sequence slot, so there is no unnamed slot to report
+def test_structsequence_entry_repr_unnamed_slot():
+    # An unnamed slot has no field name, so the repr shows the index it stands for rather than
+    # printing the marker as if it were a keyword argument.
+    st = os.stat_result(range(os.stat_result.n_fields))
+    entries = [accessor[-1] for accessor in optree.tree_accessors(st)]
+    unnamed = [entry for entry in entries if entry.is_unnamed]
+    named = [entry for entry in entries if not entry.is_unnamed]
+    assert unnamed, 'expected at least one unnamed sequence slot'
+
+    for entry in unnamed:
+        assert repr(entry) == f'StructSequenceEntry(entry={entry.entry!r}, type={os.stat_result!r})'
+    for entry in named:
+        assert repr(entry) == f'StructSequenceEntry(field={entry.field!r}, type={os.stat_result!r})'
 
 
 def test_pytree_entry_init():

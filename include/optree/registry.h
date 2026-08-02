@@ -17,7 +17,7 @@ limitations under the License.
 
 #pragma once
 
-#include <cstdint>        // std::uint8_t
+#include <cstdint>        // std::uint8_t, UINT8_MAX
 #include <memory>         // std::shared_ptr
 #include <optional>       // std::optional, std::nullopt
 #include <string>         // std::string
@@ -55,6 +55,12 @@ enum class PyTreeKind : std::uint8_t {
     StructSequence,  // A PyStructSequence
     NumKinds,        // Number of kinds (placed at the end)
 };
+
+// A new pytree kind must keep `NumKinds` within the `std::uint8_t` underlying type; otherwise the
+// enum cannot represent every value and code that narrows a kind to `std::uint8_t` (e.g. pickle
+// deserialization in `PyTreeSpec::FromPicklable`) would silently wrap.
+static_assert(static_cast<ssize_t>(PyTreeKind::NumKinds) <= UINT8_MAX,
+              "PyTreeKind::NumKinds overflows its std::uint8_t underlying type.");
 
 constexpr PyTreeKind kCustom = PyTreeKind::Custom;
 constexpr PyTreeKind kLeaf = PyTreeKind::Leaf;
@@ -133,8 +139,12 @@ public:
         auto &registry1 = GetSingleton<NONE_IS_NODE>();
         auto &registry2 = GetSingleton<NONE_IS_LEAF>();
 
-        const ssize_t count1 = registry1.Size(registry_namespace);
-        const ssize_t count2 = registry2.Size(registry_namespace);
+        // Read both registries under a single lock so the two counts form a consistent snapshot.
+        // Two separate `Size()` calls each drop the lock, letting a concurrent (un)registration
+        // slip between them and spuriously trip the invariant check below.
+        const scoped_read_lock lock{sm_mutex};
+        const ssize_t count1 = registry1.SizeImpl(registry_namespace);
+        const ssize_t count2 = registry2.SizeImpl(registry_namespace);
         EXPECT_EQ(count1,
                   count2 + 1,
                   "The number of registered types in the two registries should match "
@@ -165,12 +175,36 @@ public:
     [[nodiscard]] static inline Py_ALWAYS_INLINE bool IsDictInsertionOrdered(
         const std::string &registry_namespace,
         const bool &inherit_global_namespace = true) {
+        const auto flags = GetDictInsertionOrderedFlags(registry_namespace);
+        return inherit_global_namespace ? flags.with_inherited_global_namespace
+                                        : flags.in_current_namespace;
+    }
+
+    // Whether dictionary key insertion order is preserved during flattening. Both flags are
+    // computed together under a single lock so callers see a consistent snapshot; this also avoids
+    // recursively read-locking `sm_dict_order_mutex` (which is not a recursive mutex) that would
+    // happen if a caller held the lock while calling `IsDictInsertionOrdered`.
+    struct DictInsertionOrderedFlags {
+        // Whether the given namespace itself preserves insertion order.
+        bool in_current_namespace;
+        // Whether the given namespace, or the inherited global namespace, preserves insertion
+        // order.
+        bool with_inherited_global_namespace;
+    };
+
+    [[nodiscard]] static inline Py_ALWAYS_INLINE DictInsertionOrderedFlags
+    GetDictInsertionOrderedFlags(const std::string &registry_namespace) {
         const scoped_read_lock lock{sm_dict_order_mutex};
 
         const auto interpid = GetCurrentPyInterpreterID();
         const auto &namespaces = sm_dict_insertion_ordered_namespaces;
-        return (namespaces.find({interpid, registry_namespace}) != namespaces.end()) ||
-               (inherit_global_namespace && namespaces.find({interpid, ""}) != namespaces.end());
+        const bool in_current_namespace =
+            namespaces.find({interpid, registry_namespace}) != namespaces.end();
+        return {
+            .in_current_namespace = in_current_namespace,
+            .with_inherited_global_namespace =
+                in_current_namespace || namespaces.find({interpid, ""}) != namespaces.end(),
+        };
     }
 
     // Set the namespace to preserve the insertion order of the dictionary keys during flattening.
@@ -194,16 +228,29 @@ private:
     template <bool NoneIsLeaf>
     [[nodiscard]] static PyTreeTypeRegistry &GetSingleton();
 
-    template <bool NoneIsLeaf>
-    static void RegisterImpl(const py::object &cls,
-                             const py::function &flatten_func,
-                             const py::function &unflatten_func,
-                             const py::object &path_entry_type,
-                             const std::string &registry_namespace);
+    // Why an (un)registration failed. Formatting the message needs `PyRepr`, which runs user Python
+    // (e.g. a metaclass `__repr__`); doing that under `sm_mutex` inverts the GIL <-> `sm_mutex`
+    // lock order against a concurrent flatten and deadlocks, so the caller raises after unlocking.
+    enum class RegistryStatus : std::uint8_t {
+        Ok = 0,
+        BuiltinType,
+        AlreadyRegistered,
+        NotRegistered,
+    };
 
-    template <bool NoneIsLeaf>
-    [[nodiscard]] static RegistrationPtr UnregisterImpl(const py::object &cls,
-                                                        const std::string &registry_namespace);
+    [[nodiscard]] RegistryStatus RegisterImpl(const py::object &cls,
+                                              const py::function &flatten_func,
+                                              const py::function &unflatten_func,
+                                              const py::object &path_entry_type,
+                                              const std::string &registry_namespace);
+
+    [[nodiscard]] RegistryStatus UnregisterImpl(
+        const py::object &cls,
+        const std::string &registry_namespace,
+        RegistrationPtr &registration);  // NOLINT[runtime/references]
+
+    // Get the number of registered types without locking. The caller must hold `sm_mutex`.
+    [[nodiscard]] ssize_t SizeImpl(const std::optional<std::string> &registry_namespace) const;
 
     // Initialize the registry for the current interpreter.
     static void Init();

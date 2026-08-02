@@ -72,9 +72,17 @@ template <bool NoneIsLeaf>
     Node node;
     node.kind = PyTreeTypeRegistry::GetKind<NoneIsLeaf>(handle, node.custom, registry_namespace);
 
-    const auto verify_children = [&handle, &node, &registry_namespace](
-                                     const std::vector<py::object> &children,
-                                     std::vector<PyTreeSpec> &treespecs) -> void {
+    const auto dict_order_flags =
+        PyTreeTypeRegistry::GetDictInsertionOrderedFlags(registry_namespace);
+    const bool is_dict_insertion_ordered = dict_order_flags.with_inherited_global_namespace;
+    const bool is_dict_insertion_ordered_in_current_namespace =
+        dict_order_flags.in_current_namespace;
+
+    const auto verify_children =
+        // NOLINTNEXTLINE[readability-function-cognitive-complexity]
+        [&handle, &node, &registry_namespace, &is_dict_insertion_ordered_in_current_namespace](
+            const std::vector<py::object> &children,
+            std::vector<PyTreeSpec> &treespecs) -> void {
         for (const py::object &child : children) {
             if (!py::isinstance<PyTreeSpec>(child)) [[unlikely]] {
                 std::ostringstream oss{};
@@ -105,6 +113,12 @@ template <bool NoneIsLeaf>
                 }
             }
         }
+        // A node depends on the namespace if it resolves a custom type, or if it is a dict whose
+        // keys are kept in insertion order (see the sort at the Dict case).
+        const bool depends_on_namespace =
+            node.kind == PyTreeKind::Custom ||
+            ((node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict) &&
+             is_dict_insertion_ordered_in_current_namespace);
         if (!common_registry_namespace.empty()) [[likely]] {
             if (registry_namespace.empty()) [[likely]] {
                 registry_namespace = common_registry_namespace;
@@ -114,22 +128,28 @@ template <bool NoneIsLeaf>
                     << ", got " << PyRepr(common_registry_namespace) << ".";
                 throw py::value_error(oss.str());
             }
-        } else if (node.kind != PyTreeKind::Custom) [[likely]] {
-            registry_namespace = "";
+        } else if (!depends_on_namespace) [[likely]] {
+            registry_namespace = "";  // mirrors `Flatten`
         }
     };
 
     switch (node.kind) {
         case PyTreeKind::Leaf: {
             node.arity = 0;
-            PyErr_WarnEx(PyExc_UserWarning,
-                         "PyTreeSpec::MakeFromCollection() is called on a leaf.",
-                         /*stack_level=*/2);
+            // A childless node resolves no custom type, so it does not depend on the namespace.
+            // Keeping the caller's would make otherwise-identical treespecs compare unequal.
+            registry_namespace = "";
+            if (PyErr_WarnEx(PyExc_UserWarning,
+                             "PyTreeSpec::MakeFromCollection() is called on a leaf.",
+                             /*stack_level=*/2) < 0) [[unlikely]] {
+                throw py::error_already_set();
+            }
             break;
         }
 
         case PyTreeKind::None: {
             node.arity = 0;
+            registry_namespace = "";
             if constexpr (!NoneIsLeaf) {
                 break;
             }
@@ -170,8 +190,7 @@ template <bool NoneIsLeaf>
                 keys = DictKeys(dict);
                 if (node.kind != PyTreeKind::OrderedDict) [[likely]] {
                     node.original_keys = DictFromKeys(dict);
-                    if (!PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace))
-                        [[likely]] {
+                    if (!is_dict_insertion_ordered) [[likely]] {
                         TotalOrderSort(keys);
                     }
                 }
@@ -272,6 +291,22 @@ template <bool NoneIsLeaf>
     out->m_traversal.emplace_back(std::move(node));
     out->m_none_is_leaf = NoneIsLeaf;
     out->m_namespace = registry_namespace;
+    // Reject a namespace promotion (an empty caller namespace adopting a child spec's namespace)
+    // that would rebind a custom node to a different registration than the one it holds, e.g. the
+    // root node, or a globally-resolved child, resolved in the global registry while the promoted
+    // namespace registers the type differently. The result keeps each node's original registration,
+    // mirroring the compose / transform / broadcast merge guards. Skipped for an empty namespace,
+    // which resolves every custom node globally.
+    if (!registry_namespace.empty()) [[unlikely]] {
+        if (const auto stale_type = out->FindStaleCustomType(registry_namespace)) [[unlikely]] {
+            std::ostringstream oss{};
+            oss << "PyTreeSpecs cannot be composed into a collection: custom PyTree type "
+                << PyRepr(*stale_type)
+                << " no longer resolves to its original registration in namespace "
+                << PyRepr(registry_namespace) << ".";
+            throw py::value_error(oss.str());
+        }
+    }
     out->m_traversal.shrink_to_fit();
     PYTREESPEC_SANITY_CHECK(*out);
     return out;

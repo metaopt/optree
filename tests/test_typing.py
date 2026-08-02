@@ -16,6 +16,7 @@
 # pylint: disable=missing-function-docstring
 
 import enum
+import os
 import re
 import sys
 import time
@@ -26,16 +27,22 @@ from typing import TypeVar, Union
 import pytest
 
 import optree
+import optree.typing
 from helpers import (
     PYBIND11_HAS_NATIVE_ENUM,
+    PYPY,
     CustomNamedTupleSubclass,
     CustomTuple,
     Py_GIL_DISABLED,
     Vector2D,
+    check_script_in_subprocess,
     disable_systrace,
     gc_collect,
     getrefcount,
+    skipif_android,
+    skipif_ios,
     skipif_pypy,
+    skipif_wasm,
 )
 
 
@@ -546,6 +553,27 @@ def test_structseq_fields():
             'tm_yday',
             'tm_isdst',
         )
+        # On CPython, `os.stat_result` has UNNAMED sequence slots 7, 8, 9 (the integer
+        # atime/mtime/ctime); the st_atime/st_mtime/st_ctime attributes are hidden FLOAT fields at
+        # higher field indices. `tp_members` must be mapped by offset, not by position, or those
+        # slots get mislabeled with the trailing hidden float names.
+        stat_fields = structseq_fields(os.stat_result)
+        assert len(stat_fields) == os.stat_result.n_sequence_fields
+        assert stat_fields[:7] == (
+            'st_mode',
+            'st_ino',
+            'st_dev',
+            'st_nlink',
+            'st_uid',
+            'st_gid',
+            'st_size',
+        )
+        if not PYPY:
+            # PyPy has no unnamed fields: it names slots 7-9 `_integer_atime`/etc. and puts the
+            # hidden float `st_atime` at a later index, so this CPython-only check does not apply.
+            for name in stat_fields[7:10]:
+                assert name not in {'st_atime', 'st_mtime', 'st_ctime'}
+                assert not name.isidentifier()  # the PyStructSequence unnamed-field marker
 
         with pytest.raises(
             TypeError,
@@ -594,6 +622,74 @@ def test_structseq_fields():
             match=r"Expected a PyStructSequence type, got <class '.*\.FakeStructSequence'>\.",
         ):
             structseq_fields(FakeStructSequence)
+
+
+@skipif_pypy  # PyPy reports `n_unnamed_fields == 0` and takes the index-based branch instead
+def test_structseq_fields_python_implementation_falls_back_when_the_probe_is_rejected():
+    # A type with unnamed slots that rejects the sentinel probe leaves nothing to match positions
+    # against, so the implementation falls back to a trailing layout: the named fields keep the
+    # leading positions and the rest get the unnamed marker. Pinning the lenient pairing that makes
+    # that possible, since a strict one would raise instead of degrading.
+    #
+    # No stdlib type reaches this path: `os.stat_result`, the only CPython type with unnamed fields,
+    # accepts arbitrary objects. The stand-in below is not a real PyStructSequence, hence the
+    # `is_structseq_class` swap; `__slots__` supplies the `member_descriptor` fields it looks for.
+    class RejectsProbe:
+        __slots__ = ('st_alpha', 'st_beta', 'st_gamma')
+
+        n_fields = 4
+        n_sequence_fields = 4
+        n_unnamed_fields = 1
+
+        def __new__(cls, sequence, /):
+            raise TypeError(f'cannot build {cls.__name__} from placeholder values: {sequence!r}')
+
+    python_implementation = optree.structseq_fields.__python_implementation__
+    original_is_structseq_class = optree.typing.is_structseq_class
+    optree.typing.is_structseq_class = lambda cls, /: (
+        cls is RejectsProbe or original_is_structseq_class(cls)
+    )
+    try:
+        fields = python_implementation(RejectsProbe)
+    finally:
+        optree.typing.is_structseq_class = original_is_structseq_class
+
+    assert fields == (
+        'st_alpha',
+        'st_beta',
+        'st_gamma',
+        optree.typing.PyStructSequence_UnnamedField,
+    )
+
+
+def test_structseq_accessor_unnamed_fields_codify_by_index():
+    # The accessor round-trip (the generated code evaluates to the accessed value) must hold for
+    # every slot on every implementation. It exercises both codify styles: CPython leaves
+    # `os.stat_result` slots 7, 8, 9 UNNAMED, so their accessors codify to index access (matching the
+    # index-based `__call__`); PyPy names those slots (`_integer_atime` etc.) and codifies them by
+    # attribute. Either way `accessor.codify(...)` and `accessor(...)` resolve to the same `st[i]`.
+    st = os.stat(os.curdir)  # a real stat_result, valid on both CPython and PyPy
+    accessors = optree.tree_accessors(st)
+    assert len(accessors) == os.stat_result.n_sequence_fields
+    for i, accessor in enumerate(accessors):
+        assert eval(accessor.codify('__st'), {'__st': st}, {}) == accessor(st) == st[i]
+    assert accessors[6].codify('__st') == '__st.st_size'  # a named slot -> attribute access
+
+    # Repeat with DISTINCT per-field values (`st[i] == i`) so the round-trip reliably catches the
+    # unnamed-slot mislabel: a real stat's whole-second atime could coincide with integer slot 7. On
+    # CPython slots 7, 8, 9 are UNNAMED, so their accessors must codify to index access; codifying slot
+    # 7 as `.st_atime` (the hidden FLOAT field CPython's own repr mislabels it with) would eval to
+    # that wrong value. PyPy names those slots (`_integer_atime` etc.) and aliases `st_atime` back to
+    # `self[7]`, so the unnamed-slot specifics below are asserted CPython-only.
+    st = os.stat_result(range(os.stat_result.n_fields))
+    accessors = optree.tree_accessors(st)
+    assert len(accessors) == os.stat_result.n_sequence_fields
+    for i, accessor in enumerate(accessors):
+        assert eval(accessor.codify('__st'), {'__st': st}, {}) == accessor(st) == i
+    if not PYPY:
+        assert st.st_atime != st[7]  # a different (hidden) field, not sequence slot 7
+        for i in (7, 8, 9):
+            assert accessors[i].codify('__st') == f'__st[{i}]'
 
 
 @skipif_pypy
@@ -659,3 +755,123 @@ def test_structseq_fields_cache():
     if not Py_GIL_DISABLED:
         assert called_with == 'Foo'
         assert wr() is None
+
+
+@skipif_wasm
+@skipif_android
+@skipif_ios
+@skipif_pypy  # CPython-only: uses `atexit._ncallbacks()` and CPython type caches
+def test_type_caches_register_interpreter_cleanup():
+    # optree keeps three process-global type caches: namedtuple classification, PyStructSequence
+    # classification, and PyStructSequence field names. Each registers one per-interpreter `atexit`
+    # cleanup on its first insert (the classification caches at import via the registry, the
+    # field-name cache on first use). Measuring in a clean subprocess before importing optree pins
+    # optree's whole footprint: one callback for the registry plus one per cache.
+    check_script_in_subprocess(
+        r"""
+        import atexit
+        import time
+
+        n0 = atexit._ncallbacks()
+        import optree
+        n1 = atexit._ncallbacks()
+        optree.is_namedtuple(int)
+        n2 = atexit._ncallbacks()
+        optree.is_structseq(int)
+        n3 = atexit._ncallbacks()
+        optree.structseq_fields(time.struct_time)
+        n4 = atexit._ncallbacks()
+
+        assert n0 < n1, (n0, n1)
+        assert n1 <= n2, (n1, n2)
+        assert n2 <= n3, (n2, n3)
+        assert n3 <= n4, (n3, n4)
+        assert n4 - n0 == 4, (n0, n1, n2, n3, n4)
+        """,
+        output=None,
+    )
+
+
+@skipif_wasm
+@skipif_android
+@skipif_ios
+@skipif_pypy  # CPython-only: uses the CPython type caches
+def test_type_cache_insert_failure_does_not_leave_a_dangling_entry():
+    # Regression: the caches published an entry before taking a reference to the value and before
+    # creating the weakref that evicts it. If registering the per-interpreter `atexit` cleanup
+    # raised in between, the entry survived owning nothing and with no eviction hook, so the next
+    # lookup read the freed value and segfaulted. Run in a subprocess so a crash is a non-zero exit
+    # rather than a lost test session.
+    check_script_in_subprocess(
+        r"""
+        import atexit
+        import time
+
+        import optree
+
+        real_register = atexit.register
+
+        def failing_register(*args, **kwargs):
+            raise RuntimeError('injected atexit failure')
+
+        atexit.register = failing_register
+        try:
+            optree.structseq_fields(time.struct_time)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError('the injected failure did not propagate')
+        finally:
+            atexit.register = real_register
+
+        # The interpreter must not be marked as cleaned-up-registered by the failed attempt, or the
+        # cleanup would never be retried. Sample before the retry, which is the call that registers.
+        before = atexit._ncallbacks()
+
+        # The failed insert must not be observable: the value is recomputed, not read back from a
+        # dangling entry.
+        fields = optree.structseq_fields(time.struct_time)
+        after = atexit._ncallbacks()
+        assert fields[:2] == ('tm_year', 'tm_mon'), fields
+        assert after == before + 1, (before, after)
+        """,
+        output=None,
+    )
+
+
+@skipif_wasm
+@skipif_android
+@skipif_ios
+@skipif_pypy  # CPython-only: uses the CPython type caches
+def test_type_cache_insert_failure_before_import_does_not_crash():
+    # The same hazard on the import-time path: the registry and the classification caches take their
+    # first entries while `optree` is being imported, so break `atexit.register` before the import
+    # rather than after. The initialization must fail as a normal `ImportError` and leave nothing
+    # half-registered behind, rather than caching an entry it does not own and crashing later.
+    # Re-importing in the same process is not possible once initialization has failed part way
+    # through, which is a pybind11 module-init limitation rather than something optree controls.
+    check_script_in_subprocess(
+        r"""
+        import atexit
+        import sys
+
+        real_register = atexit.register
+
+        def failing_register(*args, **kwargs):
+            raise RuntimeError('injected atexit failure')
+
+        atexit.register = failing_register
+        try:
+            import optree
+        except ImportError:
+            pass
+        else:
+            raise AssertionError('the injected failure did not propagate')
+        finally:
+            atexit.register = real_register
+
+        assert 'optree' not in sys.modules
+        assert 'optree._C' not in sys.modules
+        """,
+        output=None,
+    )

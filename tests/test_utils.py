@@ -62,6 +62,46 @@ def test_total_order_sorted():
         NonSortable(2),
         NonSortable(3),
     ]
+    # The incomparable fallback keeps the original order even with `reverse=True`: `reverse` is not
+    # applied there (like a stable sort leaving equal elements unmoved).
+    assert total_order_sorted([1, 5, 4, NonSortable(2), NonSortable(3)], reverse=True) == [
+        1,
+        5,
+        4,
+        NonSortable(2),
+        NonSortable(3),
+    ]
+
+
+def test_total_order_sorted_key_callback():
+    # Regression: the `key` callback was passed to `sorted()` inside the `try` block, so a
+    # `TypeError` raised by the callback itself was mistaken for a comparison failure. The callback
+    # ran again in the fallback and the sequence came back unsorted with the error swallowed.
+    calls = []
+
+    def boom(x):
+        calls.append(x)
+        raise TypeError('callback boom')
+
+    with pytest.raises(TypeError, match='callback boom'):
+        total_order_sorted([3, 1, 2], key=boom)
+    assert calls == [3]  # the callback is not retried
+
+    # Only comparison failures fall back, and the callback runs exactly once per element in every
+    # branch: the direct sort, the type-qualified sort, and the original-order fallback.
+    class NonSortable:
+        def __init__(self, x):
+            self.x = x
+
+    for sequence, expected in (
+        ([3, 1, 2], [1, 2, 3]),  # sorts directly
+        ([3, '1', 2], [2, 3, '1']),  # falls back to the type-qualified key
+        ([3, NonSortable(1), NonSortable(2)], None),  # keeps the original order
+    ):
+        calls.clear()
+        result = total_order_sorted(sequence, key=lambda x: (calls.append(x), x)[1])
+        assert calls == sequence
+        assert result == (expected if expected is not None else sequence)
 
 
 def test_safe_zip():
