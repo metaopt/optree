@@ -22,6 +22,7 @@ limitations under the License.
 #include <string>         // std::string
 #include <thread>         // std::this_thread::get_id
 #include <unordered_set>  // std::unordered_set
+#include <utility>        // std::pair, std::move
 
 #include "optree/optree.h"
 
@@ -143,9 +144,17 @@ std::string PyTreeSpec::ToStringImpl() const {
             case PyTreeKind::NamedTuple: {
                 const py::object type = node.node_data;
                 const auto fields = NamedTupleGetFields(type);
-                EXPECT_EQ(TupleGetSize(fields),
-                          node.arity,
-                          "Number of fields and entries does not match.");
+                // The field names are read from the (mutable) `_fields` attribute at repr time, so
+                // a caller may have changed them after the treespec was built. Report the mismatch
+                // as a `ValueError`, not an internal error, since the cause is external.
+                if (TupleGetSize(fields) != node.arity) [[unlikely]] {
+                    std::ostringstream oss{};
+                    oss << "Number of fields (" << TupleGetSize(fields) << ") of namedtuple type "
+                        << PyRepr(type) << " does not match the arity (" << node.arity
+                        << ") of the treespec node. The `_fields` attribute may have been modified "
+                           "after the treespec was created.";
+                    throw py::value_error(oss.str());
+                }
                 const std::string kind =
                     PyStr(EVALUATE_WITH_LOCK_HELD(py::getattr(type, "__name__"), type));
                 sstream << kind << "(";
@@ -219,15 +228,24 @@ std::string PyTreeSpec::ToStringImpl() const {
                 const py::object qualname =
                     EVALUATE_WITH_LOCK_HELD(py::getattr(type, "__qualname__"), type);
                 sstream << PyStr(qualname) << "(";
-                bool first = true;
+                ssize_t index = 0;
                 auto child_it = agenda.cend() - node.arity;
                 for (const py::handle &field : fields) {
-                    if (!first) [[likely]] {
+                    if (index > 0) [[likely]] {
                         sstream << ", ";
                     }
-                    sstream << PyStr(field) << "=" << *child_it;
+                    const std::string name = PyStr(field);
+                    // An unnamed slot has no valid identifier, so render it angle-bracketed like
+                    // CPython's `<lambda>` rather than as the bare marker, which would read as an
+                    // invalid keyword argument. The index disambiguates multiple unnamed slots.
+                    if (name == PyStructSequenceUnnamedField()) [[unlikely]] {
+                        sstream << "<unnamed@" << index << ">";
+                    } else [[likely]] {
+                        sstream << name;
+                    }
+                    sstream << "=" << *child_it;
                     ++child_it;
-                    first = false;
+                    ++index;
                 }
                 sstream << ")";
                 break;
@@ -310,16 +328,33 @@ py::object PyTreeSpec::ToPicklable() const {
         const scoped_critical_section2 cs{
             node.custom != nullptr ? py::handle{node.custom->type} : py::handle{},
             node.node_data};
+
+        // Copy the node's mutable containers so the pickled state cannot alias (and, if the caller
+        // mutates it, corrupt) the immutable spec. Only dict-like keys are mutable and internal; a
+        // namedtuple/PyStructSequence type or custom metadata is left as-is.
+        py::object node_data =
+            node.node_data ? py::reinterpret_borrow<py::object>(node.node_data) : py::none();
+        if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::OrderedDict ||
+            node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
+            node_data = ListCopy(node.node_data);
+        } else if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
+            const auto metadata = py::reinterpret_borrow<py::tuple>(node.node_data);
+            node_data =
+                py::make_tuple(TupleGetItem(metadata, 0), ListCopy(TupleGetItem(metadata, 1)));
+        }
+
         TupleSetItem(node_states,
                      i++,
                      py::make_tuple(py::int_(static_cast<ssize_t>(node.kind)),
                                     py::int_(node.arity),
-                                    node.node_data ? node.node_data : py::none(),
+                                    std::move(node_data),
                                     node.node_entries ? node.node_entries : py::none(),
                                     node.custom != nullptr ? node.custom->type : py::none(),
                                     py::int_(node.num_leaves),
                                     py::int_(node.num_nodes),
-                                    node.original_keys ? node.original_keys : py::none()));
+                                    node.original_keys
+                                        ? static_cast<py::object>(DictCopy(node.original_keys))
+                                        : static_cast<py::object>(py::none())));
     }
     return py::make_tuple(node_states, py::bool_(m_none_is_leaf), py::str(m_namespace));
 }
@@ -327,9 +362,25 @@ py::object PyTreeSpec::ToPicklable() const {
 // NOLINTBEGIN[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklable(const py::object &picklable) {
+    const auto malformed = [](const std::string &reason) -> std::runtime_error {
+        return std::runtime_error("Malformed pickled PyTreeSpec: " + reason + ".");
+    };
+    // `DistinctCount` hashes the keys, so an unhashable one raises `TypeError`. Report it as a
+    // malformed pickle like every other structural defect instead of letting it escape.
+    const auto distinct_count = [&malformed](const py::handle &keys) -> ssize_t {
+        try {
+            return DistinctCount(keys);
+        } catch (py::error_already_set &ex) {
+            if (!ex.matches(PyExc_TypeError)) [[unlikely]] {
+                throw;
+            }
+            throw malformed("the keys are not hashable");
+        }
+    };
+
     const auto state = thread_safe_cast<py::tuple>(picklable);
     if (state.size() != 3) [[unlikely]] {
-        throw std::runtime_error("Malformed pickled PyTreeSpec.");
+        throw malformed("the state is not a 3-tuple");
     }
     bool none_is_leaf = false;
     std::string registry_namespace{};
@@ -338,46 +389,86 @@ py::object PyTreeSpec::ToPicklable() const {
     out->m_namespace = registry_namespace = thread_safe_cast<std::string>(state[2]);
     const auto node_states = thread_safe_cast<py::tuple>(state[0]);
     for (const auto &item : node_states) {
-        const auto t = thread_safe_cast<py::tuple>(item);
+        const auto node_state = thread_safe_cast<py::tuple>(item);
+        const auto node_state_size = node_state.size();
+        if (node_state_size != 7 && node_state_size != 8) [[unlikely]] {
+            throw malformed("a node state is not a 7- or 8-tuple");
+        }
+
         Node &node = out->m_traversal.emplace_back();
-        node.kind = static_cast<PyTreeKind>(thread_safe_cast<ssize_t>(t[0]));
-        node.arity = thread_safe_cast<ssize_t>(t[1]);
+        const auto kind_value = thread_safe_cast<ssize_t>(node_state[0]);
+        if (kind_value < 0 || kind_value >= static_cast<ssize_t>(PyTreeKind::NumKinds))
+            [[unlikely]] {
+            throw malformed("the node kind is out of range");
+        }
+        node.kind = static_cast<PyTreeKind>(kind_value);
 #if !defined(OPTREE_HAS_FROZENDICT)
-        // Reject `FrozenDict` at the deserialization boundary so a cross-version state produced
-        // on Python 3.15+ fails loudly here rather than silently demoting to a mutable `dict` in
-        // `MakeNode` or crashing with `INTERNAL_ERROR()` in downstream switches.
+        // `PyTreeKind::FrozenDict` is in the enum on every build, so the range check above accepts
+        // it here. Reject it at the deserialization boundary so a cross-version state produced on
+        // Python 3.15+ fails loudly rather than silently demoting to a mutable `dict` in `MakeNode`
+        // or crashing with `INTERNAL_ERROR()` in a downstream switch. The state is well-formed, so
+        // this is reported as an unsupported build rather than as a malformed pickle.
         if (node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
             throw py::value_error(
                 "Cannot restore a PyTreeSpec containing a `frozendict` node: this build of "
                 "optree was compiled without `frozendict` support (requires Python 3.15+).");
         }
 #endif
-        if (t.size() != 7) [[unlikely]] {
-            if (t.size() == 8) [[likely]] {
-                if (t[7].is_none()) [[likely]] {
-                    if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict ||
-                        node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
-                        throw std::runtime_error("Malformed pickled PyTreeSpec.");
-                    }
-                } else [[unlikely]] {
-                    if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict ||
-                        node.kind == PyTreeKind::FrozenDict) [[likely]] {
-                        node.original_keys = DictFromKeys(t[7]);
-                    } else [[unlikely]] {
-                        throw std::runtime_error("Malformed pickled PyTreeSpec.");
-                    }
+        node.arity = thread_safe_cast<ssize_t>(node_state[1]);
+        if (node.arity < 0) [[unlikely]] {
+            throw malformed("the node arity is negative");
+        }
+        if (node_state_size == 8) [[likely]] {
+            const auto &original_keys = node_state[7];
+            if (original_keys.is_none()) [[likely]] {
+                if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict ||
+                    node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
+                    throw malformed("a dict node is missing its original keys");
                 }
             } else [[unlikely]] {
-                throw std::runtime_error("Malformed pickled PyTreeSpec.");
+                if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict ||
+                    node.kind == PyTreeKind::FrozenDict) [[likely]] {
+                    // `DictFromKeys` builds a new dict, so the caller cannot mutate it afterwards.
+                    node.original_keys = DictFromKeys(original_keys);
+                } else [[unlikely]] {
+                    throw malformed("a non-dict node must not have original keys");
+                }
             }
         }
+
+        node.num_leaves = thread_safe_cast<ssize_t>(node_state[5]);
+        node.num_nodes = thread_safe_cast<ssize_t>(node_state[6]);
+        if (node.num_leaves < 0 || node.num_nodes < 1) [[unlikely]] {
+            throw malformed("a node has a negative or invalid size");
+        }
+
+        const auto &node_data = node_state[2];
+        const auto &node_entries = node_state[3];
+        const auto &custom_type = node_state[4];
         switch (node.kind) {
             case PyTreeKind::Leaf:
-            case PyTreeKind::None:
+            case PyTreeKind::None: {
+                if (!node_data.is_none()) [[unlikely]] {
+                    throw malformed("a leaf or none node must not have node data");
+                }
+                // A leaf or none node is childless; a nonzero arity would let it absorb preceding
+                // subtrees (folding consistently) and silently drop leaves on unflatten.
+                if (node.arity != 0) [[unlikely]] {
+                    throw malformed("a leaf or none node must have arity 0");
+                }
+                // With `none_is_leaf`, None is flattened as a leaf, so a flattened tree never
+                // contains a None-kind node; a reconstructed one would later trip an InternalError
+                // in `FlattenUpTo` (`GetKind` never returns `None` under `NoneIsLeaf`).
+                if (node.kind == PyTreeKind::None && none_is_leaf) [[unlikely]] {
+                    throw malformed("a none node cannot appear when none_is_leaf is set");
+                }
+                break;
+            }
+
             case PyTreeKind::Tuple:
             case PyTreeKind::List: {
-                if (!t[2].is_none()) [[unlikely]] {
-                    throw std::runtime_error("Malformed pickled PyTreeSpec.");
+                if (!node_data.is_none()) [[unlikely]] {
+                    throw malformed("a tuple or list node must not have node data");
                 }
                 break;
             }
@@ -385,20 +476,84 @@ py::object PyTreeSpec::ToPicklable() const {
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
             case PyTreeKind::FrozenDict: {
-                node.node_data = thread_safe_cast<py::list>(t[2]);
+                // Copy the keys instead of borrowing them.
+                node.node_data = ListCopy(thread_safe_cast<py::list>(node_data));
+                if (ListGetSize(node.node_data) != node.arity) [[unlikely]] {
+                    throw malformed("the number of keys does not match the arity");
+                }
+                // The keys must be hashable and distinct; a duplicate or unhashable key would
+                // collapse or fail when the dict is rebuilt, desyncing the keys from the children.
+                if (distinct_count(node.node_data) != node.arity) [[unlikely]] {
+                    throw malformed("the keys are not distinct");
+                }
                 break;
             }
 
-            case PyTreeKind::NamedTuple:
+            case PyTreeKind::NamedTuple: {
+                node.node_data = thread_safe_cast<py::type>(node_data);
+                if (!IsNamedTupleClass(node.node_data)) [[unlikely]] {
+                    throw malformed("the node data is not a namedtuple type");
+                }
+                if (TupleGetSize(NamedTupleGetFields(node.node_data)) != node.arity) [[unlikely]] {
+                    throw malformed("the number of fields does not match the arity");
+                }
+                break;
+            }
+
             case PyTreeKind::StructSequence: {
-                node.node_data = thread_safe_cast<py::type>(t[2]);
+                node.node_data = thread_safe_cast<py::type>(node_data);
+                if (!IsStructSequenceClass(node.node_data)) [[unlikely]] {
+                    throw malformed("the node data is not a PyStructSequence type");
+                }
+                if (TupleGetSize(StructSequenceGetFields(node.node_data)) != node.arity)
+                    [[unlikely]] {
+                    throw malformed("the number of fields does not match the arity");
+                }
                 break;
             }
 
-            case PyTreeKind::DefaultDict:
-            case PyTreeKind::Deque:
+            case PyTreeKind::DefaultDict: {
+                // A default dict stores its metadata as a 2-tuple `(default_factory, sorted_keys)`.
+                // `MakeNode` reads it with raw tuple/list accessors, so validate the shape here to
+                // avoid type-confusion on malformed input.
+                const auto metadata = thread_safe_cast<py::tuple>(node_data);
+                if (metadata.size() != 2) [[unlikely]] {
+                    throw malformed("the defaultdict metadata is not a 2-tuple");
+                }
+                // `default_factory` is passed to `defaultdict(...)`, which requires None or
+                // callable.
+                const auto default_factory = TupleGetItem(metadata, 0);
+                if (!(default_factory.is_none() ||
+                      static_cast<bool>(PyCallable_Check(default_factory.ptr())))) [[unlikely]] {
+                    throw malformed("the `default_factory` is not callable");
+                }
+                // Copy the keys and rebuild the metadata tuple around the copy (see the dict case).
+                const auto keys = ListCopy(thread_safe_cast<py::list>(metadata[1]));
+                if (ListGetSize(keys) != node.arity) [[unlikely]] {
+                    throw malformed("the number of keys does not match the arity");
+                }
+                if (distinct_count(keys) != node.arity) [[unlikely]] {
+                    throw malformed("the keys are not distinct");
+                }
+                node.node_data = py::make_tuple(default_factory, keys);
+                break;
+            }
+
+            case PyTreeKind::Deque: {
+                // A deque's `maxlen` is None (unbounded) or a non-negative int bounding its length,
+                // so it must be at least the node's arity.
+                if (!node_data.is_none()) [[likely]] {
+                    if (PyLong_Check(node_data.ptr()) == 0 ||
+                        thread_safe_cast<ssize_t>(node_data) < node.arity) [[unlikely]] {
+                        throw malformed("the deque maxlen is invalid");
+                    }
+                }
+                node.node_data = node_data;
+                break;
+            }
+
             case PyTreeKind::Custom: {
-                node.node_data = t[2];
+                node.node_data = node_data;
                 break;
             }
 
@@ -406,24 +561,24 @@ py::object PyTreeSpec::ToPicklable() const {
             default:
                 INTERNAL_ERROR();
         }
-        if (node.kind == PyTreeKind::Custom) [[unlikely]] {  // NOLINT
-            if (!t[3].is_none()) [[unlikely]] {
-                node.node_entries = thread_safe_cast<py::tuple>(t[3]);
+        if (node.kind == PyTreeKind::Custom) [[unlikely]] {
+            if (!node_entries.is_none()) [[unlikely]] {
+                node.node_entries = thread_safe_cast<py::tuple>(node_entries);
             }
-            if (t[4].is_none()) [[unlikely]] {
+            if (custom_type.is_none()) [[unlikely]] {
                 node.custom = nullptr;
             } else [[likely]] {
                 if (none_is_leaf) [[unlikely]] {
                     node.custom =
-                        PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(t[4], registry_namespace);
+                        PyTreeTypeRegistry::Lookup<NONE_IS_LEAF>(custom_type, registry_namespace);
                 } else [[likely]] {
                     node.custom =
-                        PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(t[4], registry_namespace);
+                        PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(custom_type, registry_namespace);
                 }
             }
             if (node.custom == nullptr) [[unlikely]] {
                 std::ostringstream oss{};
-                oss << "Unknown custom type in pickled PyTreeSpec: " << PyRepr(t[4]);
+                oss << "Unknown custom type in pickled PyTreeSpec: " << PyRepr(custom_type);
                 if (!registry_namespace.empty()) [[likely]] {
                     oss << " in namespace " << PyRepr(registry_namespace);
                 } else [[unlikely]] {
@@ -432,21 +587,69 @@ py::object PyTreeSpec::ToPicklable() const {
                 oss << ".";
                 throw std::runtime_error(oss.str());
             }
-        } else if (!t[3].is_none() || !t[4].is_none()) [[unlikely]] {
-            throw std::runtime_error("Malformed pickled PyTreeSpec.");
+            // A built-in registration (NoneType/tuple/list/dict/...) lives in the same map but has
+            // empty flatten/unflatten callables, which `MakeNode`'s custom branch would call.
+            if (node.custom->kind != PyTreeKind::Custom) [[unlikely]] {
+                throw malformed("the custom type is a built-in type");
+            }
+        } else if (!node_entries.is_none() || !custom_type.is_none()) [[unlikely]] {
+            throw malformed("a non-custom node must not have node entries or a custom type");
         }
-        if (node.original_keys && DictGetSize(node.original_keys) != node.arity) [[unlikely]] {
-            throw std::runtime_error("Number of keys does not match arity in pickled PyTreeSpec.");
+        if (node.original_keys) [[unlikely]] {
+            if (DictGetSize(node.original_keys) != node.arity) [[unlikely]] {
+                throw malformed("the number of original keys does not match the arity");
+            }
+            // `original_keys` records the insertion order of the same keys stored (sorted) in
+            // node_data; its key set must match, or unflatten would map children onto keys the dict
+            // never had.
+            const auto keys = (node.kind == PyTreeKind::DefaultDict
+                                   ? TupleGetItemAs<py::list>(node.node_data, 1)
+                                   : py::reinterpret_borrow<py::list>(node.node_data));
+            if (!DictKeysEqual(keys, py::reinterpret_borrow<py::dict>(node.original_keys)))
+                [[unlikely]] {
+                throw malformed("the keys do not match the original keys");
+            }
         }
         if (node.node_entries && !node.node_entries.is_none() &&
             TupleGetSize(node.node_entries) != node.arity) [[unlikely]] {
-            throw std::runtime_error(
-                "Number of node entries does not match arity in pickled PyTreeSpec.");
+            throw malformed("the number of node entries does not match the arity");
         }
-
-        node.num_leaves = thread_safe_cast<ssize_t>(t[5]);
-        node.num_nodes = thread_safe_cast<ssize_t>(t[6]);
     }
+
+    // Validate that the reconstructed traversal is structurally consistent.
+    // `PYTREESPEC_SANITY_CHECK` only checks the final node, so a malformed pickle could otherwise
+    // smuggle in inconsistent arity / num_nodes / num_leaves that cause out-of-bounds access when
+    // the spec is later used. Walk the post-order traversal, folding each node's children off a
+    // stack of subtree sizes.
+    {
+        auto subtree_sizes =
+            reserved_vector</*(num_nodes, num_leaves)*/ std::pair<ssize_t, ssize_t>>(
+                out->m_traversal.size());
+        for (const Node &node : out->m_traversal) {
+            if (static_cast<ssize_t>(subtree_sizes.size()) < node.arity) [[unlikely]] {
+                throw malformed("a node has more children than available subtrees");
+            }
+            ssize_t children_num_nodes = 0;
+            ssize_t children_num_leaves = 0;
+            for (ssize_t i = 0; i < node.arity; ++i) {
+                children_num_nodes += subtree_sizes.back().first;
+                children_num_leaves += subtree_sizes.back().second;
+                subtree_sizes.pop_back();
+            }
+            const ssize_t expected_num_nodes = children_num_nodes + 1;
+            const ssize_t expected_num_leaves =
+                (node.kind == PyTreeKind::Leaf ? ssize_t{1} : children_num_leaves);
+            if (node.num_nodes != expected_num_nodes || node.num_leaves != expected_num_leaves)
+                [[unlikely]] {
+                throw malformed("a node's size is inconsistent with its children");
+            }
+            subtree_sizes.emplace_back(node.num_nodes, node.num_leaves);
+        }
+        if (subtree_sizes.size() != 1) [[unlikely]] {
+            throw malformed("the traversal does not yield a single tree");
+        }
+    }
+
     out->m_traversal.shrink_to_fit();
     PYTREESPEC_SANITY_CHECK(*out);
     return out;

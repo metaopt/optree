@@ -358,3 +358,175 @@ def test_import_in_subinterpreters_concurrently():
         output='',
         rerun=NUM_FLAKY_RERUNS,
     )
+
+
+def test_type_cache_cleanup_across_subinterpreters():
+    # Exercise the process-global type caches across subinterpreter churn. The caches key on the
+    # type's memory ADDRESS, which the allocator may recycle after a type is freed. Each interpreter
+    # flattens a RANDOMLY chosen type and reads its repr, firing both the classification and the
+    # field-name cache; distinct field names make a stale entry on a recycled address observable.
+    # The subprocess makes finalization real.
+    check_script_in_subprocess(
+        f"""
+        import contextlib
+        import textwrap
+        from concurrent import interpreters
+
+        resolve = textwrap.dedent(
+            '''
+            import keyword
+            import os
+            import random
+            import string
+            import time
+            from collections import namedtuple
+
+            import optree
+
+            # Distinct PyStructSequence types, each with a distinct first sequence field.
+            cases = [
+                (os.stat_result, 'st_mode'),
+                (time.struct_time, 'tm_year'),
+                (os.times_result, 'user'),
+            ]
+            case = random.choice([*cases, None])
+            if case is None:
+                # Exercise the classification cache with a namedtuple type.
+                field_names = []
+                while not field_names:
+                    field_names = [
+                        ''.join(random.choices(string.ascii_lowercase, k=random.randint(1, 8)))
+                        for _ in range(random.randint(2, 5))
+                    ]
+                    field_names = [n for n in field_names if not keyword.iskeyword(n)]  # avoid reserved names
+                    field_names = list(dict.fromkeys(field_names))  # deduplicate
+                NamedTupleType = namedtuple('NamedTupleType', field_names)
+                leaves, treespec = optree.tree_flatten(NamedTupleType(*range(len(field_names))))
+                assert len(leaves) == len(field_names), (leaves, treespec)
+                assert (field_names[0] + '=*') in repr(treespec), repr(treespec)
+            else:
+                # Exercise the classification cache and the field-name cache with a PyStructSequence type.
+                PyStructSequenceType, first_field = case
+                obj = PyStructSequenceType(range(PyStructSequenceType.n_sequence_fields))
+                assert (first_field + '=*') in repr(optree.tree_structure(obj)), first_field
+            '''
+        ).strip()
+
+        exec(resolve)  # the main interpreter resolves a random type
+        for _ in range({NUM_FUTURES}):
+            with contextlib.closing(interpreters.create()) as subinterpreter:
+                subinterpreter.exec(resolve)
+        exec(resolve)  # the main interpreter must still resolve correctly after the churn
+        """,
+        output='',
+        rerun=NUM_FLAKY_RERUNS,
+    )
+
+
+def test_registry_init_failure_does_not_leak_the_interpreter_id():
+    # Regression: `PyTreeTypeRegistry::Init` inserted the interpreter into the alive set and bumped
+    # the seen counter BEFORE `atexit.register(&Clear)` succeeded, with no rollback. A failed import
+    # then left behind an ID that no callback can ever remove, so the registry keeps believing a
+    # dead interpreter is alive and its shutdown invariants never hold again. `Init` must mark the
+    # interpreter only once the cleanup is registered, the way `WeakKeyCache::LookupOrInsert` does.
+    check_script_in_subprocess(
+        """
+        import contextlib
+        import faulthandler
+        import textwrap
+        from concurrent import interpreters
+
+        import optree
+
+        faulthandler.dump_traceback_later(60, exit=True)  # watchdog: abort the process on a hang
+
+        before_ids = optree._C.get_alive_interpreter_ids()
+        before_seen = optree._C.get_num_interpreters_seen()
+        assert before_ids == {optree._C.get_current_interpreter_id()}, before_ids
+
+        with contextlib.closing(interpreters.create()) as subinterpreter:
+            subinterpreter.exec(
+                textwrap.dedent(
+                    '''
+                    import atexit
+
+                    def failing_register(*args, **kwargs):
+                        raise RuntimeError('injected atexit failure')
+
+                    atexit.register = failing_register
+                    try:
+                        import optree
+                    except ImportError:
+                        pass
+                    else:
+                        raise AssertionError('the injected failure did not propagate')
+                    ''',
+                ).strip(),
+            )
+
+        after_ids = optree._C.get_alive_interpreter_ids()
+        after_seen = optree._C.get_num_interpreters_seen()
+        assert after_ids == before_ids, (before_ids, after_ids)
+        assert after_seen == before_seen, (before_seen, after_seen)
+        """,
+        output='',
+    )
+
+
+def test_registry_lookup_no_gil_lock_order_deadlock():
+    # Regression: `Lookup`/`Register`/`Unregister` called `GetSingleton()` while holding `sm_mutex`.
+    # Under `per_interpreter_gil` that call releases the GIL once any subinterpreter has imported
+    # `optree._C`, so a flatten thread drops the GIL holding the read lock while a registration
+    # thread holds the GIL waiting on the write lock: a lock-order inversion that hangs the process.
+    # The watchdog turns the hang into a non-zero exit; the fix acquires the singleton before
+    # locking.
+    check_script_in_subprocess(
+        f"""
+        import contextlib
+        import faulthandler
+        import threading
+        import time
+        from concurrent import interpreters
+
+        import optree
+
+        # Latch pybind11's `has_seen_non_main_interpreter` so `GetSingleton()` releases the GIL on
+        # every subsequent call (the single-interpreter fast path is disabled process-wide).
+        with contextlib.closing(interpreters.create()) as subinterpreter:
+            subinterpreter.exec('import optree._C')
+
+        faulthandler.dump_traceback_later(20, exit=True)  # a deadlock becomes a non-zero exit
+
+        stop = threading.Event()
+        tree = {{'a': 1, 'b': [2, 3], 'c': (4, 5)}}
+
+        def flatten_worker():
+            while not stop.is_set():
+                optree.tree_flatten(tree)
+
+        def register_worker(index):
+            cls = type(f'DeadlockNode_{{index}}', (), {{}})
+            while not stop.is_set():
+                optree.register_pytree_node(
+                    cls,
+                    lambda x: ((), None),
+                    lambda metadata, children: cls(),
+                    namespace='deadlock'
+                )
+                optree.unregister_pytree_node(cls, namespace='deadlock')
+
+        workers = [threading.Thread(target=flatten_worker) for _ in range({NUM_WORKERS})]
+        workers += [threading.Thread(target=register_worker, args=(index,)) for index in range(2)]
+        for worker in workers:
+            worker.start()
+        time.sleep(0.5)  # let readers and writers contend on `sm_mutex`
+        stop.set()
+        for worker in workers:
+            worker.join(timeout=5)
+            assert not worker.is_alive(), 'worker thread did not terminate (deadlock)'
+
+        faulthandler.cancel_dump_traceback_later()
+        """,
+        output=None,
+        rerun=NUM_FLAKY_RERUNS,
+    )

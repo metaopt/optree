@@ -76,6 +76,14 @@ skipif_freethreading = pytest.mark.skipif(
     reason='Py_GIL_DISABLED is set',
 )
 
+# Free-threaded builds before 3.14 hold deferred references to type objects in per-thread caches, so
+# `gc_collect()` cannot force a heap type to be reclaimed there.
+HAS_DEFERRED_TYPE_REFS = Py_GIL_DISABLED and sys.version_info < (3, 14)
+skipif_deferred_type_refs = pytest.mark.skipif(
+    HAS_DEFERRED_TYPE_REFS,
+    reason='free-threaded builds before 3.14 keep deferred references to type objects',
+)
+
 PYPY = platform.python_implementation() == 'PyPy'
 skipif_pypy = pytest.mark.skipif(
     PYPY,
@@ -678,12 +686,6 @@ TREE_PATHS_NONE_IS_LEAF = [
     [(0,)],
     [(0,), (1,)],
 ]
-
-TREE_PATHS = {
-    optree.NONE_IS_NODE: TREE_PATHS_NONE_IS_NODE,
-    optree.NONE_IS_LEAF: TREE_PATHS_NONE_IS_LEAF,
-}
-
 
 TREE_ACCESSORS_NONE_IS_NODE = [
     [optree.PyTreeAccessor()],
@@ -1529,12 +1531,6 @@ TREE_ACCESSORS_NONE_IS_LEAF = [
         optree.PyTreeAccessor((optree.GetItemEntry(1, FlatCache, optree.PyTreeKind.CUSTOM),)),
     ],
 ]
-TREE_ACCESSORS = {
-    optree.NONE_IS_NODE: TREE_ACCESSORS_NONE_IS_NODE,
-    optree.NONE_IS_LEAF: TREE_ACCESSORS_NONE_IS_LEAF,
-}
-
-
 TREE_STRINGS_NONE_IS_NODE = (
     'PyTreeSpec(*)',
     'PyTreeSpec(None)',
@@ -1702,10 +1698,24 @@ if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT:
     )
 
 
+TREE_PATHS = {
+    optree.NONE_IS_NODE: TREE_PATHS_NONE_IS_NODE,
+    optree.NONE_IS_LEAF: TREE_PATHS_NONE_IS_LEAF,
+}
+TREE_ACCESSORS = {
+    optree.NONE_IS_NODE: TREE_ACCESSORS_NONE_IS_NODE,
+    optree.NONE_IS_LEAF: TREE_ACCESSORS_NONE_IS_LEAF,
+}
 TREE_STRINGS = {
     optree.NONE_IS_NODE: TREE_STRINGS_NONE_IS_NODE,
     optree.NONE_IS_LEAF: TREE_STRINGS_NONE_IS_LEAF,
 }
+
+assert all(
+    len(table[none_is_leaf]) == len(TREES)
+    for table in (TREE_PATHS, TREE_ACCESSORS, TREE_STRINGS)
+    for none_is_leaf in (optree.NONE_IS_NODE, optree.NONE_IS_LEAF)
+)
 
 
 LEAVES = (

@@ -737,7 +737,7 @@ def dict_insertion_ordered(mode: bool, /, *, namespace: str) -> Generator[None]:
 
 
 class DictMetaData(list[KT]):
-    """Metadata for ``dict`` and ``collections.defaultdict`` pytree nodes.
+    """Metadata for ``dict``, ``collections.defaultdict``, and ``frozendict`` pytree nodes.
 
     A :class:`list` subclass holding the dict keys in the canonical traversal order for the
     active dict-ordering mode — sorted by default, or in ``dict.keys()`` insertion order when

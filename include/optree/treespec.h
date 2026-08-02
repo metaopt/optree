@@ -17,6 +17,7 @@ limitations under the License.
 
 #pragma once
 
+#include <atomic>    // std::atomic
 #include <memory>    // std::unique_ptr
 #include <optional>  // std::optional, std::nullopt
 #include <string>    // std::string
@@ -25,10 +26,13 @@ limitations under the License.
 #include <utility>   // std::pair
 #include <vector>    // std::vector
 
+#include <Python.h>
+
 #include <pybind11/pybind11.h>
 
 #include "optree/exceptions.h"
 #include "optree/hashing.h"
+#include "optree/pymacros.h"
 #include "optree/registry.h"
 #include "optree/synchronization.h"
 
@@ -39,7 +43,15 @@ using size_t = py::size_t;
 using ssize_t = py::ssize_t;
 
 // The maximum depth of a pytree.
-#if defined(Py_DEBUG) || defined(PYPY_VERSION) || defined(MS_WINDOWS) ||                           \
+#if defined(MS_WINDOWS) && (defined(Py_DEBUG) || defined(Py_GIL_DISABLED))
+// A debug or free-threading build on Windows combines large frames with a 1MB default stack, and
+// the walkers still need room to unwind the `RecursionError` thrown at the guard.
+#    if PY_VERSION_HEX < 0x030A0000  // Python 3.10
+constexpr ssize_t MAX_RECURSION_DEPTH = 100;
+#    else
+constexpr ssize_t MAX_RECURSION_DEPTH = 250;
+#    endif
+#elif defined(Py_DEBUG) || defined(PYPY_VERSION) || defined(MS_WINDOWS) ||                         \
     (defined(__wasm__) || defined(__wasm32__) || defined(__wasm64__) || defined(__wasi__) ||       \
      defined(__EMSCRIPTEN__))
 constexpr ssize_t MAX_RECURSION_DEPTH = 500;
@@ -261,6 +273,7 @@ public:
     friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
 
 private:
+    using Registration = PyTreeTypeRegistry::Registration;
     using RegistrationPtr = PyTreeTypeRegistry::RegistrationPtr;
     using ThreadedIdentity = std::pair<const PyTreeSpec *, std::thread::id>;
 
@@ -316,7 +329,7 @@ private:
     // Manufacture an instance of a node given its children.
     [[nodiscard]] static py::object MakeNode(
         const Node &node,
-        const py::object children[],  // NOLINT[hicpp-avoid-c-arrays]
+        const py::object children[],  // NOLINT[cppcoreguidelines-avoid-c-arrays]
         const size_t &num_children);
 
     // Identify the path entry class for a node.
@@ -366,7 +379,15 @@ private:
         const std::vector<Node> &traversal,
         const ssize_t &pos,
         const std::vector<Node> &other_traversal,
-        const ssize_t &other_pos);
+        const ssize_t &other_pos,
+        const ssize_t &depth);
+
+    // Return the type of the first custom node whose registration under `target_namespace` is no
+    // longer the one it holds, either re-registered or unregistered altogether, or a null object
+    // if all custom nodes are consistent. Used by namespace merges (compose / broadcast) to detect
+    // an unsafe re-tagging; the caller raises the error.
+    [[nodiscard]] std::optional<py::object> FindStaleCustomType(
+        const std::string &target_namespace) const;
 
     template <bool PassRawNode = true>
     [[nodiscard]] py::object WalkImpl(
@@ -433,11 +454,14 @@ public:
 private:
     py::object m_root;
     std::vector<std::pair<py::object, ssize_t>> m_agenda;
-    const std::optional<py::function> m_leaf_predicate;
+    std::optional<py::function> m_leaf_predicate;
     const bool m_none_is_leaf;
     const std::string m_namespace;
     const bool m_is_dict_insertion_ordered;
     mutable mutex m_mutex{};
+    // The thread currently running `Next()`, or a default-constructed id when idle. Used to reject
+    // re-entrant iteration instead of deadlocking on the non-recursive `m_mutex`.
+    std::atomic<std::thread::id> m_running_thread_id{};
 
     template <bool NoneIsLeaf>
     [[nodiscard]] py::object NextImpl();
