@@ -443,7 +443,7 @@ There are several key attributes of the pytree type registry:
 
 ### `None` is Non-leaf Node vs. `None` is Leaf
 
-The [`None`](https://docs.python.org/3/library/constants.html#None) object is Python's singleton for "no value" — analogous to `null` in other languages but also commonly used as a sentinel or implicit return value.
+The [`None`](https://docs.python.org/3/library/constants.html#None) object is Python's singleton for "no value", analogous to `null` in other languages but also commonly used as a sentinel or implicit return value.
 
 By default, the `None` object is considered a non-leaf node in the tree with arity 0, i.e., _**a non-leaf node that has no children**_.
 This is like the behavior of an empty tuple.
@@ -503,7 +503,7 @@ OrderedDict({
 
 The built-in Python dictionary ([`builtins.dict`](https://docs.python.org/3/library/stdtypes.html#dict)) is a mapping whose leaves are its values.
 Since [Python 3.7](https://docs.python.org/3/whatsnew/3.7.html), `dict` is guaranteed to be insertion ordered, but the equality operator (`==`) ignores key order.
-To ensure [referential transparency](https://en.wikipedia.org/wiki/Referential_transparency) — "equal `dict`" implies "equal ordering of leaves" — the leaves (values) are returned in key-sorted order.
+To ensure [referential transparency](https://en.wikipedia.org/wiki/Referential_transparency), where "equal `dict`" implies "equal ordering of leaves", the leaves (values) are returned in key-sorted order.
 The same applies to [`collections.defaultdict`](https://docs.python.org/3/library/collections.html#collections.defaultdict) and [`frozendict`](https://docs.python.org/3/library/stdtypes.html#frozendict) (Python 3.15+).
 
 ```python

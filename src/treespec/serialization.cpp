@@ -403,11 +403,9 @@ py::object PyTreeSpec::ToPicklable() const {
         }
         node.kind = static_cast<PyTreeKind>(kind_value);
 #if !defined(OPTREE_HAS_FROZENDICT)
-        // `PyTreeKind::FrozenDict` is in the enum on every build, so the range check above accepts
-        // it here. Reject it at the deserialization boundary so a cross-version state produced on
-        // Python 3.15+ fails loudly rather than silently demoting to a mutable `dict` in `MakeNode`
-        // or crashing with `INTERNAL_ERROR()` in a downstream switch. The state is well-formed, so
-        // this is reported as an unsupported build rather than as a malformed pickle.
+        // The enum carries `FrozenDict` on every build, so the range check above lets it through.
+        // Reject a cross-version state here rather than demoting it to a mutable `dict` in
+        // `MakeNode`. The state is well-formed, hence an unsupported build, not a malformed pickle.
         if (node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
             throw py::value_error(
                 "Cannot restore a PyTreeSpec containing a `frozendict` node: this build of "

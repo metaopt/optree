@@ -3365,7 +3365,6 @@ def test_treespec_broadcast_to_common_suffix_frozendict_cross_kind():
         )
         assert other_treespec.broadcast_to_common_suffix(frozendict_treespec).type is type(other)
 
-    # A key mismatch is reported, not silently broadcast.
     with pytest.raises(ValueError, match=r'dictionary key mismatch'):
         frozendict_treespec.broadcast_to_common_suffix(
             optree.tree_structure({'a': 1, 'c': 2}),

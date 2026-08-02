@@ -742,7 +742,7 @@ class DictMetaData(list[KT]):
     """Metadata for :class:`dict`, :class:`collections.defaultdict`, and :class:`frozendict` pytree nodes.
 
     A :class:`list` subclass holding the dict keys in the canonical traversal order for the
-    active dict-ordering mode — sorted by default, or in ``dict.keys()`` insertion order when
+    active dict-ordering mode: sorted by default, or in ``dict.keys()`` insertion order when
     :func:`dict_insertion_ordered` is active for the namespace. The list payload preserves
     backward compatibility with code that treats dict treespec metadata as a plain ``list[KT]``
     (e.g. iteration, indexing, equality with a plain list).
@@ -1045,7 +1045,7 @@ if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 c
         dct: frozendict[KT, VT],
         /,
     ) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
-        return _dict_flatten(dct)
+        return _dict_flatten(dct)  # type: ignore[arg-type]
 
     def _frozendict_unflatten(
         metadata: list[KT],
@@ -1058,7 +1058,7 @@ if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 c
         dct: frozendict[KT, VT],
         /,
     ) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
-        return _dict_insertion_ordered_flatten(dct)
+        return _dict_insertion_ordered_flatten(dct)  # type: ignore[arg-type]
 
     def _frozendict_insertion_ordered_unflatten(
         metadata: list[KT],

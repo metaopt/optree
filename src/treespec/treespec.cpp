@@ -116,8 +116,8 @@ namespace optree {
             }
 #else
             if (node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
-                // Reachable only via a treespec deserialized from a Python 3.15+ build. Fail loudly
-                // rather than silently demote the immutable mapping to a plain `dict`.
+                // Unreachable: `FromPicklable` rejects `FrozenDict` on such builds. Kept so a
+                // future entry point cannot silently demote the mapping to a plain `dict`.
                 throw py::value_error(
                     "PyTreeKind::FrozenDict requires Python 3.15+ (`frozendict` builtin).");
             }
@@ -1137,10 +1137,8 @@ py::object PyTreeSpec::GetType(const std::optional<Node> &node) const {
 #if defined(OPTREE_HAS_FROZENDICT)
             return PyFrozenDictTypeObject;
 #else
-            // The `FrozenDict` case label exists unconditionally to keep the switch exhaustive,
-            // but no node should carry this kind on builds without `OPTREE_HAS_FROZENDICT`.
-            // Reaching here means a treespec was crafted on Python 3.15+ and loaded on an older
-            // interpreter; fail loudly rather than fall through silently.
+            // The case label is unconditional to keep the switch exhaustive (and quiet MSVC
+            // C4061); unreachable here, as `FromPicklable` rejects such nodes on these builds.
             throw py::value_error(
                 "PyTreeKind::FrozenDict requires Python 3.15+ (`frozendict` builtin).");
 #endif

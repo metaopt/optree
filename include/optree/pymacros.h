@@ -43,10 +43,8 @@ limitations under the License.
 #    undef OPTREE_HAS_SUBINTERPRETER_SUPPORT
 #endif
 
-// `PyFrozenDict_Type` and friends are declared in `Include/cpython/dictobject.h`, i.e. CPython-only
-// API. PyPy reports the `PY_VERSION_HEX` of the CPython level it emulates, so it must be excluded
-// explicitly (as for `OPTREE_HAS_SUBINTERPRETER_SUPPORT` above) or a future PyPy claiming 3.15
-// would enable this and fail to link.
+// `PyFrozenDict_Type` is CPython-only API (`Include/cpython/dictobject.h`), and PyPy reports the
+// `PY_VERSION_HEX` it emulates, so exclude it explicitly as the macro above does.
 #if !defined(PYPY_VERSION) && (PY_VERSION_HEX >= 0x030F00A7 /* Python 3.15.0a7+ */)
 #    define OPTREE_HAS_FROZENDICT 1
 #else

@@ -338,7 +338,7 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle &handle,
                 }
                 INTERNAL_ERROR(
                     "NoneIsLeaf is true, but PyTreeTypeRegistry::GetKind() returned "
-                    "PyTreeKind::None`.");
+                    "`PyTreeKind::None`.");
             }
 
             case PyTreeKind::Tuple: {
