@@ -22,6 +22,12 @@ PyTreeSpec(None)
 >>> treespec.dict({'a': treespec.leaf(), 'b': treespec.leaf()})
 PyTreeSpec({'a': *, 'b': *})
 
+.. note::
+
+    :func:`frozendict` requires Python 3.15+ with built-in :class:`frozendict` support (see
+    :pep:`814`). The name is always exported so it can be introspected uniformly, but calling it
+    on an earlier interpreter raises :exc:`RuntimeError`.
+
 .. versionadded:: 0.14.1
 """
 

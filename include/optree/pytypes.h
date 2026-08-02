@@ -242,12 +242,11 @@ inline Py_ALWAYS_INLINE void AssertExactDefaultDict(const py::handle &object) {
 
 inline Py_ALWAYS_INLINE void AssertExactStandardDict(const py::handle &object) {
     if (!(PyDict_CheckExact(object.ptr()) ||
-          py::type::handle_of(object).is(PyOrderedDictTypeObject) ||
-          py::type::handle_of(object).is(PyDefaultDictTypeObject)
 #if defined(OPTREE_HAS_FROZENDICT)
-          || PyFrozenDict_CheckExact(object.ptr())
+          PyFrozenDict_CheckExact(object.ptr()) ||
 #endif
-              )) [[unlikely]] {
+          py::type::handle_of(object).is(PyOrderedDictTypeObject) ||
+          py::type::handle_of(object).is(PyDefaultDictTypeObject))) [[unlikely]] {
         throw py::value_error(
             "Expected an instance of dict, "
 #if defined(OPTREE_HAS_FROZENDICT)

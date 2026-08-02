@@ -70,7 +70,7 @@ __all__ = [
 
 SLOTS = {'slots': True} if sys.version_info >= (3, 10) else {}  # Python 3.10+
 if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
-    from builtins import frozendict  # type: ignore[import] # pylint: disable=no-name-in-module
+    from builtins import frozendict  # pylint: disable=no-name-in-module
 
 
 @dataclasses.dataclass(init=True, repr=True, eq=True, frozen=True, **SLOTS)
@@ -694,8 +694,10 @@ def dict_insertion_ordered(mode: bool, /, *, namespace: str) -> Generator[None]:
     """Context manager to temporarily set the dictionary sorting mode.
 
     This context manager is used to temporarily set the dictionary sorting mode for a specific
-    namespace. The dictionary sorting mode is used to determine whether the keys of a dictionary
+    namespace. The dictionary sorting mode determines whether the keys of the unordered dictionary
+    types, :class:`dict`, :class:`collections.defaultdict`, and :class:`frozendict` (Python 3.15+),
     should be sorted or keep the insertion order when flattening a pytree.
+    :class:`collections.OrderedDict` always keeps the insertion order and is unaffected.
 
     >>> tree = {'b': (2, [3, 4]), 'a': 1, 'c': None, 'd': 5}
     >>> tree_flatten(tree)  # doctest: +IGNORE_WHITESPACE
@@ -737,7 +739,7 @@ def dict_insertion_ordered(mode: bool, /, *, namespace: str) -> Generator[None]:
 
 
 class DictMetaData(list[KT]):
-    """Metadata for ``dict``, ``collections.defaultdict``, and ``frozendict`` pytree nodes.
+    """Metadata for :class:`dict`, :class:`collections.defaultdict`, and :class:`frozendict` pytree nodes.
 
     A :class:`list` subclass holding the dict keys in the canonical traversal order for the
     active dict-ordering mode — sorted by default, or in ``dict.keys()`` insertion order when
@@ -1040,7 +1042,7 @@ _DEFAULTDICT_INSERTION_ORDERED_REGISTRY_ENTRY = PyTreeNodeRegistryEntry(
 if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
 
     def _frozendict_flatten(
-        dct: frozendict[KT, VT],  # type: ignore[type-arg]
+        dct: frozendict[KT, VT],
         /,
     ) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
         return _dict_flatten(dct)
@@ -1049,11 +1051,11 @@ if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 c
         metadata: list[KT],
         values: Iterable[VT],
         /,
-    ) -> frozendict[KT, VT]:  # type: ignore[type-arg]
+    ) -> frozendict[KT, VT]:
         return frozendict(_dict_unflatten(metadata, values))
 
     def _frozendict_insertion_ordered_flatten(
-        dct: frozendict[KT, VT],  # type: ignore[type-arg]
+        dct: frozendict[KT, VT],
         /,
     ) -> tuple[tuple[VT, ...], list[KT], tuple[KT, ...]]:
         return _dict_insertion_ordered_flatten(dct)
@@ -1062,7 +1064,7 @@ if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 c
         metadata: list[KT],
         values: Iterable[VT],
         /,
-    ) -> frozendict[KT, VT]:  # type: ignore[type-arg]
+    ) -> frozendict[KT, VT]:
         return frozendict(_dict_insertion_ordered_unflatten(metadata, values))
 
     _NODETYPE_REGISTRY[frozendict] = PyTreeNodeRegistryEntry(

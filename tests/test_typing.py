@@ -144,6 +144,15 @@ def test_pytree_typing():
 
         # The `PyTree` generic alias includes a `frozendict[Any, ...]` member on Python 3.15+.
         assert any(get_origin(arg) is frozendict for arg in get_args(optree.PyTree[int]))
+    else:
+        # Without `frozendict` support the typing surface must not advertise it at all. This runs
+        # on the majority of the CI matrix, so it is the negative half of the contract above.
+        assert not hasattr(optree.typing, 'FrozenDict')
+        assert 'FrozenDict' not in optree.typing.__all__
+        assert not any(
+            getattr(get_origin(arg), '__name__', None) == 'frozendict'
+            for arg in get_args(optree.PyTree[int])
+        )
 
 
 def test_is_namedtuple():

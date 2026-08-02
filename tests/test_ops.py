@@ -3323,6 +3323,54 @@ def test_tree_broadcast_common():
             [(4, 5), frozendict({'a': 6, 'b': (7, 8)})],
         )
 
+        # Cross-kind: `frozendict` broadcasts against the other standard dict types, and each
+        # output keeps the node type of ITS OWN input rather than adopting the other's.
+        # NB: `frozendict({'a': 1}) == {'a': 1}` is `True`, so the types must be asserted
+        # explicitly; an `==` comparison alone would pass even if the kinds collapsed.
+        for other_type in (dict, OrderedDict, lambda d: defaultdict(int, d)):
+            other = other_type({'a': (3, 4), 'b': 5})
+            out, other_out = optree.tree_broadcast_common(
+                frozendict({'a': 1, 'b': 2}),
+                other,
+            )
+            assert type(out) is frozendict
+            assert type(other_out) is type(other)
+            assert out == frozendict({'a': (1, 1), 'b': 2})
+            assert other_out == {'a': (3, 4), 'b': 5}
+
+            # ... and symmetrically, with the operands swapped.
+            other_out, out = optree.tree_broadcast_common(other, frozendict({'a': 1, 'b': 2}))
+            assert type(out) is frozendict
+            assert type(other_out) is type(other)
+
+
+@pytest.mark.skipif(
+    not (sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT),
+    reason='`frozendict` requires Python 3.15+',
+)
+def test_treespec_broadcast_to_common_suffix_frozendict_cross_kind():
+    # `PyTreeSpec::BroadcastToCommonSuffix` accepts any dict-family kind as a partner and takes the
+    # result kind from the receiver. Pins that `frozendict` participates on both sides.
+    frozendict = builtins.frozendict  # type: ignore[attr-defined] # pylint: disable=no-member
+
+    frozendict_treespec = optree.tree_structure(frozendict({'a': 1, 'b': 2}))
+    for other in (
+        {'a': 1, 'b': (2, 3)},
+        OrderedDict(a=1, b=(2, 3)),
+        defaultdict(int, {'a': 1, 'b': (2, 3)}),
+    ):
+        other_treespec = optree.tree_structure(other)
+        assert frozendict_treespec.broadcast_to_common_suffix(other_treespec) == (
+            optree.tree_structure(frozendict({'a': 1, 'b': (2, 3)}))
+        )
+        assert other_treespec.broadcast_to_common_suffix(frozendict_treespec).type is type(other)
+
+    # A key mismatch is reported, not silently broadcast.
+    with pytest.raises(ValueError, match=r'dictionary key mismatch'):
+        frozendict_treespec.broadcast_to_common_suffix(
+            optree.tree_structure({'a': 1, 'c': 2}),
+        )
+
 
 def test_tree_broadcast_common_does_not_apply_is_leaf_to_internal_sentinel():
     # `tree_broadcast_common` fills an internal `common_suffix_tree` with a private `object()`

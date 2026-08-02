@@ -3597,8 +3597,18 @@ def treespec_frozendict(
 
     >>> treespec_frozendict({'a': treespec_leaf(), 'b': treespec_leaf()})  # doctest: +SKIP
     PyTreeSpec(frozendict({'a': *, 'b': *}))
+    >>> treespec_frozendict([('b', treespec_leaf()), ('c', treespec_leaf()), ('a', treespec_none())])  # doctest: +SKIP
+    PyTreeSpec(frozendict({'a': None, 'b': *, 'c': *}))
     >>> treespec_frozendict()  # doctest: +SKIP
     PyTreeSpec(frozendict())
+    >>> treespec_frozendict(a=treespec_leaf(), b=treespec_tuple([treespec_leaf(), treespec_leaf()]))  # doctest: +SKIP
+    PyTreeSpec(frozendict({'a': *, 'b': (*, *)}))
+    >>> treespec_frozendict({'a': treespec_leaf(), 'b': tree_structure([1, 2])})  # doctest: +SKIP
+    PyTreeSpec(frozendict({'a': *, 'b': [*, *]}))
+    >>> treespec_frozendict({'a': treespec_leaf(), 'b': tree_structure([1, 2], none_is_leaf=True)})  # doctest: +SKIP
+    Traceback (most recent call last):
+        ...
+    ValueError: Expected treespec(s) with `none_is_leaf=False`.
 
     Args:
         mapping (mapping of PyTreeSpec, optional): A mapping of child treespecs. They must have
@@ -3612,12 +3622,11 @@ def treespec_frozendict(
         **kwargs (PyTreeSpec, optional): Additional child treespecs to add to the mapping.
 
     Returns:
-        A treespec representing a frozendict node with the given children.
+        A treespec representing a :class:`frozendict` node with the given children.
     """
     if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
         return _C.make_from_collection(
-            # pylint: disable-next=no-member
-            builtins.frozendict(mapping, **kwargs),
+            builtins.frozendict(mapping, **kwargs),  # pylint: disable=no-member
             none_is_leaf,
             namespace,
         )
@@ -3677,8 +3686,7 @@ def treespec_from_collection(
 
 STANDARD_DICT_TYPES: frozenset[type] = frozenset({dict, OrderedDict, defaultdict})
 if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
-    # pylint: disable-next=no-name-in-module
-    from builtins import frozendict  # type: ignore[import]
+    from builtins import frozendict  # pylint: disable=no-name-in-module
 
     STANDARD_DICT_TYPES |= frozenset({frozendict})
 

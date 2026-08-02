@@ -41,6 +41,7 @@ from helpers import (
     GLOBAL_NAMESPACE,
     HAS_DEFERRED_TYPE_REFS,
     NAMESPACED_TREE,
+    NODETYPE_REGISTRY,
     OPTREE_HAS_FROZENDICT,
     PYPY,
     STANDARD_DICT_TYPES,
@@ -813,10 +814,27 @@ def test_treespec_pickle_all_protocols_roundtrip():
 
         import optree
 
-        spec = optree.tree_structure({'a': [1, 2], 'b': (3, 4)})
-        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
-            restored = pickle.loads(pickle.dumps(spec, protocol=protocol))
-            assert restored == spec, (protocol, restored, spec)
+        import sys
+        from collections import OrderedDict, defaultdict
+
+        trees = [
+            {'a': [1, 2], 'b': (3, 4)},
+            OrderedDict([('b', 1), ('a', 2)]),
+            defaultdict(int, {'b': 1, 'a': 2}),
+        ]
+        if sys.version_info >= (3, 15) and optree._C.OPTREE_HAS_FROZENDICT:
+            # `frozendict` node data is the same mutable key list as `dict`, and the protocol 0/1
+            # path reduces through `copyreg.__newobj__` rather than pybind11's own reduction.
+            trees.append(frozendict({'b': 1, 'a': 2, 'c': (3, 4)}))
+
+        for tree in trees:
+            spec = optree.tree_structure(tree)
+            for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+                restored = pickle.loads(pickle.dumps(spec, protocol=protocol))
+                assert restored == spec, (protocol, restored, spec)
+                assert restored.unflatten(range(spec.num_leaves)) == spec.unflatten(
+                    range(spec.num_leaves),
+                ), (protocol, tree)
         """,
         output=None,
     )
@@ -1136,6 +1154,57 @@ def test_treespec_setstate_rejects_malformed_state():
     unhashable_key = (DICT, 2, [[], []], None, None, 2, 3, keys_ab)
     with pytest.raises(malformed_exceptions):
         setstate(((leaf_node, leaf_node, unhashable_key), False, ''))
+
+    # The same negatives for FROZENDICT. `FrozenDict` rides on shared `||` conditions with `Dict`
+    # at ~10 sites in `PyTreeSpec::FromPicklable`; dropping one would let a crafted pickle build a
+    # corrupt spec with no other test noticing.
+    if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
+        FROZENDICT = int(optree.PyTreeKind.FROZENDICT)  # noqa: N806
+
+        # Missing its original keys, and short/duplicate/unhashable key lists.
+        with pytest.raises(malformed_exceptions):
+            setstate(
+                (
+                    (leaf_node, leaf_node, (FROZENDICT, 2, ['a', 'b'], None, None, 2, 3, None)),
+                    False,
+                    '',
+                ),
+            )
+        for bad_keys in (['a'], ['a', 'a'], [[], []]):
+            with pytest.raises(malformed_exceptions):
+                setstate(
+                    (
+                        (
+                            leaf_node,
+                            leaf_node,
+                            (FROZENDICT, 2, bad_keys, None, None, 2, 3, keys_ab),
+                        ),
+                        False,
+                        '',
+                    ),
+                )
+        # Original keys that do not match the node's own keys.
+        with pytest.raises(malformed_exceptions):
+            setstate(
+                (
+                    (
+                        leaf_node,
+                        leaf_node,
+                        (FROZENDICT, 2, ['a', 'b'], None, None, 2, 3, {'a': None, 'c': None}),
+                    ),
+                    False,
+                    '',
+                ),
+            )
+        # A well-formed frozendict node still round-trips.
+        restored = setstate(
+            (
+                (leaf_node, leaf_node, (FROZENDICT, 2, ['a', 'b'], None, None, 2, 3, keys_ab)),
+                False,
+                '',
+            ),
+        )
+        assert restored == optree.tree_structure(builtins.frozendict({'a': 1, 'b': 2}))
 
     # NamedTuple / StructSequence node_data that is not the expected kind of type.
     with pytest.raises(malformed_exceptions):
@@ -3292,40 +3361,33 @@ def test_treespec_frozendict_pickled_state_does_not_alias_keys():
     assert restored == treespec
 
 
-@pytest.mark.skipif(
-    OPTREE_HAS_FROZENDICT,
-    reason='this build DOES support `frozendict`, so the cross-version guard is unreachable',
-)
-def test_treespec_frozendict_setstate_rejected_on_build_without_support():
+def test_treespec_frozendict_pickle_cross_version():
     # A treespec pickled on a Python 3.15+ build can name `PyTreeKind::FrozenDict`, whose enum
-    # value exists on every build. Restoring it here must fail loudly rather than silently demote
-    # the immutable mapping to a `dict` in `MakeNode` or trip `INTERNAL_ERROR()` downstream.
-    # See the `#if !defined(OPTREE_HAS_FROZENDICT)` guard in `PyTreeSpec::FromPicklable`.
-    leaf = (int(optree.PyTreeKind.LEAF), 0, None, None, None, 1, 1, None)
-    frozendict_node = (
-        int(optree.PyTreeKind.FROZENDICT),
-        2,
-        ['a', 'b'],
-        None,
-        None,
-        2,
-        3,
-        {'b': None, 'a': None},
-    )
-    state = ((leaf, leaf, frozendict_node), False, '')
+    # value exists on every build. This pins BOTH halves of that cross-version contract, from
+    # whichever side the running interpreter sits on:
+    #   - without `frozendict` support, restoring must fail loudly rather than silently demote the
+    #     immutable mapping to a `dict` in `MakeNode` or trip `INTERNAL_ERROR()` downstream
+    #     (see the `#if !defined(OPTREE_HAS_FROZENDICT)` guard in `PyTreeSpec::FromPicklable`);
+    #   - with support, it must reconstruct a real `frozendict` node.
+    # The payload is built here rather than checked in as an opaque blob: a plain `dict` spec is
+    # retagged to `FROZENDICT`, which yields a state identical to the one a 3.15+ build emits
+    # natively for the same tree (asserted below on supporting builds).
+    DICT = int(optree.PyTreeKind.DICT)  # noqa: N806
+    FROZENDICT = int(optree.PyTreeKind.FROZENDICT)  # noqa: N806
 
-    obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
-    with pytest.raises(
-        ValueError,
-        match=re.escape(
-            'Cannot restore a PyTreeSpec containing a `frozendict` node: this build of optree '
-            'was compiled without `frozendict` support (requires Python 3.15+).',
-        ),
-    ):
-        obj.__setstate__(state)
+    node_states, none_is_leaf, namespace = optree.tree_structure(
+        {'x': {'b': 1, 'a': 2}, 'y': [3]},
+    ).__getstate__()
+    retagged = []
+    for node in node_states:
+        # Retag the inner (first, in post-order) dict node, leaving the outer one alone.
+        if node[0] == DICT and not any(n[0] == FROZENDICT for n in retagged):
+            node = (FROZENDICT, *node[1:])
+        retagged.append(node)
+    state = (tuple(retagged), none_is_leaf, namespace)
+    assert any(node[0] == FROZENDICT for node in state[0]), 'retagging produced no frozendict node'
 
-    # The same state shipped as a pickle payload, hand-assembled the way a spec pickled on a
-    # Python 3.15+ build would arrive here: `NEWOBJ` an empty spec, then `BUILD` it from the state.
+    # Ship it the way a real pickle would arrive: `NEWOBJ` an empty spec, then `BUILD` from state.
     blob = b''.join(
         [
             pickle.PROTO + bytes([2]),
@@ -3335,8 +3397,36 @@ def test_treespec_frozendict_setstate_rejected_on_build_without_support():
             pickle.BUILD + pickle.STOP,
         ],
     )
-    with pytest.raises(ValueError, match=r'compiled without `frozendict` support'):
-        pickle.loads(blob)  # crafted payload, the point of the test
+
+    if not OPTREE_HAS_FROZENDICT:
+        obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                'Cannot restore a PyTreeSpec containing a `frozendict` node: this build of optree '
+                'was compiled without `frozendict` support (requires Python 3.15+).',
+            ),
+        ):
+            obj.__setstate__(state)
+        with pytest.raises(ValueError, match=r'compiled without `frozendict` support'):
+            pickle.loads(blob)  # crafted payload, the point of the test
+        return
+
+    frozendict = builtins.frozendict  # type: ignore[attr-defined] # pylint: disable=no-member
+
+    restored = pickle.loads(blob)  # crafted payload, the point of the test
+    # The retagged state is exactly what this build emits natively for the frozendict tree, so the
+    # payload above is a faithful stand-in for one produced elsewhere.
+    expected = optree.tree_structure({'x': frozendict({'b': 1, 'a': 2}), 'y': [3]})
+    assert restored == expected
+    assert restored.__getstate__() == expected.__getstate__()
+    assert str(restored) == "PyTreeSpec({'x': frozendict({'a': *, 'b': *}), 'y': [*]})"
+
+    # The rebuilt node really is a `frozendict`, and keeps the original insertion order.
+    tree = restored.unflatten([10, 20, 30])
+    assert type(tree['x']) is frozendict
+    assert list(tree['x']) == ['b', 'a']
+    assert tree == {'x': frozendict({'b': 20, 'a': 10}), 'y': [30]}
 
 
 @pytest.mark.skipif(
@@ -3359,3 +3449,51 @@ def test_treespec_frozendict_runtime_error_on_unsupported_interpreter():
         ),
     ):
         optree.treespec.frozendict({'a': optree.treespec_leaf()})
+
+    # Keyword and mapping-plus-keyword forms take the same path.
+    with pytest.raises(RuntimeError, match=r'requires Python 3\.15\+'):
+        optree.treespec_frozendict(a=optree.treespec_leaf())
+    with pytest.raises(RuntimeError, match=r'requires Python 3\.15\+'):
+        optree.treespec_frozendict({'a': optree.treespec_leaf()}, b=optree.treespec_leaf())
+
+
+def test_frozendict_kind_is_defined_on_every_build():
+    # `PyTreeKind.FROZENDICT` is registered unconditionally, even where `frozendict` is unsupported,
+    # so that a kind value never means two different things across builds. Its numeric value is part
+    # of the pickle format (`PyTreeSpec.__getstate__` stores `int(kind)`), so it must not shift.
+    assert optree.PyTreeKind.FROZENDICT.name == 'FROZENDICT'
+    assert int(optree.PyTreeKind.FROZENDICT) == 11
+    assert int(optree.PyTreeKind.NUM_KINDS) == 12
+    # It is the last real kind, immediately before the sentinel.
+    assert int(optree.PyTreeKind.FROZENDICT) + 1 == int(optree.PyTreeKind.NUM_KINDS)
+
+
+@pytest.mark.skipif(
+    sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT,
+    reason='`frozendict` IS supported on this interpreter; behavior tested elsewhere',
+)
+def test_frozendict_unsupported_build_surface():
+    # The negative half of the feature contract, exercised by every CI job that is not 3.15+ with
+    # `frozendict` support -- i.e. most of the matrix. Pins that an unsupported build advertises
+    # nothing it cannot deliver, and that no `FROZENDICT` node can come into existence.
+    assert optree._C.OPTREE_HAS_FROZENDICT is False  # pylint: disable=protected-access
+
+    # The constructors are always importable (so they can be introspected and documented
+    # uniformly), but must not be silently usable.
+    assert callable(optree.treespec_frozendict)
+    assert optree.treespec.frozendict is optree.treespec_frozendict
+    assert 'treespec_frozendict' in optree.__all__
+
+    # No dict-family surface claims `frozendict`.
+    assert STANDARD_DICT_TYPES == frozenset({dict, OrderedDict, defaultdict})
+    assert not any(
+        getattr(entry.type, '__name__', None) == 'frozendict'
+        for entry in NODETYPE_REGISTRY.values()
+    )
+
+    # No tree flattens to a FROZENDICT node, so the kind is unreachable by construction.
+    assert all(
+        node[0] != int(optree.PyTreeKind.FROZENDICT)
+        for tree in TREES
+        for node in optree.tree_structure(tree).__getstate__()[0]
+    )
