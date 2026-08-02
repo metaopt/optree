@@ -17,12 +17,15 @@ limitations under the License.
 
 #pragma once
 
+#include <cstddef>        // std::size_t, offsetof
 #include <exception>      // std::rethrow_exception, std::current_exception
 #include <format>         // std::format, std::format_to, std::formatter
+#include <optional>       // std::optional
 #include <string>         // std::string
-#include <type_traits>    // std::is_base_of_v
+#include <type_traits>    // std::is_same_v, std::is_base_of_v, std::conditional_t
 #include <unordered_map>  // std::unordered_map
-#include <utility>        // std::move, std::pair, std::make_pair
+#include <utility>        // std::forward, std::pair, std::make_pair, std::move
+#include <vector>         // std::vector
 
 #include <Python.h>
 
@@ -39,17 +42,26 @@ limitations under the License.
 
 namespace py = pybind11;
 
-inline Py_ALWAYS_INLINE std::string PyStr(const py::handle &object) {
+[[nodiscard]] inline Py_ALWAYS_INLINE std::string PyStr(const py::handle &object) {
     return EVALUATE_WITH_LOCK_HELD(static_cast<std::string>(py::str(object)), object);
 }
-inline Py_ALWAYS_INLINE std::string PyStr(const std::string &string) { return string; }
-inline Py_ALWAYS_INLINE std::string PyRepr(const py::handle &object) {
+[[nodiscard]] inline Py_ALWAYS_INLINE std::string PyStr(const std::string &string) {
+    return string;
+}
+[[nodiscard]] inline Py_ALWAYS_INLINE std::string PyRepr(const py::handle &object) {
     return EVALUATE_WITH_LOCK_HELD(static_cast<std::string>(py::repr(object)), object);
 }
-inline Py_ALWAYS_INLINE std::string PyRepr(const std::string &string) {
+[[nodiscard]] inline Py_ALWAYS_INLINE std::string PyRepr(const std::string &string) {
     return static_cast<std::string>(py::repr(py::str(string)));
 }
 
+// Format a Python object with `std::format` as its `repr()`, so error messages can interpolate `{}`
+// instead of splicing `PyRepr()` calls. Pass a concrete wrapper (`py::list`, `py::type`, ...) as
+// `py::handle{value}`; a `std::string` formats as itself, so keep `PyRepr()` for those.
+//
+// Do not collapse these into one specialization constrained on `std::is_base_of_v<py::handle, T>`:
+// that shares the standard range formatter's argument list, and since neither constraint subsumes
+// the other, every pybind11 wrapper (all input ranges) becomes ambiguous at C++23 and later.
 template <typename CharT>
 struct std::formatter<py::handle, CharT> {
     template <class ParseContext>
@@ -73,9 +85,6 @@ struct std::formatter<py::object, CharT> {
     }
 };
 
-// The maximum size of the type cache.
-constexpr py::ssize_t MAX_TYPE_CACHE_SIZE = 4096;
-
 #define PyNoneTypeObject                                                                           \
     (py::reinterpret_borrow<py::object>(reinterpret_cast<PyObject *>(Py_TYPE(Py_None))))
 #define PyTupleTypeObject                                                                          \
@@ -91,7 +100,7 @@ constexpr py::ssize_t MAX_TYPE_CACHE_SIZE = 4096;
 #define PyDefaultDict_Type (reinterpret_cast<PyTypeObject *>(PyDefaultDictTypeObject.ptr()))
 #define PyDeque_Type (reinterpret_cast<PyTypeObject *>(PyDequeTypeObject.ptr()))
 
-inline const py::object &ImportOrderedDict() {
+[[nodiscard]] inline const py::object &ImportOrderedDict() {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
     return storage
         .call_once_and_store_result([]() -> py::object {
@@ -99,7 +108,7 @@ inline const py::object &ImportOrderedDict() {
         })
         .get_stored();
 }
-inline const py::object &ImportDefaultDict() {
+[[nodiscard]] inline const py::object &ImportDefaultDict() {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
     return storage
         .call_once_and_store_result([]() -> py::object {
@@ -107,7 +116,7 @@ inline const py::object &ImportDefaultDict() {
         })
         .get_stored();
 }
-inline const py::object &ImportDeque() {
+[[nodiscard]] inline const py::object &ImportDeque() {
     PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
     return storage
         .call_once_and_store_result(
@@ -115,13 +124,13 @@ inline const py::object &ImportDeque() {
         .get_stored();
 }
 
-inline Py_ALWAYS_INLINE py::ssize_t TupleGetSize(const py::handle &tuple) {
+[[nodiscard]] inline Py_ALWAYS_INLINE py::ssize_t TupleGetSize(const py::handle &tuple) {
     return PyTuple_GET_SIZE(tuple.ptr());
 }
-inline Py_ALWAYS_INLINE py::ssize_t ListGetSize(const py::handle &list) {
+[[nodiscard]] inline Py_ALWAYS_INLINE py::ssize_t ListGetSize(const py::handle &list) {
     return PyList_GET_SIZE(list.ptr());
 }
-inline Py_ALWAYS_INLINE py::ssize_t DictGetSize(const py::handle &dict) {
+[[nodiscard]] inline Py_ALWAYS_INLINE py::ssize_t DictGetSize(const py::handle &dict) {
 #if defined(PyDict_GET_SIZE)
     return PyDict_GET_SIZE(dict.ptr());
 #else
@@ -130,16 +139,19 @@ inline Py_ALWAYS_INLINE py::ssize_t DictGetSize(const py::handle &dict) {
 }
 
 template <typename T>
-inline Py_ALWAYS_INLINE T TupleGetItemAs(const py::handle &tuple, const py::ssize_t &index)
+[[nodiscard]] inline Py_ALWAYS_INLINE T TupleGetItemAs(const py::handle &tuple,
+                                                       const py::ssize_t &index)
     requires(std::is_base_of_v<py::object, T>)
 {
     return py::reinterpret_borrow<T>(PyTuple_GET_ITEM(tuple.ptr(), index));
 }
-inline Py_ALWAYS_INLINE py::object TupleGetItem(const py::handle &tuple, const py::ssize_t &index) {
+[[nodiscard]] inline Py_ALWAYS_INLINE py::object TupleGetItem(const py::handle &tuple,
+                                                              const py::ssize_t &index) {
     return TupleGetItemAs<py::object>(tuple, index);
 }
 template <typename T>
-inline Py_ALWAYS_INLINE T ListGetItemAs(const py::handle &list, const py::ssize_t &index)
+[[nodiscard]] inline Py_ALWAYS_INLINE T ListGetItemAs(const py::handle &list,
+                                                      const py::ssize_t &index)
     requires(std::is_base_of_v<py::object, T>)
 {
 #if PY_VERSION_HEX >= 0x030D00A4  // Python 3.13.0a4
@@ -149,14 +161,21 @@ inline Py_ALWAYS_INLINE T ListGetItemAs(const py::handle &list, const py::ssize_
     }
     return py::reinterpret_steal<T>(item);
 #else
+    // Bounds-check like `PyList_GetItemRef` does: callers read the length once and then run user
+    // code, so the list can shrink mid-loop and the unchecked macro would read out of bounds.
+    if (index < 0 || index >= PyList_GET_SIZE(list.ptr())) [[unlikely]] {
+        py::set_error(PyExc_IndexError, "list index out of range");
+        throw py::error_already_set();
+    }
     return py::reinterpret_borrow<T>(PyList_GET_ITEM(list.ptr(), index));
 #endif
 }
-inline Py_ALWAYS_INLINE py::object ListGetItem(const py::handle &list, const py::ssize_t &index) {
+[[nodiscard]] inline Py_ALWAYS_INLINE py::object ListGetItem(const py::handle &list,
+                                                             const py::ssize_t &index) {
     return ListGetItemAs<py::object>(list, index);
 }
 template <typename T>
-inline Py_ALWAYS_INLINE T DictGetItemAs(const py::handle &dict, const py::handle &key)
+[[nodiscard]] inline Py_ALWAYS_INLINE T DictGetItemAs(const py::handle &dict, const py::handle &key)
     requires(std::is_base_of_v<py::object, T>)
 {
 #if PY_VERSION_HEX >= 0x030D00A1  // Python 3.13.0a1
@@ -173,7 +192,8 @@ inline Py_ALWAYS_INLINE T DictGetItemAs(const py::handle &dict, const py::handle
     return py::reinterpret_borrow<T>(PyDict_GetItem(dict.ptr(), key.ptr()));
 #endif
 }
-inline Py_ALWAYS_INLINE py::object DictGetItem(const py::handle &dict, const py::handle &key) {
+[[nodiscard]] inline Py_ALWAYS_INLINE py::object DictGetItem(const py::handle &dict,
+                                                             const py::handle &key) {
     return DictGetItemAs<py::object>(dict, key);
 }
 
@@ -193,6 +213,25 @@ inline Py_ALWAYS_INLINE void DictSetItem(const py::handle &dict,
     if (PyDict_SetItem(dict.ptr(), key.ptr(), value.ptr()) < 0) [[unlikely]] {
         throw py::error_already_set();
     }
+}
+
+// Shallow copies through the C API. A Python-level `.copy()` would cost an attribute lookup, a
+// bound-method allocation and a vectorcall per call.
+[[nodiscard]] inline py::list ListCopy(const py::handle &list) {
+    const scoped_critical_section cs{list};
+    auto copy = py::reinterpret_steal<py::list>(PyList_GetSlice(list.ptr(), 0, ListGetSize(list)));
+    if (!copy) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    return copy;
+}
+[[nodiscard]] inline py::dict DictCopy(const py::handle &dict) {
+    const scoped_critical_section cs{dict};
+    auto copy = py::reinterpret_steal<py::dict>(PyDict_Copy(dict.ptr()));
+    if (!copy) [[unlikely]] {
+        throw py::error_already_set();
+    }
+    return copy;
 }
 
 inline Py_ALWAYS_INLINE void AssertExactList(const py::handle &object) {
@@ -243,8 +282,194 @@ inline Py_ALWAYS_INLINE void AssertExactDeque(const py::handle &object) {
     }
 }
 
+// A process-global cache mapping a Python object (in practice a type) to a value computed from it,
+// e.g. whether a type is a namedtuple. It is a function-local static shared by every interpreter
+// and outlives the Python runtime.
+//
+// Entries are keyed by `(interpreter_id, object address)` rather than the address alone, because a
+// shared key can map to a per-interpreter-owned result: `int` is immortal and lives at the same
+// address in every interpreter, while a computed `py::tuple` belongs to the interpreter that made
+// it. An address-only key would hand that value to another interpreter to use after the owner frees
+// it on finalization.
+//
+// A per-entry weakref evicts an entry when its key is collected, so a later key reusing that
+// address cannot read a stale value. A per-interpreter `atexit` callback clears that interpreter's
+// entries, covering what the weakref cannot: an immortal key is never collected, and interpreter
+// ids restart from 0 after a `Py_Finalize`/`Py_Initialize` cycle, so a fresh interpreter must not
+// inherit a finalized one's entries.
+//
+// `ValueType` may be a value such as `bool`, or a pybind11 reference whose entry owns one reference
+// that is dropped on eviction.
+template <typename ValueType>
+class WeakKeyCache {
+public:
+    explicit WeakKeyCache(const std::size_t &max_size) : m_max_size{max_size} {}
+    ~WeakKeyCache() = default;
+
+    WeakKeyCache(const WeakKeyCache &) = delete;
+    WeakKeyCache(WeakKeyCache &&) = delete;
+    WeakKeyCache &operator=(const WeakKeyCache &) = delete;
+    WeakKeyCache &operator=(WeakKeyCache &&) = delete;
+
+    // Return the value cached for `key`, computing and inserting it via `compute` on a miss.
+    // `compute` is a nullary callable returning `ValueType`, invoked with the GIL held and the
+    // cache lock NOT held.
+    template <typename Compute>
+    // NOLINTNEXTLINE[readability-function-cognitive-complexity]
+    [[nodiscard]] ValueType LookupOrInsert(const py::handle &key, Compute &&compute) {
+        // Read the interpreter id (part of the cache key) while the GIL is still held, before the
+        // read lock below releases it: `GetCurrentPyInterpreterID()` needs a valid thread state.
+        const interpid_t interpreter_id = GetCurrentPyInterpreterID();
+        const CacheKey cache_key{interpreter_id, key};
+        std::optional<StoredType> cached_value{};
+        {
+#if !defined(Py_GIL_DISABLED)
+            const py::gil_scoped_release_simple gil_release{};
+#endif
+            const scoped_read_lock lock{m_mutex};
+            const auto it = m_cache.find(cache_key);
+            if (it != m_cache.end()) [[likely]] {
+                cached_value = it->second;
+            }
+        }
+        // The read lock is released and the GIL re-acquired (in that destruction order) BEFORE the
+        // borrowed object is touched, so the GIL is never (re-)acquired while the lock is held.
+        // Doing so would invert the lock order against the weakref eviction callback (which holds
+        // the GIL, then takes the write lock) and could deadlock. `key` stays alive for the whole
+        // call, so its entry cannot be evicted and `cached_value` stays valid.
+        if (cached_value.has_value()) [[likely]] {
+            if constexpr (std::is_same_v<StoredType, ValueType>) {
+                // A value or a `py::handle`: the stored type is the value type.
+                return *cached_value;
+            } else {
+                // An owning object stored as a borrowed `py::handle`: return a fresh owning borrow.
+                return py::reinterpret_borrow<ValueType>(*cached_value);
+            }
+        }
+
+        ValueType value = std::forward<Compute>(compute)();
+
+        // Register the per-interpreter cleanup BEFORE publishing an entry. It runs Python and can
+        // raise, so the interpreter is claimed first and only marked done once it succeeds: marking
+        // done first would leave the interpreter believing a callback exists and never retry it.
+        bool claimed = false;
+        bool registered = false;
+        {
+#if !defined(Py_GIL_DISABLED)
+            const py::gil_scoped_release_simple gil_release{};
+#endif
+            const scoped_write_lock lock{m_mutex};
+            const auto [it, inserted] = m_cleanup_registered.try_emplace(interpreter_id, false);
+            claimed = inserted;
+            registered = it->second;
+        }
+        if (claimed) [[unlikely]] {
+            try {
+                RegisterInterpreterCleanup(interpreter_id);
+            } catch (...) {
+                // Take the lock with the GIL held, the same order the eviction callback uses.
+                const scoped_write_lock lock{m_mutex};
+                m_cleanup_registered.erase(interpreter_id);
+                throw;
+            }
+
+            {
+                const scoped_write_lock lock{m_mutex};
+                m_cleanup_registered[interpreter_id] = true;
+                registered = true;
+            }
+        }
+
+        // Publish only against a completed registration: publishing while another thread is still
+        // registering would outlive the owner if that registration raises. Skipping is safe.
+        bool inserted = false;
+        if (registered) [[likely]] {
+#if !defined(Py_GIL_DISABLED)
+            const py::gil_scoped_release_simple gil_release{};
+#endif
+            const scoped_write_lock lock{m_mutex};
+            if (m_cache.size() < m_max_size) [[likely]] {
+                // The GIL is released here, so store the value without touching any refcount (a
+                // reference value is stored as a borrowed `py::handle` and owned by the `inc_ref()`
+                // below).
+                inserted = m_cache.emplace(cache_key, StoredType{value}).second;
+            }
+        }
+        if (inserted) [[likely]] {
+            // The GIL is held here, so we can safely increment the reference count and create the
+            // weakref. If the weakref cannot be created, drop the entry again: a published entry
+            // whose value is unowned and whose key has no eviction callback would be read back
+            // after the value is freed.
+            if constexpr (kValueIsPyReference) {
+                value.inc_ref();
+            }
+            try {
+                (void)py::weakref(key,
+                                  py::cpp_function([this, cache_key](py::handle weakref) -> void {
+                                      const scoped_write_lock lock{m_mutex};
+                                      const auto it = m_cache.find(cache_key);
+                                      if (it != m_cache.end()) [[likely]] {
+                                          if constexpr (kValueIsPyReference) {
+                                              it->second.dec_ref();
+                                          }
+                                          m_cache.erase(it);
+                                      }
+                                      weakref.dec_ref();
+                                  }))
+                    .release();
+            } catch (...) {
+                {
+                    const scoped_write_lock lock{m_mutex};
+                    m_cache.erase(cache_key);
+                }
+                if constexpr (kValueIsPyReference) {
+                    value.dec_ref();
+                }
+                throw;
+            }
+        }
+        return value;
+    }
+
+private:
+    static constexpr bool kValueIsPyReference = std::is_base_of_v<py::handle, ValueType>;
+    using StoredType = std::conditional_t<kValueIsPyReference, py::handle, ValueType>;
+    using CacheKey = std::pair<interpid_t, py::handle>;
+
+    // Register (once per interpreter, with the GIL held and WITHOUT the cache lock, mirroring
+    // `PyTreeTypeRegistry::Init`) an `atexit` callback that evicts this interpreter's entries on
+    // shutdown.
+    void RegisterInterpreterCleanup(const interpid_t &interpreter_id) {
+        auto atexit_register = py::getattr(py::module_::import("atexit"), "register");
+        atexit_register(py::cpp_function([this, interpreter_id]() -> void {
+            const scoped_write_lock lock{m_mutex};
+            for (auto it = m_cache.begin(); it != m_cache.end();) {
+                if (it->first.first == interpreter_id) [[likely]] {
+                    if constexpr (kValueIsPyReference) {
+                        it->second.dec_ref();
+                    }
+                    it = m_cache.erase(it);
+                } else [[unlikely]] {
+                    ++it;
+                }
+            }
+            m_cleanup_registered.erase(interpreter_id);
+        }));
+    }
+
+    std::unordered_map<CacheKey, StoredType> m_cache{};
+    // Interpreter id -> whether its `atexit` callback is registered. An id maps to `false` while
+    // the claiming thread is still registering it.
+    std::unordered_map<interpid_t, bool> m_cleanup_registered{};
+    const std::size_t m_max_size{};
+    mutable read_write_mutex m_mutex{};
+};
+
+// The maximum size of a type cache.
+constexpr std::size_t MAX_TYPE_CACHE_SIZE = 4096;
+
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-inline bool IsNamedTupleClassImpl(const py::handle &type) {
+[[nodiscard]] inline bool IsNamedTupleClassImpl(const py::handle &type) {
     // We can only identify namedtuples heuristically, here by the presence of a _fields attribute.
     if (PyType_FastSubclass(reinterpret_cast<PyTypeObject *>(type.ptr()),
                             Py_TPFLAGS_TUPLE_SUBCLASS)) [[unlikely]] {
@@ -282,50 +507,20 @@ inline bool IsNamedTupleClassImpl(const py::handle &type) {
     }
     return false;
 }
-inline bool IsNamedTupleClass(const py::handle &type) {
+[[nodiscard]] inline bool IsNamedTupleClass(const py::handle &type) {
     if (!PyType_Check(type.ptr())) [[unlikely]] {
         return false;
     }
 
-    static auto cache = std::unordered_map<py::handle, bool>{};
-    static read_write_mutex mutex{};
-    bool cache_inserted = false;
-
-    {
-#if !defined(Py_GIL_DISABLED)
-        const py::gil_scoped_release_simple gil_release{};
-#endif
-        const scoped_read_lock lock{mutex};
-        const auto it = cache.find(type);
-        if (it != cache.end()) [[likely]] {
-            return it->second;
-        }
-    }
-
-    const bool result = EVALUATE_WITH_LOCK_HELD(IsNamedTupleClassImpl(type), type);
-    {
-#if !defined(Py_GIL_DISABLED)
-        const py::gil_scoped_release_simple gil_release{};
-#endif
-        const scoped_write_lock lock{mutex};
-        if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-            cache_inserted = cache.emplace(type, result).second;
-        }
-    }
-    if (cache_inserted) [[likely]] {
-        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                              const scoped_write_lock lock{mutex};
-                              cache.erase(type);
-                              weakref.dec_ref();
-                          }))
-            .release();
-    }
-    return result;
+    static WeakKeyCache<bool> cache{MAX_TYPE_CACHE_SIZE};
+    return cache.LookupOrInsert(type, [&type]() -> bool {
+        return EVALUATE_WITH_LOCK_HELD(IsNamedTupleClassImpl(type), type);
+    });
 }
-inline Py_ALWAYS_INLINE bool IsNamedTupleInstance(const py::handle &object) {
+[[nodiscard]] inline Py_ALWAYS_INLINE bool IsNamedTupleInstance(const py::handle &object) {
     return IsNamedTupleClass(py::type::handle_of(object));
 }
-inline Py_ALWAYS_INLINE bool IsNamedTuple(const py::handle &object) {
+[[nodiscard]] inline Py_ALWAYS_INLINE bool IsNamedTuple(const py::handle &object) {
     const py::handle type = (PyType_Check(object.ptr()) ? object : py::type::handle_of(object));
     return IsNamedTupleClass(type);
 }
@@ -335,7 +530,7 @@ inline Py_ALWAYS_INLINE void AssertExactNamedTuple(const py::handle &object) {
             std::format("Expected an instance of collections.namedtuple, got {}.", object));
     }
 }
-inline py::tuple NamedTupleGetFields(const py::handle &object) {
+[[nodiscard]] inline py::tuple NamedTupleGetFields(const py::handle &object) {
     py::handle type;
     if (PyType_Check(object.ptr())) [[unlikely]] {
         type = object;
@@ -354,7 +549,7 @@ inline py::tuple NamedTupleGetFields(const py::handle &object) {
     return EVALUATE_WITH_LOCK_HELD(py::getattr(type, "_fields"), type);
 }
 
-inline bool IsStructSequenceClassImpl(const py::handle &type) {
+[[nodiscard]] inline bool IsStructSequenceClassImpl(const py::handle &type) {
     // We can only identify PyStructSequences heuristically, here by the presence of
     // n_fields, n_sequence_fields, n_unnamed_fields attributes.
     auto * const type_object = reinterpret_cast<PyTypeObject *>(type.ptr());
@@ -394,50 +589,20 @@ inline bool IsStructSequenceClassImpl(const py::handle &type) {
     }
     return false;
 }
-inline bool IsStructSequenceClass(const py::handle &type) {
+[[nodiscard]] inline bool IsStructSequenceClass(const py::handle &type) {
     if (!PyType_Check(type.ptr())) [[unlikely]] {
         return false;
     }
 
-    static auto cache = std::unordered_map<py::handle, bool>{};
-    static read_write_mutex mutex{};
-    bool cache_inserted = false;
-
-    {
-#if !defined(Py_GIL_DISABLED)
-        const py::gil_scoped_release_simple gil_release{};
-#endif
-        const scoped_read_lock lock{mutex};
-        const auto it = cache.find(type);
-        if (it != cache.end()) [[likely]] {
-            return it->second;
-        }
-    }
-
-    const bool result = EVALUATE_WITH_LOCK_HELD(IsStructSequenceClassImpl(type), type);
-    {
-#if !defined(Py_GIL_DISABLED)
-        const py::gil_scoped_release_simple gil_release{};
-#endif
-        const scoped_write_lock lock{mutex};
-        if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-            cache_inserted = cache.emplace(type, result).second;
-        }
-    }
-    if (cache_inserted) [[likely]] {
-        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                              const scoped_write_lock lock{mutex};
-                              cache.erase(type);
-                              weakref.dec_ref();
-                          }))
-            .release();
-    }
-    return result;
+    static WeakKeyCache<bool> cache{MAX_TYPE_CACHE_SIZE};
+    return cache.LookupOrInsert(type, [&type]() -> bool {
+        return EVALUATE_WITH_LOCK_HELD(IsStructSequenceClassImpl(type), type);
+    });
 }
-inline Py_ALWAYS_INLINE bool IsStructSequenceInstance(const py::handle &object) {
+[[nodiscard]] inline Py_ALWAYS_INLINE bool IsStructSequenceInstance(const py::handle &object) {
     return IsStructSequenceClass(py::type::handle_of(object));
 }
-inline Py_ALWAYS_INLINE bool IsStructSequence(const py::handle &object) {
+[[nodiscard]] inline Py_ALWAYS_INLINE bool IsStructSequence(const py::handle &object) {
     const py::handle type = (PyType_Check(object.ptr()) ? object : py::type::handle_of(object));
     return IsStructSequenceClass(type);
 }
@@ -447,7 +612,7 @@ inline Py_ALWAYS_INLINE void AssertExactStructSequence(const py::handle &object)
             std::format("Expected an instance of PyStructSequence type, got {}.", object));
     }
 }
-inline py::tuple StructSequenceGetFieldsImpl(const py::handle &type) {
+[[nodiscard]] inline py::tuple StructSequenceGetFieldsImpl(const py::handle &type) {
 #if defined(PYPY_VERSION)
     py::list fields{};
     py::exec(
@@ -455,28 +620,55 @@ inline py::tuple StructSequenceGetFieldsImpl(const py::handle &type) {
         import sys
 
         StructSequenceFieldType = type(type(sys.version_info).major)
-        indices_by_name = {
-            name: member.index
+        # PyPy has no unnamed fields; a descriptor's `.index` is its sequence position.
+        # Map index -> name and defensively fill any missing (unnamed) slot with the marker.
+        names_by_index = {
+            member.index: name
             for name, member in vars(cls).items()
             if isinstance(member, StructSequenceFieldType)
         }
-        fields.extend(sorted(indices_by_name, key=indices_by_name.get)[:cls.n_sequence_fields])
+        fields.extend(
+            names_by_index.get(index, unnamed_field) for index in range(cls.n_sequence_fields)
+        )
         )py",
-        py::dict(py::arg("cls") = type, py::arg("fields") = fields));
+        py::dict(py::arg("cls") = type,
+                 py::arg("fields") = fields,
+                 py::arg("unnamed_field") = py::str(PyStructSequenceUnnamedField())));
     return py::tuple{fields};
 #else
     const auto n_sequence_fields = thread_safe_cast<py::ssize_t>(
         EVALUATE_WITH_LOCK_HELD(py::getattr(type, "n_sequence_fields"), type));
     const auto * const members = reinterpret_cast<PyTypeObject *>(type.ptr())->tp_members;
+    // `tp_members` lists only the NAMED fields, but each carries a byte `offset` encoding its
+    // sequence index, relative to `offsetof(PyTupleObject, ob_item)`. Map each member back to its
+    // slot by offset: indexing `members[i]` by position mislabels every slot after the first
+    // unnamed one (e.g. `os.stat_result` slots 7/8/9 reported as `st_atime`/`st_mtime`/`st_ctime`).
     py::tuple fields{n_sequence_fields};
+    // Fill the named slots first, then default the remaining (unnamed) slots to the marker.
+    // Pre-filling every slot with the marker and overwriting the named ones would leak each
+    // overwritten marker: `TupleSetItem` uses `PyTuple_SET_ITEM`, which does not decref what it
+    // replaces.
+    std::vector<bool> named(n_sequence_fields, false);
+    for (const PyMemberDef *member = members; member != nullptr && member->name != nullptr;
+         // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+         ++member) {
+        const py::ssize_t index =
+            (member->offset - py::ssize_t_cast(offsetof(PyTupleObject, ob_item))) /
+            py::ssize_t_cast(sizeof(PyObject *));
+        if (index >= 0 && index < n_sequence_fields) [[likely]] {
+            TupleSetItem(fields, index, py::str(member->name));
+            named[index] = true;
+        }
+    }
     for (py::ssize_t i = 0; i < n_sequence_fields; ++i) {
-        // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
-        TupleSetItem(fields, i, py::str(members[i].name));
+        if (!named[i]) [[unlikely]] {
+            TupleSetItem(fields, i, py::str(PyStructSequenceUnnamedField()));
+        }
     }
     return fields;
 #endif
 }
-inline py::tuple StructSequenceGetFields(const py::handle &object) {
+[[nodiscard]] inline py::tuple StructSequenceGetFields(const py::handle &object) {
     py::handle type;
     if (PyType_Check(object.ptr())) [[unlikely]] {
         type = object;
@@ -491,91 +683,60 @@ inline py::tuple StructSequenceGetFields(const py::handle &object) {
         }
     }
 
-    static auto cache = std::unordered_map<py::handle, py::handle>{};
-    static read_write_mutex mutex{};
-    bool cache_inserted = false;
-
-    {
-#if !defined(Py_GIL_DISABLED)
-        const py::gil_scoped_release_simple gil_release{};
-#endif
-        const scoped_read_lock lock{mutex};
-        const auto it = cache.find(type);
-        if (it != cache.end()) [[likely]] {
-#if !defined(Py_GIL_DISABLED)
-            const py::gil_scoped_acquire_simple gil_acquire{};
-#endif
-            return py::reinterpret_borrow<py::tuple>(it->second);
-        }
-    }
-
-    const py::tuple fields = EVALUATE_WITH_LOCK_HELD(StructSequenceGetFieldsImpl(type), type);
-    {
-#if !defined(Py_GIL_DISABLED)
-        const py::gil_scoped_release_simple gil_release{};
-#endif
-        const scoped_write_lock lock{mutex};
-        if (cache.size() < MAX_TYPE_CACHE_SIZE) [[likely]] {
-            cache_inserted = cache.emplace(type, fields).second;
-        }
-    }
-    if (cache_inserted) [[likely]] {
-        fields.inc_ref();
-        (void)py::weakref(type, py::cpp_function([type](py::handle weakref) -> void {
-                              const scoped_write_lock lock{mutex};
-                              const auto it = cache.find(type);
-                              if (it != cache.end()) [[likely]] {
-                                  it->second.dec_ref();
-                                  cache.erase(it);
-                              }
-                              weakref.dec_ref();
-                          }))
-            .release();
-    }
-    return fields;
+    static WeakKeyCache<py::tuple> cache{MAX_TYPE_CACHE_SIZE};
+    return cache.LookupOrInsert(type, [&type]() -> py::tuple {
+        return EVALUATE_WITH_LOCK_HELD(StructSequenceGetFieldsImpl(type), type);
+    });
 }
 
+// `list.sort()` leaves the list partially reordered when a comparison raises, so each attempt sorts
+// a copy and only a fully sorted one is committed (mirrors `optree.utils.total_order_sorted`).
 inline void TotalOrderSort(py::list &list) {  // NOLINT[runtime/references]
+    py::list sorted = ListCopy(list);
     try {
         // Sort directly if possible.
-        if (static_cast<bool>(EVALUATE_WITH_LOCK_HELD(PyList_Sort(list.ptr()), list)))
+        if (static_cast<bool>(EVALUATE_WITH_LOCK_HELD(PyList_Sort(sorted.ptr()), sorted)))
             [[unlikely]] {
             throw py::error_already_set();
         }
+        list = std::move(sorted);
+        return;
     } catch (py::error_already_set &ex1) {
-        if (ex1.matches(PyExc_TypeError)) [[likely]] {
-            // Found incomparable keys (e.g. `int` vs. `str`, or user-defined types).
-            try {
-                // Sort with `(f'{obj.__class__.__module__}.{obj.__class__.__qualname__}', obj)`
-                const auto sort_key_fn = py::cpp_function([](const py::object &obj) -> py::tuple {
-                    const py::handle cls = py::type::handle_of(obj);
-                    const py::str qualname{EVALUATE_WITH_LOCK_HELD(
-                        std::format("{}.{}",
-                                    PyStr(py::getattr(cls, "__module__")),
-                                    PyStr(py::getattr(cls, "__qualname__"))),
-                        cls)};
-                    return py::make_tuple(qualname, obj);
-                });
-                {
-                    const scoped_critical_section cs{list};
-                    py::getattr(list, "sort")(py::arg("key") = sort_key_fn);
-                }
-            } catch (py::error_already_set &ex2) {
-                if (ex2.matches(PyExc_TypeError)) [[likely]] {
-                    // Found incomparable user-defined key types.
-                    // The keys remain in the insertion order.
-                    PyErr_Clear();
-                } else [[unlikely]] {
-                    std::rethrow_exception(std::current_exception());
-                }
-            }
+        if (!ex1.matches(PyExc_TypeError)) [[unlikely]] {
+            std::rethrow_exception(std::current_exception());
+        }
+        // Found incomparable keys (e.g. `int` vs. `str`, or user-defined types).
+    }
+
+    sorted = ListCopy(list);
+    try {
+        // Sort with `(f'{obj.__class__.__module__}.{obj.__class__.__qualname__}', obj)`
+        const auto sort_key_fn = py::cpp_function([](const py::object &obj) -> py::tuple {
+            const py::handle cls = py::type::handle_of(obj);
+            const py::str qualname{
+                EVALUATE_WITH_LOCK_HELD(std::format("{}.{}",
+                                                    PyStr(py::getattr(cls, "__module__")),
+                                                    PyStr(py::getattr(cls, "__qualname__"))),
+                                        cls)};
+            return py::make_tuple(qualname, obj);
+        });
+        {
+            const scoped_critical_section cs{sorted};
+            py::getattr(sorted, "sort")(py::arg("key") = sort_key_fn);
+        }
+        list = std::move(sorted);
+    } catch (py::error_already_set &ex2) {
+        if (ex2.matches(PyExc_TypeError)) [[likely]] {
+            // Found incomparable user-defined key types.
+            // The keys remain in the insertion order.
+            PyErr_Clear();
         } else [[unlikely]] {
             std::rethrow_exception(std::current_exception());
         }
     }
 }
 
-inline Py_ALWAYS_INLINE py::list DictKeys(const py::dict &dict) {
+[[nodiscard]] inline Py_ALWAYS_INLINE py::list DictKeys(const py::dict &dict) {
     const scoped_critical_section cs{dict};
     return py::reinterpret_steal<py::list>(PyDict_Keys(dict.ptr()));
 }
@@ -583,7 +744,7 @@ inline Py_ALWAYS_INLINE py::list DictKeys(const py::dict &dict) {
 // Equivalent to Python's `dict.fromkeys(iterable)`: returns a new `dict[Key, None]` with the
 // keys taken from `iterable` in order. When `iterable` is itself a dict, this hits CPython's
 // `dict_dict_fromkeys` fast path (contiguous bucket copy, no per-key rehash).
-inline Py_ALWAYS_INLINE py::dict DictFromKeys(const py::handle &iterable) {
+[[nodiscard]] inline Py_ALWAYS_INLINE py::dict DictFromKeys(const py::handle &iterable) {
     const scoped_critical_section cs{iterable};
     // NOLINTNEXTLINE[cppcoreguidelines-pro-type-vararg]
     PyObject *result = PyObject_CallMethod(reinterpret_cast<PyObject *>(&PyDict_Type),
@@ -596,13 +757,15 @@ inline Py_ALWAYS_INLINE py::dict DictFromKeys(const py::handle &iterable) {
     return py::reinterpret_steal<py::dict>(result);
 }
 
-inline py::list SortedDictKeys(const py::dict &dict) {
+[[nodiscard]] inline py::list SortedDictKeys(const py::dict &dict) {
     py::list keys = DictKeys(dict);
     TotalOrderSort(keys);
     return keys;
 }
 
-inline bool DictKeysEqual(const py::list & /*unique*/ keys, const py::dict &dict) {
+// Test whether `keys` and the keys of `dict` are the same set.
+// Precondition: `keys` holds no duplicates; the length shortcut below relies on that.
+[[nodiscard]] inline bool DictKeysEqual(const py::list &keys, const py::dict &dict) {
     const scoped_critical_section2 cs{keys, dict};
     const py::ssize_t list_len = ListGetSize(keys);
     const py::ssize_t dict_len = DictGetSize(dict);
@@ -622,8 +785,10 @@ inline bool DictKeysEqual(const py::list & /*unique*/ keys, const py::dict &dict
     return true;
 }
 
-inline std::pair<py::list, py::list> DictKeysDifference(const py::list & /*unique*/ keys,
-                                                        const py::dict &dict) {
+// Return the keys of `keys` missing from `dict` and the keys of `dict` not in `keys`.
+// Precondition: `keys` holds no duplicates.
+[[nodiscard]] inline std::pair<py::list, py::list> DictKeysDifference(const py::list &keys,
+                                                                      const py::dict &dict) {
     const py::set expected_keys = EVALUATE_WITH_LOCK_HELD(py::set{keys}, keys);
     const py::set got_keys = EVALUATE_WITH_LOCK_HELD(py::set{dict}, dict);
     py::list missing_keys{expected_keys - got_keys};
@@ -631,4 +796,13 @@ inline std::pair<py::list, py::list> DictKeysDifference(const py::list & /*uniqu
     TotalOrderSort(missing_keys);
     TotalOrderSort(extra_keys);
     return std::make_pair(std::move(missing_keys), std::move(extra_keys));
+}
+
+[[nodiscard]] inline py::ssize_t DistinctCount(const py::handle &iterable) {
+    const scoped_critical_section cs{iterable};
+    const auto set = py::reinterpret_steal<py::object>(PySet_New(iterable.ptr()));
+    if (!set) [[unlikely]] {  // a non-iterable or an unhashable element raised here
+        throw py::error_already_set();
+    }
+    return PySet_GET_SIZE(set.ptr());
 }

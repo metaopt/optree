@@ -30,7 +30,7 @@ repos:
         args: [--ignore-case]
         files: ^docs/source/spelling_wordlist\.txt$
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v22.1.5
+    rev: v22.1.8
     hooks:
       - id: clang-format
   - repo: https://github.com/cpplint/cpplint
@@ -38,19 +38,20 @@ repos:
     hooks:
       - id: cpplint
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.18
+    rev: v0.16.1
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
         args: [--exit-non-zero-on-format]
+        types_or: [python, pyi, jupyter, markdown]
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.2
+    rev: v2.4.3
     hooks:
       - id: codespell
         additional_dependencies: [".[toml]"]
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.1.0
+    rev: v2.3.0
     hooks:
       - id: mypy
         exclude: |

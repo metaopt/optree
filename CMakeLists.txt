@@ -138,7 +138,9 @@ if(OPTREE_CXX_WERROR)
     if(MSVC)
         string(APPEND CMAKE_CXX_FLAGS " /WX")
     else()
-        string(APPEND CMAKE_CXX_FLAGS " -Werror -Wno-error=attributes -Wno-error=redundant-move")
+        # `-Wno-error=redundant-move` stays: C++20's implicit-move rules (P1825) change what
+        # `-Wredundant-move` fires on, and the warning differs between GCC and Clang.
+        string(APPEND CMAKE_CXX_FLAGS " -Werror -Wno-error=redundant-move")
     endif()
 endif()
 

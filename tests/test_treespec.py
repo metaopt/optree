@@ -16,7 +16,9 @@
 # pylint: disable=missing-function-docstring,invalid-name
 
 import contextlib
+import gc
 import itertools
+import math
 import os
 import pickle
 import platform
@@ -25,9 +27,10 @@ import signal
 import subprocess
 import sys
 import tempfile
-import textwrap
+import time
+import warnings
 import weakref
-from collections import OrderedDict, UserList, defaultdict, deque
+from collections import OrderedDict, UserList, defaultdict, deque, namedtuple
 
 import pytest
 
@@ -35,6 +38,7 @@ import helpers
 import optree
 from helpers import (
     GLOBAL_NAMESPACE,
+    HAS_DEFERRED_TYPE_REFS,
     NAMESPACED_TREE,
     PYPY,
     STANDARD_DICT_TYPES,
@@ -50,6 +54,7 @@ from helpers import (
     parametrize,
     recursionlimit,
     skipif_android,
+    skipif_deferred_type_refs,
     skipif_ios,
     skipif_pypy,
     skipif_wasm,
@@ -131,6 +136,31 @@ def test_treespec_equal_hash():
                 assert hash(treespec1_none_is_leaf) != hash(treespec2_none_is_leaf)
             assert hash(treespec1) != hash(treespec2_none_is_leaf)
             assert hash(treespec1_none_is_leaf) != hash(treespec2)
+
+
+def test_treespec_equal_hash_with_namespace():
+    # `optree.functools.partial` is registered in the global namespace, so it is recognized under
+    # any namespace. Flattening the same object with and without an explicit namespace yields
+    # structurally identical treespecs that compare equal, because an empty namespace is treated as
+    # a wildcard compatible with any namespace (see `PyTreeSpec::EqualTo`). Equal treespecs MUST
+    # hash equally, otherwise hash-based containers (`dict` / `set`) break.
+    obj = optree.functools.partial(int, base=2)
+
+    treespec_no_namespace = optree.tree_structure(obj)
+    treespec_namespace = optree.tree_structure(obj, namespace='namespace')
+
+    assert treespec_no_namespace.namespace == ''
+    assert treespec_namespace.namespace == 'namespace'
+
+    # The empty namespace is a wildcard compatible with any namespace: these compare equal.
+    assert treespec_no_namespace == treespec_namespace
+
+    # Hash/equality contract: equal objects must have equal hashes.
+    assert hash(treespec_no_namespace) == hash(treespec_namespace)
+
+    # Consequences for hash-based containers when the contract is honored.
+    assert treespec_namespace in {treespec_no_namespace: 'value'}
+    assert len({treespec_no_namespace, treespec_namespace}) == 1
 
 
 @parametrize(
@@ -237,6 +267,25 @@ def test_treespec_string_representation(data):
         assert new_tree == reconstructed_tree
 
 
+@skipif_pypy  # CPython-only: `os.stat_result` slots 7, 8, 9 are unnamed; PyPy names them
+def test_treespec_structseq_unnamed_field_string_representation():
+    # `os.stat_result` renders its UNNAMED sequence slots (7, 8, 9) with the synthetic `<unnamed@N>`
+    # placeholder, following CPython's `<lambda>` convention for names that are not identifiers,
+    # rather than the bare `unnamed field` marker which reads as an invalid keyword. CPython's
+    # `stat_result_desc` has pinned the 7 named + 3 unnamed sequence fields for 16 years, so the
+    # repr is asserted exactly; the hidden float `st_atime` fields (indices >= 10) are not part of
+    # the sequence and must not leak into it.
+    assert os.stat_result.n_sequence_fields == 10
+    assert os.stat_result.n_unnamed_fields == 3
+    st = os.stat_result(range(os.stat_result.n_fields))
+    representation = str(optree.tree_structure(st))
+    assert representation == (
+        'PyTreeSpec(os.stat_result('
+        'st_mode=*, st_ino=*, st_dev=*, st_nlink=*, st_uid=*, st_gid=*, st_size=*, '
+        '<unnamed@7>=*, <unnamed@8>=*, <unnamed@9>=*))'
+    )
+
+
 def test_treespec_with_empty_tuple_string_representation():
     assert str(optree.tree_structure(())) == r'PyTreeSpec(())'
 
@@ -251,6 +300,103 @@ def test_treespec_with_empty_list_string_representation():
 
 def test_treespec_with_empty_dict_string_representation():
     assert str(optree.tree_structure({})) == r'PyTreeSpec({})'
+
+
+def test_treespec_namedtuple_repr_with_divergent_fields_raises_value_error():
+    # If a namedtuple's `_fields` is mutated after the treespec is built, the recorded arity and the
+    # now-divergent field count disagree. The repr must raise a clear `ValueError` attributing the
+    # cause, not an `InternalError` telling the user to file a bug report.
+    Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
+    treespec = optree.tree_structure(Point(1, 2))
+    assert str(treespec) == 'PyTreeSpec(Point(x=*, y=*))'
+
+    Point._fields = ('x', 'y', 'z')  # diverge: 3 fields vs the treespec's arity of 2
+    # Pin the interpolated values, not just the phrase: the message is assembled by `std::format`,
+    # so a mis-ordered placeholder would still match a substring pattern.
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f'Number of fields (3) of namedtuple type {Point!r} does not match the arity (2) '
+            f'of the treespec node.',
+        ),
+    ):
+        repr(treespec)
+
+
+def test_treespec_setstate_malformed_state_message_format():
+    # `FromPicklable` reports every structural defect through one `Malformed pickled PyTreeSpec: {}.`
+    # template. `test_treespec_setstate_rejects_malformed_state` covers which states are rejected;
+    # this pins the rendered text, so the reason is actually interpolated and the period is kept.
+    obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+    with pytest.raises(
+        RuntimeError,
+        match=re.escape('Malformed pickled PyTreeSpec: the state is not a 3-tuple.'),
+    ):
+        obj.__setstate__((1, 2))
+
+
+def test_treespec_from_collection_rejects_stale_custom_registration():
+    # Building a collection promotes the children's namespace onto the result. If the custom type no
+    # longer resolves to the registration the child node holds, the result would silently rebind it.
+    class Stale:
+        def __init__(self, *children):
+            self.children = list(children)
+
+    def register():
+        optree.register_pytree_node(
+            Stale,
+            lambda s: (s.children, None),
+            lambda _, children: Stale(*children),
+            namespace='stale',
+        )
+
+    register()
+    try:
+        treespec = optree.tree_structure(Stale(1, 2), namespace='stale')
+        optree.unregister_pytree_node(Stale, namespace='stale')
+        register()  # same type and namespace, but a different registration object
+
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                f'PyTreeSpecs cannot be composed into a collection: custom PyTree type {Stale!r} '
+                f"no longer resolves to its original registration in namespace 'stale'.",
+            ),
+        ):
+            optree.treespec_tuple((treespec,), namespace='stale')
+    finally:
+        optree.unregister_pytree_node(Stale, namespace='stale')
+
+
+def test_treespec_setstate_rejects_structseq_field_arity_mismatch():
+    # A PyStructSequence type's sequence-field count is fixed in C, so a node's arity must equal it
+    # (unlike a namedtuple, whose `_fields` can be mutated after the fact). `FromPicklable` (via
+    # `__setstate__`/`pickle`) must reject a crafted state pairing a PyStructSequence type with a
+    # mismatched arity at load time, rather than build a corrupt treespec that later aborts (e.g. in
+    # repr with an `InternalError`).
+    spec = optree.tree_structure(time.gmtime())  # struct_time: 9 sequence fields
+    node_states, none_is_leaf, namespace = spec.__getstate__()
+    # Swap the type to os.stat_result (10 sequence fields) while keeping the arity of 9.
+    crafted = tuple(
+        (kind, arity, os.stat_result if data is time.struct_time else data, *remaining)
+        for (kind, arity, data, *remaining) in node_states
+    )
+    obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+    with pytest.raises(RuntimeError, match=r'does not match the arity'):
+        obj.__setstate__((crafted, none_is_leaf, namespace))
+
+
+def test_treespec_setstate_rejects_namedtuple_field_arity_mismatch():
+    # A namedtuple's `_fields` can be mutated, so a crafted state can pair the type with an arity
+    # that no longer matches its field count. `FromPicklable` must reject it at load, rather than
+    # build a corrupt spec (the repr guards the post-load mutation case separately).
+    Point = namedtuple('Point', ('x', 'y'))  # noqa: PYI024
+    state = optree.tree_structure(Point(1, 2)).__getstate__()  # arity 2
+    Point._fields = ('x', 'y', 'z')  # diverge: 3 fields vs the pickled arity of 2
+
+    obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+    with pytest.raises(RuntimeError, match=r'does not match the arity'):
+        obj.__setstate__(state)
 
 
 @disable_systrace
@@ -321,6 +467,174 @@ def test_treespec_self_referential():
         assert wr() is None
 
 
+@skipif_pypy  # relies on CPython's reference-cycle collector
+@skipif_deferred_type_refs
+def test_treespec_custom_node_reference_cycle_is_collectable():
+    # A treespec reaches a registered custom type through the shared registration held by its custom
+    # node. Once the registry no longer pins the registration, the node is its sole owner, so
+    # `PyTreeSpec::PyTpTraverse` reports those objects and the cyclic GC can collect a cycle through
+    # them. The cycle keeps the heap type alive, and free-threaded builds before 3.14 hold deferred
+    # references to type objects in per-thread caches, so `gc_collect()` cannot reclaim it there.
+    # 3.14t does, so this keeps free-threaded coverage.
+    class Cyclic:
+        pass
+
+    optree.register_pytree_node(
+        Cyclic,
+        lambda cyclic: ((), None),
+        lambda metadata, children: None,  # never called; the test only needs the registration
+        namespace='cycle_gc',
+    )
+    try:
+        treespec = optree.tree_structure(Cyclic(), namespace='cycle_gc')
+        # Cycle: Cyclic -> __dict__ -> treespec -> registration -> Cyclic
+        Cyclic.self_spec = treespec
+    finally:
+        optree.unregister_pytree_node(Cyclic, namespace='cycle_gc')
+
+    wr = weakref.ref(Cyclic)
+    del Cyclic, treespec
+    gc_collect()
+    assert wr() is None
+
+
+@skipif_pypy  # relies on CPython's reference-cycle collector
+@skipif_deferred_type_refs
+def test_treespec_custom_node_reference_cycle_is_collectable_with_repeated_nodes():
+    # Regression: the traverse reported a registration's members only when a single node held it,
+    # so a treespec containing the same registered type more than once never reported them and the
+    # cycle leaked. The treespec collectively owns the registration in that case too: what matters
+    # is that no one outside it holds a reference.
+    for num_nodes in (1, 2, 5):
+
+        class Cyclic:
+            pass
+
+        optree.register_pytree_node(
+            Cyclic,
+            lambda cyclic: ((), None),
+            lambda metadata, children: None,
+            namespace='cycle_gc_repeated',
+        )
+        try:
+            tree = [Cyclic() for _ in range(num_nodes)]
+            treespec = optree.tree_structure(tree, namespace='cycle_gc_repeated')
+            Cyclic.self_spec = treespec
+        finally:
+            optree.unregister_pytree_node(Cyclic, namespace='cycle_gc_repeated')
+
+        wr = weakref.ref(Cyclic)
+        del Cyclic, treespec, tree
+        gc_collect()
+        assert wr() is None, num_nodes
+
+
+@skipif_pypy  # relies on CPython's reference-cycle collector
+def test_treespec_shared_registration_refs_are_not_reported():
+    # `PyTreeSpec::PyTpTraverse` must report only references the treespec owns.
+    # A shared registration holds one reference to each member however many nodes point at it, so
+    # reporting per node would underflow the object's shadow refcount and abort on debug builds.
+    # `gc.get_referrers()` walks `tp_traverse`, so it shows what the traversal reports.
+    class Shared:
+        pass
+
+    optree.register_pytree_node(
+        Shared,
+        lambda shared: ((), None),
+        lambda metadata, children: None,
+        namespace='shared_gc',
+    )
+    try:
+        # The registry holds the registration, so no treespec is its sole owner.
+        treespecs = [optree.tree_structure(Shared(), namespace='shared_gc') for _ in range(4)]
+        gc_collect()
+        assert not any(treespec in gc.get_referrers(Shared) for treespec in treespecs)
+        # The registration is also shared between treespecs, so dropping the registry's hold while
+        # more than one treespec remains must not make them report it either.
+        optree.unregister_pytree_node(Shared, namespace='shared_gc')
+        gc_collect()
+        assert not any(treespec in gc.get_referrers(Shared) for treespec in treespecs)
+    finally:
+        del treespecs
+
+    wr = weakref.ref(Shared)
+    del Shared
+    gc_collect()
+    if not HAS_DEFERRED_TYPE_REFS:
+        assert wr() is None
+
+
+@skipif_pypy  # relies on CPython's reference-cycle collector
+def test_treespec_shared_registration_is_still_not_reported_with_repeated_nodes():
+    # The counterpart: while anything outside the treespec holds the registration, its members must
+    # not be reported however many nodes reference it, or the collector's shadow refcount underflows.
+    class Shared:
+        pass
+
+    optree.register_pytree_node(
+        Shared,
+        lambda shared: ((), None),
+        lambda metadata, children: None,
+        namespace='shared_gc_repeated',
+    )
+    treespec = optree.tree_structure([Shared(), Shared()], namespace='shared_gc_repeated')
+    other = optree.tree_structure(Shared(), namespace='shared_gc_repeated')
+    gc_collect()
+    # The registry still holds it.
+    assert treespec not in gc.get_referrers(Shared)
+    optree.unregister_pytree_node(Shared, namespace='shared_gc_repeated')
+    gc_collect()
+    # `other` still holds it.
+    assert treespec not in gc.get_referrers(Shared)
+    del other
+    gc_collect()
+    # Now the treespec's two nodes are the only holders, so it reports the members once.
+    assert treespec in gc.get_referrers(Shared)
+    del treespec
+
+    wr = weakref.ref(Shared)
+    del Shared
+    gc_collect()
+    if not HAS_DEFERRED_TYPE_REFS:
+        assert wr() is None
+
+
+@skipif_pypy  # relies on CPython's reference-cycle collector
+@pytest.mark.xfail(
+    strict=True,
+    reason='known limitation: a treespec cannot see registration references held by another treespec',
+)
+def test_treespec_reference_cycle_across_treespecs_is_collectable():
+    # Known limitation. A treespec reports a registration's members only when its own nodes hold
+    # every reference to it, because that is all it can count. When two treespecs each hold some of
+    # the references, neither sees the other's, so neither reports the members and a cycle through
+    # them survives even though the two treespecs jointly own the registration.
+    #
+    # Resolving this needs the registration itself to be a garbage-collected object with its own
+    # `tp_traverse`, so each edge is reported by whoever owns it and no counting is required.
+    # Until then this is strictly better than reporting nothing at all, which never collects any of
+    # these cycles.
+    class Cyclic:
+        pass
+
+    optree.register_pytree_node(
+        Cyclic,
+        lambda cyclic: ((), None),
+        lambda metadata, children: None,
+        namespace='cycle_gc_across',
+    )
+    try:
+        treespecs = [optree.tree_structure(Cyclic(), namespace='cycle_gc_across') for _ in range(2)]
+        Cyclic.self_specs = treespecs
+    finally:
+        optree.unregister_pytree_node(Cyclic, namespace='cycle_gc_across')
+
+    wr = weakref.ref(Cyclic)
+    del Cyclic, treespecs
+    gc_collect()
+    assert wr() is None
+
+
 @disable_systrace
 def test_treeiter_self_referential():
     sentinel = object()
@@ -347,6 +661,24 @@ def test_treeiter_self_referential():
     assert next(it) == 2
 
     del it, d
+    gc_collect()
+    if not PYPY:
+        assert wr() is None
+
+
+def test_treeiter_leaf_predicate_no_reference_leak():
+    # A reference cycle that runs through the `leaf_predicate` callback must be collectable.
+    # Regression: `PyTreeIter` tp_traverse / tp_clear previously ignored `m_leaf_predicate`, so a
+    # cycle through the predicate was invisible to the cyclic garbage collector and leaked.
+    def is_leaf(x):
+        return False
+
+    it = optree.tree_iter({'a': 1, 'b': {'c': 2}}, is_leaf)
+    wr = weakref.ref(it)
+    assert next(it) == 1
+    is_leaf.self_ref = it  # cycle: it -> m_leaf_predicate (is_leaf) -> is_leaf.self_ref -> it
+
+    del it, is_leaf
     gc_collect()
     if not PYPY:
         assert wr() is None
@@ -518,6 +850,29 @@ def test_treespec_pickle_roundtrip(
                 )
 
 
+@skipif_wasm
+@skipif_android
+@skipif_ios
+def test_treespec_pickle_all_protocols_roundtrip():
+    # pybind11's pickle support reconstructs cleanly only at protocol >= 2. Protocols 0 and 1 used
+    # to reconstruct via `object.__new__`, which pybind11 rejects with an untranslated C++ exception
+    # that aborts the interpreter (SIGABRT). Run in a subprocess so a regression fails this test
+    # rather than killing the whole suite.
+    check_script_in_subprocess(
+        r"""
+        import pickle
+
+        import optree
+
+        spec = optree.tree_structure({'a': [1, 2], 'b': (3, 4)})
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            restored = pickle.loads(pickle.dumps(spec, protocol=protocol))
+            assert restored == spec, (protocol, restored, spec)
+        """,
+        output=None,
+    )
+
+
 class Foo:
     def __init__(self, x, y):
         self.x = x
@@ -541,50 +896,24 @@ def test_treespec_pickle_missing_registration():
     treespec = optree.tree_structure(Foo(0, 1), namespace='foo')
     serialized = pickle.dumps(treespec)
 
-    try:
-        output = subprocess.run(
-            [
-                sys.executable,
-                '-c',
-                textwrap.dedent(
-                    f"""
-                    import pickle
-                    import sys
+    check_script_in_subprocess(
+        f"""
+        import pickle
+        import sys
 
-                    sys.path.insert(0, {str(TEST_ROOT)!r})
+        sys.path.insert(0, {str(TEST_ROOT)!r})
 
-                    try:
-                        treespec = pickle.loads({serialized!r})
-                    except Exception as ex:
-                        print(ex)
-                    else:
-                        print('No exception was raised.', file=sys.stderr)
-                        sys.exit(1)
-                    """,
-                ).strip(),
-            ],
-            capture_output=True,
-            check=True,
-            text=True,
-            encoding='utf-8',
-            cwd=TEST_ROOT,
-            env={
-                key: value
-                for key, value in os.environ.items()
-                if (
-                    not key.startswith(('PYTHON', 'PYTEST', 'COV_'))
-                    or key in ('PYTHON_GIL', 'PYTHONDEVMODE', 'PYTHONHASHSEED')
-                )
-            },
-            timeout=120.0,
-        )
-        message = output.stdout.strip()
-    except subprocess.CalledProcessError as ex:
-        raise RuntimeError(ex.stderr) from ex
-
-    assert re.match(
-        r"^Unknown custom type in pickled PyTreeSpec: <class '.*'> in namespace 'foo'\.$",
-        string=message,
+        try:
+            treespec = pickle.loads({serialized!r})
+        except Exception as ex:
+            print(ex)
+        else:
+            print('No exception was raised.', file=sys.stderr)
+            sys.exit(1)
+        """,
+        output=re.compile(
+            r"Unknown custom type in pickled PyTreeSpec: <class '.*'> in namespace 'foo'\.",
+        ),
     )
 
     optree.unregister_pytree_node(Foo, namespace='foo')
@@ -593,6 +922,402 @@ def test_treespec_pickle_missing_registration():
         match=r"^Unknown custom type in pickled PyTreeSpec: <class '.*'> in namespace 'foo'\.$",
     ):
         treespec = pickle.loads(serialized)
+
+
+def test_treespec_getstate_does_not_alias_internal_node_data():
+    # `__getstate__` (used by `pickle`) must return a snapshot, not aliases of the immutable spec's
+    # internal mutable containers: the keys of a dict/OrderedDict/defaultdict node and its
+    # insertion-order keys dict. Mutating the returned state otherwise reaches back into the spec,
+    # desyncing the keys from the arity (repr raises an InternalError) or adding a spurious
+    # original key (unflatten returns an extra entry). A custom node's entries are immutable.
+    class Custom:
+        def __init__(self, *values):
+            self.values = values
+
+    optree.register_pytree_node(
+        Custom,
+        lambda custom: (custom.values, None, tuple(range(len(custom.values)))),
+        lambda metadata, children: Custom(*children),
+        namespace='getstate_snapshot',
+    )
+    try:
+        tree = {
+            'b': Custom(1, 2),
+            'a': 3,
+            'od': OrderedDict([('y', 4), ('x', 5)]),
+            'dd': defaultdict(int, {'q': 6, 'p': 7}),
+        }
+        spec = optree.tree_structure(tree, namespace='getstate_snapshot')
+        node_states, _, _ = state = spec.__getstate__()
+        before = repr(state)
+
+        for node in node_states:
+            kind, node_data, node_entries, original_keys = node[0], node[2], node[3], node[7]
+            if kind in {optree.PyTreeKind.DICT, optree.PyTreeKind.ORDEREDDICT}:
+                node_data.append('injected')  # a dict/OrderedDict node's keys list
+            elif kind == optree.PyTreeKind.DEFAULTDICT:
+                node_data[1].append('injected')  # a defaultdict's (default_factory, keys) tuple
+            if isinstance(original_keys, dict):
+                original_keys['injected'] = None
+            assert node_entries is None or isinstance(node_entries, tuple)  # entries are immutable
+
+        assert repr(spec.__getstate__()) == before, 'mutating the pickled state corrupted the spec'
+    finally:
+        optree.unregister_pytree_node(Custom, namespace='getstate_snapshot')
+
+
+def test_treespec_getstate_aliases_custom_node_data():
+    # Limitation (characterization test): a custom node's `node_data` is the user-provided metadata,
+    # which `__getstate__` passes through by reference. optree copies its own dict/defaultdict keys
+    # (see `test_treespec_getstate_does_not_alias_internal_node_data`) but cannot generically
+    # deep-copy arbitrary metadata, so mutating it via the pickled state reaches back into the spec.
+    # Protecting custom metadata is the caller's responsibility; this pins the behavior.
+    class Custom:
+        def __init__(self, *children, alpha, beta=None):
+            self.children = children
+            self.metadata = {'alpha': alpha, 'beta': beta}
+
+        def __eq__(self, other):
+            return (
+                isinstance(other, Custom)
+                and self.children == other.children
+                and self.metadata == other.metadata
+            )
+
+        __hash__ = None
+
+    optree.register_pytree_node(
+        Custom,
+        lambda custom: (custom.children, custom.metadata),  # mutable dict metadata
+        lambda metadata, children: Custom(*children, **metadata),
+        namespace='getstate_alias_custom',
+    )
+    try:
+        leaves, treespec = optree.tree_flatten(
+            Custom(1, 2, alpha=3, beta=4),
+            namespace='getstate_alias_custom',
+        )
+        before = repr(treespec)
+        custom_state = next(
+            node for node in treespec.__getstate__()[0] if node[0] == optree.PyTreeKind.CUSTOM
+        )
+        assert custom_state[2] == {'alpha': 3, 'beta': 4}
+
+        # Mutate the aliased metadata in place via the pickled state.
+        custom_state[2]['gamma'] = 5  # mutate the aliased metadata in place
+
+        aliased = next(
+            node for node in treespec.__getstate__()[0] if node[0] == optree.PyTreeKind.CUSTOM
+        )
+        assert aliased[2] is custom_state[2]
+        assert aliased[2] == {'alpha': 3, 'beta': 4, 'gamma': 5}  # the mutation reached the spec
+        assert repr(treespec) == before.replace(
+            repr({'alpha': 3, 'beta': 4}),
+            repr({'alpha': 3, 'beta': 4, 'gamma': 5}),
+        )
+        # The corruption even reaches what `tree_unflatten` rebuilds, not just repr/getstate.
+        with pytest.raises(TypeError, match=r'unexpected keyword argument'):
+            optree.tree_unflatten(treespec, leaves)
+
+        # Replacing the metadata wholesale reaches the spec the same way, but here unflatten
+        # succeeds and rebuilds a different object: the corruption is silent, not an error.
+        custom_state[2].clear()
+        custom_state[2]['alpha'] = 42
+        aliased = next(
+            node for node in treespec.__getstate__()[0] if node[0] == optree.PyTreeKind.CUSTOM
+        )
+        assert aliased[2] is custom_state[2]
+        assert aliased[2] == {'alpha': 42}
+        assert repr(treespec) == before.replace(
+            repr({'alpha': 3, 'beta': 4}),
+            repr({'alpha': 42}),
+        )
+        reconstructed = optree.tree_unflatten(treespec, leaves)
+        reconstructed_treespec = optree.tree_structure(
+            reconstructed,
+            namespace='getstate_alias_custom',
+        )
+        assert reconstructed == Custom(1, 2, alpha=42)
+        assert reconstructed.metadata == {'alpha': 42, 'beta': None}
+        assert reconstructed_treespec != treespec
+        assert repr(reconstructed_treespec) == before.replace(
+            repr({'alpha': 3, 'beta': 4}),
+            repr({'alpha': 42, 'beta': None}),
+        )
+    finally:
+        optree.unregister_pytree_node(Custom, namespace='getstate_alias_custom')
+
+
+def test_treespec_setstate_does_not_alias_supplied_node_data():
+    # The symmetric half of `test_treespec_getstate_does_not_alias_internal_node_data`:
+    # `__setstate__` validated the supplied key list and then BORROWED it into the node, so
+    # mutating the state afterwards silently corrupted an already-restored treespec (the keys
+    # desync from the children, and `unflatten` pairs them up wrongly). It must copy instead.
+    # `original_keys` is already rebuilt via `dict.fromkeys`, so it is covered too.
+    def setstate(state):
+        obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+        obj.__setstate__(state)
+        return obj
+
+    trees = [
+        {'a': 0, 'b': 0},
+        OrderedDict([('a', 0), ('b', 0)]),
+        defaultdict(int, {'a': 0, 'b': 0}),
+        {'b': 0, 'a': 0},  # sorted keys differ from the insertion order recorded in original_keys
+    ]
+    for tree in trees:
+        spec = optree.tree_structure(tree)
+        state = spec.__getstate__()
+        restored = setstate(state)
+        before = repr(restored)
+        expected_entries = restored.entries()
+        expected_tree = restored.unflatten([10, 20])
+
+        for node in state[0]:
+            kind, node_data, original_keys = node[0], node[2], node[7]
+            if kind in {optree.PyTreeKind.DICT, optree.PyTreeKind.ORDEREDDICT}:
+                node_data.reverse()  # a dict/OrderedDict node's keys list
+                node_data.append('injected')
+            elif kind == optree.PyTreeKind.DEFAULTDICT:
+                node_data[1].reverse()  # a defaultdict's (default_factory, keys) tuple
+                node_data[1].append('injected')
+            if isinstance(original_keys, dict):
+                original_keys['injected'] = None
+
+        assert repr(restored) == before, tree
+        assert restored.entries() == expected_entries, tree
+        assert restored.unflatten([10, 20]) == expected_tree, tree
+        assert restored == spec, tree
+
+
+def test_treespec_setstate_rejects_malformed_state():
+    # `PyTreeSpec.__setstate__` (used by `pickle`) must reject structurally malformed state rather
+    # than build a corrupt spec that triggers out-of-bounds reads / crashes when later used. The
+    # per-node tuple layout is (kind, arity, node_data, node_entries, custom, num_leaves, num_nodes,
+    # original_keys); see `PyTreeSpec::FromPicklable`.
+    def setstate(state):
+        obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+        obj.__setstate__(state)
+        return obj
+
+    CUSTOM = int(optree.PyTreeKind.CUSTOM)  # noqa: N806
+    LEAF = int(optree.PyTreeKind.LEAF)  # noqa: N806
+    NONE = int(optree.PyTreeKind.NONE)  # noqa: N806
+    TUPLE = int(optree.PyTreeKind.TUPLE)  # noqa: N806
+    DICT = int(optree.PyTreeKind.DICT)  # noqa: N806
+    NAMEDTUPLE = int(optree.PyTreeKind.NAMEDTUPLE)  # noqa: N806
+    DEFAULTDICT = int(optree.PyTreeKind.DEFAULTDICT)  # noqa: N806
+    DEQUE = int(optree.PyTreeKind.DEQUE)  # noqa: N806
+    STRUCTSEQUENCE = int(optree.PyTreeKind.STRUCTSEQUENCE)  # noqa: N806
+    NUM_KINDS = int(optree.PyTreeKind.NUM_KINDS)  # noqa: N806
+    leaf_node = (LEAF, 0, None, None, None, 1, 1, None)  # arity 0, 1 leaf, 1 node
+    keys_ab = {'a': None, 'b': None}  # original_keys for a 2-key ('a', 'b') dict node
+
+    # Sanity: well-formed states still round-trip.
+    for spec in [
+        optree.tree_structure((0, 0)),
+        optree.tree_structure({'a': 0, 'b': 0}),
+        optree.tree_structure(defaultdict(int, {'a': 0, 'b': 0})),
+    ]:
+        assert setstate(spec.__getstate__()) == spec
+
+    malformed_exceptions = (RuntimeError, ValueError, TypeError)
+
+    # The rejection cases below follow the order of the checks in `PyTreeSpec::FromPicklable`.
+
+    # A state that is not a 3-tuple.
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node,), False))
+
+    # A node state that is not a 7- or 8-tuple.
+    with pytest.raises(malformed_exceptions):
+        setstate((((LEAF, 0, None, None, None, 1),), False, ''))
+
+    # Kind out of range: the raw integer is validated before the narrowing `uint8_t` enum cast,
+    # which would otherwise wrap a bogus value to a valid-looking kind.
+    with pytest.raises(malformed_exceptions):
+        setstate((((NUM_KINDS, 0, None, None, None, 0, 1, None),), False, ''))
+
+    # Negative arity.
+    with pytest.raises(malformed_exceptions):
+        setstate((((TUPLE, -1, None, None, None, 0, 1, None),), False, ''))
+
+    # A dict node missing its original keys, and a non-dict node carrying them.
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, (DICT, 2, ['a', 'b'], None, None, 2, 3, None)), False, ''))
+    with pytest.raises(malformed_exceptions):
+        setstate((((LEAF, 0, None, None, None, 1, 1, keys_ab),), False, ''))
+
+    # A negative leaf count, or a non-positive node count.
+    with pytest.raises(malformed_exceptions):
+        setstate((((LEAF, 0, None, None, None, -1, 1, None),), False, ''))
+    with pytest.raises(malformed_exceptions):
+        setstate((((LEAF, 0, None, None, None, 1, 0, None),), False, ''))
+
+    # Node data on a leaf or none node (childless kinds that must not carry any).
+    with pytest.raises(malformed_exceptions):
+        setstate((((LEAF, 0, 'data', None, None, 1, 1, None),), False, ''))
+
+    # Leaf or none nodes are childless; a nonzero arity absorbs the preceding subtrees while still
+    # folding consistently, so the reconstructed spec reports a leaf/None while its num_leaves counts
+    # the absorbed children and unflatten silently drops them.
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, (NONE, 1, None, None, None, 1, 2, None)), False, ''))
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, (LEAF, 1, None, None, None, 1, 2, None)), False, ''))
+
+    # A None-kind node cannot appear when none_is_leaf is set (None is flattened as a leaf then, so
+    # a flattened tree never contains a None node); accepting one later raises an InternalError.
+    with pytest.raises(malformed_exceptions):
+        setstate((((NONE, 0, None, None, None, 0, 1, None),), True, ''))
+
+    # Node data on a tuple or list node.
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, (TUPLE, 2, 'data', None, None, 2, 3, None)), False, ''))
+
+    # Dict key list shorter than arity (MakeNode would index past the list end).
+    short_keys = (DICT, 2, ['a'], None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, short_keys), False, ''))
+
+    # Dict with duplicate keys (would collapse the rebuilt dict), and with an unhashable key.
+    dup_keys = (DICT, 2, ['a', 'a'], None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, dup_keys), False, ''))
+    unhashable_key = (DICT, 2, [[], []], None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, unhashable_key), False, ''))
+
+    # NamedTuple / StructSequence node_data that is not the expected kind of type.
+    with pytest.raises(malformed_exceptions):
+        setstate((((NAMEDTUPLE, 0, int, None, None, 0, 1, None),), False, ''))
+    with pytest.raises(malformed_exceptions):
+        setstate((((STRUCTSEQUENCE, 0, int, None, None, 0, 1, None),), False, ''))
+
+    # DefaultDict metadata as a list where a 2-tuple is expected previously caused a raw tuple-item
+    # read to segfault; it is now coerced to a tuple and used safely.
+    restored = setstate(
+        (
+            (
+                leaf_node,
+                leaf_node,
+                (DEFAULTDICT, 2, [int, ['a', 'b']], None, None, 2, 3, keys_ab),
+            ),
+            False,
+            '',
+        ),
+    )
+    assert optree.tree_unflatten(restored, [10, 20]) == defaultdict(int, {'a': 10, 'b': 20})
+
+    # DefaultDict metadata with the wrong tuple size is rejected.
+    wrong_metadata = (DEFAULTDICT, 2, (int, ['a', 'b'], 'extra'), None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, wrong_metadata), False, ''))
+
+    # DefaultDict default_factory that is neither None nor callable.
+    bad_factory = (DEFAULTDICT, 2, (42, ['a', 'b']), None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, bad_factory), False, ''))
+
+    # DefaultDict keys too few, and DefaultDict keys not distinct (the Dict variants are above).
+    defaultdict_short = (DEFAULTDICT, 2, (int, ['a']), None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, defaultdict_short), False, ''))
+    defaultdict_dup = (DEFAULTDICT, 2, (int, ['a', 'a']), None, None, 2, 3, keys_ab)
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, defaultdict_dup), False, ''))
+
+    # Deque maxlen that is neither None nor an int, and maxlen smaller than the arity (a deque holds
+    # at most maxlen items, so arity <= maxlen).
+    with pytest.raises(malformed_exceptions):
+        setstate((((DEQUE, 0, 'x', None, None, 0, 1, None),), False, ''))
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, (DEQUE, 2, 1, None, None, 2, 3, None)), False, ''))
+
+    # A non-custom node carrying node entries or a custom type.
+    with pytest.raises(malformed_exceptions):
+        setstate(
+            ((leaf_node, leaf_node, (TUPLE, 2, None, ('a', 'b'), None, 2, 3, None)), False, ''),
+        )
+
+    # Original keys whose count (not just key set) disagrees with the arity.
+    short_original = (DICT, 2, ['a', 'b'], None, None, 2, 3, {'a': None})
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, short_original), False, ''))
+
+    # Dict original_keys whose key set differs from the sorted key list.
+    mismatched_original = (DICT, 2, ['a', 'b'], None, None, 2, 3, {'a': None, 'c': None})
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node, mismatched_original), False, ''))
+
+    # A custom node whose node-entries count disagrees with the arity (needs a registered type).
+    class MalformedCustomNode:
+        pass
+
+    optree.register_pytree_node(
+        MalformedCustomNode,
+        lambda obj: ((), None),
+        lambda metadata, children: MalformedCustomNode(),
+        namespace='malformed',
+    )
+    try:
+        custom_node = (CUSTOM, 2, None, ('one-entry',), MalformedCustomNode, 2, 3, None)
+        with pytest.raises(malformed_exceptions):
+            setstate(((leaf_node, leaf_node, custom_node), False, 'malformed'))
+    finally:
+        optree.unregister_pytree_node(MalformedCustomNode, namespace='malformed')
+
+    # A node claiming more children than the traversal provides.
+    with pytest.raises(malformed_exceptions):
+        setstate((((TUPLE, 2, None, None, None, 2, 3, None),), False, ''))
+
+    # Inconsistent intermediate num_nodes (previously only the last node was checked).
+    with pytest.raises(malformed_exceptions):
+        setstate(
+            (
+                (
+                    (LEAF, 0, None, None, None, 1, 5, None),  # leaf claims num_nodes == 5
+                    leaf_node,
+                    (TUPLE, 2, None, None, None, 2, 3, None),
+                ),
+                False,
+                '',
+            ),
+        )
+
+    # A traversal that yields more than one tree.
+    with pytest.raises(malformed_exceptions):
+        setstate(((leaf_node, leaf_node), False, ''))
+
+
+def test_treespec_setstate_rejects_builtin_custom_type():
+    # Regression: `FromPicklable` accepted any registration found for a CUSTOM node's custom type.
+    # The built-in registrations (NoneType/tuple/list/dict/...) live in the same map but carry empty
+    # flatten/unflatten callables, so the reconstructed node later called a null function pointer
+    # and crashed the interpreter. Both `__setstate__` and `pickle.loads` must reject it.
+    CUSTOM = int(optree.PyTreeKind.CUSTOM)  # noqa: N806
+    LEAF = int(optree.PyTreeKind.LEAF)  # noqa: N806
+    leaf_node = (LEAF, 0, None, None, None, 1, 1, None)
+
+    for builtin_type in (list, dict, tuple, deque, OrderedDict, defaultdict, type(None)):
+        state = ((leaf_node, (CUSTOM, 1, None, None, builtin_type, 1, 2, None)), False, '')
+        obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+        with pytest.raises(RuntimeError, match=r'the custom type is a built-in type'):
+            obj.__setstate__(state)
+
+        # The same state shipped as a pickle payload, hand-assembled the way an attacker would:
+        # `NEWOBJ` an empty spec, then `BUILD` it from the crafted state.
+        blob = b''.join(
+            [
+                pickle.PROTO + bytes([2]),
+                pickle.GLOBAL + b'optree\nPyTreeSpec\n',
+                pickle.EMPTY_TUPLE + pickle.NEWOBJ,
+                pickle.dumps(state, protocol=2)[2:-1],  # strip the PROTO / STOP framing
+                pickle.BUILD + pickle.STOP,
+            ],
+        )
+        with pytest.raises(RuntimeError, match=r'the custom type is a built-in type'):
+            pickle.loads(blob)  # crafted payload, the point of the test
 
 
 @parametrize(
@@ -745,6 +1470,535 @@ def test_treespec_compose_children(
             assert not optree.treespec_is_prefix(expected_treespec, treespec, strict=False)
             assert optree.treespec_is_suffix(expected_treespec, treespec, strict=True)
             assert optree.treespec_is_suffix(expected_treespec, treespec, strict=False)
+
+
+def test_treespec_compose_rejects_incompatible_namespace_merge():
+    # Regression: composing an empty-namespace spec (whose custom nodes are resolved globally) with
+    # a spec in another namespace adopted that namespace but kept the global registrations. When the
+    # same type is registered differently in the two namespaces, the composed spec silently used the
+    # wrong flatten/unflatten (spurious flatten_up_to errors; corrupt pickle). Reject the merge.
+    class Pair:
+        def __init__(self, a, b):
+            self.a, self.b = a, b
+
+    class Single:
+        def __init__(self, x):
+            self.x = x
+
+    optree.register_pytree_node(
+        Pair,
+        lambda t: ((t.a, t.b), None, None),
+        lambda m, c: Pair(c[0], c[1]),
+        namespace=GLOBAL_NAMESPACE,
+    )
+    optree.register_pytree_node(  # behavior differs from the global registration
+        Pair,
+        lambda t: ((t.b, t.a), None, None),
+        lambda m, c: Pair(c[1], c[0]),
+        namespace='behavior_change',
+    )
+    optree.register_pytree_node(
+        Single,
+        lambda t: ((t.x,), None, None),
+        lambda m, c: Single(c[0]),
+        namespace='behavior_change',
+    )
+    try:
+        outer = optree.tree_structure(Pair(0, 0))
+        inner = optree.tree_structure(Single(0), namespace='behavior_change')
+        assert outer.namespace == ''
+        assert inner.namespace == 'behavior_change'
+        with pytest.raises(ValueError, match='original registration'):
+            outer.compose(inner)
+
+        # `tree_transpose` builds its expected structure with `compose`, so the rejection surfaces
+        # through the public API too (here via its structure-mismatch diagnostic path).
+        with pytest.raises(ValueError, match='original registration'):
+            optree.tree_transpose(outer, inner, [1, 2, 3])
+
+        # `broadcast_to_common_suffix` adopts the namespace the same way.
+        self_spec = optree.tree_structure({'k': Pair(0, 0)})
+        other_spec = optree.tree_structure({'k': Single(0)}, namespace='behavior_change')
+        with pytest.raises(ValueError, match='original registration'):
+            self_spec.broadcast_to_common_suffix(other_spec)
+    finally:
+        optree.unregister_pytree_node(Pair, namespace=GLOBAL_NAMESPACE)
+        optree.unregister_pytree_node(Pair, namespace='behavior_change')
+        optree.unregister_pytree_node(Single, namespace='behavior_change')
+
+
+def test_treespec_compose_allows_compatible_namespace_merge():
+    # The namespace-merge rejection must not over-reject: a custom type registered only globally
+    # resolves identically under any namespace (via global fallback), so merging an empty-namespace
+    # spec that uses it into another namespace is allowed and the result stays consistent.
+    class GlobalOnly:
+        def __init__(self, a, b):
+            self.a, self.b = a, b
+
+    optree.register_pytree_node(
+        GlobalOnly,
+        lambda t: ((t.a, t.b), None, None),
+        lambda m, c: GlobalOnly(c[0], c[1]),
+        namespace=GLOBAL_NAMESPACE,
+    )
+    try:
+        outer = optree.tree_structure(GlobalOnly(0, 0))
+        assert outer.namespace == ''
+
+        # Both empty -> the merge stays in the global namespace.
+        assert outer.compose(optree.tree_structure(0)).namespace == ''
+
+        # Empty side (global-only custom) merged into a namespace: allowed, adopts the namespace,
+        # and unflattens consistently (the global registration is used throughout).
+        with optree.dict_insertion_ordered(True, namespace='no_override'):
+            inner = optree.tree_structure({'x': 0}, namespace='no_override')
+        assert inner.namespace == 'no_override'
+        composed = outer.compose(inner)
+        assert composed.namespace == 'no_override'
+        result = optree.tree_unflatten(composed, [1, 2])
+        assert isinstance(result, GlobalOnly)
+        assert result.a == {'x': 1}
+        assert result.b == {'x': 2}
+
+        # The cross-namespace merge equals building the composed structure directly with `tree_map`
+        # in the adopted namespace, compose's defining identity.
+        expected = optree.tree_structure(
+            optree.tree_map(lambda _: {'x': 0}, GlobalOnly(0, 0), namespace='no_override'),
+            namespace='no_override',
+        )
+        assert composed == expected
+
+        # broadcast_to_common_suffix likewise allows the compatible merge.
+        broadcasted = outer.broadcast_to_common_suffix(
+            optree.tree_structure(GlobalOnly(0, 0), namespace='no_override'),
+        )
+        assert broadcasted.namespace == 'no_override'
+    finally:
+        optree.unregister_pytree_node(GlobalOnly, namespace=GLOBAL_NAMESPACE)
+
+
+def test_treespec_broadcast_to_common_suffix_does_not_mutate_argument_on_key_mismatch():
+    # Regression: BroadcastToCommonSuffixImpl built the "got key(s)" part of its key-mismatch error
+    # message by sorting the ARGUMENT spec's live dict-node key list IN PLACE: `other_keys` was a
+    # borrow of `node_data`, not a copy. For an OrderedDict the child subtrees stay in insertion
+    # order while the keys get permuted, silently corrupting a spec the caller still holds: repr,
+    # equality, hash, and unflatten all go wrong. The message must be built from a sorted COPY.
+    other = optree.tree_structure(OrderedDict([('c', 1), ('b', 2)]))
+    before_repr = str(other)
+    before_hash = hash(other)
+    this = optree.tree_structure({'a': 1})
+    with pytest.raises(ValueError, match='dictionary key mismatch'):
+        this.broadcast_to_common_suffix(other)
+    # The argument spec must be byte-for-byte unchanged by the failed call.
+    assert str(other) == before_repr
+    assert hash(other) == before_hash
+    # And it must still unflatten in its ORIGINAL insertion order (c, b), not a sorted (b, c) order.
+    assert other.unflatten([10, 20]) == OrderedDict([('c', 10), ('b', 20)])
+
+
+def test_treespec_broadcast_to_common_suffix_preserves_custom_node_entries():
+    # Broadcasting rebuilds each non-leaf node, so `.node_entries` must be carried across: losing
+    # it breaks accessors, which fall back to `range(arity)` (`GetAttrEntry(entry=0)`).
+    class Vector:
+        def __init__(self, a, c):
+            self.a, self.c = a, c
+
+    optree.register_pytree_node(
+        Vector,
+        lambda o: ((o.a, o.c), None, ('a', 'c')),  # 3-tuple flatten -> node_entries = ('a', 'c')
+        lambda metadata, children: Vector(*children),
+        path_entry_type=optree.GetAttrEntry,
+        namespace=GLOBAL_NAMESPACE,
+    )
+    try:
+        spec = optree.tree_structure(Vector(1, 2))
+        other = optree.tree_structure(Vector(3, 4))
+        assert spec.entries() == ['a', 'c']
+
+        # Both specs share the same custom structure, so the common suffix is that structure and the
+        # explicit string entries must survive unchanged, not degrade to the fallback [0, 1].
+        broadcasted = spec.broadcast_to_common_suffix(other)
+        assert broadcasted.entries() == ['a', 'c']
+        assert broadcasted.paths() == spec.paths()
+        assert broadcasted.accessors() == spec.accessors()
+    finally:
+        optree.unregister_pytree_node(Vector, namespace=GLOBAL_NAMESPACE)
+
+
+def test_treespec_deep_walk_raises_recursion_error_not_segfault():
+    # Regression: `PathsImpl`, `AccessorsImpl`, and `BroadcastToCommonSuffixImpl` recurse once per
+    # tree level. Without a depth guard, a deeply-nested spec (trivially built via doubling
+    # `compose`) overflowed the native C++ stack and crashed the interpreter with a SIGSEGV instead
+    # of raising a catchable `RecursionError`.
+    # Each `compose` doubles the depth, so ceil(log2(limit)) + 1 composes push it above the limit.
+    num_composes = math.ceil(math.log2(optree.MAX_RECURSION_DEPTH)) + 1
+    deep = optree.tree_structure([0])
+    for _ in range(num_composes):
+        deep = deep.compose(deep)
+    assert 2**num_composes > optree.MAX_RECURSION_DEPTH
+    with pytest.raises(RecursionError):
+        deep.paths()
+    with pytest.raises(RecursionError):
+        deep.accessors()
+    with pytest.raises(RecursionError):
+        deep.broadcast_to_common_suffix(deep)
+
+    # Broadcasting the deep spec against a shallower spec whose depth is still below the limit
+    # recurses only as far as the common suffix, so it must succeed (not raise RecursionError or
+    # crash) in either direction, returning the deeper spec.
+    shallower = optree.tree_structure([0])
+    for _ in range(num_composes - 2):  # depth 2 ** (num_composes - 2), safely below the limit
+        shallower = shallower.compose(shallower)
+    assert 2 ** (num_composes - 2) < optree.MAX_RECURSION_DEPTH
+    assert deep.broadcast_to_common_suffix(shallower) == deep
+    assert shallower.broadcast_to_common_suffix(deep) == deep
+
+
+def test_treespec_compose_rejects_namespace_override_with_different_arity():
+    # A type registered globally flattens both members as children (arity 2); a namespace override
+    # flattens one member as a child and stores the other as node metadata (arity 1). Both
+    # registrations round-trip, but merging an empty-namespace spec (global, arity 2) into that
+    # namespace must be rejected: the composed spec would claim the namespace while carrying an
+    # arity-2 node that the namespace's registration cannot unflatten.
+    class TwoMember:
+        def __init__(self, a, b):
+            self.a, self.b = a, b
+
+        def __eq__(self, other):
+            return isinstance(other, TwoMember) and (self.a, self.b) == (other.a, other.b)
+
+        __hash__ = None
+
+    optree.register_pytree_node(
+        TwoMember,
+        lambda t: ((t.a, t.b), None, None),  # global: both members are children
+        lambda metadata, children: TwoMember(children[0], children[1]),
+        namespace=GLOBAL_NAMESPACE,
+    )
+    optree.register_pytree_node(
+        TwoMember,
+        lambda t: ((t.a,), t.b, None),  # override: one child, the other is metadata
+        lambda metadata, children: TwoMember(children[0], metadata),
+        namespace='arity_change',
+    )
+    try:
+        obj = TwoMember(1, 2)
+
+        # Both registrations round-trip on their own.
+        global_leaves, global_spec = optree.tree_flatten(obj)
+        assert global_leaves == [1, 2]
+        assert optree.tree_unflatten(global_spec, global_leaves) == obj
+        custom_leaves, custom_spec = optree.tree_flatten(obj, namespace='arity_change')
+        assert custom_leaves == [1]
+        assert optree.tree_unflatten(custom_spec, custom_leaves) == obj
+
+        assert global_spec.namespace == ''
+        assert global_spec.num_leaves == 2
+        assert custom_spec.namespace == 'arity_change'
+        assert custom_spec.num_leaves == 1
+        with pytest.raises(ValueError, match='original registration'):
+            global_spec.compose(custom_spec)
+    finally:
+        optree.unregister_pytree_node(TwoMember, namespace=GLOBAL_NAMESPACE)
+        optree.unregister_pytree_node(TwoMember, namespace='arity_change')
+
+
+def test_treespec_transform_rejects_incompatible_namespace_merge():
+    # `transform` unifies the namespace across the input spec and the transform outputs. If that
+    # unified (non-empty) namespace rebinds a custom node (e.g. the input's globally-resolved
+    # custom node) to a different registration, the transform must be rejected (same class as the
+    # compose / broadcast merge rejection). A globally-only-registered type is still allowed via
+    # fallback.
+    class Diverge:  # variable arity; registered differently in the global and named namespaces
+        def __init__(self, *children):
+            self.children = children
+
+    class GlobalOnly:  # variable arity; registered only globally -> resolves via fallback anywhere
+        def __init__(self, *children):
+            self.children = children
+
+    optree.register_pytree_node(
+        Diverge,
+        lambda d: (d.children, None, None),
+        lambda metadata, children: Diverge(*children),
+        namespace=GLOBAL_NAMESPACE,
+    )
+    optree.register_pytree_node(
+        Diverge,
+        lambda d: (tuple(reversed(d.children)), None, None),  # divergent from the global reg
+        lambda metadata, children: Diverge(*reversed(children)),
+        namespace='transform_change',
+    )
+    optree.register_pytree_node(
+        GlobalOnly,
+        lambda g: (g.children, None, None),
+        lambda metadata, children: GlobalOnly(*children),
+        namespace=GLOBAL_NAMESPACE,
+    )
+
+    def to_namespaced_leaf(_):
+        # Replace a leaf with a namespaced Diverge to inject the namespace (leaves have no arity).
+        return optree.tree_structure(Diverge(0), namespace='transform_change')
+
+    def to_global_node(spec):
+        # Replace a node with a same-arity globally-resolved Diverge; it rebinds under the promoted
+        # namespace (Diverge is registered differently there). Generic over the node's arity.
+        return optree.tree_structure(Diverge(*range(spec.num_children)))
+
+    def to_namespaced_node(spec):
+        # Outer node -> global Diverge (rebinds); inner nodes -> namespaced Diverge (injects the
+        # namespace). Both same-arity, so `f_node` alone drives the (f_node, None) rejection.
+        if spec.type is tuple:
+            return to_global_node(spec)
+        return optree.tree_structure(
+            Diverge(*range(spec.num_children)),
+            namespace='transform_change',
+        )
+
+    try:
+        # The rejection must fire for every `(f_node, f_leaf)` combination that puts a
+        # globally-resolved custom node under the non-empty unified namespace.
+
+        # (None, f_leaf): the input's global Diverge is kept, f_leaf injects the namespace.
+        outer = optree.tree_structure(Diverge(0, 0))
+        assert outer.namespace == ''
+        with pytest.raises(ValueError, match='original registration'):
+            outer.transform(None, to_namespaced_leaf)
+
+        # (f_node, None): f_node alone yields a global Diverge above namespaced children.
+        with pytest.raises(ValueError, match='original registration'):
+            optree.tree_structure(([0], [0])).transform(to_namespaced_node, None)
+
+        # (f_node, f_leaf): f_node injects the global Diverge, f_leaf injects the namespace.
+        with pytest.raises(ValueError, match='original registration'):
+            optree.tree_structure([0, 0]).transform(to_global_node, to_namespaced_leaf)
+
+        # Compatible: GlobalOnly resolves identically under any namespace via fallback.
+        global_outer = optree.tree_structure(GlobalOnly(0, 0))
+        transformed = global_outer.transform(None, to_namespaced_leaf)
+        assert transformed.namespace == 'transform_change'
+    finally:
+        optree.unregister_pytree_node(Diverge, namespace=GLOBAL_NAMESPACE)
+        optree.unregister_pytree_node(Diverge, namespace='transform_change')
+        optree.unregister_pytree_node(GlobalOnly, namespace=GLOBAL_NAMESPACE)
+
+
+def test_treespec_from_collection_rejects_incompatible_namespace_promotion():
+    # `treespec_from_collection` promotes an empty caller namespace to a child spec's namespace. If
+    # that promoted namespace rebinds a custom node the collection resolved globally (the root node,
+    # or a globally-resolved child) to a different registration, the result would claim the
+    # namespace while carrying the wrong registration: it must be rejected, exactly like compose /
+    # transform / broadcast. A globally-only-registered type is still allowed via fallback.
+    class Diverge:  # variable arity; registered differently in the global and named namespaces
+        def __init__(self, *children):
+            self.children = children
+
+    class GlobalOnly:  # variable arity; registered only globally -> resolves via fallback anywhere
+        def __init__(self, *children):
+            self.children = children
+
+    optree.register_pytree_node(
+        Diverge,
+        lambda d: (d.children, None, None),
+        lambda metadata, children: Diverge(*children),
+        namespace=GLOBAL_NAMESPACE,
+    )
+    optree.register_pytree_node(
+        Diverge,
+        lambda d: (tuple(reversed(d.children)), None, None),  # divergent from the global reg
+        lambda metadata, children: Diverge(*reversed(children)),
+        namespace='from_coll_change',
+    )
+    optree.register_pytree_node(
+        GlobalOnly,
+        lambda g: (g.children, None, None),
+        lambda metadata, children: GlobalOnly(*children),
+        namespace=GLOBAL_NAMESPACE,
+    )
+    try:
+        # Incompatible: the globally-resolved Diverge rebinds under the promoted namespace.
+        foo = optree.tree_structure(Diverge(0, 0))
+        child = optree.tree_structure(Diverge(0), namespace='from_coll_change')
+        assert foo.namespace == ''
+        with pytest.raises(ValueError, match='original registration'):
+            optree.treespec_from_collection([foo, child], namespace='')
+
+        # Compatible: GlobalOnly resolves identically under any namespace via fallback.
+        global_spec = optree.tree_structure(GlobalOnly(0, 0))
+        promoted = optree.treespec_from_collection([global_spec, child], namespace='')
+        assert promoted.namespace == 'from_coll_change'
+    finally:
+        optree.unregister_pytree_node(Diverge, namespace=GLOBAL_NAMESPACE)
+        optree.unregister_pytree_node(Diverge, namespace='from_coll_change')
+        optree.unregister_pytree_node(GlobalOnly, namespace=GLOBAL_NAMESPACE)
+
+
+def test_treespec_dict_key_order_survives_namespace_promotion():
+    # A dict node's key order is fixed at BUILD time by the namespace passed then. Operations that
+    # merge/promote a spec's namespace (`treespec_from_collection`, `compose`, `transform`) only
+    # re-tag it for custom-node resolution; like `compose` they NEVER reorder an already-built dict.
+    # So a dict built under the global ('') namespace (sorted keys) keeps that order even after
+    # promotion to an insertion-ordered namespace, intentionally differing from the same dict built
+    # directly under that namespace, while a dict built directly under the namespace keeps its
+    # insertion order (matching). This test locks that behavior across all three operations.
+    class Wrap:  # a variable-arity custom node, so `f_node` can build same-arity replacements
+        def __init__(self, *children):
+            self.children = children
+
+    optree.register_pytree_node(
+        Wrap,
+        lambda w: (w.children, None, None),
+        lambda metadata, children: Wrap(*children),
+        namespace='promote_order',
+    )
+    try:
+        with optree.dict_insertion_ordered(True, namespace='promote_order'):
+            child = optree.tree_structure(Wrap(0), namespace='promote_order')
+            # Built directly under the insertion-ordered namespace: keys in insertion order (b, a).
+            genuine = optree.tree_structure({'b': Wrap(0), 'a': Wrap(0)}, namespace='promote_order')
+            assert genuine.entries() == ['b', 'a']
+
+            def to_namespaced_node(spec):
+                # Rewrite every non-dict node into a same-arity `Wrap` in the namespace (generic
+                # over the node's arity rather than tied to this test's shapes) so `f_node` alone
+                # can promote the spec. `transform` promotes only when some output carries a
+                # namespace, and only a custom node can. The outer dict node is kept so its key
+                # order stays observable.
+                if spec.type is dict:
+                    return spec
+                return optree.tree_structure(
+                    Wrap(*range(spec.num_children)),
+                    namespace='promote_order',
+                )
+
+            def transform_combos(outer):
+                return {
+                    'transform(None, f_leaf)': outer.transform(None, lambda _: child),
+                    'transform(f_node, None)': outer.transform(to_namespaced_node, None),
+                    'transform(f_node, f_leaf)': outer.transform(
+                        to_namespaced_node,
+                        lambda _: child,
+                    ),
+                }
+
+            # Dicts built under the GLOBAL ('') namespace, sorted keys (a, b), then promoted.
+            from_global = {
+                'from_collection': optree.treespec_from_collection(
+                    {'b': child, 'a': child},
+                    namespace='',
+                ),
+                'compose': optree.tree_structure({'b': 0, 'a': 0}).compose(child),
+                **transform_combos(optree.tree_structure({'b': [0], 'a': [0]})),
+            }
+            # Dicts built directly under the namespace, insertion-order keys (b, a).
+            from_namespace = {
+                'from_collection': optree.treespec_from_collection(
+                    {'b': child, 'a': child},
+                    namespace='promote_order',
+                ),
+                'compose': optree.tree_structure(
+                    {'b': 0, 'a': 0},
+                    namespace='promote_order',
+                ).compose(child),
+                **transform_combos(
+                    optree.tree_structure({'b': [0], 'a': [0]}, namespace='promote_order'),
+                ),
+            }
+
+        for name, spec in from_global.items():
+            assert spec.namespace == 'promote_order', name  # promoted for custom resolution ...
+            assert spec.entries() == ['a', 'b'], name  # ... but the dict keeps '' (sorted) order
+
+        for name, spec in from_namespace.items():
+            assert spec.namespace == 'promote_order', name
+            assert spec.entries() == ['b', 'a'], name  # insertion order kept, matches direct build
+
+        # from_collection / compose reproduce genuine's flat structure exactly, so the only
+        # difference is the dict key order: global-built differs, namespace-built matches.
+        assert from_global['from_collection'] != genuine
+        assert from_global['compose'] != genuine
+        assert from_namespace['from_collection'] == genuine
+        assert from_namespace['compose'] == genuine
+    finally:
+        optree.unregister_pytree_node(Wrap, namespace='promote_order')
+
+
+def test_treespec_is_prefix_nested_dict_key_reorder():
+    # Regression: `IsPrefix` reorders a dict node's children in a working copy of the traversal to
+    # make key order irrelevant. When a NESTED dict also needed reordering, it indexed the pristine
+    # traversal by an offset into the already-mutated working copy, corrupting it -> a spurious
+    # `optree._C.InternalError` or a wrong boolean. Two treespecs that describe the SAME tree
+    # (differing only in dict key insertion order, at nested levels) must be mutual non-strict
+    # prefixes / suffixes.
+
+    # Top-level AND nested dict keys reordered; the top-level reorder relocates the nested dict.
+    tree_a = OrderedDict([('a', 0), ('b', OrderedDict([('e', 0), ('g', 0)])), ('d', 0)])
+    tree_b = OrderedDict([('b', OrderedDict([('g', 0), ('e', 0)])), ('a', 0), ('d', 0)])
+    a = optree.tree_structure(tree_a)
+    b = optree.tree_structure(tree_b)
+    assert optree.treespec_is_prefix(a, b, strict=False)
+    assert optree.treespec_is_prefix(b, a, strict=False)
+    assert optree.treespec_is_suffix(a, b, strict=False)
+    assert optree.treespec_is_suffix(b, a, strict=False)
+    assert a <= b
+    assert b <= a
+    assert a >= b
+    assert b >= a
+
+    # A nested dict whose reorder relocates a subtree containing another out-of-order dict.
+    tree_a2 = OrderedDict([('a', 0), ('d', 0), ('b', OrderedDict([('e', 0), ('f', 0)]))])
+    tree_b2 = OrderedDict([('b', OrderedDict([('f', 0), ('e', 0)])), ('d', 0), ('a', 0)])
+    a2 = optree.tree_structure(tree_a2)
+    b2 = optree.tree_structure(tree_b2)
+    assert optree.treespec_is_prefix(a2, b2, strict=False)
+    assert optree.treespec_is_prefix(b2, a2, strict=False)
+    assert a2 <= b2
+    assert b2 <= a2
+
+
+def test_treespec_is_prefix_deque_maxlen_agnostic():
+    # A deque's treespec stores both its arity and its `maxlen`, but `is_prefix` is arity-based and
+    # deliberately `maxlen`-AGNOSTIC. A deque holds at most `maxlen` items, so `arity <= maxlen`
+    # always holds and two flatten-compatible deques necessarily share the same arity while carrying
+    # any `maxlen1`/`maxlen2`; `maxlen` does not affect how children are partitioned, so gating the
+    # prefix relation on it would wrongly reject valid `flatten_up_to`/`broadcast_prefix` operations.
+    # `EqualTo`, by contrast, IS `maxlen`-sensitive (`unflatten` restores the exact `maxlen`), so
+    # `a <= b and b <= a` does NOT imply `a == b`: `is_prefix` is a preorder, not a partial order.
+    a = optree.tree_structure(deque([1, 2, 3], maxlen=3))
+    b = optree.tree_structure(deque([1, 2, 3], maxlen=5))
+    unbounded = optree.tree_structure(deque([1, 2, 3]))  # maxlen=None
+    # Equality distinguishes maxlen (bounded vs bounded, and bounded vs unbounded).
+    assert a != b
+    assert a != unbounded
+    assert b != unbounded
+
+    # Same arity, any maxlen (bounded or unbounded): mutual non-strict prefixes and suffixes,
+    # even though the specs are unequal, so mutual prefixes do NOT imply equality (a preorder).
+    for x, y in itertools.permutations([a, b, unbounded], 2):
+        assert x != y
+        assert optree.treespec_is_prefix(x, y, strict=False)
+        assert optree.treespec_is_suffix(x, y, strict=False)
+        assert x <= y
+        assert x >= y
+
+    # Practical consequence: a prefix deque flattens / broadcasts a full deque of a different maxlen.
+    prefix_spec = optree.tree_structure(deque([1, 2, 3], maxlen=None))
+    assert prefix_spec.flatten_up_to(deque([[10], [20, 21], [30]], maxlen=5)) == [
+        [10],
+        [20, 21],
+        [30],
+    ]
+    assert optree.broadcast_prefix(
+        deque([1, 2, 3], maxlen=3),
+        deque([[0], [0, 0], [0]], maxlen=7),
+    ) == [1, 2, 2, 3]
+
+    # Arity still gates the relation: a different-arity deque is not a prefix.
+    assert not optree.treespec_is_prefix(
+        optree.tree_structure(deque([1, 2], maxlen=9)),
+        a,
+        strict=False,
+    )
 
 
 @parametrize(
@@ -1001,6 +2255,26 @@ def test_treespec_child(
         assert expected_children == [
             optree.treespec_child(treespec, i) for i in range(len(expected_children))
         ]
+
+
+def test_treespec_entry_and_child_accept_int_like_indices():
+    # The compiled signatures advertise `SupportsInt | SupportsIndex`, and the runtime honors both,
+    # so the stubs must not narrow them to `int`.
+    class OnlyIndex:
+        def __index__(self):
+            return 1
+
+    class OnlyInt:
+        def __int__(self):
+            return 1
+
+    treespec = optree.tree_structure({'a': 1, 'b': 2})
+    for index in (1, OnlyIndex(), OnlyInt()):
+        assert treespec.entry(index) == treespec.entry(1), index
+        assert treespec.child(index) == treespec.child(1), index
+        # The public wrappers must not narrow what the methods they forward to accept.
+        assert optree.treespec_entry(treespec, index) == treespec.entry(1), index
+        assert optree.treespec_child(treespec, index) == treespec.child(1), index
 
 
 @parametrize(
@@ -1423,6 +2697,36 @@ def test_treespec_leaf_none(namespace):
         )
 
 
+def test_treespec_from_collection_on_leaf_propagates_escalated_warning():
+    # `treespec_from_collection()` on a leaf issues a UserWarning via `PyErr_WarnEx()`. When
+    # warnings are escalated to errors (e.g. `-W error`), the escalation must propagate cleanly as
+    # that UserWarning: the C++ code must check `PyErr_WarnEx()`'s return value and raise, not
+    # ignore it and return a result with the exception left set (which pybind11 surfaces as a
+    # confusing `SystemError: ... returned a result with an exception set`).
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        with pytest.raises(
+            UserWarning,
+            match=re.escape('PyTreeSpec::MakeFromCollection() is called on a leaf.'),
+        ):
+            optree.treespec_from_collection(1)
+
+
+def test_treespec_from_collection_drops_namespace_for_childless_roots():
+    # Regression: a leaf or `None` root skipped the namespace-dropping step, so the caller's
+    # namespace stuck to a treespec that resolves no custom type. Two otherwise-identical treespecs
+    # built under different namespaces then compared unequal.
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', UserWarning)
+        for collection in (None, 1, 'leaf'):
+            first = optree.treespec_from_collection(collection, namespace='first')
+            second = optree.treespec_from_collection(collection, namespace='second')
+            assert first.namespace == '', (collection, first.namespace)
+            assert second.namespace == '', (collection, second.namespace)
+            assert first == second, collection
+            assert hash(first) == hash(second), collection
+
+
 @parametrize(
     tree=TREES,
     none_is_leaf=[False, True],
@@ -1785,6 +3089,30 @@ def test_treespec_constructor_namespace():
     assert treespec2.namespace == ''
 
     assert treespec1 == treespec2
+
+
+def test_treespec_dict_constructor_preserves_insertion_ordered_namespace():
+    # Regression: under `dict_insertion_ordered` mode the key order of a dict spec depends on the
+    # namespace, so `treespec_dict(..., namespace=...)` must keep that namespace (like
+    # `tree_flatten`) instead of resetting it to '': an empty-namespace spec with unsorted keys is
+    # otherwise unreachable via `tree_flatten` and breaks equality/consistency.
+    leaf = optree.tree_structure(0)
+
+    with optree.dict_insertion_ordered(True, namespace='namespace'):
+        constructed = optree.treespec_dict({'b': leaf, 'a': leaf}, namespace='namespace')
+        _, flattened = optree.tree_flatten({'b': 1, 'a': 2}, namespace='namespace')
+
+    assert constructed.entries() == ['b', 'a']  # insertion order preserved
+    assert flattened.namespace == 'namespace'
+    assert constructed.namespace == 'namespace'  # was '' before the fix
+    assert constructed == flattened
+
+    # Without the mode, keys are sorted and the namespace is dropped, same as `tree_flatten`.
+    outside = optree.treespec_dict({'b': leaf, 'a': leaf}, namespace='namespace')
+    _, flattened_outside = optree.tree_flatten({'b': 1, 'a': 2}, namespace='namespace')
+    assert outside.entries() == ['a', 'b']
+    assert outside.namespace == ''
+    assert outside == flattened_outside
 
 
 def test_treespec_constructor_none_treespec_inputs():

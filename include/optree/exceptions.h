@@ -23,7 +23,6 @@ limitations under the License.
 #include <stdexcept>        // std::logic_error
 #include <string>           // std::string, std::char_traits, std::to_string
 #include <string_view>      // std::string_view
-#include <type_traits>      // std::declval, std::void_t, std::{true,false}_type
 
 namespace optree {
 
@@ -36,8 +35,11 @@ static_assert(CURRENT_FILE_PATH_SIZE >= CURRENT_FILE_RELPATH_FROM_PROJECT_ROOT_S
 constexpr std::size_t SOURCE_PATH_PREFIX_SIZE =
     CURRENT_FILE_PATH_SIZE - CURRENT_FILE_RELPATH_FROM_PROJECT_ROOT_SIZE;
 
+// Strip the prefix `SOURCE_PATH_PREFIX_SIZE` measured off this header's own path. A translation
+// unit compiled with a shorter path is returned as-is rather than letting `substr` throw.
 constexpr std::string_view RelpathFromProjectRoot(const std::string_view &abspath) {
-    return abspath.substr(SOURCE_PATH_PREFIX_SIZE);
+    return abspath.size() >= SOURCE_PATH_PREFIX_SIZE ? abspath.substr(SOURCE_PATH_PREFIX_SIZE)
+                                                     : abspath;
 }
 constexpr std::string_view RelpathFromProjectRoot(
     const std::source_location &source_location = std::source_location::current()) {
@@ -62,21 +64,14 @@ public:
 }  // namespace optree
 
 inline namespace {  // NOLINT[build/namespaces_headers]
-// SFINAE helper to detect if std::to_string is available for a type
-template <typename T, typename = void>
-struct has_to_string : std::false_type {};
-
+// Detect whether `std::to_string` accepts a `const T &`, which is how `try_to_string` calls it.
 template <typename T>
-struct has_to_string<T, std::void_t<decltype(std::to_string(std::declval<T>()))>> : std::true_type {
-};
-
-template <typename T>
-inline constexpr bool has_to_string_v = has_to_string<T>::value;
+concept has_to_string = requires(const T &value) { std::to_string(value); };
 
 // Convert value to string if possible, otherwise return a placeholder.
 template <typename T>
 inline std::string try_to_string([[maybe_unused]] const T &value) {
-    if constexpr (has_to_string_v<T>) {
+    if constexpr (has_to_string<T>) {
         return std::to_string(value);
     }
     return "<?>";

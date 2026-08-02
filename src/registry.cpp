@@ -20,10 +20,9 @@ limitations under the License.
 #include <optional>     // std::optional
 #include <sstream>      // std::ostringstream
 #include <string>       // std::string
+#include <string_view>  // std::string_view
 #include <type_traits>  // std::remove_const_t
-#include <utility>      // std::move, std::make_pair
-
-#include <Python.h>
+#include <utility>      // std::move, std::make_pair, std::pair
 
 #include "optree/optree.h"
 
@@ -72,9 +71,8 @@ template <bool NoneIsLeaf>
 template PyTreeTypeRegistry &PyTreeTypeRegistry::GetSingleton<NONE_IS_NODE>();
 template PyTreeTypeRegistry &PyTreeTypeRegistry::GetSingleton<NONE_IS_LEAF>();
 
-ssize_t PyTreeTypeRegistry::Size(const std::optional<std::string> &registry_namespace) const {
-    const scoped_read_lock lock{sm_mutex};
-
+ssize_t PyTreeTypeRegistry::SizeImpl(const std::optional<std::string> &registry_namespace) const {
+    // The caller must hold `sm_mutex`.
     ssize_t count = py::ssize_t_cast(m_registrations.size());
     for (const auto &[named_type, _] : m_named_registrations) {
         if (!registry_namespace || named_type.first == *registry_namespace) [[likely]] {
@@ -84,17 +82,20 @@ ssize_t PyTreeTypeRegistry::Size(const std::optional<std::string> &registry_name
     return count;
 }
 
-template <bool NoneIsLeaf>
-/*static*/ void PyTreeTypeRegistry::RegisterImpl(const py::object &cls,
-                                                 const py::function &flatten_func,
-                                                 const py::function &unflatten_func,
-                                                 const py::object &path_entry_type,
-                                                 const std::string &registry_namespace) {
-    auto &registry = GetSingleton<NoneIsLeaf>();
+ssize_t PyTreeTypeRegistry::Size(const std::optional<std::string> &registry_namespace) const {
+    const scoped_read_lock lock{sm_mutex};
+    return SizeImpl(registry_namespace);
+}
 
-    if (registry.m_builtins_types.contains(cls)) [[unlikely]] {
-        throw py::value_error(
-            std::format("PyTree type {} is a built-in type and cannot be re-registered.", cls));
+// The caller must hold `sm_mutex` in write mode. No Python may run here; see `RegistryStatus`.
+PyTreeTypeRegistry::RegistryStatus PyTreeTypeRegistry::RegisterImpl(
+    const py::object &cls,
+    const py::function &flatten_func,
+    const py::function &unflatten_func,
+    const py::object &path_entry_type,
+    const std::string &registry_namespace) {
+    if (m_builtins_types.contains(cls)) [[unlikely]] {
+        return RegistryStatus::BuiltinType;
     }
 
     auto registration = std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
@@ -103,60 +104,20 @@ template <bool NoneIsLeaf>
     registration->flatten_func = py::reinterpret_borrow<py::function>(flatten_func);
     registration->unflatten_func = py::reinterpret_borrow<py::function>(unflatten_func);
     registration->path_entry_type = py::reinterpret_borrow<py::object>(path_entry_type);
+    // The registration only ever borrows objects the caller keeps alive, so the drop below when the
+    // insert fails cannot reach zero and cannot run Python.
     if (registry_namespace.empty()) [[unlikely]] {
-        if (!registry.m_registrations.emplace(cls, std::move(registration)).second) [[unlikely]] {
-            throw py::value_error(
-                std::format("PyTree type {} is already registered in the global namespace.", cls));
-        }
-        if (IsStructSequenceClass(cls)) [[unlikely]] {
-            PyErr_WarnEx(PyExc_UserWarning,
-                         std::format("PyTree type {} is a class of `PyStructSequence`, "
-                                     "which is already registered in the global namespace. "
-                                     "Override it with custom flatten/unflatten functions.",
-                                     cls)
-                             .c_str(),
-                         /*stack_level=*/2);
-        } else if (IsNamedTupleClass(cls)) [[unlikely]] {
-            PyErr_WarnEx(PyExc_UserWarning,
-                         std::format("PyTree type {} is a subclass of `collections.namedtuple`, "
-                                     "which is already registered in the global namespace. "
-                                     "Override it with custom flatten/unflatten functions.",
-                                     cls)
-                             .c_str(),
-                         /*stack_level=*/2);
+        if (!m_registrations.emplace(cls, std::move(registration)).second) [[unlikely]] {
+            return RegistryStatus::AlreadyRegistered;
         }
     } else [[likely]] {
-        if (!registry.m_named_registrations
+        if (!m_named_registrations
                  .emplace(std::make_pair(registry_namespace, cls), std::move(registration))
                  .second) [[unlikely]] {
-            throw py::value_error(
-                std::format("PyTree type {} is already registered in namespace {}.",
-                            cls,
-                            PyRepr(registry_namespace)));
-        }
-        if (IsStructSequenceClass(cls)) [[unlikely]] {
-            PyErr_WarnEx(
-                PyExc_UserWarning,
-
-                std::format("PyTree type {} is a class of `PyStructSequence`, "
-                            "which is already registered in the global namespace. "
-                            "Override it with custom flatten/unflatten functions in namespace {}.",
-                            cls,
-                            PyRepr(registry_namespace))
-                    .c_str(),
-                /*stack_level=*/2);
-        } else if (IsNamedTupleClass(cls)) [[unlikely]] {
-            PyErr_WarnEx(
-                PyExc_UserWarning,
-                std::format("PyTree type {} is a subclass of `collections.namedtuple`, "
-                            "which is already registered in the global namespace. "
-                            "Override it with custom flatten/unflatten functions in namespace {}.",
-                            cls,
-                            PyRepr(registry_namespace))
-                    .c_str(),
-                /*stack_level=*/2);
+            return RegistryStatus::AlreadyRegistered;
         }
     }
+    return RegistryStatus::Ok;
 }
 
 /*static*/ void PyTreeTypeRegistry::Register(const py::object &cls,
@@ -164,88 +125,175 @@ template <bool NoneIsLeaf>
                                              const py::function &unflatten_func,
                                              const py::object &path_entry_type,
                                              const std::string &registry_namespace) {
-    const scoped_write_lock lock{sm_mutex};
+    // Classify the type BEFORE taking `sm_mutex`: `IsStructSequenceClass` / `IsNamedTupleClass` run
+    // Python and release the GIL, and doing that under the write lock inverts the GIL <->
+    // `sm_mutex` lock order against a concurrent flatten (mirrors `Unregister`).
+    const char *overridden_kind = nullptr;
+    if (IsStructSequenceClass(cls)) [[unlikely]] {
+        overridden_kind = " is a class of `PyStructSequence`, ";
+    } else if (IsNamedTupleClass(cls)) [[unlikely]] {
+        overridden_kind = " is a subclass of `collections.namedtuple`, ";
+    }
 
-    RegisterImpl<NONE_IS_NODE>(cls,
-                               flatten_func,
-                               unflatten_func,
-                               path_entry_type,
-                               registry_namespace);
-    RegisterImpl<NONE_IS_LEAF>(cls,
-                               flatten_func,
-                               unflatten_func,
-                               path_entry_type,
-                               registry_namespace);
-    cls.inc_ref();
-    flatten_func.inc_ref();
-    unflatten_func.inc_ref();
-    path_entry_type.inc_ref();
+    // Acquire both singletons BEFORE `sm_mutex`, mirroring `Init`/`Clear`. Under
+    // `per_interpreter_gil`, `GetSingleton()` releases the GIL on every call once a subinterpreter
+    // has existed; doing that while holding `sm_mutex` inverts the GIL <-> `sm_mutex` lock order
+    // against a concurrent flatten (read lock) and deadlocks.
+    auto &registry1 = GetSingleton<NONE_IS_NODE>();
+    auto &registry2 = GetSingleton<NONE_IS_LEAF>();
+
+    RegistryStatus status = RegistryStatus::Ok;
+    {
+        const scoped_write_lock lock{sm_mutex};
+
+        status = registry1.RegisterImpl(cls,
+                                        flatten_func,
+                                        unflatten_func,
+                                        path_entry_type,
+                                        registry_namespace);
+        if (status == RegistryStatus::Ok) [[likely]] {
+            status = registry2.RegisterImpl(cls,
+                                            flatten_func,
+                                            unflatten_func,
+                                            path_entry_type,
+                                            registry_namespace);
+        }
+        if (status == RegistryStatus::Ok) [[likely]] {
+            cls.inc_ref();
+            flatten_func.inc_ref();
+            unflatten_func.inc_ref();
+            path_entry_type.inc_ref();
+        }
+    }
+
+    // Format the error only after the lock is released: `PyRepr` runs the (meta)class `__repr__` as
+    // Python bytecode, which can hand off the GIL to a thread blocking on `sm_mutex` in read mode.
+    if (status != RegistryStatus::Ok) [[unlikely]] {
+        if (status == RegistryStatus::BuiltinType) [[unlikely]] {
+            throw py::value_error(
+                std::format("PyTree type {} is a built-in type and cannot be re-registered.", cls));
+        }
+        std::ostringstream oss{};
+        oss << "PyTree type " << PyRepr(cls) << " is already registered in ";
+        if (registry_namespace.empty()) [[unlikely]] {
+            oss << "the global namespace.";
+        } else [[likely]] {
+            oss << "namespace " << PyRepr(registry_namespace) << ".";
+        }
+        throw py::value_error(oss.str());
+    }
+
+    // Warn only once the registration succeeded: a rejected one overrides nothing. `PyErr_WarnEx`
+    // runs Python, so it must not run under `sm_mutex` either. Under warnings-as-errors it raises,
+    // so undo the registration to keep `Register` atomic.
+    if (overridden_kind != nullptr) [[unlikely]] {
+        std::ostringstream oss{};
+        oss << "PyTree type " << PyRepr(cls) << overridden_kind
+            << "which is already registered in the global namespace. "
+               "Override it with custom flatten/unflatten functions";
+        if (!registry_namespace.empty()) [[likely]] {
+            oss << " in namespace " << PyRepr(registry_namespace);
+        }
+        oss << ".";
+        try {
+            if (PyErr_WarnEx(PyExc_UserWarning, oss.str().c_str(), /*stack_level=*/2) < 0)
+                [[unlikely]] {
+                throw py::error_already_set();
+            }
+        } catch (...) {
+            Unregister(cls, registry_namespace);
+            throw;
+        }
+    }
 }
 
-template <bool NoneIsLeaf>
-/*static*/ PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::UnregisterImpl(
+// The caller must hold `sm_mutex` in write mode. No Python may run here; see `RegistryStatus`.
+PyTreeTypeRegistry::RegistryStatus PyTreeTypeRegistry::UnregisterImpl(
     const py::object &cls,
-    const std::string &registry_namespace) {
-    auto &registry = GetSingleton<NoneIsLeaf>();
-
-    if (registry.m_builtins_types.contains(cls)) [[unlikely]] {
-        throw py::value_error(
-            std::format("PyTree type {} is a built-in type and cannot be unregistered.", cls));
+    const std::string &registry_namespace,
+    RegistrationPtr &registration) {
+    if (m_builtins_types.contains(cls)) [[unlikely]] {
+        return RegistryStatus::BuiltinType;
     }
 
     if (registry_namespace.empty()) [[unlikely]] {
-        const auto it = registry.m_registrations.find(cls);
-        if (it == registry.m_registrations.end()) [[unlikely]] {
-            std::ostringstream oss{};
-            oss << "PyTree type " << PyRepr(cls) << " ";
-            if (IsStructSequenceClass(cls)) [[unlikely]] {
-                oss << "is a class of `PyStructSequence`, "
-                    << "which is not explicitly registered in the global namespace.";
-            } else if (IsNamedTupleClass(cls)) [[unlikely]] {
-                oss << "is a subclass of `collections.namedtuple`, "
-                    << "which is not explicitly registered in the global namespace.";
-            } else [[likely]] {
-                oss << "is not registered in the global namespace.";
-            }
-            throw py::value_error(oss.str());
+        const auto it = m_registrations.find(cls);
+        if (it == m_registrations.end()) [[unlikely]] {
+            return RegistryStatus::NotRegistered;
         }
-        RegistrationPtr registration = it->second;
-        registry.m_registrations.erase(it);
-        return registration;
+        registration = it->second;
+        m_registrations.erase(it);
     } else [[likely]] {
-        const auto named_it =
-            registry.m_named_registrations.find(std::make_pair(registry_namespace, cls));
-        if (named_it == registry.m_named_registrations.end()) [[unlikely]] {
-            std::ostringstream oss{};
-            oss << "PyTree type " << PyRepr(cls) << " ";
-            if (IsStructSequenceClass(cls)) [[unlikely]] {
-                oss << "is a class of `PyStructSequence`, "
-                    << "which is not explicitly registered ";
-            } else if (IsNamedTupleClass(cls)) [[unlikely]] {
-                oss << "is a subclass of `collections.namedtuple`, "
-                    << "which is not explicitly registered ";
-            } else [[likely]] {
-                oss << "is not registered ";
-            }
-            oss << "in namespace " << PyRepr(registry_namespace) << ".";
-            throw py::value_error(oss.str());
+        const auto named_it = m_named_registrations.find(
+            std::pair{std::string_view{registry_namespace}, py::handle{cls}});
+        if (named_it == m_named_registrations.end()) [[unlikely]] {
+            return RegistryStatus::NotRegistered;
         }
-        RegistrationPtr registration = named_it->second;
-        registry.m_named_registrations.erase(named_it);
-        return registration;
+        registration = named_it->second;
+        m_named_registrations.erase(named_it);
     }
+    return RegistryStatus::Ok;
 }
 
 /*static*/ void PyTreeTypeRegistry::Unregister(const py::object &cls,
                                                const std::string &registry_namespace) {
-    const scoped_write_lock lock{sm_mutex};
+    // Classify the type BEFORE taking `sm_mutex`. On the not-found path `UnregisterImpl` builds its
+    // error message from `IsStructSequenceClass` / `IsNamedTupleClass`, which run Python and
+    // release the GIL; calling them while holding `sm_mutex` in write mode inverts the GIL <->
+    // `sm_mutex` lock order and deadlocks a concurrent flatten that holds the GIL while waiting on
+    // `sm_mutex` in read mode (mirrors `Register`).
+    const bool is_structsequence_class = IsStructSequenceClass(cls);
+    const bool is_namedtuple_class = IsNamedTupleClass(cls);
 
-    const auto registration1 = UnregisterImpl<NONE_IS_NODE>(cls, registry_namespace);
-    const auto registration2 = UnregisterImpl<NONE_IS_LEAF>(cls, registry_namespace);
-    EXPECT_TRUE(registration1->type.is(registration2->type));
-    EXPECT_TRUE(registration1->flatten_func.is(registration2->flatten_func));
-    EXPECT_TRUE(registration1->unflatten_func.is(registration2->unflatten_func));
-    EXPECT_TRUE(registration1->path_entry_type.is(registration2->path_entry_type));
+    // Acquire both singletons BEFORE `sm_mutex`, mirroring `Init`/`Clear` (see `Lookup`/`Register`
+    // for the lock-order rationale).
+    auto &registry1 = GetSingleton<NONE_IS_NODE>();
+    auto &registry2 = GetSingleton<NONE_IS_LEAF>();
+
+    // These outlive the locked scope: dropping the last reference to a member runs arbitrary Python
+    // (`__del__`, weakref callbacks) that can re-enter optree and deadlock on `sm_mutex`.
+    RegistrationPtr registration1{nullptr};
+    RegistrationPtr registration2{nullptr};
+    RegistryStatus status = RegistryStatus::Ok;
+    {
+        const scoped_write_lock lock{sm_mutex};
+
+        status = registry1.UnregisterImpl(cls, registry_namespace, registration1);
+        if (status == RegistryStatus::Ok) [[likely]] {
+            status = registry2.UnregisterImpl(cls, registry_namespace, registration2);
+        }
+        if (status == RegistryStatus::Ok) [[likely]] {
+            EXPECT_TRUE(registration1->type.is(registration2->type));
+            EXPECT_TRUE(registration1->flatten_func.is(registration2->flatten_func));
+            EXPECT_TRUE(registration1->unflatten_func.is(registration2->unflatten_func));
+            EXPECT_TRUE(registration1->path_entry_type.is(registration2->path_entry_type));
+        }
+    }
+
+    // Format the error only after the lock is released (mirrors `Register`).
+    if (status != RegistryStatus::Ok) [[unlikely]] {
+        if (status == RegistryStatus::BuiltinType) [[unlikely]] {
+            throw py::value_error(
+                std::format("PyTree type {} is a built-in type and cannot be unregistered.", cls));
+        }
+        std::ostringstream oss{};
+        oss << "PyTree type " << PyRepr(cls) << " ";
+        if (is_structsequence_class) [[unlikely]] {
+            oss << "is a class of `PyStructSequence`, which is not explicitly registered ";
+        } else if (is_namedtuple_class) [[unlikely]] {
+            oss << "is a subclass of `collections.namedtuple`, which is not explicitly registered ";
+        } else [[likely]] {
+            oss << "is not registered ";
+        }
+        if (registry_namespace.empty()) [[unlikely]] {
+            oss << "in the global namespace.";
+        } else [[likely]] {
+            oss << "in namespace " << PyRepr(registry_namespace) << ".";
+        }
+        throw py::value_error(oss.str());
+    }
+
+    // Drop the registry's references with the lock released; the registrations die at scope exit.
     registration1->type.dec_ref();
     registration1->flatten_func.dec_ref();
     registration1->unflatten_func.dec_ref();
@@ -256,18 +304,24 @@ template <bool NoneIsLeaf>
 /*static*/ PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup(
     const py::object &cls,
     const std::string &registry_namespace) {
-    const scoped_read_lock lock{sm_mutex};
-
+    // Acquire the singleton BEFORE `sm_mutex`, mirroring `Init`/`Clear`. Under
+    // `per_interpreter_gil`, `GetSingleton()` releases the GIL on every call once a subinterpreter
+    // has existed; doing that while holding `sm_mutex` inverts the GIL <-> `sm_mutex` lock order
+    // against a concurrent registration (write lock) and deadlocks.
     const auto &registry = GetSingleton<NoneIsLeaf>();
-    if (!registry_namespace.empty()) [[unlikely]] {
-        const auto named_it =
-            registry.m_named_registrations.find(std::make_pair(registry_namespace, cls));
-        if (named_it != registry.m_named_registrations.end()) [[likely]] {
-            return named_it->second;
+
+    {
+        const scoped_read_lock lock{sm_mutex};
+        if (!registry_namespace.empty()) [[unlikely]] {
+            const auto named_it = registry.m_named_registrations.find(
+                std::pair{std::string_view{registry_namespace}, py::handle{cls}});
+            if (named_it != registry.m_named_registrations.end()) [[likely]] {
+                return named_it->second;
+            }
         }
+        const auto it = registry.m_registrations.find(cls);
+        return it != registry.m_registrations.end() ? it->second : nullptr;
     }
-    const auto it = registry.m_registrations.find(cls);
-    return it != registry.m_registrations.end() ? it->second : nullptr;
 }
 
 template PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup<NONE_IS_NODE>(
@@ -331,7 +385,19 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
         EXPECT_EQ(registry1.m_named_registrations.size(), registry2.m_named_registrations.size());
     }
 
-    py::getattr(py::module_::import("atexit"), "register")(py::cpp_function(&Clear));
+    // `atexit.register` runs Python, so it must not run under `sm_mutex`, and it can raise: without
+    // the rollback a failed import would leave an ID that no callback can ever remove (mirrors
+    // `WeakKeyCache::LookupOrInsert`). The rollback locks with the GIL held, as `Clear` does.
+    try {
+        auto atexit_register = py::getattr(py::module_::import("atexit"), "register");
+        atexit_register(py::cpp_function(&Clear));
+    } catch (...) {
+        const scoped_write_lock lock{sm_mutex};
+
+        sm_alive_interpids.erase(interpid);
+        --sm_num_interpreters_seen;
+        throw;
+    }
 }
 
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
@@ -340,6 +406,11 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     auto &registry2 = GetSingleton<NONE_IS_LEAF>();
     const auto interpid = GetCurrentPyInterpreterID();
 
+    // Detached under the lock and destroyed after it, for the reason given in `Unregister`.
+    RegistrationsMap registrations1{};
+    NamedRegistrationsMap named_registrations1{};
+    RegistrationsMap registrations2{};
+    NamedRegistrationsMap named_registrations2{};
     {
         const scoped_write_lock lock{sm_mutex};
 
@@ -406,25 +477,25 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
         }
 #endif
 
-        for (const auto &[_, registration1] : registry1.m_registrations) {
-            registration1->type.dec_ref();
-            registration1->flatten_func.dec_ref();
-            registration1->unflatten_func.dec_ref();
-            registration1->path_entry_type.dec_ref();
-        }
-        for (const auto &[_, registration1] : registry1.m_named_registrations) {
-            registration1->type.dec_ref();
-            registration1->flatten_func.dec_ref();
-            registration1->unflatten_func.dec_ref();
-            registration1->path_entry_type.dec_ref();
-        }
-
         registry1.m_builtins_types.clear();
-        registry1.m_registrations.clear();
-        registry1.m_named_registrations.clear();
+        registry1.m_registrations.swap(registrations1);
+        registry1.m_named_registrations.swap(named_registrations1);
         registry2.m_builtins_types.clear();
-        registry2.m_registrations.clear();
-        registry2.m_named_registrations.clear();
+        registry2.m_registrations.swap(registrations2);
+        registry2.m_named_registrations.swap(named_registrations2);
+    }
+
+    for (const auto &[_, registration1] : registrations1) {
+        registration1->type.dec_ref();
+        registration1->flatten_func.dec_ref();
+        registration1->unflatten_func.dec_ref();
+        registration1->path_entry_type.dec_ref();
+    }
+    for (const auto &[_, registration1] : named_registrations1) {
+        registration1->type.dec_ref();
+        registration1->flatten_func.dec_ref();
+        registration1->unflatten_func.dec_ref();
+        registration1->path_entry_type.dec_ref();
     }
 }
 

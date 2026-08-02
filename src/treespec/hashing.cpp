@@ -29,7 +29,10 @@ ssize_t PyTreeSpec::HashValueImpl() const {
     HashCombine(seed, GetNumLeaves());
     HashCombine(seed, GetNumNodes());
     HashCombine(seed, m_none_is_leaf);
-    HashCombine(seed, m_namespace);
+    // NB: `m_namespace` is intentionally excluded from the hash. `EqualTo` treats an empty
+    // namespace as a wildcard compatible with any namespace (e.g. a globally-registered custom type
+    // flattened with vs. without a namespace yields equal treespecs), so mixing the namespace into
+    // the hash would break the invariant that equal treespecs share a hash value.
 
     for (const Node &node : m_traversal) {
         HashCombine(seed, node.kind);

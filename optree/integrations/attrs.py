@@ -136,18 +136,35 @@ class AttrsEntry(GetAttrEntry):
     @property
     def fields(self, /) -> tuple[str, ...]:
         """Get all field names."""
-        return tuple(a.name for a in self.type.__attrs_attrs__)  # type: ignore[attr-defined]
+        return tuple(a.name for a in attrs.fields(self.type))
 
     @property
     def init_fields(self, /) -> tuple[str, ...]:
         """Get the init field names."""
-        return tuple(a.name for a in self.type.__attrs_attrs__ if a.init)  # type: ignore[attr-defined]
+        return tuple(a.name for a in attrs.fields(self.type) if a.init)
+
+    @property
+    def children_fields(self, /) -> tuple[str, ...]:
+        """Get the field names that an integer entry indexes.
+
+        An integer entry addresses a child by position among those the registered flatten function
+        emitted. :func:`optree.integrations.attrs.register_node` records exactly which fields those
+        are on the class, so they are used verbatim. A class registered through the generic
+        :func:`optree.register_pytree_node` keeps no such record and its flatten function may emit
+        anything, so the declared field order is used instead.
+        """
+        # Read the class's own `__dict__`: a subclass of a registered attrs class inherits the
+        # attribute but not the registration.
+        registration = self.type.__dict__.get(_FIELDS)
+        if registration is None:
+            return self.fields
+        return tuple(registration[0])
 
     @property
     def field(self, /) -> str:
         """Get the field name."""
         if isinstance(self.entry, int):
-            return self.init_fields[self.entry]
+            return self.children_fields[self.entry]
         return self.entry
 
     @property
@@ -231,6 +248,9 @@ def define(  # pylint: disable=function-redefined
     """Attrs class decorator with PyTree integration.
 
     This is a wrapper around :func:`attrs.define` that also registers the class as a pytree node.
+
+    See also :func:`register_node` for how instances are reconstructed and when a class needs an
+    explicit registration with custom flatten/unflatten functions instead.
 
     Args:
         cls (type or None, optional): The class to decorate. If :data:`None`, return a decorator.
@@ -365,6 +385,15 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
     :data:`True`) are treated as children, while init fields with ``metadata['pytree_node']`` set
     to :data:`False` are treated as metadata.
 
+    .. note::
+        These generated functions cover the straightforward case where a class merely stores its
+        fields. Instances are rebuilt with ``cls(**fields)``, which re-runs the attrs-generated
+        ``__init__`` and hence its field converters, validation, and ``__attrs_post_init__``. The
+        :func:`tree_unflatten` round-trip is exact only when ``__init__`` returns each field value
+        unchanged from what it is given. Register a class that needs any other reconstruction
+        behavior explicitly with :func:`optree.register_pytree_node` or
+        :func:`optree.register_pytree_node_class` using custom flatten/unflatten functions.
+
     Usage::
 
         # Direct function call
@@ -413,7 +442,10 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
         raise TypeError(f'{cls!r} is not an attrs-decorated class.')
     if _FIELDS in cls.__dict__:
         raise TypeError(
-            f'Cannot register {cls.__name__} as a pytree node more than once.',
+            f'Cannot register {cls.__name__} as a pytree node more than once with '
+            f'`{__name__}.register_node()`. '
+            'Use `optree.register_pytree_node()` or `optree.register_pytree_node_class()` '
+            'with explicit flatten/unflatten functions to register it in a different namespace.',
         )
     if namespace is not GLOBAL_NAMESPACE and not isinstance(namespace, str):
         raise TypeError(f'The namespace must be a string, got {namespace!r}.')
@@ -444,9 +476,6 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
 
     children_field_names = tuple(children_fields)
     children_aliases = tuple(a.alias for a in children_fields.values())
-    children_fields_proxy = MappingProxyType(children_fields)
-    metadata_fields_proxy = MappingProxyType(metadata_fields)
-    setattr(cls, _FIELDS, (children_fields_proxy, metadata_fields_proxy))
 
     def flatten_func(
         obj: _T,
@@ -464,15 +493,30 @@ def register_node(  # noqa: C901 # pylint: disable=function-redefined,too-many-b
     def unflatten_func(metadata: tuple[tuple[str, Any], ...], children: tuple[_U, ...], /) -> _T:  # type: ignore[type-var]
         kwargs = dict(zip(children_aliases, children))
         kwargs.update(metadata)
-        return cls(**kwargs)
+        return cls(**kwargs)  # type: ignore[return-value]
 
-    from optree.registry import register_pytree_node  # pylint: disable=import-outside-toplevel
+    # pylint: disable-next=import-outside-toplevel
+    from optree.registry import register_pytree_node, unregister_pytree_node
 
     register_pytree_node(
-        cls,
+        cls,  # type: ignore[arg-type]
         flatten_func,
         unflatten_func,  # type: ignore[arg-type]
         path_entry_type=AttrsEntry,
         namespace=namespace,
     )
+    # Mark the class as registered only AFTER `register_pytree_node()` succeeds: `_FIELDS` is the
+    # "already registered" guard, so setting it before a failed registration would leave the class
+    # impossible to register ever again. The registration and the marker must land together: a
+    # registered but unmarked class cannot be registered again, so roll the registration back if
+    # setting the marker fails.
+    try:
+        setattr(
+            cls,
+            _FIELDS,
+            (MappingProxyType(children_fields), MappingProxyType(metadata_fields)),
+        )
+    except BaseException:
+        unregister_pytree_node(cls, namespace=namespace)
+        raise
     return cls

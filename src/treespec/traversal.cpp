@@ -15,11 +15,13 @@ limitations under the License.
 ================================================================================
 */
 
+#include <atomic>     // std::memory_order
+#include <exception>  // std::rethrow_exception, std::current_exception
 #include <format>     // std::format
 #include <optional>   // std::optional
 #include <span>       // std::span
 #include <stdexcept>  // std::runtime_error
-#include <utility>    // std::move
+#include <thread>     // std::this_thread::get_id, std::thread::id
 
 #include "optree/optree.h"
 
@@ -165,6 +167,14 @@ py::object PyTreeIter::NextImpl() {
 }
 
 py::object PyTreeIter::Next() {
+    // `NextImpl` runs user code (the `is_leaf` predicate, custom `flatten_func`) that may call
+    // `next()` on this same iterator. `m_mutex` is not recursive and the GIL is released while
+    // waiting on it, so that would hang; reject it as CPython's "generator already executing" does.
+    const auto ident = std::this_thread::get_id();
+    if (m_running_thread_id.load(std::memory_order::acquire) == ident) [[unlikely]] {
+        throw std::runtime_error("PyTreeIter is already iterating.");
+    }
+
 #if !defined(Py_GIL_DISABLED)
     const py::gil_scoped_release_simple gil_release{};
 #endif
@@ -173,10 +183,19 @@ py::object PyTreeIter::Next() {
 #if !defined(Py_GIL_DISABLED)
         const py::gil_scoped_acquire_simple gil_acquire{};
 #endif
-        if (m_none_is_leaf) [[unlikely]] {
-            return NextImpl<NONE_IS_LEAF>();
-        } else [[likely]] {
-            return NextImpl<NONE_IS_NODE>();
+        m_running_thread_id.store(ident, std::memory_order::release);
+        try {
+            py::object leaf{};
+            if (m_none_is_leaf) [[unlikely]] {
+                leaf = NextImpl<NONE_IS_LEAF>();
+            } else [[likely]] {
+                leaf = NextImpl<NONE_IS_NODE>();
+            }
+            m_running_thread_id.store(std::thread::id{}, std::memory_order::release);
+            return leaf;
+        } catch (...) {
+            m_running_thread_id.store(std::thread::id{}, std::memory_order::release);
+            std::rethrow_exception(std::current_exception());
         }
     }
 }

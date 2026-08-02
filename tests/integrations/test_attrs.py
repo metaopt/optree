@@ -97,6 +97,33 @@ def test_define_with_mixed_fields():
     assert foo == optree.tree_unflatten(treespec, leaves)
 
 
+def test_define_reconstruction_reapplies_field_converters():
+    # Characterization: the generated unflatten rebuilds via `cls(**fields)`, which re-runs attrs
+    # field converters. Since `flatten` reads the already-converted value, an idempotent converter
+    # round-trips exactly while a non-idempotent one does not. A class needing exact reconstruction
+    # should register explicitly with custom flatten/unflatten (see `register_node`).
+
+    # Idempotent converter: `int(int(x)) == int(x)`, so the round-trip is exact.
+    @optree.integrations.attrs.define(namespace='test-attrs-converter-idempotent')
+    class Cast:
+        x: int = optree.integrations.attrs.field(converter=int)
+
+    cast = Cast(5.0)  # __init__ converter: x = int(5.0) = 5
+    leaves, treespec = optree.tree_flatten(cast, namespace='test-attrs-converter-idempotent')
+    assert leaves == [5]
+    assert optree.tree_unflatten(treespec, leaves).x == 5
+
+    # Non-idempotent converter: unflatten re-applies it, so the stored `6` becomes `7`.
+    @optree.integrations.attrs.define(namespace='test-attrs-converter-shift')
+    class Shift:
+        x: int = optree.integrations.attrs.field(converter=lambda v: v + 1)
+
+    shift = Shift(5)  # __init__ converter: x = 5 + 1 = 6
+    leaves, treespec = optree.tree_flatten(shift, namespace='test-attrs-converter-shift')
+    assert leaves == [6]
+    assert optree.tree_unflatten(treespec, leaves).x == 7  # re-applied: 6 + 1 = 7, not 6
+
+
 def test_define_frozen():
     @optree.integrations.attrs.frozen(namespace='test-attrs-frozen')
     class FrozenPoint:
@@ -143,7 +170,12 @@ def test_define_with_non_class():
 def test_define_with_duplicate_registrations():
     with pytest.raises(
         TypeError,
-        match=r'Cannot register .* as a pytree node more than once\.',
+        match=(
+            r'Cannot register .* as a pytree node more than once with '
+            r'`optree\.integrations\.attrs\.register_node\(\)`\. '
+            r'Use `optree\.register_pytree_node\(\)` or `optree\.register_pytree_node_class\(\)` '
+            r'with explicit flatten/unflatten functions'
+        ),
     ):
 
         @optree.integrations.attrs.define(namespace='error')
@@ -292,9 +324,82 @@ def test_register_double_registration():
 
     with pytest.raises(
         TypeError,
-        match=r'Cannot register .* as a pytree node more than once\.',
+        match=(
+            r'Cannot register .* as a pytree node more than once with '
+            r'`optree\.integrations\.attrs\.register_node\(\)`\. '
+            r'Use `optree\.register_pytree_node\(\)` or `optree\.register_pytree_node_class\(\)` '
+            r'with explicit flatten/unflatten functions'
+        ),
     ):
         optree.integrations.attrs.register_node(Double, namespace='test-attrs-double-2')
+
+    # As the error suggests, the class can still be registered in another namespace via the generic
+    # API with explicit flatten/unflatten functions.
+    optree.register_pytree_node(
+        Double,
+        lambda d: ((d.x,), None, None),
+        lambda _, children: Double(*children),
+        namespace='test-attrs-double-2',
+    )
+    optree.unregister_pytree_node(Double, namespace='test-attrs-double-2')
+
+
+def test_register_node_failure_does_not_leak_fields_guard():
+    @attrs.define
+    class Leak:
+        x: int
+
+    namespace = 'test-attrs-register-leak'
+    # Occupy the (class, namespace) slot directly so the attrs `register_node()`'s internal
+    # `register_pytree_node()` call fails, after `register_node()` would set its `_FIELDS` guard.
+    optree.register_pytree_node(
+        Leak,
+        lambda leak: ((leak.x,), None, None),
+        lambda _, children: Leak(*children),
+        namespace=namespace,
+    )
+    try:
+        with pytest.raises(ValueError, match='already registered'):
+            optree.integrations.attrs.register_node(Leak, namespace=namespace)
+    finally:
+        optree.unregister_pytree_node(Leak, namespace=namespace)
+
+    # A failed registration must not leave the `_FIELDS` guard behind, or the class becomes
+    # impossible to register ever again: every retry would raise "... more than once".
+    # Re-registration after clearing the conflicting entry must succeed.
+    optree.integrations.attrs.register_node(Leak, namespace=namespace)
+    optree.unregister_pytree_node(Leak, namespace=namespace)
+
+
+def test_register_node_rolls_back_when_the_guard_cannot_be_set():
+    # `register_node()` commits the registry entry first and sets the `__optree_attrs_fields__`
+    # guard afterwards. If the class refuses the guard, both must be rolled back: a class left
+    # registered but unguarded is just as unrecoverable, because the retry then fails with
+    # "already registered" instead.
+    class RejectGuardOnce(type):
+        rejected = False
+
+        def __setattr__(cls, name, value, /):
+            if name == '__optree_attrs_fields__' and not RejectGuardOnce.rejected:
+                RejectGuardOnce.rejected = True  # a transient failure: reject only the first time
+                raise RuntimeError('cannot set the guard attribute')
+            super().__setattr__(name, value)
+
+    @attrs.define
+    class Rejecting(metaclass=RejectGuardOnce):
+        x: int
+
+    namespace = 'test-attrs-register-rollback'
+    with pytest.raises(RuntimeError, match=r'cannot set the guard attribute'):
+        optree.integrations.attrs.register_node(Rejecting, namespace=namespace)
+
+    assert '__optree_attrs_fields__' not in Rejecting.__dict__
+    with pytest.raises(ValueError, match=r'is not registered'):
+        optree.unregister_pytree_node(Rejecting, namespace=namespace)
+
+    # The class is left exactly as it was, so the retry succeeds.
+    optree.integrations.attrs.register_node(Rejecting, namespace=namespace)
+    optree.unregister_pytree_node(Rejecting, namespace=namespace)
 
 
 def test_register_init_false_class_warns():
@@ -356,9 +461,64 @@ def test_attrs_entry():
     assert 'AttrsEntry' in repr(entry_str)
     assert "'x'" in repr(entry_str)
 
-    entry_int = optree.integrations.attrs.AttrsEntry(1, EntryTest, optree.PyTreeKind.CUSTOM)
-    assert entry_int.field == 'y'
-    assert entry_int.name == 'y'
+
+def test_attrs_entry_integer_indexes_children():
+    # For a class registered with `optree.integrations.attrs.register_node()`, an integer entry
+    # indexes the children that registration emits (the fields that are BOTH `pytree_node=True` and
+    # `init`). A non-child field interleaved between children must not shift the mapping.
+    @optree.integrations.attrs.register_node(namespace='test-attrs-entry-integer')
+    @attrs.define
+    class Foo:
+        a: int
+        b: int = optree.integrations.attrs.field(default=0, pytree_node=False)  # not a child
+        # non-init -> not a tree child
+        d: int = optree.integrations.attrs.field(init=False, default=0, pytree_node=False)
+        c: int = 0
+
+    foo = Foo(1, 2, 3)  # a=1, b=2, c=3 (d defaults to 0, not an init parameter)
+    assert tuple(a.name for a in attrs.fields(Foo)) == ('a', 'b', 'd', 'c')
+
+    entry_int = optree.integrations.attrs.AttrsEntry(1, Foo, optree.PyTreeKind.CUSTOM)
+    assert entry_int.init_fields == ('a', 'b', 'c')  # `d` is not an init field
+    assert entry_int.children_fields == ('a', 'c')  # `b` is metadata and `d` is non-init
+    # The 2nd child is `c` (not the metadata field `b` nor the non-init field `d`).
+    assert entry_int.field == 'c'
+    assert entry_int.name == 'c'
+    assert entry_int.codify('x') == 'x.c'
+    assert entry_int(foo) == foo.c == 3
+
+
+def test_attrs_entry_integer_follows_generic_flatten_func():
+    # Regression: an integer entry was resolved with the `optree.integrations.attrs` field
+    # predicate, which does not apply to a class registered with the generic
+    # `register_pytree_node()`. There the flatten function alone decides the children, so
+    # `pytree_node=False` must not drop a field and leave the entry indexing past the end of an
+    # internal list.
+    @attrs.define
+    class Foo:
+        a: int
+        b: int = optree.integrations.attrs.field(default=0, pytree_node=False)
+
+    optree.register_pytree_node(
+        Foo,
+        lambda foo: ((foo.a, foo.b), None, None),  # both fields are children, entries default
+        lambda _, children: Foo(*children),
+        path_entry_type=optree.integrations.attrs.AttrsEntry,
+        namespace='test-attrs-entry-generic',
+    )
+
+    foo = Foo(1, 2)
+    paths, leaves, treespec = optree.tree_flatten_with_path(
+        foo,
+        namespace='test-attrs-entry-generic',
+    )
+    assert paths == [(0,), (1,)]
+    assert leaves == [1, 2]
+
+    accessors = treespec.accessors()
+    assert [accessor(foo) for accessor in accessors] == [1, 2]
+    assert [accessor[0].field for accessor in accessors] == ['a', 'b']
+    assert [accessor.codify('x') for accessor in accessors] == ['x.a', 'x.b']
 
 
 def test_accessor_codify():

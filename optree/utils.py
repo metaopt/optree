@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from operator import itemgetter
 from typing import TYPE_CHECKING, Any, Callable, overload
 
 
@@ -37,28 +38,30 @@ def total_order_sorted(
     types of keys.
     """
     sequence = list(iterable)
+    # Apply `key` up front: it runs exactly once per element, and a `TypeError` from the callback
+    # propagates instead of being mistaken for a comparison failure and swallowed below.
+    keys: list[Any] = sequence if key is None else [key(x) for x in sequence]
+    decorated = list(zip(keys, sequence))
 
+    def by_type_and_key(pair: tuple[Any, T], /) -> tuple[str, Any]:
+        y = pair[0]
+        return (f'{y.__class__.__module__}.{y.__class__.__qualname__}', y)
+
+    # `list.sort()` leaves the list partially reordered when a comparison raises, so each attempt
+    # sorts a copy (`sorted()`) and only a fully sorted one is committed.
     try:
         # Sort directly if possible
-        return sorted(sequence, key=key, reverse=reverse)  # type: ignore[type-var,arg-type]
+        ordered = sorted(decorated, key=itemgetter(0), reverse=reverse)
     except TypeError:
-        if key is None:
-
-            def key_fn(x: T) -> tuple[str, Any]:
-                return (f'{x.__class__.__module__}.{x.__class__.__qualname__}', x)
-
-        else:
-
-            def key_fn(x: T) -> tuple[str, Any]:
-                y = key(x)
-                return (f'{y.__class__.__module__}.{y.__class__.__qualname__}', y)
-
         try:
             # Add `{obj.__class__.__module__}.{obj.__class__.__qualname__}` to the key order to make
             # it sortable between different types (e.g., `int` vs. `str`)
-            return sorted(sequence, key=key_fn, reverse=reverse)
+            ordered = sorted(decorated, key=by_type_and_key, reverse=reverse)
         except TypeError:  # cannot sort the keys (e.g., user-defined types)
-            return sequence  # fallback to original order
+            # Keep the insertion order. `reverse` is intentionally not applied: like a stable sort,
+            # incomparable elements (treated as "all equal") keep their input order.
+            return sequence
+    return [x for _, x in ordered]
 
 
 @overload

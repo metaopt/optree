@@ -63,7 +63,7 @@ The following options are available while building the Python C extension from s
 ```bash
 export CMAKE_COMMAND="/path/to/custom/cmake"
 export CMAKE_BUILD_TYPE="Debug"
-export CMAKE_CXX_STANDARD="20"
+export CMAKE_CXX_STANDARD="20"  # 20 is the minimum supported standard
 export OPTREE_CXX_WERROR="OFF"
 export _GLIBCXX_USE_CXX11_ABI="1"  # set to 0 to use the old libstdc++ ABI
 export _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR="1"  # set to "" to disable the workaround for MSVC mutex layout change in VS 2022 v17.10+
@@ -72,7 +72,7 @@ export pybind11_DIR="/path/to/custom/pybind11"
 pip3 install .
 ```
 
-Compiling from source requires Python 3.9+, a C++ compiler (`g++` / `clang++` / `icpx` / `cl.exe`) that supports C++20, and a `cmake` installation.
+Compiling from source requires Python 3.9+, a `cmake` installation (3.18+), and a C++ compiler (`g++` / `clang++` / `icpx` / `cl.exe`) with complete C++20 support: GCC 13+, Clang 16+ with libstdc++ 13+, Clang 17+ with libc++ 17+, Apple Clang 16+ (Xcode 16+), or MSVC 19.32+ (Visual Studio 2022 17.2+). Two features set those floors: `std::format` on GCC and MSVC, and `P0634R3` (`typename` made optional) on Clang. On Apple platforms `std::format` is additionally gated behind macOS 13.3 / iOS 16.3 availability, so a build targeting an older release will not compile.
 
 --------------------------------------------------------------------------------
 
@@ -207,7 +207,7 @@ The following examples show how to register custom types and use them with `tree
 # Register a custom type with lambda functions
 optree.register_pytree_node(
     set,
-    lambda s: (sorted(s), None),        # flatten: (set) -> (children, metadata)
+    lambda s: (sorted(s), None),  # flatten: (set) -> (children, metadata)
     lambda _, children: set(children),  # unflatten: (metadata, children) -> set
     namespace='set',
 )
@@ -215,9 +215,11 @@ optree.register_pytree_node(
 # Register a custom type into a namespace with accessor support
 import types
 
+
 # This can be whatever your container type is.
 class MyContainer(types.SimpleNamespace):
     """A simple container type based on SimpleNamespace."""
+
 
 # (Optional) Define a custom path entry type for your container for accessor support.
 # Here we showcase how to define one. In practice, you can use the built-in `optree.GetAttrEntry`.
@@ -228,14 +230,15 @@ class MyContainerEntry(optree.PyTreeEntry):
     def codify(self, node=''):
         return f'{node}.{self.entry}'
 
+
 optree.register_pytree_node(
     MyContainer,
-    flatten_func=lambda ct: (                 # flatten: (MyContainer) -> (children, metadata, entries)
+    flatten_func=lambda ct: (  # flatten: (MyContainer) -> (children, metadata, entries)
         list(vars(ct).values()),
         list(vars(ct).keys()),
         list(vars(ct).keys()),
     ),
-    unflatten_func=lambda keys, values: (     # unflatten: (metadata, children) -> MyContainer
+    unflatten_func=lambda keys, values: (  # unflatten: (metadata, children) -> MyContainer
         MyContainer(**dict(zip(keys, values)))
     ),
     path_entry_type=MyContainerEntry,
@@ -285,6 +288,7 @@ Users can also extend the pytree registry by decorating the custom class and def
 
 ```python
 from collections import UserDict
+
 
 @optree.register_pytree_node_class(namespace='mydict')
 class MyDict(UserDict):
@@ -364,6 +368,7 @@ There are several key attributes of the pytree type registry:
     ```python
     from collections import UserDict
 
+
     @optree.register_pytree_node_class(namespace='mydict')
     class MyDict(UserDict):
         TREE_PATH_ENTRY_TYPE = optree.MappingEntry  # used by accessor APIs
@@ -384,6 +389,7 @@ There are several key attributes of the pytree type registry:
         @classmethod
         def __tree_unflatten__(cls, metadata, children):
             return cls(zip(metadata, children))
+
 
     # Subclasses will be automatically registered in namespace 'mydict'
     class MyAnotherDict(MyDict):

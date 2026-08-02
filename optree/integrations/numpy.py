@@ -144,7 +144,7 @@ def _ravel_leaves(
         return (np.zeros(0), _unravel_empty)
 
     from_dtypes = tuple(np.result_type(leaf) for leaf in leaves)
-    to_dtype = np.result_type(*leaves)
+    to_dtype = np.result_type(*from_dtypes)
     sizes = tuple(np.size(leaf) for leaf in leaves)
     shapes = tuple(np.shape(leaf) for leaf in leaves)
     indices = tuple(itertools.accumulate(sizes))

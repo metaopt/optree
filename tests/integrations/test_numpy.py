@@ -145,3 +145,17 @@ def test_tree_ravel_single_dtype(tree):
         unravel_func(np.concatenate([flat, np.zeros((1,))]))
 
     unravel_func(flat.astype(np.complex128))
+
+
+def test_tree_ravel_preserves_mixed_scalar_and_array_leaves():
+    flat, unravel_func = optree.integrations.numpy.tree_ravel(
+        {'a': np.array([1, 2], dtype=np.int8), 'b': 200},
+    )
+    reconstructed = unravel_func(flat)
+    assert int(reconstructed['b']) == 200  # not -56 (int8 wrap-around)
+
+    flat, unravel_func = optree.integrations.numpy.tree_ravel(
+        {'w': np.array([1.0, 2.0], dtype=np.float32), 'b': 0.1},
+    )
+    reconstructed = unravel_func(flat)
+    assert float(reconstructed['b']) == 0.1  # not float32-truncated
