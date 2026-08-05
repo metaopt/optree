@@ -62,7 +62,7 @@ env:
   PIP_CACHE_DIR: "${{ github.workspace }}/.cache/pip"
   PIP_RETRIES: "10"
   PIP_TIMEOUT: "120"
-  ALLOW_PRERELEASES: "true"
+  ALLOW_PRERELEASES: "false"
 
 jobs:
   build-sdist:
@@ -332,7 +332,7 @@ jobs:
 
       - name: Build wheels
         if: matrix.python-version != '3.13t'
-        uses: pypa/cibuildwheel@v4.1
+        uses: pypa/cibuildwheel@v4.2
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_PLATFORM: ${{ matrix.target.platform }}
