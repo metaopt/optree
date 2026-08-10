@@ -185,7 +185,10 @@ jobs:
           $DebuggersDir = "${WindowsKitsDir}\Debuggers\x64"
           Get-ChildItem -Path "${DebuggersDir}"
           $Env:PATH = "${DebuggersDir};${Env:PATH}"
-          $PYTEST = 'cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q" ${{ env.PYTHON }} -X dev -m pytest -Walways'
+          # `-xi eh`: ignore first-chance C++ exceptions. Each exhausted `tree_iter()` throws
+          # `py::stop_iteration`, so cdb's default "notify" halts the debuggee once per iteration.
+          # Real faults are separate events. Cannot go in `-c`, which `-g -G` defer.
+          $PYTEST = 'cdb -gG -o -xi eh -c ".dump /ma /u core.dmp; !py; g; q" ${{ env.PYTHON }} -X dev -m pytest -Walways'
           Write-Output "_NT_SOURCE_PATH=${Env:_NT_SOURCE_PATH}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
           Write-Output "_NT_SYMBOL_PATH=${Env:_NT_SYMBOL_PATH}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
           Write-Output "PATH=${Env:PATH}" | Out-File -FilePath "${Env:GITHUB_ENV}" -Encoding utf8 -Append
@@ -264,7 +267,7 @@ jobs:
           PYTHON_EXE=("${{ env.PYTHON }}")
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
             PYTHON_EXE=(
-              cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q"
+              cdb -gG -o -xi eh -c ".dump /ma /u core.dmp; !py; g; q"
               "${{ env.PYTHON }}"
             )
           fi
@@ -290,7 +293,7 @@ jobs:
           PYTHON_EXE=("${{ env.PYTHON }}")
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
             PYTHON_EXE=(
-              cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q"
+              cdb -gG -o -xi eh -c ".dump /ma /u core.dmp; !py; g; q"
               "${{ env.PYTHON }}"
             )
           fi
@@ -335,7 +338,7 @@ jobs:
           PYTHON_EXE=("${{ env.PYTHON }}")
           if [[ "${{ runner.os }}" == 'Windows' ]]; then
             PYTHON_EXE=(
-              cdb -gG -o -c ".dump /ma /u core.dmp; !py; g; q"
+              cdb -gG -o -xi eh -c ".dump /ma /u core.dmp; !py; g; q"
               "${{ env.PYTHON }}"
             )
           fi
