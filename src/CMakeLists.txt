@@ -36,10 +36,10 @@ pybind11_add_module(_C MODULE "${optree_csrc}")
 # `Py_GIL_DISABLED` is not defined for extensions automatically: CPython 3.14+ dropped it from the
 # static Windows `pyconfig.h` (python/cpython#133966; its comment says "a build backend will define
 # it with the value"). CMake's `FindPython` does add it via `Python_DEFINITIONS` for a free-threaded
-# RELEASE interpreter, but misses a free-threaded DEBUG one -- an upstream CMake bug. It files the
+# RELEASE interpreter, but misses a free-threaded DEBUG one, an upstream CMake bug. It files the
 # debug import library `python{X}{Y}t_d.lib` in the release slot (`Python_LIBRARY_RELEASE`), while
 # its free-threaded test only matches a `...t.lib` suffix, so the `_d` debug suffix slips through.
-# Probe the interpreter directly instead -- authoritative for release/debug and GIL/free-threaded.
+# Probe the interpreter directly instead, authoritative for release/debug and GIL/free-threaded.
 execute_process(
     COMMAND "${Python_EXECUTABLE}" -c
             "print('ON' if __import__('sysconfig').get_config_var('Py_GIL_DISABLED') else 'OFF')"
