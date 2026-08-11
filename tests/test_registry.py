@@ -15,6 +15,7 @@
 
 # pylint: disable=missing-function-docstring,invalid-name
 
+import builtins
 import copy
 import pickle
 import re
@@ -31,6 +32,7 @@ import optree._C
 from helpers import (
     GLOBAL_NAMESPACE,
     NODETYPE_REGISTRY,
+    OPTREE_HAS_FROZENDICT,
     PYPY,
     Py_GIL_DISABLED,
     check_script_in_subprocess,
@@ -887,6 +889,29 @@ def test_pytree_node_registry_get():
         assert handler is not registry1[dict]
         dct = {'b': 2, 'c': 3, 'a': 1}
         assert tuple(handler.flatten_func(dct))[:2] == ((2, 3, 1), ['b', 'c', 'a'])
+
+    if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
+        # `frozendict` swaps its registry entry under `dict_insertion_ordered` exactly like `dict`.
+        frozendict = builtins.frozendict  # pylint: disable=no-member
+        fdct = frozendict({'b': 2, 'c': 3, 'a': 1})
+
+        handler = optree.register_pytree_node.get(frozendict)
+        assert handler is not None
+        assert handler is registry1[frozendict]
+        assert handler is not registry2[frozendict]
+        assert tuple(handler.flatten_func(fdct))[:2] == ((1, 2, 3), ['a', 'b', 'c'])
+
+        with optree.dict_insertion_ordered(True, namespace=GLOBAL_NAMESPACE):
+            handler = optree.register_pytree_node.get(frozendict)
+            assert handler is not None
+            assert handler is registry2[frozendict]
+            assert handler is not registry1[frozendict]
+            assert tuple(handler.flatten_func(fdct))[:2] == ((2, 3, 1), ['b', 'c', 'a'])
+
+            handler = optree.register_pytree_node.get(frozendict, namespace='any')
+            assert handler is not None
+            assert handler is registry2[frozendict]
+            assert tuple(handler.flatten_func(fdct))[:2] == ((2, 3, 1), ['b', 'c', 'a'])
 
     handler = optree.register_pytree_node.get(set)
     assert handler is None
@@ -1874,3 +1899,73 @@ def test_python_dict_flatten_equal_inputs_produce_equal_metadata():
     assert list(metadata1) == list(metadata2)
     assert metadata1.original_keys == metadata2.original_keys
     assert list(metadata1.original_keys) != list(metadata2.original_keys)
+
+
+@pytest.mark.skipif(
+    not (sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT),
+    reason='`frozendict` requires Python 3.15+',
+)
+@parametrize(
+    namespace=['', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'namespace'],
+)
+def test_python_frozendict_flatten_returns_dict_metadata(
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    # `frozendict` nodes carry `DictMetaData` just like `dict` ones (see `optree.registry`), since
+    # `_frozendict_flatten` delegates to `_dict_flatten`. Companion to
+    # `test_python_dict_flatten_returns_dict_metadata`.
+    frozendict = builtins.frozendict  # type: ignore[attr-defined] # pylint: disable=no-member
+
+    use_sorted_keys = dict_should_be_sorted or dict_session_namespace not in {'', namespace}
+    dct = frozendict({'b': 2, 'a': 1, 'c': 3})
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        children, metadata, entries, _ = optree.tree_flatten_one_level(dct, namespace=namespace)
+        assert children == ([1, 2, 3] if use_sorted_keys else [2, 1, 3])
+        assert isinstance(metadata, DictMetaData)
+        assert list(metadata) == (['a', 'b', 'c'] if use_sorted_keys else ['b', 'a', 'c'])
+        assert list(metadata.original_keys) == ['b', 'a', 'c']
+        assert entries == tuple(metadata)
+
+
+@pytest.mark.skipif(
+    not (sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT),
+    reason='`frozendict` requires Python 3.15+',
+)
+@parametrize(
+    namespace=['', 'namespace'],
+    dict_should_be_sorted=[False, True],
+    dict_session_namespace=['', 'namespace'],
+)
+def test_python_frozendict_unflatten_preserves_original_insertion_order(
+    namespace,
+    dict_should_be_sorted,
+    dict_session_namespace,
+):
+    # Companion to `test_python_dict_unflatten_preserves_original_insertion_order`. Without this,
+    # `_frozendict_unflatten` could rebuild in sorted order and no test in the suite would notice.
+    frozendict = builtins.frozendict  # type: ignore[attr-defined] # pylint: disable=no-member
+
+    dct = frozendict({'b': 2, 'a': 1, 'c': 3})
+    with optree.dict_insertion_ordered(
+        not dict_should_be_sorted,
+        namespace=dict_session_namespace or GLOBAL_NAMESPACE,
+    ):
+        (
+            children,
+            metadata,
+            _,
+            unflatten_func,
+        ) = optree.tree_flatten_one_level(dct, namespace=namespace)
+        restored = unflatten_func(metadata, children)
+        assert type(restored) is frozendict
+        assert restored == dct
+        # `tree_unflatten` always reconstructs dicts in their original insertion order, regardless
+        # of whether the flatten path sorted the children.
+        assert list(restored) == ['b', 'a', 'c']

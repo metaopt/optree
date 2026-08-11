@@ -150,6 +150,7 @@ Tree Reduce Functions
     treespec_defaultdict
     treespec_deque
     treespec_structseq
+    treespec_frozendict
     treespec_from_collection
 
 .. autofunction:: treespec_paths
@@ -175,4 +176,5 @@ Tree Reduce Functions
 .. autofunction:: treespec_defaultdict
 .. autofunction:: treespec_deque
 .. autofunction:: treespec_structseq
+.. autofunction:: treespec_frozendict
 .. autofunction:: treespec_from_collection

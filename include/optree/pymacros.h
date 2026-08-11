@@ -43,6 +43,14 @@ limitations under the License.
 #    undef OPTREE_HAS_SUBINTERPRETER_SUPPORT
 #endif
 
+// `PyFrozenDict_Type` is CPython-only API (`Include/cpython/dictobject.h`), and PyPy reports the
+// `PY_VERSION_HEX` it emulates, so exclude it explicitly as the macro above does.
+#if !defined(PYPY_VERSION) && (PY_VERSION_HEX >= 0x030F00A7 /* Python 3.15.0a7+ */)
+#    define OPTREE_HAS_FROZENDICT 1
+#else
+#    undef OPTREE_HAS_FROZENDICT
+#endif
+
 namespace py = pybind11;
 
 #if !defined(Py_ALWAYS_INLINE)

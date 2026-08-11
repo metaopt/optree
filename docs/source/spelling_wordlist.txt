@@ -35,6 +35,7 @@ eq
 fillvalue
 fmt
 forwardref
+frozendict
 frozenset
 func
 functools
