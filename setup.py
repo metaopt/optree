@@ -51,6 +51,13 @@ else:
 HERE = Path(__file__).absolute().parent
 CMAKE_MINIMUM_VERSION = os.getenv('CMAKE_MINIMUM_VERSION') or '3.18'
 
+Py_DEBUG = (  # pylint: disable=invalid-name
+    bool(int(sysconfig.get_config_var('Py_DEBUG') or '0'))
+    if sysconfig.get_config_var('Py_DEBUG') is None
+    else hasattr(sys, 'gettotalrefcount')
+)
+Py_GIL_DISABLED = bool(int(sysconfig.get_config_var('Py_GIL_DISABLED') or '0'))  # pylint: disable=invalid-name
+
 
 def eprint(*args: Any, file: TextIO = sys.stderr, flush: bool = True, **kwargs: Any) -> None:
     print(*args, file=file, flush=flush, **kwargs)
@@ -217,6 +224,8 @@ class cmake_build_ext(build_ext):  # noqa: N801
         for key in sorted(
             {
                 'ABIFLAGS',
+                'Py_DEBUG',
+                'Py_GIL_DISABLED',
                 'EXT_SUFFIX',
                 'INCLUDEDIR',
                 'INCLUDEPY',
@@ -289,6 +298,17 @@ class cmake_build_ext(build_ext):  # noqa: N801
         python_root_dir = os.getenv('Python_ROOT_DIR') or sysconfig_vars.get('installed_platbase')  # noqa: SIM112
         if python_root_dir is not None:
             cmake_args += [f'-DPython_ROOT_DIR={python_root_dir}']
+        python_find_abi = os.getenv('Python_FIND_ABI')  # noqa: SIM112
+        if not python_find_abi:
+            python_find_abi = ';'.join(
+                (
+                    'ON' if Py_DEBUG else 'OFF',  # pydebug
+                    'OFF',  # pymalloc
+                    'OFF',  # unicode
+                    'ON' if Py_GIL_DISABLED else 'OFF',  # gil_disabled
+                ),
+            )
+        cmake_args += [f'-DPython_FIND_ABI={python_find_abi}']
         if self.include_dirs:
             cmake_args += [f'-DPython_EXTRA_INCLUDE_DIRS={";".join(self.include_dirs)}']
         if self.library_dirs:

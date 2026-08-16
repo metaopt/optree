@@ -1,5 +1,6 @@
 abc
 ABCMeta
+abi
 accessor
 accessors
 antisymmetric
@@ -76,6 +77,8 @@ picklable
 pragma
 preorder
 py
+pydebug
+pymalloc
 pypy
 pytree
 pytreeentry
@@ -109,6 +112,7 @@ unflattened
 unflattening
 unflattens
 unhashable
+unicode
 unregister
 unsubclassable
 versionadded

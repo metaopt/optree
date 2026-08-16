@@ -226,6 +226,28 @@ if(DEFINED Python_ROOT_DIR)
     message(STATUS "Use Python_ROOT_DIR: \"${Python_ROOT_DIR}\"")
 endif()
 
+if(NOT DEFINED Python_FIND_ABI)
+    # Tell `FindPython` (invoked via pybind11 below) which ABI this interpreter is, so that it
+    # selects the matching artifacts -- notably the debug import library `python{X}{Y}{t}_d.lib` on
+    # Windows, which CMake 4.4.0 locates but then rejects (CMake issue #27969, fixed in 4.4.1).
+    # `Python_FIND_ABI` is `<pydebug>;<pymalloc>;<unicode>;<gil_disabled>`. Keep `pymalloc` and
+    # `unicode` `OFF` rather than `ANY`: both flags are meaningless for Python 3.8+, and on Windows
+    # `ANY` expands to malformed entries such as `<none>_d` that match no artifact. Probe the
+    # interpreter directly -- authoritative for release/debug and GIL/free-threaded.
+    # NB: the probes avoid `;` in the command, since `system()` expands `COMMAND` as a list.
+    system(
+        STRIP OUTPUT_VARIABLE Python_ABI_Py_DEBUG
+        COMMAND "${Python_EXECUTABLE}" -c
+            "print('ON' if hasattr(__import__('sys'), 'gettotalrefcount') else 'OFF')"
+    )
+    system(
+        STRIP OUTPUT_VARIABLE Python_ABI_Py_GIL_DISABLED
+        COMMAND "${Python_EXECUTABLE}" -c
+            "print('ON' if __import__('sysconfig').get_config_var('Py_GIL_DISABLED') else 'OFF')"
+    )
+    set(Python_FIND_ABI "${Python_ABI_Py_DEBUG}" "OFF" "OFF" "${Python_ABI_Py_GIL_DISABLED}")
+endif()
+
 if(NOT DEFINED Python_INCLUDE_DIR)
     message(STATUS "Auto detecting Python include directory...")
     system(
@@ -329,6 +351,7 @@ foreach(
     CMAKE_OSX_DEPLOYMENT_TARGET
     CMAKE_OSX_ARCHITECTURES
     Python_ROOT_DIR
+    Python_FIND_ABI
     Python_SOABI
     Python_SOSABI
     Python_INCLUDE_DIR
