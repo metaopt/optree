@@ -226,25 +226,49 @@ if(DEFINED Python_ROOT_DIR)
     message(STATUS "Use Python_ROOT_DIR: \"${Python_ROOT_DIR}\"")
 endif()
 
-if(NOT DEFINED Python_FIND_ABI)
-    # Tell `FindPython` (invoked via pybind11 below) which ABI this interpreter is, so that it
-    # selects the matching artifacts -- notably the debug import library `python{X}{Y}{t}_d.lib` on
-    # Windows, which CMake 4.4.0 locates but then rejects (CMake issue #27969, fixed in 4.4.1).
-    # `Python_FIND_ABI` is `<pydebug>;<pymalloc>;<unicode>;<gil_disabled>`. Keep `pymalloc` and
-    # `unicode` `OFF` rather than `ANY`: both flags are meaningless for Python 3.8+, and on Windows
-    # `ANY` expands to malformed entries such as `<none>_d` that match no artifact. Probe the
-    # interpreter directly -- authoritative for release/debug and GIL/free-threaded.
-    # NB: the probes avoid `;` in the command, since `system()` expands `COMMAND` as a list.
+if(NOT DEFINED Python_FIND_ABI AND CMAKE_VERSION VERSION_GREATER_EQUAL 4.1.2)
+    # CMake < 4.1.2 mishandles an explicit `Python_FIND_ABI` when `Development.Module` has no
+    # library artifact. Leave the hint undefined for these versions so that `FindPython` uses its
+    # legacy discovery: https://gitlab.kitware.com/cmake/cmake/-/issues/27192
+    #
+    # For newer CMake versions, tell `FindPython` (invoked by pybind11 below) which ABI this
+    # interpreter uses. This lets `FindPython` select matching artifacts, including the debug import
+    # library `python{X}{Y}{t}_d.lib` on Windows.
+    #
+    # CMake 4.4.0 finds the Windows debug import library but incorrectly rejects it. This was fixed
+    # in 4.4.1: https://gitlab.kitware.com/cmake/cmake/-/issues/27969
+    #
+    # Read `Py_DEBUG` and `Py_GIL_DISABLED` from `sysconfig`. Fall back to `sys.gettotalrefcount`
+    # when `Py_DEBUG` is unavailable.
     system(
         STRIP OUTPUT_VARIABLE Python_ABI_Py_DEBUG
         COMMAND "${Python_EXECUTABLE}" -c
-            "print('ON' if hasattr(__import__('sys'), 'gettotalrefcount') else 'OFF')"
+            [=[
+import sys
+import sysconfig
+
+Py_DEBUG = (
+    bool(int(sysconfig.get_config_var('Py_DEBUG') or '0'))
+    if sysconfig.get_config_var('Py_DEBUG') is not None
+    else hasattr(sys, 'gettotalrefcount')
+)
+print('ON' if Py_DEBUG else 'OFF')
+]=]
     )
     system(
         STRIP OUTPUT_VARIABLE Python_ABI_Py_GIL_DISABLED
         COMMAND "${Python_EXECUTABLE}" -c
-            "print('ON' if __import__('sysconfig').get_config_var('Py_GIL_DISABLED') else 'OFF')"
+            [=[
+import sysconfig
+
+Py_GIL_DISABLED = bool(int(sysconfig.get_config_var('Py_GIL_DISABLED') or '0'))
+print('ON' if Py_GIL_DISABLED else 'OFF')
+]=]
     )
+
+    # `Python_FIND_ABI` is `<pydebug>;<pymalloc>;<unicode>;<gil_disabled>`.
+    # Keep `pymalloc` and `unicode` `OFF` because supported Python versions do not use either flag.
+    # On Windows, `ANY` also generates invalid candidates such as `<none>_d`.
     set(Python_FIND_ABI "${Python_ABI_Py_DEBUG}" "OFF" "OFF" "${Python_ABI_Py_GIL_DISABLED}")
 endif()
 
