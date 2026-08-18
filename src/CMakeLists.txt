@@ -42,7 +42,7 @@ pybind11_add_module(_C MODULE "${optree_csrc}")
 # Probe the interpreter directly instead, authoritative for release/debug and GIL/free-threaded.
 execute_process(
     COMMAND "${Python_EXECUTABLE}" -c
-            "print('ON' if __import__('sysconfig').get_config_var('Py_GIL_DISABLED') else 'OFF')"
+        "print('ON' if __import__('sysconfig').get_config_var('Py_GIL_DISABLED') else 'OFF')"
     OUTPUT_VARIABLE OPTREE_Py_GIL_DISABLED
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )

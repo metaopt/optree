@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Preserve dict insertion order on `unflatten` for the Python `tree_flatten_one_level` path mirroring the C++ path by [@XuehaiPan](https://github.com/XuehaiPan) in [#280](https://github.com/metaopt/optree/pull/280).
 - Add built-in `frozendict` support for Python 3.15+ (PEP 814), with `PyTreeKind.FROZENDICT`, `optree.treespec_frozendict()`, `optree.treespec.frozendict()`, and `optree.typing.FrozenDict` by [@XuehaiPan](https://github.com/XuehaiPan) in [#274](https://github.com/metaopt/optree/pull/274).
+- Migrate to `Python_FIND_ABI` for CMake's `FindPython` by [@XuehaiPan](https://github.com/XuehaiPan) in [#292](https://github.com/metaopt/optree/pull/292).
 
 ### Changed
 

@@ -233,6 +233,16 @@ jobs:
               runner: ubuntu-latest
               platform: pyodide
               archs: "wasm32"
+          - python-version: "3.14"
+            target:
+              runner: ubuntu-latest
+              platform: pyodide
+              archs: "wasm32"
+          - python-version: "3.15"
+            target:
+              runner: ubuntu-latest
+              platform: pyodide
+              archs: "wasm32"
       fail-fast: false
     timeout-minutes: 180
     steps:

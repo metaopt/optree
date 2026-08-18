@@ -149,6 +149,9 @@ test-command = '''python -m pytest -Walways --color=yes --showlocals --no-cov --
 environment = { PYTHONDEVMODE = "1", PYTHONUNBUFFERED = "1", CMAKE_SYSTEM_NAME = "iOS" }
 test-command = '''python -m pytest -Walways --color=yes --showlocals --no-cov --exitfirst tests'''
 
+[tool.cibuildwheel.pyodide]
+test-command = '''python -m pytest -Walways --color=yes --showlocals --no-cov --exitfirst tests'''
+
 [[tool.cibuildwheel.overrides]]
 select = "*iphoneos*"
 inherit.environment = "append"
