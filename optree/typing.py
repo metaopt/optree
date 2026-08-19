@@ -200,12 +200,12 @@ class PyTree(Generic[T]):  # pragma: no cover
     >>> import torch
     >>> TensorTree = PyTree[torch.Tensor]
     >>> TensorTree  # doctest: +IGNORE_WHITESPACE
-    typing.Union[torch.Tensor,
-                 tuple[ForwardRef('PyTree[torch.Tensor]'), ...],
-                 list[ForwardRef('PyTree[torch.Tensor]')],
-                 dict[typing.Any, ForwardRef('PyTree[torch.Tensor]')],
-                 collections.deque[ForwardRef('PyTree[torch.Tensor]')],
-                 optree.typing.CustomTreeNode[ForwardRef('PyTree[torch.Tensor]')]]
+    torch.Tensor
+    | tuple[ForwardRef('PyTree[torch.Tensor]'), ...]
+    | list[ForwardRef('PyTree[torch.Tensor]')]
+    | dict[typing.Any, ForwardRef('PyTree[torch.Tensor]')]
+    | collections.deque[ForwardRef('PyTree[torch.Tensor]')]
+    | optree.typing.CustomTreeNode[ForwardRef('PyTree[torch.Tensor]')]
 
     .. note::
 
@@ -354,12 +354,12 @@ class PyTreeTypeVar:  # pragma: no cover
     >>> import torch
     >>> TensorTree = PyTreeTypeVar('TensorTree', torch.Tensor)
     >>> TensorTree  # doctest: +IGNORE_WHITESPACE
-    typing.Union[torch.Tensor,
-                 tuple[ForwardRef('TensorTree'), ...],
-                 list[ForwardRef('TensorTree')],
-                 dict[typing.Any, ForwardRef('TensorTree')],
-                 collections.deque[ForwardRef('TensorTree')],
-                 optree.typing.CustomTreeNode[ForwardRef('TensorTree')]]
+    torch.Tensor
+    | tuple[ForwardRef('TensorTree'), ...]
+    | list[ForwardRef('TensorTree')]
+    | dict[typing.Any, ForwardRef('TensorTree')]
+    | collections.deque[ForwardRef('TensorTree')]
+    | optree.typing.CustomTreeNode[ForwardRef('TensorTree')]
 
     .. note::
 
