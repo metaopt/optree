@@ -13,6 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+-
+
+### Changed
+
+-
+
+### Fixed
+
+-
+
+### Removed
+
+-
+
+------
+
+## [0.20.0] - 2026-08-20
+
+### Added
+
 - Preserve dict insertion order on `unflatten` for the Python `tree_flatten_one_level` path mirroring the C++ path by [@XuehaiPan](https://github.com/XuehaiPan) in [#280](https://github.com/metaopt/optree/pull/280).
 - Add built-in `frozendict` support for Python 3.15+ (PEP 814), with `PyTreeKind.FROZENDICT`, `optree.treespec_frozendict()`, `optree.treespec.frozendict()`, and `optree.typing.FrozenDict` by [@XuehaiPan](https://github.com/XuehaiPan) in [#274](https://github.com/metaopt/optree/pull/274).
 - Migrate to `Python_FIND_ABI` for CMake's `FindPython` by [@XuehaiPan](https://github.com/XuehaiPan) in [#292](https://github.com/metaopt/optree/pull/292).
@@ -68,10 +88,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix `optree.utils.total_order_sorted()` mistaking a `TypeError` raised by the caller's `key` callback for a comparison failure and silently returning the sequence unsorted, and calling the callback twice per element by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
 - Fix a dictionary whose keys cannot be compared being flattened in a partially sorted order instead of insertion order, when a comparison raised part way through the sort by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
 - Fix `tree_broadcast_common()` documenting that its results share one structure and `broadcast_common()` documenting that it returns two pytrees rather than two lists of leaves by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
-
-### Removed
-
--
 
 ------
 
@@ -559,7 +575,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.19.1...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/metaopt/optree/compare/v0.19.1...v0.20.0
 [0.19.1]: https://github.com/metaopt/optree/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/metaopt/optree/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/metaopt/optree/compare/v0.17.0...v0.18.0
