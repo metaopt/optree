@@ -402,9 +402,6 @@ jobs:
       - name: List distributions
         run: ls -lh dist/*
 
-      - name: Remove PyPI unsupported files
-        run: rm -f dist/*wasm*.whl
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
