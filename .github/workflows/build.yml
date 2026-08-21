@@ -88,7 +88,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.9 - 3.14"
+          python-version: "3.9 - 3.15"
           update-environment: true
 
       - name: Upgrade pip
@@ -165,6 +165,8 @@ jobs:
           - "3.13t"
           - "3.14"
           - "3.14t"
+          - "3.15"
+          - "3.15t"
           - "pypy-3.11"
         exclude:
           # Exclude unsupported Python versions
@@ -194,6 +196,11 @@ jobs:
               runner: macos-latest
               platform: ios
               archs: "arm64_iphoneos"
+          - python-version: "3.15"
+            target:
+              runner: macos-latest
+              platform: ios
+              archs: "arm64_iphoneos"
           # iOS Simulator
           - python-version: "3.13"
             target:
@@ -201,6 +208,11 @@ jobs:
               platform: ios
               archs: "arm64_iphonesimulator"
           - python-version: "3.14"
+            target:
+              runner: macos-latest
+              platform: ios
+              archs: "arm64_iphonesimulator"
+          - python-version: "3.15"
             target:
               runner: macos-latest
               platform: ios
@@ -216,8 +228,23 @@ jobs:
               runner: ubuntu-latest
               platform: android
               archs: "arm64_v8a"
+          - python-version: "3.15"
+            target:
+              runner: ubuntu-latest
+              platform: android
+              archs: "arm64_v8a"
           # Pyodide
           - python-version: "3.13"
+            target:
+              runner: ubuntu-latest
+              platform: pyodide
+              archs: "wasm32"
+          - python-version: "3.14"
+            target:
+              runner: ubuntu-latest
+              platform: pyodide
+              archs: "wasm32"
+          - python-version: "3.15"
             target:
               runner: ubuntu-latest
               platform: pyodide
@@ -321,7 +348,7 @@ jobs:
 
       - name: Build wheels
         if: matrix.python-version != '3.13t'
-        uses: pypa/cibuildwheel@v4.1
+        uses: pypa/cibuildwheel@v4.2
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_PLATFORM: ${{ matrix.target.platform }}
@@ -381,9 +408,6 @@ jobs:
       - name: List distributions
         run: ls -lh dist/*
 
-      - name: Remove PyPI unsupported files
-        run: rm -f dist/*wasm*.whl
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -411,7 +435,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: actions/setup-python@v7
         with:
-          python-version: "3.9 - 3.14"
+          python-version: "3.9 - 3.15"
           update-environment: true
 
       - name: Upgrade pip

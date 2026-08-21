@@ -13,14 +13,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Upload PyEmscripten/WASM wheels to PyPI by [@XuehaiPan](https://github.com/XuehaiPan) in [#295](https://github.com/metaopt/optree/pull/295).
+
+### Changed
+
+- Raise the minimum required C++ standard for building the C extension from C++17 to C++20, for `std::format`, `std::source_location`, `std::span`, `std::ranges`, and constrained (`requires`) templates by [@XuehaiPan](https://github.com/XuehaiPan) in [#235](https://github.com/metaopt/optree/pull/235). Building from source now needs GCC 13+, Clang 16+ with libstdc++ 13+, Clang 17+ with libc++ 17+, Apple Clang 16+ (Xcode 16+), or MSVC 19.32+ (Visual Studio 2022 17.2+); `std::format` sets the floor on GCC and MSVC, and `P0634R3` sets it on Clang.
+- Raise the deployment targets of the macOS and iOS wheels to 14.0 and 16.3, as Apple's libc++ gates `std::format` behind macOS 13.3 / iOS 16.3; macOS wheel tags floor the minor version to zero, so 14.0 is the lowest target that does not advertise support for 13.0-13.2, while the iOS wheels keep the exact 16.3 floor and are retagged to match, since cibuildwheel's cross-build environment would otherwise tag them `ios_13_0_*` by [@XuehaiPan](https://github.com/XuehaiPan) in [#235](https://github.com/metaopt/optree/pull/235).
+- Stop passing `-Wno-error=attributes` under `OPTREE_CXX_WERROR=ON`; it existed so that the C++20 `[[likely]]`/`[[unlikely]]` attributes would not fail a C++17 build, and now only masks genuine attribute errors by [@XuehaiPan](https://github.com/XuehaiPan) in [#235](https://github.com/metaopt/optree/pull/235).
+
+### Fixed
+
+- Fix an abort during subinterpreter finalization when garbage-collecting `PyTreeSpec` or `PyTreeIter` objects by [@XuehaiPan](https://github.com/XuehaiPan) in [#294](https://github.com/metaopt/optree/pull/294).
+
+### Removed
+
+- Remove support for building the C extension with C++17; `CMAKE_CXX_STANDARD` must now be at least `20` by [@XuehaiPan](https://github.com/XuehaiPan) in [#235](https://github.com/metaopt/optree/pull/235).
+
+------
+
+## [0.20.0] - 2026-08-20
+
+### Added
+
 - Preserve dict insertion order on `unflatten` for the Python `tree_flatten_one_level` path mirroring the C++ path by [@XuehaiPan](https://github.com/XuehaiPan) in [#280](https://github.com/metaopt/optree/pull/280).
+- Add built-in `frozendict` support for Python 3.15+ (PEP 814), with `PyTreeKind.FROZENDICT`, `optree.treespec_frozendict()`, `optree.treespec.frozendict()`, and `optree.typing.FrozenDict` by [@XuehaiPan](https://github.com/XuehaiPan) in [#274](https://github.com/metaopt/optree/pull/274).
+- Migrate to `Python_FIND_ABI` for CMake's `FindPython` by [@XuehaiPan](https://github.com/XuehaiPan) in [#292](https://github.com/metaopt/optree/pull/292).
+- Add Python 3.15 and Python 3.15t support by [@XuehaiPan](https://github.com/XuehaiPan) in [#293](https://github.com/metaopt/optree/pull/293).
 
 ### Changed
 
 - Update minimal version of `typing-extensions` to 4.10.0 for `typing_extensions.TypeIs` by [@XuehaiPan](https://github.com/XuehaiPan) in [#285](https://github.com/metaopt/optree/pull/285).
-- Raise the minimum required C++ standard for building the C extension from C++17 to C++20, for `std::format`, `std::source_location`, `std::span`, `std::ranges`, and constrained (`requires`) templates by [@XuehaiPan](https://github.com/XuehaiPan) in [#235](https://github.com/metaopt/optree/pull/235). Building from source now needs GCC 13+, Clang 16+ with libstdc++ 13+, Clang 17+ with libc++ 17+, Apple Clang 16+ (Xcode 16+), or MSVC 19.32+ (Visual Studio 2022 17.2+); `std::format` sets the floor on GCC and MSVC, and `P0634R3` sets it on Clang.
-- Raise the deployment targets of the macOS and iOS wheels to 14.0 and 16.3, as Apple's libc++ gates `std::format` behind macOS 13.3 / iOS 16.3; macOS wheel tags floor the minor version to zero, so 14.0 is the lowest target that does not advertise support for 13.0-13.2, while the iOS wheels keep the exact 16.3 floor and are retagged to match, since cibuildwheel's cross-build environment would otherwise tag them `ios_13_0_*` by [@XuehaiPan](https://github.com/XuehaiPan) in [#235](https://github.com/metaopt/optree/pull/235).
-- Stop passing `-Wno-error=attributes` under `OPTREE_CXX_WERROR=ON`; it existed so that the C++20 `[[likely]]`/`[[unlikely]]` attributes would not fail a C++17 build, and now only masks genuine attribute errors by [@XuehaiPan](https://github.com/XuehaiPan) in [#235](https://github.com/metaopt/optree/pull/235).
 
 ### Fixed
 
@@ -68,10 +90,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix `optree.utils.total_order_sorted()` mistaking a `TypeError` raised by the caller's `key` callback for a comparison failure and silently returning the sequence unsorted, and calling the callback twice per element by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
 - Fix a dictionary whose keys cannot be compared being flattened in a partially sorted order instead of insertion order, when a comparison raised part way through the sort by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
 - Fix `tree_broadcast_common()` documenting that its results share one structure and `broadcast_common()` documenting that it returns two pytrees rather than two lists of leaves by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
-
-### Removed
-
-- Remove support for building the C extension with C++17; `CMAKE_CXX_STANDARD` must now be at least `20` by [@XuehaiPan](https://github.com/XuehaiPan) in [#235](https://github.com/metaopt/optree/pull/235).
 
 ------
 
@@ -559,7 +577,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ------
 
-[Unreleased]: https://github.com/metaopt/optree/compare/v0.19.1...HEAD
+[Unreleased]: https://github.com/metaopt/optree/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/metaopt/optree/compare/v0.19.1...v0.20.0
 [0.19.1]: https://github.com/metaopt/optree/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/metaopt/optree/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/metaopt/optree/compare/v0.17.0...v0.18.0

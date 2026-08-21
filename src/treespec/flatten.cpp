@@ -99,7 +99,8 @@ bool PyTreeSpec::FlattenIntoImpl(const py::handle &handle,
 
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::FrozenDict: {
                 py::list keys;
                 {
                     const scoped_critical_section cs{handle};
@@ -362,7 +363,8 @@ bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle &handle,
 
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::FrozenDict: {
                 const scoped_critical_section cs{handle};
                 const auto dict = py::reinterpret_borrow<py::dict>(handle);
                 node.arity = DictGetSize(dict);
@@ -632,7 +634,8 @@ py::list PyTreeSpec::FlattenUpTo(const py::object &tree) const {
 
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::FrozenDict: {
                 AssertExactStandardDict(object);
                 const scoped_critical_section2 cs{object, node.node_data};
                 const auto dict = py::reinterpret_borrow<py::dict>(object);

@@ -50,6 +50,8 @@ namespace optree {
             return PyRepr(node.node_data);
         case PyTreeKind::Deque:
             return "deque";
+        case PyTreeKind::FrozenDict:
+            return "frozendict";
         case PyTreeKind::Custom:
             EXPECT_NE(node.custom, nullptr, "The custom registration is null.");
             return PyRepr(node.custom->type);
@@ -106,13 +108,16 @@ std::string PyTreeSpec::ToStringImpl() const {
             }
 
             case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict: {
+            case PyTreeKind::OrderedDict:
+            case PyTreeKind::FrozenDict: {
                 const scoped_critical_section cs{node.node_data};
                 EXPECT_EQ(ListGetSize(node.node_data),
                           node.arity,
                           "Number of keys and entries does not match.");
                 if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
                     sstream << "OrderedDict(";
+                } else if (node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
+                    sstream << "frozendict(";
                 }
                 if (node.kind == PyTreeKind::Dict || node.arity > 0) [[likely]] {
                     sstream << "{";
@@ -130,7 +135,8 @@ std::string PyTreeSpec::ToStringImpl() const {
                 if (node.kind == PyTreeKind::Dict || node.arity > 0) [[likely]] {
                     sstream << "}";
                 }
-                if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
+                if (node.kind == PyTreeKind::OrderedDict || node.kind == PyTreeKind::FrozenDict)
+                    [[unlikely]] {
                     sstream << ")";
                 }
                 break;
@@ -330,7 +336,8 @@ py::object PyTreeSpec::ToPicklable() const {
         // namedtuple/PyStructSequence type or custom metadata is left as-is.
         py::object node_data =
             node.node_data ? py::reinterpret_borrow<py::object>(node.node_data) : py::none();
-        if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
+        if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::OrderedDict ||
+            node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
             node_data = ListCopy(node.node_data);
         } else if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
             const auto metadata = py::reinterpret_borrow<py::tuple>(node.node_data);
@@ -397,6 +404,16 @@ py::object PyTreeSpec::ToPicklable() const {
             throw malformed("the node kind is out of range");
         }
         node.kind = static_cast<PyTreeKind>(kind_value);
+#if !defined(OPTREE_HAS_FROZENDICT)
+        // The enum carries `FrozenDict` on every build, so the range check above lets it through.
+        // Reject a cross-version state here rather than demoting it to a mutable `dict` in
+        // `MakeNode`. The state is well-formed, hence an unsupported build, not a malformed pickle.
+        if (node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
+            throw py::value_error(
+                "Cannot restore a PyTreeSpec containing a `frozendict` node: this build of "
+                "optree was compiled without `frozendict` support (requires Python 3.15+).");
+        }
+#endif
         node.arity = thread_safe_cast<ssize_t>(node_state[1]);
         if (node.arity < 0) [[unlikely]] {
             throw malformed("the node arity is negative");
@@ -404,13 +421,13 @@ py::object PyTreeSpec::ToPicklable() const {
         if (node_state_size == 8) [[likely]] {
             const auto &original_keys = node_state[7];
             if (original_keys.is_none()) [[likely]] {
-                if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict)
-                    [[unlikely]] {
+                if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict ||
+                    node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
                     throw malformed("a dict node is missing its original keys");
                 }
             } else [[unlikely]] {
-                if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict)
-                    [[likely]] {
+                if (node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict ||
+                    node.kind == PyTreeKind::FrozenDict) [[likely]] {
                     // `DictFromKeys` builds a new dict, so the caller cannot mutate it afterwards.
                     node.original_keys = DictFromKeys(original_keys);
                 } else [[unlikely]] {
@@ -457,7 +474,8 @@ py::object PyTreeSpec::ToPicklable() const {
             }
 
             case PyTreeKind::Dict:
-            case PyTreeKind::OrderedDict: {
+            case PyTreeKind::OrderedDict:
+            case PyTreeKind::FrozenDict: {
                 // Copy the keys instead of borrowing them.
                 node.node_data = ListCopy(thread_safe_cast<py::list>(node_data));
                 if (ListGetSize(node.node_data) != node.arity) [[unlikely]] {
