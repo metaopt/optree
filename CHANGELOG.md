@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- Fix an abort during subinterpreter finalization when garbage-collecting `PyTreeSpec` or `PyTreeIter` objects by [@XuehaiPan](https://github.com/XuehaiPan) in [#294](https://github.com/metaopt/optree/pull/294).
 
 ### Removed
 
