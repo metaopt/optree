@@ -37,9 +37,9 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-setdefault_ifndef(CMAKE_CXX_STANDARD 20)  # for likely/unlikely attributes
-if(CMAKE_CXX_STANDARD VERSION_LESS 17)
-    message(FATAL_ERROR "C++17 or higher is required")
+setdefault_ifndef(CMAKE_CXX_STANDARD 20)
+if(CMAKE_CXX_STANDARD VERSION_LESS 20)
+    message(FATAL_ERROR "C++20 or higher is required")
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "Use C++ standard: C++${CMAKE_CXX_STANDARD}")
@@ -138,7 +138,9 @@ if(OPTREE_CXX_WERROR)
     if(MSVC)
         string(APPEND CMAKE_CXX_FLAGS " /WX")
     else()
-        string(APPEND CMAKE_CXX_FLAGS " -Werror -Wno-error=attributes -Wno-error=redundant-move")
+        # `-Wno-error=redundant-move` stays: C++20's implicit-move rules (P1825) change what
+        # `-Wredundant-move` fires on, and the warning differs between GCC and Clang.
+        string(APPEND CMAKE_CXX_FLAGS " -Werror -Wno-error=redundant-move")
     endif()
 endif()
 

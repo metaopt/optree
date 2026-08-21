@@ -15,10 +15,11 @@ limitations under the License.
 ================================================================================
 */
 
-#include <atomic>     // std::memory_order_acquire, std::memory_order_release
+#include <atomic>     // std::memory_order
 #include <exception>  // std::rethrow_exception, std::current_exception
+#include <format>     // std::format
 #include <optional>   // std::optional
-#include <sstream>    // std::ostringstream
+#include <span>       // std::span
 #include <stdexcept>  // std::runtime_error
 #include <thread>     // std::this_thread::get_id, std::thread::id
 
@@ -127,10 +128,11 @@ py::object PyTreeIter::NextImpl() {
                     custom->flatten_func);
                 const ssize_t num_out = TupleGetSize(out);
                 if (num_out != 2 && num_out != 3) [[unlikely]] {
-                    std::ostringstream oss{};
-                    oss << "PyTree custom flatten function for type " << PyRepr(custom->type)
-                        << " should return a 2- or 3-tuple, got " << num_out << ".";
-                    throw std::runtime_error(oss.str());
+                    throw std::runtime_error(
+                        std::format("PyTree custom flatten function for type {} should "
+                                    "return a 2- or 3-tuple, got {}.",
+                                    custom->type,
+                                    num_out));
                 }
                 auto children = thread_safe_cast<py::tuple>(TupleGetItem(out, 0));
                 const ssize_t arity = TupleGetSize(children);
@@ -140,12 +142,13 @@ py::object PyTreeIter::NextImpl() {
                         const ssize_t num_entries =
                             TupleGetSize(thread_safe_cast<py::tuple>(node_entries));
                         if (num_entries != arity) [[unlikely]] {
-                            std::ostringstream oss{};
-                            oss << "PyTree custom flatten function for type "
-                                << PyRepr(custom->type)
-                                << " returned inconsistent number of children (" << arity
-                                << ") and number of entries (" << num_entries << ").";
-                            throw std::runtime_error(oss.str());
+                            throw std::runtime_error(
+                                std::format("PyTree custom flatten function for type {} returned "
+                                            "inconsistent number of children ({}) and "
+                                            "number of entries ({}).",
+                                            custom->type,
+                                            arity,
+                                            num_entries));
                         }
                     }
                 }
@@ -169,7 +172,7 @@ py::object PyTreeIter::Next() {
     // `next()` on this same iterator. `m_mutex` is not recursive and the GIL is released while
     // waiting on it, so that would hang; reject it as CPython's "generator already executing" does.
     const auto ident = std::this_thread::get_id();
-    if (m_running_thread_id.load(std::memory_order_acquire) == ident) [[unlikely]] {
+    if (m_running_thread_id.load(std::memory_order::acquire) == ident) [[unlikely]] {
         throw std::runtime_error("PyTreeIter is already iterating.");
     }
 
@@ -181,7 +184,7 @@ py::object PyTreeIter::Next() {
 #if !defined(Py_GIL_DISABLED)
         const py::gil_scoped_acquire_simple gil_acquire{};
 #endif
-        m_running_thread_id.store(ident, std::memory_order_release);
+        m_running_thread_id.store(ident, std::memory_order::release);
         try {
             py::object leaf{};
             if (m_none_is_leaf) [[unlikely]] {
@@ -189,10 +192,10 @@ py::object PyTreeIter::Next() {
             } else [[likely]] {
                 leaf = NextImpl<NONE_IS_NODE>();
             }
-            m_running_thread_id.store(std::thread::id{}, std::memory_order_release);
+            m_running_thread_id.store(std::thread::id{}, std::memory_order::release);
             return leaf;
         } catch (...) {
-            m_running_thread_id.store(std::thread::id{}, std::memory_order_release);
+            m_running_thread_id.store(std::thread::id{}, std::memory_order::release);
             std::rethrow_exception(std::current_exception());
         }
     }
@@ -256,8 +259,8 @@ py::object PyTreeSpec::WalkImpl(const py::iterable &leaves,
                 } else [[unlikely]] {
                     const py::object out =
                         MakeNode(node,
-                                 node.arity > 0 ? &agenda[size - node.arity] : nullptr,
-                                 node.arity);
+                                 node.arity > 0 ? std::span(&agenda[size - node.arity], node.arity)
+                                                : std::span<py::object>{});
                     agenda.resize(size - node.arity);
                     agenda.emplace_back(
                         f_node ? EVALUATE_WITH_LOCK_HELD2((*f_node)(out), out, *f_node) : out);

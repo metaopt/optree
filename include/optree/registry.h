@@ -21,6 +21,7 @@ limitations under the License.
 #include <memory>         // std::shared_ptr
 #include <optional>       // std::optional, std::nullopt
 #include <string>         // std::string
+#include <string_view>    // std::string_view
 #include <unordered_map>  // std::unordered_map
 #include <unordered_set>  // std::unordered_set
 #include <utility>        // std::pair, std::make_pair
@@ -200,12 +201,15 @@ public:
 
         const auto interpid = GetCurrentPyInterpreterID();
         const auto &namespaces = sm_dict_insertion_ordered_namespaces;
+        // Probe with a view: building the `std::string` half of the key would copy the namespace on
+        // every flatten.
         const bool in_current_namespace =
-            namespaces.find({interpid, registry_namespace}) != namespaces.end();
+            namespaces.contains(std::pair{interpid, std::string_view{registry_namespace}});
         return {
             .in_current_namespace = in_current_namespace,
             .with_inherited_global_namespace =
-                in_current_namespace || namespaces.find({interpid, ""}) != namespaces.end(),
+                in_current_namespace ||
+                namespaces.contains(std::pair{interpid, std::string_view{}}),
         };
     }
 
@@ -261,8 +265,12 @@ private:
     static void Clear();
 
     using RegistrationsMap = std::unordered_map<py::handle, RegistrationPtr>;
-    using NamedRegistrationsMap =
-        std::unordered_map<std::pair<std::string, py::handle>, RegistrationPtr>;
+    // Declared with the transparent functors explicitly: an `is_transparent` marker on a
+    // `std::hash` / `std::equal_to` specialization does nothing unless the container uses it.
+    using NamedRegistrationsMap = std::unordered_map<std::pair<std::string, py::handle>,
+                                                     RegistrationPtr,
+                                                     NamespacedTypeHash,
+                                                     NamespacedTypeEqual>;
     using BuiltinsTypesSet = std::unordered_set<py::handle>;
 
     RegistrationsMap m_registrations{};
@@ -271,7 +279,9 @@ private:
 
     // A set of namespaces that preserve the insertion order of the dictionary keys during
     // flattening.
-    static inline std::unordered_set<std::pair<interpid_t, std::string>>
+    static inline std::unordered_set<std::pair<interpid_t, std::string>,
+                                     InterpreterNamespaceHash,
+                                     InterpreterNamespaceEqual>
         sm_dict_insertion_ordered_namespaces{};
     static inline read_write_mutex sm_dict_order_mutex{};
     friend class PyTreeSpec;

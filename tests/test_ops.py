@@ -39,6 +39,7 @@ from helpers import (
     TREES,
     Counter,
     CustomTuple,
+    EmptyTuple,
     FlatCache,
     MyAnotherDict,
     Py_DEBUG,
@@ -545,6 +546,32 @@ def test_walk():
         tree,
         none_is_leaf=True,
     )
+
+
+@pytest.mark.parametrize(
+    'tree',
+    [
+        (),
+        [],
+        {},
+        OrderedDict(),
+        defaultdict(int),
+        deque(),
+        EmptyTuple(),
+        {'a': (), 'b': [[], deque()], 'c': {'d': OrderedDict()}, 'e': 1},
+    ],
+    ids=str,
+)
+def test_unflatten_and_walk_arity_zero_nodes(tree):
+    # `MakeNode` takes its children as a `std::span`, which the callers build as an empty span for a
+    # childless node instead of pointing one past the end of the agenda. Round-trip every arity-0
+    # container, including one nested among non-empty siblings so empty and non-empty spans alternate
+    # within a single agenda.
+    treespec = optree.tree_structure(tree)
+    leaves = optree.tree_leaves(tree)
+    assert optree.tree_unflatten(treespec, leaves) == tree
+    assert treespec.walk(leaves) == tree
+    assert treespec.traverse(leaves) == tree
 
 
 def test_flatten_up_to():

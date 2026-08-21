@@ -63,7 +63,7 @@ The following options are available while building the Python C extension from s
 ```bash
 export CMAKE_COMMAND="/path/to/custom/cmake"
 export CMAKE_BUILD_TYPE="Debug"
-export CMAKE_CXX_STANDARD="20"  # C++17 is tested on Linux/macOS (C++20 is required on Windows)
+export CMAKE_CXX_STANDARD="20"  # 20 is the minimum supported standard
 export OPTREE_CXX_WERROR="OFF"
 export _GLIBCXX_USE_CXX11_ABI="1"  # set to 0 to use the old libstdc++ ABI
 export _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR="1"  # set to "" to disable the workaround for MSVC mutex layout change in VS 2022 v17.10+
@@ -72,7 +72,7 @@ export pybind11_DIR="/path/to/custom/pybind11"
 pip3 install .
 ```
 
-Compiling from source requires Python 3.9+, a C++ compiler (`g++` / `clang++` / `icpx` / `cl.exe`) that supports C++20, and a `cmake` installation.
+Compiling from source requires Python 3.9+, a `cmake` installation (3.18+), and a C++ compiler (`g++` / `clang++` / `icpx` / `cl.exe`) with complete C++20 support: GCC 13+, Clang 16+ with libstdc++ 13+, Clang 17+ with libc++ 17+, Apple Clang 16+ (Xcode 16+), or MSVC 19.32+ (Visual Studio 2022 17.2+). Two features set those floors: `std::format` on GCC and MSVC, and `P0634R3` (`typename` made optional) on Clang. On Apple platforms `std::format` is additionally gated behind macOS 13.3 / iOS 16.3 availability, so a build targeting an older release will not compile.
 
 --------------------------------------------------------------------------------
 

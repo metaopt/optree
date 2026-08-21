@@ -17,7 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--
+- Raise the minimum required C++ standard for building the C extension from C++17 to C++20, for `std::format`, `std::source_location`, `std::span`, `std::ranges`, and constrained (`requires`) templates by [@XuehaiPan](https://github.com/XuehaiPan) in [#235](https://github.com/metaopt/optree/pull/235). Building from source now needs GCC 13+, Clang 16+ with libstdc++ 13+, Clang 17+ with libc++ 17+, Apple Clang 16+ (Xcode 16+), or MSVC 19.32+ (Visual Studio 2022 17.2+); `std::format` sets the floor on GCC and MSVC, and `P0634R3` sets it on Clang.
+- Raise the deployment targets of the macOS and iOS wheels to 14.0 and 16.3, as Apple's libc++ gates `std::format` behind macOS 13.3 / iOS 16.3; macOS wheel tags floor the minor version to zero, so 14.0 is the lowest target that does not advertise support for 13.0-13.2, while the iOS wheels keep the exact 16.3 floor and are retagged to match, since cibuildwheel's cross-build environment would otherwise tag them `ios_13_0_*` by [@XuehaiPan](https://github.com/XuehaiPan) in [#235](https://github.com/metaopt/optree/pull/235).
+- Stop passing `-Wno-error=attributes` under `OPTREE_CXX_WERROR=ON`; it existed so that the C++20 `[[likely]]`/`[[unlikely]]` attributes would not fail a C++17 build, and now only masks genuine attribute errors by [@XuehaiPan](https://github.com/XuehaiPan) in [#235](https://github.com/metaopt/optree/pull/235).
 
 ### Fixed
 
@@ -25,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
--
+- Remove support for building the C extension with C++17; `CMAKE_CXX_STANDARD` must now be at least `20` by [@XuehaiPan](https://github.com/XuehaiPan) in [#235](https://github.com/metaopt/optree/pull/235).
 
 ------
 

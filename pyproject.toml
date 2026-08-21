@@ -120,6 +120,8 @@ environment = { PYTHONDEVMODE = "1", PYTHONUNBUFFERED = "1" }
 environment-pass = [
     "CMAKE_MINIMUM_VERSION",
     "CMAKE_CXX_STANDARD",
+    "MACOSX_DEPLOYMENT_TARGET",
+    "IPHONEOS_DEPLOYMENT_TARGET",
     "OPTREE_CXX_WERROR",
     "_GLIBCXX_USE_CXX11_ABI",
     "_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR",
@@ -152,15 +154,31 @@ test-command = '''python -m pytest -Walways --color=yes --showlocals --no-cov --
 [tool.cibuildwheel.pyodide]
 test-command = '''python -m pytest -Walways --color=yes --showlocals --no-cov --exitfirst tests'''
 
+# cibuildwheel's iOS cross-build environment hardcodes an `ios-13.0-*` platform, so wheels are
+# tagged `ios_13_0_*` whatever they were compiled against. Retag to the real floor: otherwise `pip`
+# installs them on iOS 13.0-16.2 and `dyld` fails to load `_C`. Drop once cibuildwheel derives the
+# tag from the deployment target.
 [[tool.cibuildwheel.overrides]]
 select = "*iphoneos*"
 inherit.environment = "append"
 environment = { CMAKE_OSX_SYSROOT = "iphoneos" }
+repair-wheel-command = """
+python -m pip install --quiet --upgrade wheel && \
+target="$(echo "${IPHONEOS_DEPLOYMENT_TARGET:-16.3}" | tr . _)" && \
+retagged="$(python -m wheel tags --platform-tag "ios_${target}_arm64_iphoneos" --remove "{wheel}")" && \
+mv "$(dirname "{wheel}")/${retagged}" "{dest_dir}/"
+"""
 
 [[tool.cibuildwheel.overrides]]
 select = "*iphonesimulator*"
 inherit.environment = "append"
 environment = { CMAKE_OSX_SYSROOT = "iphonesimulator" }
+repair-wheel-command = """
+python -m pip install --quiet --upgrade wheel && \
+target="$(echo "${IPHONEOS_DEPLOYMENT_TARGET:-16.3}" | tr . _)" && \
+retagged="$(python -m wheel tags --platform-tag "ios_${target}_arm64_iphonesimulator" --remove "{wheel}")" && \
+mv "$(dirname "{wheel}")/${retagged}" "{dest_dir}/"
+"""
 
 # Linter tools #################################################################
 

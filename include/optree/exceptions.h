@@ -17,65 +17,61 @@ limitations under the License.
 
 #pragma once
 
-#include <cstddef>      // std::size_t
-#include <optional>     // std::optional, std::nullopt
-#include <sstream>      // std::ostringstream
-#include <stdexcept>    // std::logic_error
-#include <string>       // std::string, std::char_traits, std::to_string
-#include <type_traits>  // std::void_t, std::{true,false}_type
-#include <utility>      // std::declval
+#include <cstddef>          // std::size_t
+#include <format>           // std::format
+#include <source_location>  // std::source_location
+#include <stdexcept>        // std::logic_error
+#include <string>           // std::string, std::char_traits, std::to_string
+#include <string_view>      // std::string_view
 
 namespace optree {
 
-constexpr std::size_t CURRENT_FILE_PATH_SIZE = std::char_traits<char>::length(__FILE__);
+constexpr std::size_t CURRENT_FILE_PATH_SIZE =
+    std::char_traits<char>::length(std::source_location::current().file_name());
 constexpr std::size_t CURRENT_FILE_RELPATH_FROM_PROJECT_ROOT_SIZE =
     std::char_traits<char>::length("include/optree/exceptions.h");
 static_assert(CURRENT_FILE_PATH_SIZE >= CURRENT_FILE_RELPATH_FROM_PROJECT_ROOT_SIZE,
               "SOURCE_PATH_PREFIX_SIZE must be greater than 0.");
 constexpr std::size_t SOURCE_PATH_PREFIX_SIZE =
     CURRENT_FILE_PATH_SIZE - CURRENT_FILE_RELPATH_FROM_PROJECT_ROOT_SIZE;
-// NOLINTNEXTLINE[bugprone-reserved-identifier]
-#define __FILE_RELPATH_FROM_PROJECT_ROOT__ ((const char *)&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
+
+// Strip the prefix `SOURCE_PATH_PREFIX_SIZE` measured off this header's own path. A translation
+// unit compiled with a shorter path is returned as-is rather than letting `substr` throw.
+constexpr std::string_view RelpathFromProjectRoot(const std::string_view &abspath) {
+    return abspath.size() >= SOURCE_PATH_PREFIX_SIZE ? abspath.substr(SOURCE_PATH_PREFIX_SIZE)
+                                                     : abspath;
+}
+constexpr std::string_view RelpathFromProjectRoot(
+    const std::source_location &source_location = std::source_location::current()) {
+    return RelpathFromProjectRoot(source_location.file_name());
+}
 
 class InternalError : public std::logic_error {
 public:
-    explicit InternalError(const std::string &message) noexcept(noexcept(std::logic_error{message}))
-        : std::logic_error{message} {}
-    explicit InternalError(const std::string &message,
-                           const std::string &file,
-                           const std::size_t &lineno,
-                           const std::optional<std::string> function =
-                               std::nullopt) noexcept(noexcept(std::logic_error{message}))
-        : InternalError([&message, &file, &lineno, &function]() -> std::string {
-              std::ostringstream oss{};
-              oss << message << " (";
-              if (function) [[likely]] {
-                  oss << "function `" << *function << "` ";
-              }
-              oss << "at file " << file << ":" << lineno << ")\n\n"
-                  << "Please file a bug report at https://github.com/metaopt/optree/issues.";
-              return oss.str();
-          }()) {}
+    explicit InternalError(
+        const std::string_view &message,
+        const std::source_location &source_location = std::source_location::current())
+        : std::logic_error{
+              std::format("{} (in function `{}` at file {}:{}:{})\n\n"
+                          "Please file a bug report at https://github.com/metaopt/optree/issues.",
+                          message,
+                          source_location.function_name(),
+                          RelpathFromProjectRoot(source_location),
+                          source_location.line(),
+                          source_location.column())} {}
 };
 
 }  // namespace optree
 
 inline namespace {  // NOLINT[build/namespaces_headers]
-// SFINAE helper to detect if std::to_string is available for a type
-template <typename T, typename = void>
-struct has_to_string : std::false_type {};
-
+// Detect whether `std::to_string` accepts a `const T &`, which is how `try_to_string` calls it.
 template <typename T>
-struct has_to_string<T, std::void_t<decltype(std::to_string(std::declval<T>()))>> : std::true_type {
-};
-
-template <typename T>
-inline constexpr bool has_to_string_v = has_to_string<T>::value;
+concept has_to_string = requires(const T &value) { std::to_string(value); };
 
 // Convert value to string if possible, otherwise return a placeholder.
 template <typename T>
 inline std::string try_to_string([[maybe_unused]] const T &value) {
-    if constexpr (has_to_string_v<T>) {
+    if constexpr (has_to_string<T>) {
         return std::to_string(value);
     }
     return "<?>";
@@ -85,16 +81,8 @@ inline std::string try_to_string([[maybe_unused]] const T &value) {
 #define VA_FUNC2_(__0, __1, NAME, ...) NAME
 #define VA_FUNC3_(__0, __1, __2, NAME, ...) NAME
 
-#if !defined(__GNUC__)
-#    define __PRETTY_FUNCTION__ std::nullopt  // NOLINT[bugprone-reserved-identifier]
-#endif
-
 #define INTERNAL_ERROR0_() INTERNAL_ERROR1_("Unreachable code.")
-#define INTERNAL_ERROR1_(message)                                                                  \
-    throw optree::InternalError((message),                                                         \
-                                __FILE_RELPATH_FROM_PROJECT_ROOT__,                                \
-                                __LINE__,                                                          \
-                                __PRETTY_FUNCTION__)
+#define INTERNAL_ERROR1_(message) throw optree::InternalError(message)
 #define INTERNAL_ERROR(...)                                                                        \
     VA_FUNC2_(__0 __VA_OPT__(, ) __VA_ARGS__, INTERNAL_ERROR1_, INTERNAL_ERROR0_)(__VA_ARGS__)
 

@@ -314,8 +314,61 @@ def test_treespec_namedtuple_repr_with_divergent_fields_raises_value_error():
     assert str(treespec) == 'PyTreeSpec(Point(x=*, y=*))'
 
     Point._fields = ('x', 'y', 'z')  # diverge: 3 fields vs the treespec's arity of 2
-    with pytest.raises(ValueError, match=r'does not match the arity'):
+    # Pin the interpolated values, not just the phrase: the message is assembled by `std::format`,
+    # so a mis-ordered placeholder would still match a substring pattern.
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f'Number of fields (3) of namedtuple type {Point!r} does not match the arity (2) '
+            f'of the treespec node.',
+        ),
+    ):
         repr(treespec)
+
+
+def test_treespec_setstate_malformed_state_message_format():
+    # `FromPicklable` reports every structural defect through one `Malformed pickled PyTreeSpec: {}.`
+    # template. `test_treespec_setstate_rejects_malformed_state` covers which states are rejected;
+    # this pins the rendered text, so the reason is actually interpolated and the period is kept.
+    obj = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
+    with pytest.raises(
+        RuntimeError,
+        match=re.escape('Malformed pickled PyTreeSpec: the state is not a 3-tuple.'),
+    ):
+        obj.__setstate__((1, 2))
+
+
+def test_treespec_from_collection_rejects_stale_custom_registration():
+    # Building a collection promotes the children's namespace onto the result. If the custom type no
+    # longer resolves to the registration the child node holds, the result would silently rebind it.
+    class Stale:
+        def __init__(self, *children):
+            self.children = list(children)
+
+    def register():
+        optree.register_pytree_node(
+            Stale,
+            lambda s: (s.children, None),
+            lambda _, children: Stale(*children),
+            namespace='stale',
+        )
+
+    register()
+    try:
+        treespec = optree.tree_structure(Stale(1, 2), namespace='stale')
+        optree.unregister_pytree_node(Stale, namespace='stale')
+        register()  # same type and namespace, but a different registration object
+
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                f'PyTreeSpecs cannot be composed into a collection: custom PyTree type {Stale!r} '
+                f"no longer resolves to its original registration in namespace 'stale'.",
+            ),
+        ):
+            optree.treespec_tuple((treespec,), namespace='stale')
+    finally:
+        optree.unregister_pytree_node(Stale, namespace='stale')
 
 
 def test_treespec_setstate_rejects_structseq_field_arity_mismatch():

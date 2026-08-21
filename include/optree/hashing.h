@@ -17,10 +17,11 @@ limitations under the License.
 
 #pragma once
 
-#include <cstddef>     // std::size_t
-#include <functional>  // std::hash, std::{not_,}equal_to
-#include <string>      // std::string
-#include <utility>     // std::pair
+#include <cstddef>      // std::size_t
+#include <functional>   // std::hash, std::{not_,}equal_to
+#include <string>       // std::string
+#include <string_view>  // std::string_view
+#include <utility>      // std::pair
 
 #include <Python.h>
 
@@ -123,3 +124,61 @@ struct std::hash<std::pair<T, U>> {
     }
 };
 // NOLINTEND[bugprone-std-namespace-modification]
+
+namespace optree {
+
+// Transparent hashers and comparators for the registry's pair keys. Their `operator()` MUST be
+// templates: `is_transparent` only tells the container it may forward a foreign key type, and a
+// non-template call operator then converts it back to the exact `key_type` — the very temporary
+// heterogeneous lookup exists to avoid. The marker was inert for unordered containers before
+// P0919R3, so this began costing a namespace-string copy per `Lookup` only at C++20.
+// `std::hash<std::string_view>` is guaranteed to agree with `std::hash<std::string>`, so probing
+// with a view finds entries inserted with a string.
+
+// Key of `PyTreeTypeRegistry::m_named_registrations`: (namespace, type).
+struct NamespacedTypeHash {
+    using is_transparent = void;
+    template <class S>
+    inline Py_ALWAYS_INLINE std::size_t operator()(
+        const std::pair<S, py::handle> &key) const noexcept {
+        std::size_t seed = 0;
+        HashCombine(seed, std::string_view{key.first});
+        HashCombine(seed, key.second);
+        return seed;
+    }
+};
+struct NamespacedTypeEqual {
+    using is_transparent = void;
+    template <class S1, class S2>
+    inline Py_ALWAYS_INLINE bool operator()(const std::pair<S1, py::handle> &lhs,
+                                            const std::pair<S2, py::handle> &rhs) const noexcept {
+        // Compare the type first: it is a pointer identity test, and it discriminates far more
+        // often than the namespace does.
+        return lhs.second.is(rhs.second) &&
+               std::string_view{lhs.first} == std::string_view{rhs.first};
+    }
+};
+
+// Key of `PyTreeTypeRegistry::sm_dict_insertion_ordered_namespaces`: (interpreter, namespace).
+struct InterpreterNamespaceHash {
+    using is_transparent = void;
+    template <class S>
+    inline Py_ALWAYS_INLINE std::size_t operator()(
+        const std::pair<interpid_t, S> &key) const noexcept {
+        std::size_t seed = 0;
+        HashCombine(seed, key.first);
+        HashCombine(seed, std::string_view{key.second});
+        return seed;
+    }
+};
+struct InterpreterNamespaceEqual {
+    using is_transparent = void;
+    template <class S1, class S2>
+    inline Py_ALWAYS_INLINE bool operator()(const std::pair<interpid_t, S1> &lhs,
+                                            const std::pair<interpid_t, S2> &rhs) const noexcept {
+        return lhs.first == rhs.first &&
+               std::string_view{lhs.second} == std::string_view{rhs.second};
+    }
+};
+
+}  // namespace optree

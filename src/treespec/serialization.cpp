@@ -16,13 +16,14 @@ limitations under the License.
 */
 
 #include <exception>      // std::rethrow_exception, std::current_exception
+#include <format>         // std::format
 #include <memory>         // std::unique_ptr, std::make_unique
 #include <sstream>        // std::ostringstream
 #include <stdexcept>      // std::runtime_error
 #include <string>         // std::string
 #include <thread>         // std::this_thread::get_id
 #include <unordered_set>  // std::unordered_set
-#include <utility>        // std::pair, std::move
+#include <utility>        // std::cmp_less, std::pair, std::move
 
 #include "optree/optree.h"
 
@@ -148,12 +149,13 @@ std::string PyTreeSpec::ToStringImpl() const {
                 // a caller may have changed them after the treespec was built. Report the mismatch
                 // as a `ValueError`, not an internal error, since the cause is external.
                 if (TupleGetSize(fields) != node.arity) [[unlikely]] {
-                    std::ostringstream oss{};
-                    oss << "Number of fields (" << TupleGetSize(fields) << ") of namedtuple type "
-                        << PyRepr(type) << " does not match the arity (" << node.arity
-                        << ") of the treespec node. The `_fields` attribute may have been modified "
-                           "after the treespec was created.";
-                    throw py::value_error(oss.str());
+                    throw py::value_error(std::format(
+                        "Number of fields ({}) of namedtuple type {} does not match the arity ({}) "
+                        "of the treespec node. The `_fields` attribute may have been modified "
+                        "after the treespec was created.",
+                        TupleGetSize(fields),
+                        type,
+                        node.arity));
                 }
                 const std::string kind =
                     PyStr(EVALUATE_WITH_LOCK_HELD(py::getattr(type, "__name__"), type));
@@ -294,7 +296,7 @@ std::string PyTreeSpec::ToString() const {
     const ThreadedIdentity ident{this, std::this_thread::get_id()};
     {
         const scoped_read_lock lock{mutex};
-        if (running.find(ident) != running.end()) [[unlikely]] {
+        if (running.contains(ident)) [[unlikely]] {
             return "...";
         }
     }
@@ -363,7 +365,7 @@ py::object PyTreeSpec::ToPicklable() const {
 // NOLINTNEXTLINE[readability-function-cognitive-complexity]
 /*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklable(const py::object &picklable) {
     const auto malformed = [](const std::string &reason) -> std::runtime_error {
-        return std::runtime_error("Malformed pickled PyTreeSpec: " + reason + ".");
+        return std::runtime_error(std::format("Malformed pickled PyTreeSpec: {}.", reason));
     };
     // `DistinctCount` hashes the keys, so an unhashable one raises `TypeError`. Report it as a
     // malformed pickle like every other structural defect instead of letting it escape.
@@ -624,7 +626,7 @@ py::object PyTreeSpec::ToPicklable() const {
             reserved_vector</*(num_nodes, num_leaves)*/ std::pair<ssize_t, ssize_t>>(
                 out->m_traversal.size());
         for (const Node &node : out->m_traversal) {
-            if (static_cast<ssize_t>(subtree_sizes.size()) < node.arity) [[unlikely]] {
+            if (std::cmp_less(subtree_sizes.size(), node.arity)) [[unlikely]] {
                 throw malformed("a node has more children than available subtrees");
             }
             ssize_t children_num_nodes = 0;

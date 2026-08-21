@@ -15,12 +15,14 @@ limitations under the License.
 ================================================================================
 */
 
+#include <format>       // std::format
 #include <memory>       // std::make_shared
 #include <optional>     // std::optional
 #include <sstream>      // std::ostringstream
 #include <string>       // std::string
+#include <string_view>  // std::string_view
 #include <type_traits>  // std::remove_const_t
-#include <utility>      // std::move, std::make_pair
+#include <utility>      // std::move, std::make_pair, std::pair
 
 #include "optree/optree.h"
 
@@ -36,8 +38,9 @@ template <bool NoneIsLeaf>
             const auto add_builtin_type = [&registry](const py::object &cls,
                                                       const PyTreeKind &kind) -> void {
                 EXPECT_TRUE(registry.m_builtins_types.emplace(cls).second,
-                            "PyTree type " + PyRepr(cls) +
-                                " is already registered in the built-in types set.");
+                            std::format("PyTree type {} is already registered "
+                                        "in the built-in types set.",
+                                        cls));
                 if (!NoneIsLeaf || kind != PyTreeKind::None) [[likely]] {
                     auto registration =
                         std::make_shared<std::remove_const_t<RegistrationPtr::element_type>>();
@@ -45,8 +48,9 @@ template <bool NoneIsLeaf>
                     registration->type = py::reinterpret_borrow<py::object>(cls);
                     EXPECT_TRUE(
                         registry.m_registrations.emplace(cls, std::move(registration)).second,
-                        "PyTree type " + PyRepr(cls) +
-                            " is already registered in the global namespace.");
+                        std::format("PyTree type {} is already registered "
+                                    "in the global namespace.",
+                                    cls));
                 }
                 if constexpr (!NoneIsLeaf) {
                     cls.inc_ref();
@@ -93,7 +97,7 @@ PyTreeTypeRegistry::RegistryStatus PyTreeTypeRegistry::RegisterImpl(
     const py::function &unflatten_func,
     const py::object &path_entry_type,
     const std::string &registry_namespace) {
-    if (m_builtins_types.find(cls) != m_builtins_types.end()) [[unlikely]] {
+    if (m_builtins_types.contains(cls)) [[unlikely]] {
         return RegistryStatus::BuiltinType;
     }
 
@@ -169,8 +173,8 @@ PyTreeTypeRegistry::RegistryStatus PyTreeTypeRegistry::RegisterImpl(
     // Python bytecode, which can hand off the GIL to a thread blocking on `sm_mutex` in read mode.
     if (status != RegistryStatus::Ok) [[unlikely]] {
         if (status == RegistryStatus::BuiltinType) [[unlikely]] {
-            throw py::value_error("PyTree type " + PyRepr(cls) +
-                                  " is a built-in type and cannot be re-registered.");
+            throw py::value_error(
+                std::format("PyTree type {} is a built-in type and cannot be re-registered.", cls));
         }
         std::ostringstream oss{};
         oss << "PyTree type " << PyRepr(cls) << " is already registered in ";
@@ -211,7 +215,7 @@ PyTreeTypeRegistry::RegistryStatus PyTreeTypeRegistry::UnregisterImpl(
     const py::object &cls,
     const std::string &registry_namespace,
     RegistrationPtr &registration) {
-    if (m_builtins_types.find(cls) != m_builtins_types.end()) [[unlikely]] {
+    if (m_builtins_types.contains(cls)) [[unlikely]] {
         return RegistryStatus::BuiltinType;
     }
 
@@ -223,7 +227,8 @@ PyTreeTypeRegistry::RegistryStatus PyTreeTypeRegistry::UnregisterImpl(
         registration = it->second;
         m_registrations.erase(it);
     } else [[likely]] {
-        const auto named_it = m_named_registrations.find(std::make_pair(registry_namespace, cls));
+        const auto named_it = m_named_registrations.find(
+            std::pair{std::string_view{registry_namespace}, py::handle{cls}});
         if (named_it == m_named_registrations.end()) [[unlikely]] {
             return RegistryStatus::NotRegistered;
         }
@@ -271,8 +276,8 @@ PyTreeTypeRegistry::RegistryStatus PyTreeTypeRegistry::UnregisterImpl(
     // Format the error only after the lock is released (mirrors `Register`).
     if (status != RegistryStatus::Ok) [[unlikely]] {
         if (status == RegistryStatus::BuiltinType) [[unlikely]] {
-            throw py::value_error("PyTree type " + PyRepr(cls) +
-                                  " is a built-in type and cannot be unregistered.");
+            throw py::value_error(
+                std::format("PyTree type {} is a built-in type and cannot be unregistered.", cls));
         }
         std::ostringstream oss{};
         oss << "PyTree type " << PyRepr(cls) << " ";
@@ -311,8 +316,8 @@ template <bool NoneIsLeaf>
     {
         const scoped_read_lock lock{sm_mutex};
         if (!registry_namespace.empty()) [[unlikely]] {
-            const auto named_it =
-                registry.m_named_registrations.find(std::make_pair(registry_namespace, cls));
+            const auto named_it = registry.m_named_registrations.find(
+                std::pair{std::string_view{registry_namespace}, py::handle{cls}});
             if (named_it != registry.m_named_registrations.end()) [[likely]] {
                 return named_it->second;
             }
@@ -412,9 +417,8 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     {
         const scoped_write_lock lock{sm_mutex};
 
-        EXPECT_NE(sm_alive_interpids.find(interpid),
-                  sm_alive_interpids.end(),
-                  "The current interpreter ID should be present in the alive interpreters set.");
+        EXPECT_TRUE(sm_alive_interpids.contains(interpid),
+                    "The current interpreter ID should be present in the alive interpreters set.");
         sm_alive_interpids.erase(interpid);
 
         {
@@ -444,14 +448,14 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
 
 #if defined(Py_DEBUG)
         for (const auto &cls : registry1.m_builtins_types) {
-            EXPECT_NE(registry1.m_registrations.find(cls), registry1.m_registrations.end());
-            EXPECT_NE(registry2.m_builtins_types.find(cls), registry2.m_builtins_types.end());
+            EXPECT_TRUE(registry1.m_registrations.contains(cls));
+            EXPECT_TRUE(registry2.m_builtins_types.contains(cls));
         }
         for (const auto &cls : registry2.m_builtins_types) {
             if (cls.is(PyNoneTypeObject)) [[unlikely]] {
-                EXPECT_EQ(registry2.m_registrations.find(cls), registry2.m_registrations.end());
+                EXPECT_FALSE(registry2.m_registrations.contains(cls));
             } else [[likely]] {
-                EXPECT_NE(registry2.m_registrations.find(cls), registry2.m_registrations.end());
+                EXPECT_TRUE(registry2.m_registrations.contains(cls));
             }
         }
         for (const auto &[cls2, registration2] : registry2.m_registrations) {
