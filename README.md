@@ -2,7 +2,7 @@
 
 # OpTree
 
-![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-brightgreen)
+![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-brightgreen)
 [![PyPI](https://img.shields.io/pypi/v/optree?logo=pypi)](https://pypi.org/project/optree)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/metaopt/optree/build.yml?label=build&logo=github)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/metaopt/optree/tests.yml?label=tests&logo=github)
@@ -72,7 +72,7 @@ export pybind11_DIR="/path/to/custom/pybind11"
 pip3 install .
 ```
 
-Compiling from source requires Python 3.9+, a C++ compiler (`g++` / `clang++` / `icpx` / `cl.exe`) that supports C++20, and a `cmake` installation.
+Compiling from source requires Python 3.10+, a C++ compiler (`g++` / `clang++` / `icpx` / `cl.exe`) that supports C++20, and a `cmake` installation.
 
 --------------------------------------------------------------------------------
 
@@ -240,7 +240,7 @@ optree.register_pytree_node(
         list(vars(ct).keys()),
     ),
     unflatten_func=lambda keys, values: (  # unflatten: (metadata, children) -> MyContainer
-        MyContainer(**dict(zip(keys, values)))
+        MyContainer(**dict(zip(keys, values, strict=True)))
     ),
     path_entry_type=MyContainerEntry,
     namespace='mycontainer',
@@ -305,7 +305,7 @@ class MyDict(UserDict):
 
     @classmethod
     def __tree_unflatten__(cls, metadata, children):
-        return cls(zip(metadata, children))
+        return cls(zip(metadata, children, strict=True))
 ```
 
 ```python
@@ -389,7 +389,7 @@ There are several key attributes of the pytree type registry:
 
         @classmethod
         def __tree_unflatten__(cls, metadata, children):
-            return cls(zip(metadata, children))
+            return cls(zip(metadata, children, strict=True))
 
 
     # Subclasses will be automatically registered in namespace 'mydict'

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import contextlib
 import functools
-from typing import TYPE_CHECKING, Any, Callable, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 from typing_extensions import Self  # Python 3.11+
 
 from optree import registry
@@ -28,6 +28,8 @@ from optree.typing import CustomTreeNode, T
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from optree.accessors import PyTreeEntry
 
 
@@ -141,10 +143,10 @@ class partial(  # noqa: N801 # pylint: disable=invalid-name,too-few-public-metho
 
     def __new__(cls, func: Callable[..., Any], /, *args: T, **keywords: T) -> Self:
         """Create a new :class:`partial` instance."""
-        # In Python 3.10+, if func is itself a functools.partial instance, functools.partial.__new__
-        # would merge the arguments of this partial instance with the arguments of the func. We box
-        # func in a class that does not (yet) have a `func` attribute to defeat this optimization,
-        # since we care exactly which arguments are considered part of the pytree.
+        # If func is itself a functools.partial instance, functools.partial.__new__ merges its
+        # arguments into this one, and since Python 3.10 it does so for a subclass such as this one
+        # too. We box func in a class that does not (yet) have a `func` attribute to defeat this
+        # optimization, since we care exactly which arguments are considered part of the pytree.
         if isinstance(func, functools.partial):
             original_func = func
             func = _HashablePartialShim(original_func)

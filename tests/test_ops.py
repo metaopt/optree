@@ -21,7 +21,6 @@ import functools
 import itertools
 import operator
 import pickle
-import platform
 import re
 import sys
 from collections import OrderedDict, defaultdict, deque
@@ -41,7 +40,6 @@ from helpers import (
     CustomTuple,
     FlatCache,
     MyAnotherDict,
-    Py_DEBUG,
     always,
     assert_equal_type_and_value,
     check_script_in_subprocess,
@@ -65,9 +63,6 @@ def test_import_no_warnings():
 
 
 def test_max_depth():
-    if sys.version_info < (3, 10) and platform.system() == 'Windows' and Py_DEBUG:
-        pytest.skip('Flaky with Python 3.9 on Windows in debug mode.')
-
     lst = [1]
     for _ in range(optree.MAX_RECURSION_DEPTH - 1):
         lst = [lst]
@@ -705,7 +700,7 @@ def test_paths_and_accessors(data):
     assert other_treespec == expected_treespec
     assert paths == expected_paths
     assert accessors == expected_accessors
-    for leaf, accessor, path in zip(leaves, accessors, paths):
+    for leaf, accessor, path in zip(leaves, accessors, paths, strict=True):
         assert isinstance(accessor, optree.PyTreeAccessor)
         assert isinstance(path, tuple)
         assert len(accessor) == len(path)
@@ -776,7 +771,7 @@ def test_paths_and_accessors_with_is_leaf(
         assert treespec == expected_treespec
         assert other_leaves == expected_leaves
         assert other_treespec == expected_treespec
-        for leaf, accessor, path in zip(leaves, accessors, paths):
+        for leaf, accessor, path in zip(leaves, accessors, paths, strict=True):
             assert isinstance(accessor, optree.PyTreeAccessor)
             assert isinstance(path, tuple)
             assert len(accessor) == len(path)
@@ -1562,6 +1557,93 @@ def test_tree_transpose_map_with_accessor():
             y,
             inner_treespec=optree.tree_structure({'a': 0, 'u': 1, 'v': 2}),
         )
+
+
+@parametrize(
+    transpose_map=[
+        optree.tree_transpose_map,
+        optree.tree_transpose_map_with_path,
+        optree.tree_transpose_map_with_accessor,
+    ],
+)
+def test_tree_transpose_map_with_no_leaves(transpose_map):
+    # The zero-leaf guard belongs to inferring the inner structure from the first output. With an
+    # explicit `inner_treespec` there is nothing to infer, so a leafless outer structure transposes
+    # into one copy of itself per inner leaf and `func` is never called. Those empty subtrees must
+    # be spelled out: `zip(*[])` yields nothing, and `unflatten` would fail with `Too few leaves`.
+    # `test_tree_partition_with_no_leaves` covers the same branch via `tree_transpose_map` only.
+    def must_not_be_called(*args):
+        raise AssertionError(f'`func` must not be called for a leafless tree, got {args!r}.')
+
+    for tree in [(), [], {}, {'a': [], 'b': ()}, [(), {}], {'a': None}]:
+        out = transpose_map(
+            must_not_be_called,
+            tree,
+            inner_treespec=optree.tree_structure({'x': 0, 'y': 1}),
+        )
+        assert out == {'x': tree, 'y': tree}, (tree, out)
+
+        # One empty subtree per inner LEAF, not one per inner child: a nested inner structure gets a
+        # copy of the outer structure at every leaf position.
+        out = transpose_map(
+            must_not_be_called,
+            tree,
+            inner_treespec=optree.tree_structure({'x': 0, 'y': (1, 2)}),
+        )
+        assert out == {'x': tree, 'y': (tree, tree)}, (tree, out)
+
+        # `rests` are flattened up to the (leafless) outer structure, so they contribute no outputs
+        # either.
+        out = transpose_map(
+            must_not_be_called,
+            tree,
+            tree,
+            inner_treespec=optree.tree_structure({'x': 0, 'y': 1}),
+        )
+        assert out == {'x': tree, 'y': tree}, (tree, out)
+
+    # Without an explicit `inner_treespec` the inner structure is inferred from the first output, so
+    # the outer structure must still have at least one leaf.
+    with pytest.raises(
+        ValueError,
+        match=r'The outer structure must have at least one leaf\. Got: .*\.',
+    ):
+        transpose_map(must_not_be_called, ())
+
+
+@parametrize(
+    transpose_map=[
+        optree.tree_transpose_map,
+        optree.tree_transpose_map_with_path,
+        optree.tree_transpose_map_with_accessor,
+    ],
+)
+def test_tree_transpose_map_flatten_up_to_is_rectangular(transpose_map):
+    # Pins the premise behind `zip(..., strict=True)` rather than the flag, which by design never
+    # fires and so cannot be caught by any test. The groups are `inner_treespec.flatten_up_to(o)`,
+    # which returns exactly `inner_treespec.num_leaves` items or raises, never a short list. So all
+    # groups have one length whatever shape the outputs take, and a structure mismatch is reported
+    # by `flatten_up_to`, naming the offending output, rather than by the `zip()`.
+    inner_treespec = optree.tree_structure({'x': 0, 'y': 1})
+    assert [
+        len(inner_treespec.flatten_up_to(output))
+        for output in ({'x': 0, 'y': 1}, {'x': (0, 1), 'y': [2]}, {'x': None, 'y': {'z': 3}})
+    ] == [inner_treespec.num_leaves] * 3
+
+    def make_output(*args):
+        # `tree_transpose_map` passes the leaf alone, while the path and accessor variants prepend
+        # one argument, so the leaf is the last one either way.
+        leaf = args[-1]
+        if leaf % 2:
+            return {'x': (leaf, leaf), 'y': [leaf]}
+        return {'x': leaf, 'y': leaf}
+
+    # The outputs above have different shapes per leaf, yet each flattens up to 2 subtrees.
+    out = transpose_map(make_output, [1, 2, 3], inner_treespec=inner_treespec)
+    assert out == {'x': [(1, 1), 2, (3, 3)], 'y': [[1], 2, [3]]}
+
+    with pytest.raises(ValueError, match=re.escape('dictionary key mismatch')):
+        transpose_map(lambda *args: {'x': 0}, [1, 2], inner_treespec=inner_treespec)
 
 
 def test_tree_map_none_is_leaf():
@@ -3509,7 +3591,7 @@ def test_tree_broadcast_map_unchanged_for_structural_predicates():
     # The common structure still honors `is_leaf` where it describes the INPUT trees, and plain
     # broadcasting is unaffected by the change.
     assert optree.tree_broadcast_map(
-        lambda x, y: x + y,
+        operator.add,
         [1, 2],
         [[3, 4], [5, 6]],
     ) == [[4, 5], [7, 8]]
@@ -3875,7 +3957,7 @@ def test_tree_flatten_one_level(  # noqa: C901
                     assert node_kind == optree.PyTreeKind.CUSTOM
                 assert len(entries) == len(children)
                 if hasattr(node, '__getitem__'):
-                    for child, entry in zip(children, entries):
+                    for child, entry in zip(children, entries, strict=True):
                         assert node[entry] is child
 
                 if node_type is type(None):
@@ -3883,7 +3965,7 @@ def test_tree_flatten_one_level(  # noqa: C901
                     with pytest.raises(ValueError, match=re.escape('Expected no children.')):
                         unflatten_func(metadata, range(1))
 
-                for child, entry in zip(children, entries):
+                for child, entry in zip(children, entries, strict=True):
                     path_stack.append(entry)
                     accessor_stack.append(output.path_entry_type(entry, node_type, node_kind))
                     flatten(child)

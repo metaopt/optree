@@ -223,7 +223,7 @@ builtins.typing = typing
 
 def get_pytree_typing_instance(annotation):  # noqa: C901
     if not (
-        isinstance(annotation, type(typing.Union[int, str]))
+        isinstance(annotation, type(typing.Union[int, str]))  # noqa: UP007
         and typing.get_origin(annotation) is typing.Union
     ):
         return None
@@ -281,7 +281,7 @@ def get_pytree_typing_instance(annotation):  # noqa: C901
 
         return all(
             matches_pytree_typing_alias(arg, pat, recursive_pattern, recursive_ref_names)
-            for arg, pat in zip(annotation_args, pattern_args)
+            for arg, pat in zip(annotation_args, pattern_args, strict=True)
         )
 
     for pytree_alias, pytree_instance in tuple(PyTree.__instances__.items()):
@@ -321,7 +321,7 @@ def format_pytree_typing_union(annotation_args, config=None):
         pytree_instance = None
         next_index = index
         for end in range(len(annotation_args), index + min_pytree_union_width - 1, -1):
-            pytree_instance = get_pytree_typing_instance(typing.Union[annotation_args[index:end]])
+            pytree_instance = get_pytree_typing_instance(typing.Union[annotation_args[index:end]])  # noqa: UP007
             if pytree_instance is not None:
                 next_index = end
                 break

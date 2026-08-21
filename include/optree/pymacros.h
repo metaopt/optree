@@ -23,8 +23,8 @@ limitations under the License.
 
 #include <pybind11/pybind11.h>
 
-#if !(defined(PY_VERSION_HEX) && PY_VERSION_HEX >= 0x03090000)  // Python 3.9
-#    error "Python 3.9 or newer is required."
+#if !(defined(PY_VERSION_HEX) && PY_VERSION_HEX >= 0x030A0000)  // Python 3.10
+#    error "Python 3.10 or newer is required."
 #endif
 
 #if !(defined(PYBIND11_VERSION_HEX) && PYBIND11_VERSION_HEX >= 0x020C00F0)  // pybind11 2.12.0

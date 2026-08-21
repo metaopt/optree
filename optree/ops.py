@@ -25,16 +25,7 @@ import itertools
 import sys
 import textwrap
 from collections import OrderedDict, defaultdict, deque
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Generic,
-    SupportsIndex,
-    SupportsInt,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, SupportsIndex, SupportsInt, overload
 
 import optree._C as _C
 from optree.accessors import PyTreeAccessor
@@ -43,7 +34,7 @@ from optree.utils import total_order_sorted
 
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Iterable, Mapping
+    from collections.abc import Callable, Collection, Iterable, Mapping
 
     from optree.accessors import PyTreeEntry
     from optree.typing import (
@@ -1249,7 +1240,7 @@ def tree_transpose(
         leaves[offset : offset + inner_size]
         for offset in range(0, outer_size * inner_size, inner_size)
     ]
-    transposed = zip(*grouped)
+    transposed = zip(*grouped, strict=True)
     subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
@@ -1353,7 +1344,9 @@ def tree_transpose_map(
         raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
 
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
-    transposed = zip(*grouped) if grouped else [()] * inner_treespec.num_leaves
+    # Every group is `inner_treespec.flatten_up_to(...)`, hence the same length. `zip()` over no
+    # groups yields nothing at all, so a leafless outer structure spells its empty subtrees out.
+    transposed = zip(*grouped, strict=True) if grouped else [()] * inner_treespec.num_leaves
     subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
@@ -1440,7 +1433,9 @@ def tree_transpose_map_with_path(
         raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
 
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
-    transposed = zip(*grouped) if grouped else [()] * inner_treespec.num_leaves
+    # Every group is `inner_treespec.flatten_up_to(...)`, hence the same length. `zip()` over no
+    # groups yields nothing at all, so a leafless outer structure spells its empty subtrees out.
+    transposed = zip(*grouped, strict=True) if grouped else [()] * inner_treespec.num_leaves
     subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
@@ -1554,7 +1549,9 @@ def tree_transpose_map_with_accessor(
         raise ValueError(f'The inner structure must have at least one leaf. Got: {inner_treespec}.')
 
     grouped = [inner_treespec.flatten_up_to(o) for o in outputs]
-    transposed = zip(*grouped) if grouped else [()] * inner_treespec.num_leaves
+    # Every group is `inner_treespec.flatten_up_to(...)`, hence the same length. `zip()` over no
+    # groups yields nothing at all, so a leafless outer structure spells its empty subtrees out.
+    transposed = zip(*grouped, strict=True) if grouped else [()] * inner_treespec.num_leaves
     subtrees = map(outer_treespec.unflatten, transposed)
     return inner_treespec.unflatten(subtrees)  # type: ignore[arg-type]
 
@@ -2845,12 +2842,15 @@ def treespec_transform(
     >>> treespec = tree_structure({'b': 3, 'a': (0, [1, 2]), 'c': (4, None)})
     >>> treespec
     PyTreeSpec({'a': (*, [*, *]), 'b': *, 'c': (*, None)})
-    >>> treespec_transform(treespec, lambda spec: treespec_dict(zip(spec.entries(), spec.children())))
+    >>> treespec_transform(
+    ...     treespec,
+    ...     lambda spec: treespec_dict(zip(spec.entries(), spec.children(), strict=True)),
+    ... )
     PyTreeSpec({'a': {0: *, 1: {0: *, 1: *}}, 'b': *, 'c': {0: *, 1: {}}})
     >>> treespec_transform(
     ...     treespec,
     ...     lambda spec: (
-    ...         treespec_ordereddict(zip(spec.entries(), spec.children()))
+    ...         treespec_ordereddict(zip(spec.entries(), spec.children(), strict=True))
     ...         if spec.type is dict
     ...         else spec
     ...     ),
@@ -3875,7 +3875,7 @@ def prefix_errors(  # noqa: C901
             for e in prefix_tree_entries
         ]
         # pylint: disable-next=invalid-name
-        for e, t1, t2 in zip(entries, prefix_tree_children, full_tree_children):
+        for e, t1, t2 in zip(entries, prefix_tree_children, full_tree_children, strict=True):
             yield from helper(accessor + e, t1, t2)  # type: ignore[arg-type]
 
     return list(helper(PyTreeAccessor(), prefix_tree, full_tree))

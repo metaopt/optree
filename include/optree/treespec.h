@@ -46,11 +46,7 @@ using ssize_t = py::ssize_t;
 #if defined(MS_WINDOWS) && (defined(Py_DEBUG) || defined(Py_GIL_DISABLED))
 // A debug or free-threading build on Windows combines large frames with a 1MB default stack, and
 // the walkers still need room to unwind the `RecursionError` thrown at the guard.
-#    if PY_VERSION_HEX < 0x030A0000  // Python 3.10
-constexpr ssize_t MAX_RECURSION_DEPTH = 100;
-#    else
 constexpr ssize_t MAX_RECURSION_DEPTH = 250;
-#    endif
 #elif defined(Py_DEBUG) || defined(PYPY_VERSION) || defined(MS_WINDOWS) ||                         \
     (defined(__wasm__) || defined(__wasm32__) || defined(__wasm64__) || defined(__wasi__) ||       \
      defined(__EMSCRIPTEN__))
