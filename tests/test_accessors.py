@@ -15,10 +15,12 @@
 
 # pylint: disable=missing-function-docstring,invalid-name
 
+import builtins
 import dataclasses
 import itertools
 import os
 import re
+import sys
 from collections import OrderedDict, UserDict, UserList, defaultdict, deque
 from operator import itemgetter
 from typing import Any, NamedTuple
@@ -27,6 +29,7 @@ import pytest
 
 import optree
 from helpers import (
+    OPTREE_HAS_FROZENDICT,
     TREE_ACCESSORS,
     SysFloatInfoType,
     assert_equal_type_and_value,
@@ -469,6 +472,17 @@ def test_auto_entry_new_dispatch():
         optree.MappingEntry('foo', defaultdict, optree.PyTreeKind.CUSTOM),
         expected_type=optree.MappingEntry,
     )
+
+    if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
+        # `frozendict` is a virtual `Mapping`, not a `dict` subclass, so `AutoEntry`'s dispatch
+        # relies on the `issubclass(type, Mapping)` branch rather than the `dict` one. A user
+        # registering a `frozendict` subclass would otherwise silently get a `FlattenedEntry`.
+        frozendict = builtins.frozendict  # pylint: disable=no-member
+        assert_equal_type_and_value(
+            optree.AutoEntry('foo', frozendict, optree.PyTreeKind.CUSTOM),
+            optree.MappingEntry('foo', frozendict, optree.PyTreeKind.CUSTOM),
+            expected_type=optree.MappingEntry,
+        )
 
     assert_equal_type_and_value(
         optree.AutoEntry('foo', MyMapping, optree.PyTreeKind.CUSTOM),

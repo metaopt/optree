@@ -55,6 +55,7 @@ py::object PyTreeSpec::UnflattenImpl(const Span &leaves) const {
             case PyTreeKind::DefaultDict:
             case PyTreeKind::Deque:
             case PyTreeKind::StructSequence:
+            case PyTreeKind::FrozenDict:
             case PyTreeKind::Custom: {
                 const ssize_t size = py::ssize_t_cast(agenda.size());
                 py::object out = MakeNode(node,
