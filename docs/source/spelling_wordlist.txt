@@ -1,5 +1,6 @@
 abc
 ABCMeta
+abi
 accessor
 accessors
 antisymmetric
@@ -35,6 +36,7 @@ eq
 fillvalue
 fmt
 forwardref
+frozendict
 frozenset
 func
 functools
@@ -75,6 +77,8 @@ picklable
 pragma
 preorder
 py
+pydebug
+pymalloc
 pypy
 pytree
 pytreeentry
@@ -108,6 +112,7 @@ unflattened
 unflattening
 unflattens
 unhashable
+unicode
 unregister
 unsubclassable
 versionadded

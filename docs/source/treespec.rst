@@ -22,4 +22,5 @@ Check section :ref:`PyTreeSpec Functions` for more detailed documentation.
     defaultdict
     deque
     structseq
+    frozendict
     from_collection
