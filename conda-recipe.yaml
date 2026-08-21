@@ -25,11 +25,11 @@ channels:
   - conda-forge
 
 dependencies:
-  - python = 3.13
+  - python = 3.14
   - pip
 
   # Dependency
-  - typing-extensions >= 4.10.0
+  - typing-extensions >= 4.12.0
 
   # Build toolchain
   - cmake >= 3.18

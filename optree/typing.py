@@ -130,6 +130,13 @@ __all__ = [
 ]
 
 
+if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
+    # pylint: disable-next=no-name-in-module,ungrouped-imports
+    from builtins import frozendict as FrozenDict  # noqa: N812
+
+    __all__.insert(__all__.index('Dict') + 1, 'FrozenDict')
+
+
 PyTreeDef: TypeAlias = PyTreeSpec  # alias
 
 T = TypeVar('T')
@@ -193,12 +200,18 @@ class PyTree(Generic[T]):  # pragma: no cover
     >>> import torch
     >>> TensorTree = PyTree[torch.Tensor]
     >>> TensorTree  # doctest: +IGNORE_WHITESPACE
-    typing.Union[torch.Tensor,
-                 tuple[ForwardRef('PyTree[torch.Tensor]'), ...],
-                 list[ForwardRef('PyTree[torch.Tensor]')],
-                 dict[typing.Any, ForwardRef('PyTree[torch.Tensor]')],
-                 collections.deque[ForwardRef('PyTree[torch.Tensor]')],
-                 optree.typing.CustomTreeNode[ForwardRef('PyTree[torch.Tensor]')]]
+    torch.Tensor
+    | tuple[ForwardRef('PyTree[torch.Tensor]'), ...]
+    | list[ForwardRef('PyTree[torch.Tensor]')]
+    | dict[typing.Any, ForwardRef('PyTree[torch.Tensor]')]
+    | collections.deque[ForwardRef('PyTree[torch.Tensor]')]
+    | optree.typing.CustomTreeNode[ForwardRef('PyTree[torch.Tensor]')]
+
+    .. note::
+
+        On Python 3.15+ with built-in :class:`frozendict` support (see :pep:`814`), the union
+        additionally contains ``frozendict[typing.Any, ForwardRef('PyTree[torch.Tensor]')]``,
+        placed immediately after the :class:`dict` member.
     """
 
     __slots__: ClassVar[tuple[()]] = ()
@@ -261,14 +274,21 @@ class PyTree(Generic[T]):  # pragma: no cover
         else:
             recurse_ref = ForwardRef(f'{cls.__name__}[{param!r}]')
 
-        pytree_alias = Union[
-            param,  # type: ignore[valid-type]
+        pytree_types = [
+            param,
             Tuple[recurse_ref, ...],  # type: ignore[valid-type] # Tuple, NamedTuple, PyStructSequence
             List[recurse_ref],  # type: ignore[valid-type]
             Dict[Any, recurse_ref],  # type: ignore[valid-type] # Dict, OrderedDict, DefaultDict
-            Deque[recurse_ref],  # type: ignore[valid-type]
-            CustomTreeNode[recurse_ref],  # type: ignore[valid-type]
         ]
+        if sys.version_info >= (3, 15) and _C.OPTREE_HAS_FROZENDICT:  # pragma: >=3.15 cover
+            pytree_types.append(FrozenDict[Any, recurse_ref])  # type: ignore[arg-type,valid-type]
+        pytree_types.extend(
+            [
+                Deque[recurse_ref],  # type: ignore[list-item,valid-type]
+                CustomTreeNode[recurse_ref],  # type: ignore[list-item,valid-type]
+            ],
+        )
+        pytree_alias = Union[tuple(pytree_types)]  # type: ignore[valid-type]
 
         with cls.__instance_lock__:
             cls.__instances__[pytree_alias] = (param, name)  # type: ignore[index]
@@ -334,12 +354,18 @@ class PyTreeTypeVar:  # pragma: no cover
     >>> import torch
     >>> TensorTree = PyTreeTypeVar('TensorTree', torch.Tensor)
     >>> TensorTree  # doctest: +IGNORE_WHITESPACE
-    typing.Union[torch.Tensor,
-                 tuple[ForwardRef('TensorTree'), ...],
-                 list[ForwardRef('TensorTree')],
-                 dict[typing.Any, ForwardRef('TensorTree')],
-                 collections.deque[ForwardRef('TensorTree')],
-                 optree.typing.CustomTreeNode[ForwardRef('TensorTree')]]
+    torch.Tensor
+    | tuple[ForwardRef('TensorTree'), ...]
+    | list[ForwardRef('TensorTree')]
+    | dict[typing.Any, ForwardRef('TensorTree')]
+    | collections.deque[ForwardRef('TensorTree')]
+    | optree.typing.CustomTreeNode[ForwardRef('TensorTree')]
+
+    .. note::
+
+        On Python 3.15+ with built-in :class:`frozendict` support (see :pep:`814`), the union
+        additionally contains ``frozendict[typing.Any, ForwardRef('TensorTree')]``, placed
+        immediately after the :class:`dict` member.
     """
 
     @_tp_cache
@@ -597,6 +623,7 @@ def structseq_fields(obj: tuple | type[tuple], /) -> tuple[str, ...]:
             sentinels = [object() for _ in range(n_sequence_fields)]
             try:
                 probe = cls(sentinels)
+                # pylint: disable-next=redefined-builtin
                 index_of = {id(sentinel): index for index, sentinel in enumerate(sentinels)}
                 positions = [index_of[id(getattr(probe, name))] for name in named]
             except (TypeError, ValueError, KeyError, AttributeError):  # pragma: no cover

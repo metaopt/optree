@@ -115,7 +115,8 @@ template <bool NoneIsLeaf>
         // keys are kept in insertion order (see the sort at the Dict case).
         const bool depends_on_namespace =
             node.kind == PyTreeKind::Custom ||
-            ((node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict) &&
+            ((node.kind == PyTreeKind::Dict || node.kind == PyTreeKind::DefaultDict ||
+              node.kind == PyTreeKind::FrozenDict) &&
              is_dict_insertion_ordered_in_current_namespace);
         if (!common_registry_namespace.empty()) [[likely]] {
             if (registry_namespace.empty()) [[likely]] {
@@ -178,7 +179,8 @@ template <bool NoneIsLeaf>
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
-        case PyTreeKind::DefaultDict: {
+        case PyTreeKind::DefaultDict:
+        case PyTreeKind::FrozenDict: {
             py::list keys;
             {
                 const scoped_critical_section cs{handle};

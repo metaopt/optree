@@ -77,7 +77,8 @@ namespace optree {
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
-        case PyTreeKind::DefaultDict: {
+        case PyTreeKind::DefaultDict:
+        case PyTreeKind::FrozenDict: {
             py::dict dict{};
             const scoped_critical_section2 cs{node.node_data, node.original_keys};
             if (node.kind == PyTreeKind::DefaultDict) [[unlikely]] {
@@ -106,6 +107,18 @@ namespace optree {
                     PyDefaultDictTypeObject(default_factory, std::move(dict)),
                     default_factory);
             }
+#if defined(OPTREE_HAS_FROZENDICT)
+            if (node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
+                return PyFrozenDictTypeObject(std::move(dict));
+            }
+#else
+            if (node.kind == PyTreeKind::FrozenDict) [[unlikely]] {
+                // Unreachable: `FromPicklable` rejects `FrozenDict` on such builds. Kept so a
+                // future entry point cannot silently demote the mapping to a plain `dict`.
+                throw py::value_error(
+                    "PyTreeKind::FrozenDict requires Python 3.15+ (`frozendict` builtin).");
+            }
+#endif
             return dict;
         }
 
@@ -144,7 +157,8 @@ namespace optree {
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
-        case PyTreeKind::DefaultDict: {
+        case PyTreeKind::DefaultDict:
+        case PyTreeKind::FrozenDict: {
             PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> storage;
             return storage
                 .call_once_and_store_result(
@@ -282,9 +296,11 @@ std::optional<py::object> PyTreeSpec::FindStaleCustomType(
 
         case PyTreeKind::Dict:
         case PyTreeKind::OrderedDict:
-        case PyTreeKind::DefaultDict: {
+        case PyTreeKind::DefaultDict:
+        case PyTreeKind::FrozenDict: {
             if (other_root.kind != PyTreeKind::Dict && other_root.kind != PyTreeKind::OrderedDict &&
-                other_root.kind != PyTreeKind::DefaultDict) [[unlikely]] {
+                other_root.kind != PyTreeKind::DefaultDict &&
+                other_root.kind != PyTreeKind::FrozenDict) [[unlikely]] {
                 throw py::value_error(std::format(
                     "PyTreeSpecs have incompatible node types; expected type: {}, got: {}.",
                     NodeKindToString(root),
@@ -780,7 +796,8 @@ ssize_t PyTreeSpec::PathsImpl(PathVector &paths,  // NOLINT[misc-no-recursion]
 
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::FrozenDict: {
                 const scoped_critical_section cs{root.node_data};
                 const auto keys = (root.kind != PyTreeKind::DefaultDict
                                        ? py::reinterpret_borrow<py::list>(root.node_data)
@@ -895,7 +912,8 @@ ssize_t PyTreeSpec::AccessorsImpl(AccessorVector &accessors,  // NOLINT[misc-no-
 
             case PyTreeKind::Dict:
             case PyTreeKind::OrderedDict:
-            case PyTreeKind::DefaultDict: {
+            case PyTreeKind::DefaultDict:
+            case PyTreeKind::FrozenDict: {
                 const scoped_critical_section cs{root.node_data};
                 const auto keys = (root.kind != PyTreeKind::DefaultDict
                                        ? py::reinterpret_borrow<py::list>(root.node_data)
@@ -962,7 +980,8 @@ py::list PyTreeSpec::Entries() const {
         }
 
         case PyTreeKind::Dict:
-        case PyTreeKind::OrderedDict: {
+        case PyTreeKind::OrderedDict:
+        case PyTreeKind::FrozenDict: {
             const scoped_critical_section cs{root.node_data};
             return ListCopy(root.node_data);
         }
@@ -1002,7 +1021,8 @@ py::object PyTreeSpec::Entry(ssize_t index) const {
         }
 
         case PyTreeKind::Dict:
-        case PyTreeKind::OrderedDict: {
+        case PyTreeKind::OrderedDict:
+        case PyTreeKind::FrozenDict: {
             const scoped_critical_section cs{root.node_data};
             return ListGetItem(root.node_data, index);
         }
@@ -1103,6 +1123,15 @@ py::object PyTreeSpec::GetType(const std::optional<Node> &node) const {
             return PyDefaultDictTypeObject;
         case PyTreeKind::Deque:
             return PyDequeTypeObject;
+        case PyTreeKind::FrozenDict:
+#if defined(OPTREE_HAS_FROZENDICT)
+            return PyFrozenDictTypeObject;
+#else
+            // The case label is unconditional to keep the switch exhaustive (and quiet MSVC
+            // C4061); unreachable here, as `FromPicklable` rejects such nodes on these builds.
+            throw py::value_error(
+                "PyTreeKind::FrozenDict requires Python 3.15+ (`frozendict` builtin).");
+#endif
         case PyTreeKind::NumKinds:
         default:
             INTERNAL_ERROR();
