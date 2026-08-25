@@ -794,6 +794,7 @@ def test_type_caches_register_interpreter_cleanup():
         r"""
         import atexit
         import time
+        import typing
 
         n0 = atexit._ncallbacks()
         import optree
@@ -877,6 +878,7 @@ def test_type_cache_insert_failure_before_import_does_not_crash():
         r"""
         import atexit
         import sys
+        import typing
 
         real_register = atexit.register
 

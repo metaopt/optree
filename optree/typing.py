@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import abc
+import atexit
 import functools
 import platform
 import sys
@@ -186,6 +187,8 @@ except ImportError:  # pragma: no cover
 
     def _tp_cache(func: Callable[P, T], /) -> Callable[P, T]:
         cached = functools.lru_cache(func)
+
+        atexit.register(cached.cache_clear)
 
         @functools.wraps(func)
         def inner(*args: P.args, **kwargs: P.kwargs) -> T:

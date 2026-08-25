@@ -449,6 +449,7 @@ def test_registry_init_failure_does_not_leak_the_interpreter_id():
                 textwrap.dedent(
                     '''
                     import atexit
+                    import typing
 
                     def failing_register(*args, **kwargs):
                         raise RuntimeError('injected atexit failure')
