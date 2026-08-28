@@ -13,8 +13,10 @@ AlignEscapedNewlines: Right
 AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortIfStatementsOnASingleLine: Never
-BinPackArguments: false
-BinPackParameters: OnePerLine
+PackArguments:
+  BinPack: OnePerLine
+PackParameters:
+  BinPack: OnePerLine
 BreakBeforeTernaryOperators: true
 CommentPragmas: 'NOLINT(NEXTLINE|BEGIN|END)?\[.*\]'
 DerivePointerAlignment: false
