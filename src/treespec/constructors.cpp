@@ -62,7 +62,7 @@ namespace optree {
 }
 
 template <bool NoneIsLeaf>
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 /*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeFromCollectionImpl(
     const py::handle &handle,
     std::string registry_namespace) {
@@ -79,7 +79,7 @@ template <bool NoneIsLeaf>
         dict_order_flags.in_current_namespace;
 
     const auto verify_children =
-        // NOLINTNEXTLINE[readability-function-cognitive-complexity]
+        // NOLINTNEXTLINE(readability-function-cognitive-complexity)
         [&handle, &node, &registry_namespace, &is_dict_insertion_ordered_in_current_namespace](
             const std::vector<py::object> &children,
             std::vector<PyTreeSpec> &treespecs) -> void {

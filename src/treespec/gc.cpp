@@ -37,7 +37,7 @@ namespace optree {
 // boundary calls `std::terminate`. In particular, no `PYTREESPEC_SANITY_CHECK` below: `PyTpClear`
 // empties the traversal, so a cleared but still-alive treespec would abort on the next collection.
 
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 /*static*/ int PyTreeSpec::PyTpTraverse(PyObject *self_base, visitproc visit, void *arg) {
     Py_VISIT(Py_TYPE(self_base));
     auto * const self = ::get_value_if_holder_constructed<PyTreeSpec>(self_base);
@@ -108,7 +108,7 @@ namespace optree {
     return 0;
 }
 
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 /*static*/ int PyTreeIter::PyTpTraverse(PyObject *self_base, visitproc visit, void *arg) {
     Py_VISIT(Py_TYPE(self_base));
     auto * const self = ::get_value_if_holder_constructed<PyTreeIter>(self_base);

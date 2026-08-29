@@ -31,14 +31,14 @@ limitations under the License.
 #    error "pybind11 2.12.0 or newer is required."
 #endif
 
-// NOLINTNEXTLINE[bugprone-macro-parentheses]
+// NOLINTNEXTLINE(bugprone-macro-parentheses)
 #define NONZERO_OR_EMPTY(MACRO) ((MACRO + 0 != 0) || (0 - MACRO - 1 >= 0))
 
 #if !defined(PYPY_VERSION) && (PY_VERSION_HEX >= 0x030E0000 /* Python 3.14 */) &&                  \
     (PYBIND11_VERSION_HEX >= 0x030002F0 /* pybind11 3.0.2 */) &&                                   \
     (defined(PYBIND11_HAS_SUBINTERPRETER_SUPPORT) &&                                               \
      NONZERO_OR_EMPTY(PYBIND11_HAS_SUBINTERPRETER_SUPPORT))
-// NOLINTNEXTLINE[cppcoreguidelines-macro-to-enum,modernize-macro-to-enum]
+// NOLINTNEXTLINE(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum)
 #    define OPTREE_HAS_SUBINTERPRETER_SUPPORT 1
 #else
 #    undef OPTREE_HAS_SUBINTERPRETER_SUPPORT
@@ -47,7 +47,7 @@ limitations under the License.
 // `PyFrozenDict_Type` is CPython-only API (`Include/cpython/dictobject.h`), and PyPy reports the
 // `PY_VERSION_HEX` it emulates, so exclude it explicitly as the macro above does.
 #if !defined(PYPY_VERSION) && (PY_VERSION_HEX >= 0x030F00A7 /* Python 3.15.0a7+ */)
-// NOLINTNEXTLINE[cppcoreguidelines-macro-to-enum,modernize-macro-to-enum]
+// NOLINTNEXTLINE(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum)
 #    define OPTREE_HAS_FROZENDICT 1
 #else
 #    undef OPTREE_HAS_FROZENDICT

@@ -34,7 +34,7 @@ static_assert(CURRENT_FILE_PATH_SIZE >= CURRENT_FILE_RELPATH_FROM_PROJECT_ROOT_S
               "SOURCE_PATH_PREFIX_SIZE must be greater than 0.");
 constexpr std::size_t SOURCE_PATH_PREFIX_SIZE =
     CURRENT_FILE_PATH_SIZE - CURRENT_FILE_RELPATH_FROM_PROJECT_ROOT_SIZE;
-// NOLINTNEXTLINE[bugprone-reserved-identifier]
+// NOLINTNEXTLINE(bugprone-reserved-identifier)
 #define __FILE_RELPATH_FROM_PROJECT_ROOT__ ((const char *)&(__FILE__[SOURCE_PATH_PREFIX_SIZE]))
 
 class InternalError : public std::logic_error {
@@ -60,7 +60,7 @@ public:
 
 }  // namespace optree
 
-inline namespace {  // NOLINT[build/namespaces_headers]
+inline namespace {  // NOLINT(build/namespaces_headers)
 // SFINAE helper to detect if std::to_string is available for a type
 template <typename T, typename = void>
 struct has_to_string : std::false_type {};
@@ -86,7 +86,7 @@ inline std::string try_to_string([[maybe_unused]] const T &value) {
 #define VA_FUNC3_(__0, __1, __2, NAME, ...) NAME
 
 #if !defined(__GNUC__)
-#    define __PRETTY_FUNCTION__ std::nullopt  // NOLINT[bugprone-reserved-identifier]
+#    define __PRETTY_FUNCTION__ std::nullopt  // NOLINT(bugprone-reserved-identifier)
 #endif
 
 #define INTERNAL_ERROR0_() INTERNAL_ERROR1_("Unreachable code.")

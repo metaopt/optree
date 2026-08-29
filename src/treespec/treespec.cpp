@@ -29,9 +29,9 @@ limitations under the License.
 
 namespace optree {
 
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 /*static*/ py::object PyTreeSpec::MakeNode(const Node &node,
-                                           // NOLINTNEXTLINE[cppcoreguidelines-avoid-c-arrays]
+                                           // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
                                            const py::object children[],
                                            const size_t &num_children) {
     EXPECT_EQ(py::ssize_t_cast(num_children), node.arity, "Node arity did not match.");
@@ -50,7 +50,7 @@ namespace optree {
         case PyTreeKind::StructSequence: {
             py::tuple tuple{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
-                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 TupleSetItem(tuple, i, children[i]);
             }
             if (node.kind == PyTreeKind::NamedTuple) [[unlikely]] {
@@ -68,7 +68,7 @@ namespace optree {
         case PyTreeKind::Deque: {
             py::list list{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
-                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 ListSetItem(list, i, children[i]);
             }
             if (node.kind == PyTreeKind::Deque) [[unlikely]] {
@@ -98,7 +98,7 @@ namespace optree {
                 }
             }
             for (ssize_t i = 0; i < node.arity; ++i) {
-                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 DictSetItem(dict, ListGetItem(keys, i), children[i]);
             }
             if (node.kind == PyTreeKind::OrderedDict) [[unlikely]] {
@@ -128,7 +128,7 @@ namespace optree {
         case PyTreeKind::Custom: {
             const py::tuple tuple{node.arity};
             for (ssize_t i = 0; i < node.arity; ++i) {
-                // NOLINTNEXTLINE[cppcoreguidelines-pro-bounds-pointer-arithmetic]
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 TupleSetItem(tuple, i, children[i]);
             }
             return EVALUATE_WITH_LOCK_HELD2(node.custom->unflatten_func(node.node_data, tuple),
@@ -216,7 +216,7 @@ std::optional<py::object> PyTreeSpec::FindStaleCustomType(
     return {};
 }
 
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 /*static*/ std::tuple<ssize_t, ssize_t, ssize_t, ssize_t> PyTreeSpec::BroadcastToCommonSuffixImpl(
     std::vector<Node> &nodes,
     const std::vector<Node> &traversal,
@@ -356,7 +356,7 @@ std::optional<py::object> PyTreeSpec::FindStaleCustomType(
                 const py::object key = ListGetItem(expected_keys, i);
                 other_cur = other_curs[py::cast<ssize_t>(DictGetItem(dict, key))];
                 const auto [num_nodes, other_num_nodes, new_num_nodes, new_num_leaves] =
-                    // NOLINTNEXTLINE[misc-no-recursion]
+                    // NOLINTNEXTLINE(misc-no-recursion)
                     BroadcastToCommonSuffixImpl(nodes,
                                                 traversal,
                                                 cur,
@@ -440,7 +440,7 @@ std::optional<py::object> PyTreeSpec::FindStaleCustomType(
     nodes.emplace_back(std::move(node));
     for (ssize_t i = root.arity - 1; i >= 0; --i) {
         const auto [num_nodes, other_num_nodes, new_num_nodes, new_num_leaves] =
-            // NOLINTNEXTLINE[misc-no-recursion]
+            // NOLINTNEXTLINE(misc-no-recursion)
             BroadcastToCommonSuffixImpl(nodes,
                                         traversal,
                                         cur,
@@ -458,7 +458,7 @@ std::optional<py::object> PyTreeSpec::FindStaleCustomType(
             nodes[start_num_nodes].num_leaves};
 }
 
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec &other) const {
     PYTREESPEC_SANITY_CHECK(*this);
     PYTREESPEC_SANITY_CHECK(other);
@@ -536,7 +536,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::BroadcastToCommonSuffix(const PyTreeSpec
     return treespec;
 }
 
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::function> &f_node,
                                                   const std::optional<py::function> &f_leaf) const {
     PYTREESPEC_SANITY_CHECK(*this);
@@ -673,7 +673,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Transform(const std::optional<py::functi
     return treespec;
 }
 
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec &inner) const {
     PYTREESPEC_SANITY_CHECK(*this);
     PYTREESPEC_SANITY_CHECK(inner);
@@ -752,7 +752,7 @@ std::unique_ptr<PyTreeSpec> PyTreeSpec::Compose(const PyTreeSpec &inner) const {
 }
 
 template <typename PathVector, typename Stack>
-ssize_t PyTreeSpec::PathsImpl(PathVector &paths,  // NOLINT[misc-no-recursion]
+ssize_t PyTreeSpec::PathsImpl(PathVector &paths,  // NOLINT(misc-no-recursion)
                               Stack &stack,
                               const ssize_t &pos,
                               const ssize_t &depth) const {
@@ -765,7 +765,7 @@ ssize_t PyTreeSpec::PathsImpl(PathVector &paths,  // NOLINT[misc-no-recursion]
     }
 
     ssize_t cur = pos - 1;
-    // NOLINTNEXTLINE[misc-no-recursion]
+    // NOLINTNEXTLINE(misc-no-recursion)
     const auto recurse = [this, &paths, &stack, &depth](const ssize_t &cur,
                                                         const py::handle &entry) -> ssize_t {
         stack.emplace_back(entry);
@@ -849,7 +849,7 @@ std::vector<py::tuple> PyTreeSpec::Paths() const {
 }
 
 template <typename Span, typename Stack>
-ssize_t PyTreeSpec::AccessorsImpl(Span &accessors,  // NOLINT[misc-no-recursion]
+ssize_t PyTreeSpec::AccessorsImpl(Span &accessors,  // NOLINT(misc-no-recursion)
                                   Stack &stack,
                                   const ssize_t &pos,
                                   const ssize_t &depth) const {
@@ -871,7 +871,7 @@ ssize_t PyTreeSpec::AccessorsImpl(Span &accessors,  // NOLINT[misc-no-recursion]
     ssize_t cur = pos - 1;
     const py::object node_type = GetType(root);
     const PyTreeKind &node_kind = root.kind;
-    // NOLINTNEXTLINE[misc-no-recursion]
+    // NOLINTNEXTLINE(misc-no-recursion)
     const auto recurse = [this, &node_type, &node_kind, &accessors, &stack, &depth](
                              const ssize_t &cur,
                              const py::handle &entry,
