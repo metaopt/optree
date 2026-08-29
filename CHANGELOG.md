@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Remove support for building the C extension with C++17; `CMAKE_CXX_STANDARD` must now be at least `20` by [@XuehaiPan](https://github.com/XuehaiPan) in [#235](https://github.com/metaopt/optree/pull/235).
+- Drop Python 3.9 support by [@XuehaiPan](https://github.com/XuehaiPan) in [#272](https://github.com/metaopt/optree/pull/272).
 
 ------
 

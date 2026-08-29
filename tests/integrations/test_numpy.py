@@ -16,6 +16,7 @@
 # pylint: disable=missing-function-docstring,wrong-import-position
 
 import random
+import typing
 
 import pytest
 
@@ -26,6 +27,10 @@ import numpy as np
 
 import optree
 from helpers import LEAVES, TREES, parametrize
+
+
+def test_tree_ravel_type_hints():
+    assert typing.get_type_hints(optree.integrations.numpy.tree_ravel)
 
 
 @parametrize(tree=list(TREES + LEAVES))
@@ -66,7 +71,7 @@ def test_tree_ravel(tree):
     reconstructed_leaves, reconstructed_treespec = optree.tree_flatten(reconstructed)
     assert reconstructed_treespec == treespec
     assert len(leaves) == len(reconstructed_leaves)
-    for leaf, reconstructed_leaf in zip(leaves, reconstructed_leaves):
+    for leaf, reconstructed_leaf in zip(leaves, reconstructed_leaves, strict=True):
         assert np.allclose(leaf, reconstructed_leaf)
         leaf = np.asarray(leaf)
         reconstructed_leaf = np.asarray(reconstructed_leaf)
@@ -126,7 +131,7 @@ def test_tree_ravel_single_dtype(tree):
     reconstructed_leaves, reconstructed_treespec = optree.tree_flatten(reconstructed)
     assert reconstructed_treespec == treespec
     assert len(leaves) == len(reconstructed_leaves)
-    for leaf, reconstructed_leaf in zip(leaves, reconstructed_leaves):
+    for leaf, reconstructed_leaf in zip(leaves, reconstructed_leaves, strict=True):
         assert np.allclose(leaf, reconstructed_leaf)
         leaf = np.asarray(leaf)
         reconstructed_leaf = np.asarray(reconstructed_leaf)

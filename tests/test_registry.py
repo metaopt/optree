@@ -33,7 +33,6 @@ from helpers import (
     GLOBAL_NAMESPACE,
     NODETYPE_REGISTRY,
     OPTREE_HAS_FROZENDICT,
-    PYPY,
     Py_GIL_DISABLED,
     check_script_in_subprocess,
     disable_systrace,
@@ -1002,11 +1001,10 @@ def test_pytree_node_registry_get_with_invalid_arguments():
     assert optree.register_pytree_node.get(None) == registry
     assert optree.register_pytree_node.get(namespace=GLOBAL_NAMESPACE) == registry
     assert optree.register_pytree_node.get(namedtuple) is registry[namedtuple]  # noqa: PYI024
-    if sys.version_info[:2] != (3, 9) or PYPY:
-        with pytest.raises(TypeError, match='Expected a class or None'):
-            optree.register_pytree_node.get(dataclass)
-        with pytest.raises(TypeError, match='The namespace must be a string'):
-            optree.register_pytree_node.get(list, namespace=None)
+    with pytest.raises(TypeError, match='Expected a class or None'):
+        optree.register_pytree_node.get(dataclass)
+    with pytest.raises(TypeError, match='The namespace must be a string'):
+        optree.register_pytree_node.get(list, namespace=None)
 
 
 def test_pytree_node_registry_with_init_subclass():
@@ -1022,7 +1020,7 @@ def test_pytree_node_registry_with_init_subclass():
 
         @classmethod
         def __tree_unflatten__(cls, metadata, children):
-            return cls(zip(metadata, children))
+            return cls(zip(metadata, children, strict=True))
 
     class MyAnotherDict(MyDict):
         pass

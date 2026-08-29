@@ -39,10 +39,10 @@ from __future__ import annotations
 import contextlib
 import itertools
 import warnings
+from collections.abc import Callable  # noqa: TC003
 from operator import itemgetter
 from types import FunctionType
-from typing import Any, Callable
-from typing_extensions import TypeAlias  # Python 3.10+
+from typing import Any, TypeAlias
 
 import jax.numpy as jnp
 from jax import Array, lax

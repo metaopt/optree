@@ -88,13 +88,13 @@ python3 -m cibuildwheel --platform=linux --output-dir=wheelhouse --config-file=p
 It will build wheel binaries for all supported CPython versions. The outputs will be placed in the `wheelhouse` directory.
 
 To build a wheel for a specific CPython version, you can use the [`CIBW_BUILD`](https://cibuildwheel.readthedocs.io/en/stable/options/#build-skip) environment variable.
-For example, the following command will build a wheel for Python 3.9:
+For example, the following command will build a wheel for Python 3.10:
 
 ```bash
-CIBW_BUILD="cp39*manylinux*" python3 -m cibuildwheel --platform=linux --output-dir=wheelhouse --config-file=pyproject.toml
+CIBW_BUILD="cp310*manylinux*" python3 -m cibuildwheel --platform=linux --output-dir=wheelhouse --config-file=pyproject.toml
 ```
 
-You can change `cp39*` to `cp312*` to build for Python 3.12. See <https://cibuildwheel.readthedocs.io/en/stable/options> for more options.
+You can change `cp310*` to `cp312*` to build for Python 3.12. See <https://cibuildwheel.readthedocs.io/en/stable/options> for more options.
 
 ## Documentation
 

@@ -16,6 +16,7 @@
 # pylint: disable=missing-function-docstring,wrong-import-position
 
 import random
+import typing
 import warnings
 
 import pytest
@@ -32,6 +33,10 @@ from helpers import LEAVES, TREES, parametrize
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
     torch.tensor(0.0)
+
+
+def test_tree_ravel_type_hints():
+    assert typing.get_type_hints(optree.integrations.torch.tree_ravel)
 
 
 @parametrize(tree=list(TREES + LEAVES))
@@ -74,7 +79,7 @@ def test_tree_ravel(tree):
     reconstructed_leaves, reconstructed_treespec = optree.tree_flatten(reconstructed)
     assert reconstructed_treespec == treespec
     assert len(leaves) == len(reconstructed_leaves)
-    for leaf, reconstructed_leaf in zip(leaves, reconstructed_leaves):
+    for leaf, reconstructed_leaf in zip(leaves, reconstructed_leaves, strict=True):
         assert torch.is_tensor(leaf)
         assert torch.is_tensor(reconstructed_leaf)
         assert torch.allclose(leaf, reconstructed_leaf)
@@ -136,7 +141,7 @@ def test_tree_ravel_single_dtype(tree):
     reconstructed_leaves, reconstructed_treespec = optree.tree_flatten(reconstructed)
     assert reconstructed_treespec == treespec
     assert len(leaves) == len(reconstructed_leaves)
-    for leaf, reconstructed_leaf in zip(leaves, reconstructed_leaves):
+    for leaf, reconstructed_leaf in zip(leaves, reconstructed_leaves, strict=True):
         assert torch.is_tensor(leaf)
         assert torch.is_tensor(reconstructed_leaf)
         assert torch.allclose(leaf, reconstructed_leaf)

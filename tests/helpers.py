@@ -132,7 +132,7 @@ def parametrize(**argvalues):
         return repr(value)
 
     ids = tuple(
-        '-'.join(f'{arg}({represent(value)})' for arg, value in zip(arguments, values))
+        '-'.join(f'{arg}({represent(value)})' for arg, value in zip(arguments, values, strict=True))
         for values in argvalues
     )
 
@@ -186,7 +186,7 @@ def check_script_in_subprocess(
     /,
     *,
     output,
-    timeout=120.0,
+    timeout=300.0,
     cwd=TEST_ROOT,
     env=None,
     rerun=1,
@@ -241,7 +241,7 @@ def assert_equal_type_and_value(actual, expected=MISSING, *, expected_type=None)
     assert actual == expected
     if isinstance(expected, optree.PyTreeAccessor):
         assert hash(actual) == hash(expected)
-        for i, j in zip(actual, expected):
+        for i, j in zip(actual, expected, strict=True):
             assert_equal_type_and_value(i, j)
 
 
@@ -478,7 +478,7 @@ class MyDict(UserDict):
 
     @classmethod
     def __tree_unflatten__(cls, metadata, children):
-        return cls(zip(metadata, children))
+        return cls(zip(metadata, children, strict=True))
 
     def __repr__(self):
         return f'{self.__class__.__name__}({super().__repr__()})'

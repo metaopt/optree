@@ -1506,7 +1506,11 @@ def test_treespec_compose_children(
         stack = [(composed_treespec.children(), expected_treespec.children())]
         while stack:
             composed_children, expected_children = stack.pop()
-            for composed_child, expected_child in zip(composed_children, expected_children):
+            for composed_child, expected_child in zip(
+                composed_children,
+                expected_children,
+                strict=True,
+            ):
                 assert composed_child == expected_child
                 stack.append((composed_child.children(), expected_child.children()))
 
@@ -2117,7 +2121,7 @@ def test_treespec_entries(
                 yield ()
                 return
 
-            for entry, child in zip(entries, children):
+            for entry, child in zip(entries, children, strict=True):
                 for suffix in gen_path(child):
                     yield (entry, *suffix)
 
@@ -2146,7 +2150,7 @@ def test_treespec_entries(
 
             node_type = spec.type
             node_kind = spec.kind
-            for entry, child in zip(entries, children):
+            for entry, child in zip(entries, children, strict=True):
                 for suffix in gen_typed_path(child):
                     yield ((entry, node_type, node_kind), *suffix)
 
@@ -2429,11 +2433,11 @@ def test_treespec_transform():
     ) == optree.tree_structure([[1, 2, 3], [4]])
     assert optree.treespec_transform(
         treespec,
-        lambda spec: optree.treespec_dict(zip('abcd', spec.children())),
+        lambda spec: optree.treespec_dict(zip('abcd', spec.children(), strict=False)),
     ) == optree.tree_structure({'a': {'a': 0, 'b': 1, 'c': 2}, 'b': {'a': 3}})
     assert optree.treespec_transform(
         treespec,
-        lambda spec: optree.treespec_dict(zip('abcd', spec.children())),
+        lambda spec: optree.treespec_dict(zip('abcd', spec.children(), strict=False)),
         lambda spec: optree.tree_structure([0, None, 1]),
     ) == optree.tree_structure(
         {'a': {'a': [0, None, 1], 'b': [2, None, 3], 'c': [4, None, 5]}, 'b': {'a': [6, None, 7]}},
@@ -2446,7 +2450,7 @@ def test_treespec_transform():
         optree.treespec_transform(
             treespec,
             lambda spec: optree.tree_structure(
-                MyAnotherDict(zip(spec.entries(), spec.children())),
+                MyAnotherDict(zip(spec.entries(), spec.children(), strict=True)),
                 namespace='namespace',
             ),
         )
@@ -2486,7 +2490,10 @@ def test_treespec_transform():
 
     def fn(spec):
         with optree.dict_insertion_ordered(True, namespace='undefined'):
-            return optree.treespec_dict(zip('abcd', spec.children()), namespace='undefined')
+            return optree.treespec_dict(
+                zip('abcd', spec.children(), strict=False),
+                namespace='undefined',
+            )
 
     with pytest.raises(ValueError, match=r'Expected treespec\(s\) with namespace .*, got .*\.'):
         optree.treespec_transform(namespaced_treespec, fn)
@@ -2938,7 +2945,7 @@ def test_treespec_constructor(  # noqa: C901
                         if use_sorted_keys:
                             assert (
                                 optree.treespec_dict(
-                                    zip(sorted(node), children_treespecs),
+                                    zip(sorted(node), children_treespecs, strict=True),
                                     none_is_leaf=none_is_leaf,
                                     namespace=passed_namespace,
                                 )
@@ -2946,7 +2953,7 @@ def test_treespec_constructor(  # noqa: C901
                             )
                             assert (
                                 optree.treespec_from_collection(
-                                    dict(zip(sorted(node), children_treespecs)),
+                                    dict(zip(sorted(node), children_treespecs, strict=True)),
                                     none_is_leaf=none_is_leaf,
                                     namespace=passed_namespace,
                                 )
@@ -2964,7 +2971,7 @@ def test_treespec_constructor(  # noqa: C901
                             with context:
                                 assert (
                                     optree.treespec_dict(
-                                        zip(node, children_treespecs),
+                                        zip(node, children_treespecs, strict=True),
                                         none_is_leaf=none_is_leaf,
                                         namespace=passed_namespace,
                                     )
@@ -2972,7 +2979,7 @@ def test_treespec_constructor(  # noqa: C901
                                 )
                                 assert (
                                     optree.treespec_from_collection(
-                                        dict(zip(node, children_treespecs)),
+                                        dict(zip(node, children_treespecs, strict=True)),
                                         none_is_leaf=none_is_leaf,
                                         namespace=passed_namespace,
                                     )
@@ -2981,7 +2988,7 @@ def test_treespec_constructor(  # noqa: C901
                     elif node_type is OrderedDict:
                         assert (
                             optree.treespec_ordereddict(
-                                zip(node, children_treespecs),
+                                zip(node, children_treespecs, strict=True),
                                 none_is_leaf=none_is_leaf,
                                 namespace=passed_namespace,
                             )
@@ -2989,7 +2996,7 @@ def test_treespec_constructor(  # noqa: C901
                         )
                         assert (
                             optree.treespec_from_collection(
-                                OrderedDict(zip(node, children_treespecs)),
+                                OrderedDict(zip(node, children_treespecs, strict=True)),
                                 none_is_leaf=none_is_leaf,
                                 namespace=passed_namespace,
                             )
@@ -3000,7 +3007,7 @@ def test_treespec_constructor(  # noqa: C901
                             assert (
                                 optree.treespec_defaultdict(
                                     node.default_factory,
-                                    zip(sorted(node), children_treespecs),
+                                    zip(sorted(node), children_treespecs, strict=True),
                                     none_is_leaf=none_is_leaf,
                                     namespace=passed_namespace,
                                 )
@@ -3010,7 +3017,7 @@ def test_treespec_constructor(  # noqa: C901
                                 optree.treespec_from_collection(
                                     defaultdict(
                                         node.default_factory,
-                                        zip(sorted(node), children_treespecs),
+                                        zip(sorted(node), children_treespecs, strict=True),
                                     ),
                                     none_is_leaf=none_is_leaf,
                                     namespace=passed_namespace,
@@ -3030,7 +3037,7 @@ def test_treespec_constructor(  # noqa: C901
                                 assert (
                                     optree.treespec_defaultdict(
                                         node.default_factory,
-                                        zip(node, children_treespecs),
+                                        zip(node, children_treespecs, strict=True),
                                         none_is_leaf=none_is_leaf,
                                         namespace=passed_namespace,
                                     )
@@ -3040,7 +3047,7 @@ def test_treespec_constructor(  # noqa: C901
                                     optree.treespec_from_collection(
                                         defaultdict(
                                             node.default_factory,
-                                            zip(node, children_treespecs),
+                                            zip(node, children_treespecs, strict=True),
                                         ),
                                         none_is_leaf=none_is_leaf,
                                         namespace=passed_namespace,
@@ -3055,7 +3062,7 @@ def test_treespec_constructor(  # noqa: C901
                         if use_sorted_keys:
                             assert (
                                 optree.treespec_frozendict(
-                                    zip(sorted(node), children_treespecs),
+                                    zip(sorted(node), children_treespecs, strict=True),
                                     none_is_leaf=none_is_leaf,
                                     namespace=passed_namespace,
                                 )
@@ -3064,7 +3071,7 @@ def test_treespec_constructor(  # noqa: C901
                             assert (
                                 optree.treespec_from_collection(
                                     builtins.frozendict(  # type: ignore[attr-defined]
-                                        zip(sorted(node), children_treespecs),
+                                        zip(sorted(node), children_treespecs, strict=True),
                                     ),
                                     none_is_leaf=none_is_leaf,
                                     namespace=passed_namespace,
@@ -3083,7 +3090,7 @@ def test_treespec_constructor(  # noqa: C901
                             with context:
                                 assert (
                                     optree.treespec_frozendict(
-                                        zip(node, children_treespecs),
+                                        zip(node, children_treespecs, strict=True),
                                         none_is_leaf=none_is_leaf,
                                         namespace=passed_namespace,
                                     )
@@ -3092,7 +3099,7 @@ def test_treespec_constructor(  # noqa: C901
                                 assert (
                                     optree.treespec_from_collection(
                                         builtins.frozendict(  # type: ignore[attr-defined]
-                                            zip(node, children_treespecs),
+                                            zip(node, children_treespecs, strict=True),
                                         ),
                                         none_is_leaf=none_is_leaf,
                                         namespace=passed_namespace,

@@ -16,9 +16,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from operator import itemgetter
-from typing import TYPE_CHECKING, Any, Callable, overload
+from typing import TYPE_CHECKING, Any, overload
 
 
 if TYPE_CHECKING:
@@ -41,7 +41,7 @@ def total_order_sorted(
     # Apply `key` up front: it runs exactly once per element, and a `TypeError` from the callback
     # propagates instead of being mistaken for a comparison failure and swallowed below.
     keys: list[Any] = sequence if key is None else [key(x) for x in sequence]
-    decorated = list(zip(keys, sequence))
+    decorated = list(zip(keys, sequence, strict=True))
 
     def by_type_and_key(pair: tuple[Any, T], /) -> tuple[str, Any]:
         y = pair[0]
@@ -104,7 +104,7 @@ def safe_zip(*args: Iterable[Any]) -> zip[tuple[Any, ...]]:
     seqs = [arg if isinstance(arg, Sequence) else list(arg) for arg in args]
     if len(set(map(len, seqs))) > 1:
         raise ValueError(f'length mismatch: {list(map(len, seqs))}')
-    return zip(*seqs)
+    return zip(*seqs, strict=True)
 
 
 def unzip2(xys: Iterable[tuple[T, S]], /) -> tuple[tuple[T, ...], tuple[S, ...]]:

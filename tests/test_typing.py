@@ -28,6 +28,7 @@ from typing import TypeVar, Union, get_args, get_origin
 import pytest
 
 import optree
+import optree.typing
 from helpers import (
     OPTREE_HAS_FROZENDICT,
     PYBIND11_HAS_NATIVE_ENUM,
@@ -121,14 +122,13 @@ def test_pytree_typing():
     T = TypeVar('T')
 
     optree.PyTree[int]
-    optree.PyTree[Union[int, str]]
+    optree.PyTree[Union[int, str]]  # noqa: UP007
     optree.PyTree[T]
     assert optree.PyTree[optree.PyTree[int]] == optree.PyTree[int]
-    assert optree.PyTree[optree.PyTree[Union[int, str]]] == optree.PyTree[Union[int, str]]
+    assert optree.PyTree[optree.PyTree[Union[int, str]]] == optree.PyTree[Union[int, str]]  # noqa: UP007
     assert optree.PyTree[optree.PyTree[T]] == optree.PyTree[T]
-    if sys.version_info >= (3, 10):
-        optree.PyTree[int | str]
-        assert optree.PyTree[optree.PyTree[int | str]] == optree.PyTree[int | str]
+    optree.PyTree[float | bytes]
+    assert optree.PyTree[optree.PyTree[float | bytes]] == optree.PyTree[float | bytes]
 
     IntTree = optree.PyTreeTypeVar('IntTree', int)  # noqa: N806
     assert IntTree == optree.PyTree[IntTree]
@@ -647,6 +647,45 @@ def test_structseq_fields():
             structseq_fields(FakeStructSequence)
 
 
+@skipif_pypy  # PyPy reports `n_unnamed_fields == 0` and takes the index-based branch instead
+def test_structseq_fields_python_implementation_falls_back_when_the_probe_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # A type with unnamed slots that rejects the sentinel probe leaves nothing to match positions
+    # against, so the implementation falls back to a trailing layout: the named fields keep the
+    # leading positions and the rest get the unnamed marker. Pinning the lenient pairing that makes
+    # that possible, since a strict one would raise instead of degrading.
+    #
+    # No stdlib type reaches this path: `os.stat_result`, the only CPython type with unnamed fields,
+    # accepts arbitrary objects. The stand-in below is not a real PyStructSequence, hence the
+    # `is_structseq_class` swap; `__slots__` supplies the `member_descriptor` fields it looks for.
+    class RejectsProbe:
+        __slots__ = ('st_alpha', 'st_beta', 'st_gamma')
+
+        n_fields = 4
+        n_sequence_fields = 4
+        n_unnamed_fields = 1
+
+        def __new__(cls, sequence, /):
+            raise TypeError(f'cannot build {cls.__name__} from placeholder values: {sequence!r}')
+
+    python_implementation = optree.structseq_fields.__python_implementation__
+    original_is_structseq_class = optree.typing.is_structseq_class
+    monkeypatch.setattr(
+        optree.typing,
+        'is_structseq_class',
+        lambda cls, /: cls is RejectsProbe or original_is_structseq_class(cls),
+    )
+    fields = python_implementation(RejectsProbe)
+
+    assert fields == (
+        'st_alpha',
+        'st_beta',
+        'st_gamma',
+        optree.typing.PyStructSequence_UnnamedField,
+    )
+
+
 def test_structseq_accessor_unnamed_fields_codify_by_index():
     # The accessor round-trip (the generated code evaluates to the accessed value) must hold for
     # every slot on every implementation. It exercises both codify styles: CPython leaves
@@ -756,6 +795,7 @@ def test_type_caches_register_interpreter_cleanup():
         r"""
         import atexit
         import time
+        import typing
 
         n0 = atexit._ncallbacks()
         import optree
@@ -839,6 +879,7 @@ def test_type_cache_insert_failure_before_import_does_not_crash():
         r"""
         import atexit
         import sys
+        import typing
 
         real_register = atexit.register
 

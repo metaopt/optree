@@ -22,8 +22,8 @@ from __future__ import annotations
 import functools
 import itertools
 import warnings
-from typing import Any, Callable
-from typing_extensions import TypeAlias  # Python 3.10+
+from collections.abc import Callable  # noqa: TC003
+from typing import Any, TypeAlias
 
 import numpy as np
 from numpy.typing import ArrayLike
