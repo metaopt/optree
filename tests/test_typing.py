@@ -648,7 +648,9 @@ def test_structseq_fields():
 
 
 @skipif_pypy  # PyPy reports `n_unnamed_fields == 0` and takes the index-based branch instead
-def test_structseq_fields_python_implementation_falls_back_when_the_probe_is_rejected():
+def test_structseq_fields_python_implementation_falls_back_when_the_probe_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+):
     # A type with unnamed slots that rejects the sentinel probe leaves nothing to match positions
     # against, so the implementation falls back to a trailing layout: the named fields keep the
     # leading positions and the rest get the unnamed marker. Pinning the lenient pairing that makes
@@ -669,13 +671,12 @@ def test_structseq_fields_python_implementation_falls_back_when_the_probe_is_rej
 
     python_implementation = optree.structseq_fields.__python_implementation__
     original_is_structseq_class = optree.typing.is_structseq_class
-    optree.typing.is_structseq_class = lambda cls, /: (
-        cls is RejectsProbe or original_is_structseq_class(cls)
+    monkeypatch.setattr(
+        optree.typing,
+        'is_structseq_class',
+        lambda cls, /: cls is RejectsProbe or original_is_structseq_class(cls),
     )
-    try:
-        fields = python_implementation(RejectsProbe)
-    finally:
-        optree.typing.is_structseq_class = original_is_structseq_class
+    fields = python_implementation(RejectsProbe)
 
     assert fields == (
         'st_alpha',
