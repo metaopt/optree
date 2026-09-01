@@ -76,6 +76,7 @@ namespace py = pybind11;
 #    define Py_IsFalse(x) Py_Is((x), Py_False)
 #endif
 
+// NOLINTNEXTLINE(misc-const-correctness)
 inline constexpr Py_ALWAYS_INLINE bool Py_IsConstant(PyObject *x) noexcept {
     return Py_IsNone(x) || Py_IsTrue(x) || Py_IsFalse(x);
 }

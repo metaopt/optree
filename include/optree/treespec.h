@@ -39,8 +39,8 @@ limitations under the License.
 namespace optree {
 
 namespace py = pybind11;
-using size_t = py::size_t;
-using ssize_t = py::ssize_t;
+using py::size_t;
+using py::ssize_t;
 
 // The maximum depth of a pytree.
 #if defined(MS_WINDOWS) && (defined(Py_DEBUG) || defined(Py_GIL_DISABLED))
@@ -431,7 +431,8 @@ public:
           m_none_is_leaf{none_is_leaf},
           m_namespace{registry_namespace},
           m_is_dict_insertion_ordered{
-              PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace)} {}
+              PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace),
+          } {}
 
     PyTreeIter() = delete;
     ~PyTreeIter() = default;

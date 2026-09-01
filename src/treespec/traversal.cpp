@@ -132,7 +132,7 @@ py::object PyTreeIter::NextImpl() {
                         << " should return a 2- or 3-tuple, got " << num_out << ".";
                     throw std::runtime_error(oss.str());
                 }
-                auto children = thread_safe_cast<py::tuple>(TupleGetItem(out, 0));
+                const auto children = thread_safe_cast<py::tuple>(TupleGetItem(out, 0));
                 const ssize_t arity = TupleGetSize(children);
                 if (num_out == 3) [[likely]] {
                     const py::object node_entries = TupleGetItem(out, 2);

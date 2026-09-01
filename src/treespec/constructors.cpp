@@ -249,7 +249,7 @@ template <bool NoneIsLeaf>
             node.arity = 0;
             node.node_data = TupleGetItem(out, 1);
             {
-                auto children_iterable = thread_safe_cast<py::iterable>(TupleGetItem(out, 0));
+                const auto children_iterable = thread_safe_cast<py::iterable>(TupleGetItem(out, 0));
                 const scoped_critical_section cs{children_iterable};
                 for (const py::handle &child : children_iterable) {
                     ++node.arity;
@@ -320,9 +320,8 @@ template <bool NoneIsLeaf>
     const std::string &registry_namespace) {
     if (none_is_leaf) [[unlikely]] {
         return MakeFromCollectionImpl<NONE_IS_LEAF>(object, registry_namespace);
-    } else [[likely]] {
-        return MakeFromCollectionImpl<NONE_IS_NODE>(object, registry_namespace);
     }
+    return MakeFromCollectionImpl<NONE_IS_NODE>(object, registry_namespace);
 }
 
 }  // namespace optree

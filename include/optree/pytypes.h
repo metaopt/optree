@@ -422,7 +422,7 @@ private:
     // `PyTreeTypeRegistry::Init`) an `atexit` callback that evicts this interpreter's entries on
     // shutdown.
     void RegisterInterpreterCleanup(const interpid_t &interpreter_id) {
-        auto atexit_register = py::getattr(py::module_::import("atexit"), "register");
+        const auto atexit_register = py::getattr(py::module_::import("atexit"), "register");
         atexit_register(py::cpp_function([this, interpreter_id]() -> void {
             const scoped_write_lock lock{m_mutex};
             for (auto it = m_cache.begin(); it != m_cache.end();) {

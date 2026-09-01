@@ -47,12 +47,12 @@ private:
 };
 
 using mutex = pymutex;
-using recursive_mutex = std::recursive_mutex;
+using std::recursive_mutex;
 
 #else
 
-using mutex = std::mutex;
-using recursive_mutex = std::recursive_mutex;
+using std::mutex;
+using std::recursive_mutex;
 
 #endif
 

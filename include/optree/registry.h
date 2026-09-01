@@ -35,8 +35,8 @@ limitations under the License.
 namespace optree {
 
 namespace py = pybind11;
-using size_t = py::size_t;
-using ssize_t = py::ssize_t;
+using py::size_t;
+using py::ssize_t;
 
 constexpr bool NONE_IS_LEAF = true;
 constexpr bool NONE_IS_NODE = false;
@@ -138,8 +138,8 @@ public:
     // Get the number of registered types.
     [[nodiscard]] static inline Py_ALWAYS_INLINE ssize_t GetRegistrySize(
         const std::optional<std::string> &registry_namespace = std::nullopt) {
-        auto &registry1 = GetSingleton<NONE_IS_NODE>();
-        auto &registry2 = GetSingleton<NONE_IS_LEAF>();
+        const auto &registry1 = GetSingleton<NONE_IS_NODE>();
+        const auto &registry2 = GetSingleton<NONE_IS_LEAF>();
 
         // Read both registries under a single lock so the two counts form a consistent snapshot.
         // Two separate `Size()` calls each drop the lock, letting a concurrent (un)registration
@@ -273,10 +273,12 @@ private:
     // flattening.
     static inline std::unordered_set<std::pair<interpid_t, std::string>>
         sm_dict_insertion_ordered_namespaces{};
+    // NOLINTNEXTLINE(bugprone-throwing-static-initialization)
     static inline read_write_mutex sm_dict_order_mutex{};
     friend class PyTreeSpec;
 
     static inline std::unordered_set<interpid_t> sm_alive_interpids{};
+    // NOLINTNEXTLINE(bugprone-throwing-static-initialization)
     static inline read_write_mutex sm_mutex{};
     static inline ssize_t sm_num_interpreters_seen = 0;
 };

@@ -364,8 +364,8 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     const std::string &);
 
 /*static*/ void PyTreeTypeRegistry::Init() {
-    auto &registry1 = GetSingleton<NONE_IS_NODE>();
-    auto &registry2 = GetSingleton<NONE_IS_LEAF>();
+    const auto &registry1 = GetSingleton<NONE_IS_NODE>();
+    const auto &registry2 = GetSingleton<NONE_IS_LEAF>();
     const auto interpid = GetCurrentPyInterpreterID();
 
     {
@@ -387,7 +387,7 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     // the rollback a failed import would leave an ID that no callback can ever remove (mirrors
     // `WeakKeyCache::LookupOrInsert`). The rollback locks with the GIL held, as `Clear` does.
     try {
-        auto atexit_register = py::getattr(py::module_::import("atexit"), "register");
+        const auto atexit_register = py::getattr(py::module_::import("atexit"), "register");
         atexit_register(py::cpp_function(&Clear));
     } catch (...) {
         const scoped_write_lock lock{sm_mutex};

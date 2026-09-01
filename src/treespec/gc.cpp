@@ -23,7 +23,7 @@ inline namespace {
 template <typename T>
 [[nodiscard]] inline T *get_value_if_holder_constructed(PyObject *obj) {
     auto * const instance = reinterpret_cast<pybind11::detail::instance *>(obj);
-    auto value_and_holder = instance->get_value_and_holder();
+    const auto value_and_holder = instance->get_value_and_holder();
     if (!value_and_holder.holder_constructed()) [[unlikely]] {
         return nullptr;
     }

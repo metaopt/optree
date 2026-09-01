@@ -29,12 +29,35 @@ PATH           := $(PATH):$(GOBIN)
 PYTHON         ?= $(shell command -v python3 || command -v python)
 PYTEST         ?= $(PYTHON) -X dev -m pytest -Walways
 PYTESTOPTS     ?=
-CMAKE_BUILD_TYPE   ?= Debug
+RUN_CLANG_TIDY = $(shell command -v run-clang-tidy || command -v run-clang-tidy.py)
+CMAKE_CONFIGURE_ARGS ?=
+CMAKE_BUILD_TYPE     ?= Debug
 CMAKE_BUILD_TYPE_LOWER = $(shell $(PYTHON) -c 'print("$(CMAKE_BUILD_TYPE)".lower())')
-CMAKE_CXX_STANDARD ?= 20
-OPTREE_CXX_WERROR  ?= ON
+CMAKE_CXX_STANDARD   ?= 20
+OPTREE_CXX_WERROR    ?= ON
 _GLIBCXX_USE_CXX11_ABI ?= 1
 _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR ?= 1
+
+override CMAKE_CONFIGURE_ARGS += \
+	-DCMAKE_BUILD_TYPE="$(CMAKE_BUILD_TYPE)" \
+	-DCMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
+	-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+	-DPython_EXECUTABLE="$(PYTHON)" \
+	-DOPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" \
+	-D_GLIBCXX_USE_CXX11_ABI="$(_GLIBCXX_USE_CXX11_ABI)" \
+	-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR="$(_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)"
+
+ifeq ($(shell uname -s),Darwin)
+CMAKE_OSX_SYSROOT ?= $(shell xcrun --show-sdk-path)
+override CMAKE_CONFIGURE_ARGS += -DCMAKE_OSX_SYSROOT="$(CMAKE_OSX_SYSROOT)"
+endif
+
+ifeq ($(origin CLANG_TIDY), undefined)
+CLANG_TIDY = $(shell command -v clang-tidy)
+CLANG_TIDY_INSTALL = clang-tidy-install
+else
+CLANG_TIDY_INSTALL =
+endif
 
 .PHONY: default
 default: install
@@ -198,14 +221,7 @@ xdoctest doctest: xdoctest-install
 cmake-configure: cmake-install
 	cmake --version
 	cmake -S . -B cmake-build-$(CMAKE_BUILD_TYPE_LOWER) \
-		--fresh \
-		-DCMAKE_BUILD_TYPE="$(CMAKE_BUILD_TYPE)" \
-		-DCMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
-		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-		-DPython_EXECUTABLE="$(PYTHON)" \
-		-DOPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" \
-		-D_GLIBCXX_USE_CXX11_ABI="$(_GLIBCXX_USE_CXX11_ABI)" \
-		-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR="$(_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)"
+		--fresh $(CMAKE_CONFIGURE_ARGS)
 
 .PHONY: cmake cmake-build
 cmake cmake-build: cmake-configure
@@ -217,14 +233,28 @@ clang-format: clang-format-install
 	clang-format --style=file --Werror -i $(CXX_FILES)
 
 .PHONY: clang-tidy
-clang-tidy: clang-tidy-install cmake-configure
-	clang-tidy --version
-	if [[ -x "$(shell command -v run-clang-tidy)" ]]; then \
-		run-clang-tidy -clang-tidy-binary="$(shell command -v clang-tidy)" \
+clang-tidy: $(CLANG_TIDY_INSTALL) cmake-configure
+	"$(CLANG_TIDY)" --version
+	if [[ -x "$(RUN_CLANG_TIDY)" ]]; then \
+		"$(RUN_CLANG_TIDY)" -clang-tidy-binary="$(CLANG_TIDY)" \
+			-config-file=".clang-tidy" -p="cmake-build-$(CMAKE_BUILD_TYPE_LOWER)" \
+			$(CXX_FILES); \
+	else \
+		"$(CLANG_TIDY)" \
+			--config-file=".clang-tidy" -p="cmake-build-$(CMAKE_BUILD_TYPE_LOWER)" \
+			$(CXX_FILES); \
+	fi
+
+.PHONY: clang-tidy-fix
+clang-tidy-fix: $(CLANG_TIDY_INSTALL) cmake-configure
+	"$(CLANG_TIDY)" --version
+	if [[ -x "$(RUN_CLANG_TIDY)" ]]; then \
+		"$(RUN_CLANG_TIDY)" -clang-tidy-binary="$(CLANG_TIDY)" \
 			-fix -config-file=".clang-tidy" -p="cmake-build-$(CMAKE_BUILD_TYPE_LOWER)" \
 			$(CXX_FILES); \
 	else \
-		clang-tidy --fix --config-file=".clang-tidy" -p="cmake-build-$(CMAKE_BUILD_TYPE_LOWER)" \
+		"$(CLANG_TIDY)" \
+			--fix --config-file=".clang-tidy" -p="cmake-build-$(CMAKE_BUILD_TYPE_LOWER)" \
 			$(CXX_FILES); \
 	fi
 
