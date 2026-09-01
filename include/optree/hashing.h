@@ -32,17 +32,15 @@ namespace py = pybind11;
 
 // boost::hash_combine
 template <class T>
-inline constexpr Py_ALWAYS_INLINE void HashCombine(
-    py::size_t &seed,  // NOLINT(runtime/references)
-    const T &v) noexcept(noexcept(std::hash<T>{}(v))) {
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+inline constexpr Py_ALWAYS_INLINE void HashCombine(py::size_t &seed, const T &v) noexcept(
+    noexcept(std::hash<T>{}(v))) {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers,bugprone-signed-bitwise,hicpp-signed-bitwise)
     seed ^= (std::hash<T>{}(v) + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 }
 template <class T>
-inline constexpr Py_ALWAYS_INLINE void HashCombine(
-    py::ssize_t &seed,  // NOLINT(runtime/references)
-    const T &v) noexcept(noexcept(std::hash<T>{}(v))) {
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+inline constexpr Py_ALWAYS_INLINE void HashCombine(py::ssize_t &seed, const T &v) noexcept(
+    noexcept(std::hash<T>{}(v))) {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers,bugprone-signed-bitwise,hicpp-signed-bitwise)
     seed ^= (std::hash<T>{}(v) + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 }
 

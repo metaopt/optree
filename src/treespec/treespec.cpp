@@ -30,10 +30,11 @@ limitations under the License.
 namespace optree {
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
-/*static*/ py::object PyTreeSpec::MakeNode(const Node &node,
-                                           // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
-                                           const py::object children[],
-                                           const size_t &num_children) {
+/*static*/ py::object PyTreeSpec::MakeNode(
+    const Node &node,
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
+    const py::object children[],
+    const size_t &num_children) {
     EXPECT_EQ(py::ssize_t_cast(num_children), node.arity, "Node arity did not match.");
     EXPECT_TRUE(children != nullptr || num_children == 0, "Node children is null.");
 
@@ -216,7 +217,7 @@ std::optional<py::object> PyTreeSpec::FindStaleCustomType(
     return {};
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+// NOLINTNEXTLINE(misc-no-recursion,readability-function-cognitive-complexity)
 /*static*/ std::tuple<ssize_t, ssize_t, ssize_t, ssize_t> PyTreeSpec::BroadcastToCommonSuffixImpl(
     std::vector<Node> &nodes,
     const std::vector<Node> &traversal,
@@ -356,7 +357,6 @@ std::optional<py::object> PyTreeSpec::FindStaleCustomType(
                 const py::object key = ListGetItem(expected_keys, i);
                 other_cur = other_curs[py::cast<ssize_t>(DictGetItem(dict, key))];
                 const auto [num_nodes, other_num_nodes, new_num_nodes, new_num_leaves] =
-                    // NOLINTNEXTLINE(misc-no-recursion)
                     BroadcastToCommonSuffixImpl(nodes,
                                                 traversal,
                                                 cur,
@@ -440,7 +440,6 @@ std::optional<py::object> PyTreeSpec::FindStaleCustomType(
     nodes.emplace_back(std::move(node));
     for (ssize_t i = root.arity - 1; i >= 0; --i) {
         const auto [num_nodes, other_num_nodes, new_num_nodes, new_num_leaves] =
-            // NOLINTNEXTLINE(misc-no-recursion)
             BroadcastToCommonSuffixImpl(nodes,
                                         traversal,
                                         cur,

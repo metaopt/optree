@@ -540,7 +540,6 @@ inline Py_ALWAYS_INLINE void AssertExactNamedTuple(const py::handle &object) {
         PyTuple_GET_SIZE(type_object->tp_bases) == 1 &&
         PyTuple_GET_ITEM(type_object->tp_bases, 0) == reinterpret_cast<PyObject *>(&PyTuple_Type))
         [[unlikely]] {
-        // NOLINTNEXTLINE(readability-use-anyofallof)
         for (const char * const name : {"n_fields", "n_sequence_fields", "n_unnamed_fields"}) {
             if (PyObject * const attr = PyObject_GetAttrString(type.ptr(), name)) [[unlikely]] {
                 const bool result = static_cast<bool>(PyLong_CheckExact(attr));
@@ -672,7 +671,7 @@ inline Py_ALWAYS_INLINE void AssertExactStructSequence(const py::handle &object)
 
 // `list.sort()` leaves the list partially reordered when a comparison raises, so each attempt sorts
 // a copy and only a fully sorted one is committed (mirrors `optree.utils.total_order_sorted`).
-inline void TotalOrderSort(py::list &list) {  // NOLINT(runtime/references)
+inline void TotalOrderSort(py::list &list) {
     py::list sorted = ListCopy(list);
     try {
         // Sort directly if possible.
@@ -726,7 +725,7 @@ inline void TotalOrderSort(py::list &list) {  // NOLINT(runtime/references)
 // `dict_dict_fromkeys` fast path (contiguous bucket copy, no per-key rehash).
 [[nodiscard]] inline Py_ALWAYS_INLINE py::dict DictFromKeys(const py::handle &iterable) {
     const scoped_critical_section cs{iterable};
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
     PyObject *result = PyObject_CallMethod(reinterpret_cast<PyObject *>(&PyDict_Type),
                                            "fromkeys",
                                            "O",

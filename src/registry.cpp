@@ -330,10 +330,9 @@ template PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup<NONE_IS_
     const std::string &);
 
 template <bool NoneIsLeaf>
-/*static*/ PyTreeKind PyTreeTypeRegistry::GetKind(
-    const py::handle &handle,
-    PyTreeTypeRegistry::RegistrationPtr &custom,  // NOLINT(runtime/references)
-    const std::string &registry_namespace) {
+/*static*/ PyTreeKind PyTreeTypeRegistry::GetKind(const py::handle &handle,
+                                                  PyTreeTypeRegistry::RegistrationPtr &custom,
+                                                  const std::string &registry_namespace) {
     const RegistrationPtr registration =
         Lookup<NoneIsLeaf>(py::type::of(handle), registry_namespace);
     if (registration) [[likely]] {
@@ -354,14 +353,12 @@ template <bool NoneIsLeaf>
     return PyTreeKind::Leaf;
 }
 
-template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_NODE>(
-    const py::handle &,
-    PyTreeTypeRegistry::RegistrationPtr &,  // NOLINT(runtime/references)
-    const std::string &);
-template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
-    const py::handle &,
-    PyTreeTypeRegistry::RegistrationPtr &,  // NOLINT(runtime/references)
-    const std::string &);
+template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_NODE>(const py::handle &,
+                                                              PyTreeTypeRegistry::RegistrationPtr &,
+                                                              const std::string &);
+template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(const py::handle &,
+                                                              PyTreeTypeRegistry::RegistrationPtr &,
+                                                              const std::string &);
 
 /*static*/ void PyTreeTypeRegistry::Init() {
     const auto &registry1 = GetSingleton<NONE_IS_NODE>();

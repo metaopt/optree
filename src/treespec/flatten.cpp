@@ -29,7 +29,7 @@ limitations under the License.
 namespace optree {
 
 template <bool NoneIsLeaf, bool DictShouldBeSorted, typename LeafVector>
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+// NOLINTNEXTLINE(misc-no-recursion,readability-function-cognitive-complexity)
 bool PyTreeSpec::FlattenIntoImpl(const py::handle &handle,
                                  LeafVector &leaves,
                                  const ssize_t &depth,
@@ -269,7 +269,7 @@ template <bool NoneIsLeaf,
           typename LeafVector,
           typename PathVector,
           typename Stack>
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+// NOLINTNEXTLINE(misc-no-recursion,readability-function-cognitive-complexity)
 bool PyTreeSpec::FlattenIntoWithPathImpl(const py::handle &handle,
                                          LeafVector &leaves,
                                          PathVector &paths,

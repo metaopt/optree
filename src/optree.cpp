@@ -43,7 +43,7 @@ py::module_ GetCxxModule(const std::optional<py::module_> &module) {
         .get_stored();
 }
 
-void BuildModule(py::module_ &mod) {  // NOLINT(runtime/references)
+void BuildModule(py::module_ &mod) {
     const scoped_critical_section lock{mod};
 
     GetCxxModule(mod);
@@ -328,19 +328,16 @@ void BuildModule(py::module_ &mod) {  // NOLINT(runtime/references)
 #else
         py::class_
 #endif
-        <PyTreeSpec>(
-            mod,
-            "PyTreeSpec",
-            "Representing the structure of the pytree.",
-            // NOLINTBEGIN(readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while)
-            py::custom_type_setup([](PyHeapTypeObject *heap_type) -> void {
-                auto * const type = &heap_type->ht_type;
-                type->tp_flags |= Py_TPFLAGS_HAVE_GC;
-                type->tp_traverse = &PyTreeSpec::PyTpTraverse;
-                type->tp_clear = &PyTreeSpec::PyTpClear;
-            }),
-            // NOLINTEND(readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while)
-            py::module_local());
+        <PyTreeSpec>(mod,
+                     "PyTreeSpec",
+                     "Representing the structure of the pytree.",
+                     py::custom_type_setup([](PyHeapTypeObject *heap_type) -> void {
+                         auto * const type = &heap_type->ht_type;
+                         type->tp_flags |= Py_TPFLAGS_HAVE_GC;
+                         type->tp_traverse = &PyTreeSpec::PyTpTraverse;
+                         type->tp_clear = &PyTreeSpec::PyTpClear;
+                     }),
+                     py::module_local());
     auto * const PyTreeSpec_Type = reinterpret_cast<PyTypeObject *>(PyTreeSpecTypeObject.ptr());
     PyTreeSpec_Type->tp_name = "optree.PyTreeSpec";
     py::setattr(PyTreeSpecTypeObject, "__module__", py::str("optree"));
@@ -545,19 +542,16 @@ void BuildModule(py::module_ &mod) {  // NOLINT(runtime/references)
 #else
         py::class_
 #endif
-        <PyTreeIter>(
-            mod,
-            "PyTreeIter",
-            "Iterator over the leaves of a pytree.",
-            // NOLINTBEGIN(readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while)
-            py::custom_type_setup([](PyHeapTypeObject *heap_type) -> void {
-                auto * const type = &heap_type->ht_type;
-                type->tp_flags |= Py_TPFLAGS_HAVE_GC;
-                type->tp_traverse = &PyTreeIter::PyTpTraverse;
-                type->tp_clear = &PyTreeIter::PyTpClear;
-            }),
-            // NOLINTEND(readability-function-cognitive-complexity,cppcoreguidelines-avoid-do-while)
-            py::module_local());
+        <PyTreeIter>(mod,
+                     "PyTreeIter",
+                     "Iterator over the leaves of a pytree.",
+                     py::custom_type_setup([](PyHeapTypeObject *heap_type) -> void {
+                         auto * const type = &heap_type->ht_type;
+                         type->tp_flags |= Py_TPFLAGS_HAVE_GC;
+                         type->tp_traverse = &PyTreeIter::PyTpTraverse;
+                         type->tp_clear = &PyTreeIter::PyTpClear;
+                     }),
+                     py::module_local());
     auto * const PyTreeIter_Type = reinterpret_cast<PyTypeObject *>(PyTreeIterTypeObject.ptr());
     PyTreeIter_Type->tp_name = "optree.PyTreeIter";
     py::setattr(PyTreeIterTypeObject, "__module__", py::str("optree"));
@@ -592,7 +586,6 @@ void BuildModule(py::module_ &mod) {  // NOLINT(runtime/references)
 
 }  // namespace optree
 
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg)
 #if PYBIND11_VERSION_HEX >= 0x020D00F0  // pybind11 2.13.0
 #    if defined(OPTREE_HAS_SUBINTERPRETER_SUPPORT)
 PYBIND11_MODULE(_C, mod, py::mod_gil_not_used(), py::multiple_interpreters::per_interpreter_gil())
@@ -602,7 +595,6 @@ PYBIND11_MODULE(_C, mod, py::mod_gil_not_used())
 #else
 PYBIND11_MODULE(_C, mod)
 #endif
-// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-vararg)
 {
     optree::BuildModule(mod);
 }

@@ -132,7 +132,7 @@ public:
     // Compute the node kind of a given Python object.
     template <bool NoneIsLeaf>
     [[nodiscard]] static PyTreeKind GetKind(const py::handle &handle,
-                                            RegistrationPtr &custom,  // NOLINT(runtime/references)
+                                            RegistrationPtr &custom,
                                             const std::string &registry_namespace);
 
     // Get the number of registered types.
@@ -224,7 +224,7 @@ public:
         }
     }
 
-    friend void BuildModule(py::module_ &mod);  // NOLINT(runtime/references)
+    friend void BuildModule(py::module_ &mod);
 
 private:
     template <bool NoneIsLeaf>
@@ -246,10 +246,9 @@ private:
                                               const py::object &path_entry_type,
                                               const std::string &registry_namespace);
 
-    [[nodiscard]] RegistryStatus UnregisterImpl(
-        const py::object &cls,
-        const std::string &registry_namespace,
-        RegistrationPtr &registration);  // NOLINT(runtime/references)
+    [[nodiscard]] RegistryStatus UnregisterImpl(const py::object &cls,
+                                                const std::string &registry_namespace,
+                                                RegistrationPtr &registration);
 
     // Get the number of registered types without locking. The caller must hold `sm_mutex`.
     [[nodiscard]] ssize_t SizeImpl(const std::optional<std::string> &registry_namespace) const;
