@@ -67,7 +67,6 @@ import functools
 import inspect
 import sys
 import warnings
-from collections.abc import Callable  # noqa: TC003
 from dataclasses import *  # noqa: F401,F403,RUF100 # pylint: disable=wildcard-import,unused-wildcard-import
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, overload
@@ -77,7 +76,7 @@ from optree.accessors import DataclassEntry
 
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
 
 __all__ = [

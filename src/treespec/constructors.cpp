@@ -62,7 +62,7 @@ namespace optree {
 }
 
 template <bool NoneIsLeaf>
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 /*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::MakeFromCollectionImpl(
     const py::handle &handle,
     std::string registry_namespace) {
@@ -79,7 +79,7 @@ template <bool NoneIsLeaf>
         dict_order_flags.in_current_namespace;
 
     const auto verify_children =
-        // NOLINTNEXTLINE[readability-function-cognitive-complexity]
+        // NOLINTNEXTLINE(readability-function-cognitive-complexity)
         [&handle, &node, &registry_namespace, &is_dict_insertion_ordered_in_current_namespace](
             const std::vector<py::object> &children,
             std::vector<PyTreeSpec> &treespecs) -> void {
@@ -247,7 +247,7 @@ template <bool NoneIsLeaf>
             node.arity = 0;
             node.node_data = TupleGetItem(out, 1);
             {
-                auto children_iterable = thread_safe_cast<py::iterable>(TupleGetItem(out, 0));
+                const auto children_iterable = thread_safe_cast<py::iterable>(TupleGetItem(out, 0));
                 const scoped_critical_section cs{children_iterable};
                 for (const py::handle &child : children_iterable) {
                     ++node.arity;
@@ -316,9 +316,8 @@ template <bool NoneIsLeaf>
     const std::string &registry_namespace) {
     if (none_is_leaf) [[unlikely]] {
         return MakeFromCollectionImpl<NONE_IS_LEAF>(object, registry_namespace);
-    } else [[likely]] {
-        return MakeFromCollectionImpl<NONE_IS_NODE>(object, registry_namespace);
     }
+    return MakeFromCollectionImpl<NONE_IS_NODE>(object, registry_namespace);
 }
 
 }  // namespace optree

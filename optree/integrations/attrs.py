@@ -55,7 +55,6 @@ from __future__ import annotations
 
 import inspect
 import warnings
-from collections.abc import Callable  # noqa: TC003
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, TypeVar, overload
 
@@ -85,6 +84,7 @@ from optree.accessors import GetAttrEntry
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from typing import ClassVar
 
 

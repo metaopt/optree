@@ -17,13 +17,13 @@ limitations under the License.
 
 #pragma once
 
+#include <Python.h>
+
 #include <cstddef>      // std::size_t
 #include <functional>   // std::hash, std::{not_,}equal_to
 #include <string>       // std::string
 #include <string_view>  // std::string_view
 #include <utility>      // std::pair
-
-#include <Python.h>
 
 #include <pybind11/pybind11.h>
 
@@ -33,21 +33,19 @@ namespace py = pybind11;
 
 // boost::hash_combine
 template <class T>
-inline constexpr Py_ALWAYS_INLINE void HashCombine(
-    py::size_t &seed,  // NOLINT[runtime/references]
-    const T &v) noexcept(noexcept(std::hash<T>{}(v))) {
-    // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
+inline constexpr Py_ALWAYS_INLINE void HashCombine(py::size_t &seed, const T &v) noexcept(
+    noexcept(std::hash<T>{}(v))) {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers,bugprone-signed-bitwise,hicpp-signed-bitwise)
     seed ^= (std::hash<T>{}(v) + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 }
 template <class T>
-inline constexpr Py_ALWAYS_INLINE void HashCombine(
-    py::ssize_t &seed,  // NOLINT[runtime/references]
-    const T &v) noexcept(noexcept(std::hash<T>{}(v))) {
-    // NOLINTNEXTLINE[cppcoreguidelines-avoid-magic-numbers]
+inline constexpr Py_ALWAYS_INLINE void HashCombine(py::ssize_t &seed, const T &v) noexcept(
+    noexcept(std::hash<T>{}(v))) {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers,bugprone-signed-bitwise,hicpp-signed-bitwise)
     seed ^= (std::hash<T>{}(v) + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 }
 
-// NOLINTBEGIN[bugprone-std-namespace-modification]
+// NOLINTBEGIN(bugprone-std-namespace-modification)
 template <>
 struct std::equal_to<py::handle> {
     using is_transparent = void;
@@ -123,13 +121,13 @@ struct std::hash<std::pair<T, U>> {
         return seed;
     }
 };
-// NOLINTEND[bugprone-std-namespace-modification]
+// NOLINTEND(bugprone-std-namespace-modification)
 
 namespace optree {
 
 // Transparent hashers and comparators for the registry's pair keys. Their `operator()` MUST be
-// templates: `is_transparent` only tells the container it may forward a foreign key type, and a
-// non-template call operator then converts it back to the exact `key_type` — the very temporary
+// templates: `is_transparent` only tells the container it may forward a foreign key type. A
+// non-template call operator converts it back to the exact `key_type`, creating the temporary that
 // heterogeneous lookup exists to avoid. The marker was inert for unordered containers before
 // P0919R3, so this began costing a namespace-string copy per `Lookup` only at C++20.
 // `std::hash<std::string_view>` is guaranteed to agree with `std::hash<std::string>`, so probing

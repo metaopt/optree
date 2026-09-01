@@ -63,7 +63,7 @@ public:
 
 }  // namespace optree
 
-inline namespace {  // NOLINT[build/namespaces_headers]
+inline namespace {  // NOLINT(build/namespaces_headers,misc-anonymous-namespace-in-header)
 // Detect whether `std::to_string` accepts a `const T &`, which is how `try_to_string` calls it.
 template <typename T>
 concept has_to_string = requires(const T &value) { std::to_string(value); };

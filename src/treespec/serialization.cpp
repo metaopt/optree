@@ -61,7 +61,7 @@ namespace optree {
     }
 }
 
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 std::string PyTreeSpec::ToStringImpl() const {
     auto agenda = reserved_vector<std::string>(4);
     for (const Node &node : m_traversal) {
@@ -361,8 +361,8 @@ py::object PyTreeSpec::ToPicklable() const {
     return py::make_tuple(node_states, py::bool_(m_none_is_leaf), py::str(m_namespace));
 }
 
-// NOLINTBEGIN[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 /*static*/ std::unique_ptr<PyTreeSpec> PyTreeSpec::FromPicklable(const py::object &picklable) {
     const auto malformed = [](const std::string &reason) -> std::runtime_error {
         return std::runtime_error(std::format("Malformed pickled PyTreeSpec: {}.", reason));
@@ -654,6 +654,6 @@ py::object PyTreeSpec::ToPicklable() const {
     PYTREESPEC_SANITY_CHECK(*out);
     return out;
 }
-// NOLINTEND[cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers]
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 
 }  // namespace optree

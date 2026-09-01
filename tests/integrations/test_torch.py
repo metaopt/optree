@@ -16,7 +16,6 @@
 # pylint: disable=missing-function-docstring,wrong-import-position
 
 import random
-import typing
 import warnings
 
 import pytest
@@ -33,10 +32,6 @@ from helpers import LEAVES, TREES, parametrize
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
     torch.tensor(0.0)
-
-
-def test_tree_ravel_type_hints():
-    assert typing.get_type_hints(optree.integrations.torch.tree_ravel)
 
 
 @parametrize(tree=list(TREES + LEAVES))

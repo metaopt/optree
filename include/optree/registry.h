@@ -36,8 +36,8 @@ limitations under the License.
 namespace optree {
 
 namespace py = pybind11;
-using size_t = py::size_t;
-using ssize_t = py::ssize_t;
+using py::size_t;
+using py::ssize_t;
 
 constexpr bool NONE_IS_LEAF = true;
 constexpr bool NONE_IS_NODE = false;
@@ -133,14 +133,14 @@ public:
     // Compute the node kind of a given Python object.
     template <bool NoneIsLeaf>
     [[nodiscard]] static PyTreeKind GetKind(const py::handle &handle,
-                                            RegistrationPtr &custom,  // NOLINT[runtime/references]
+                                            RegistrationPtr &custom,
                                             const std::string &registry_namespace);
 
     // Get the number of registered types.
     [[nodiscard]] static inline Py_ALWAYS_INLINE ssize_t GetRegistrySize(
         const std::optional<std::string> &registry_namespace = std::nullopt) {
-        auto &registry1 = GetSingleton<NONE_IS_NODE>();
-        auto &registry2 = GetSingleton<NONE_IS_LEAF>();
+        const auto &registry1 = GetSingleton<NONE_IS_NODE>();
+        const auto &registry2 = GetSingleton<NONE_IS_LEAF>();
 
         // Read both registries under a single lock so the two counts form a consistent snapshot.
         // Two separate `Size()` calls each drop the lock, letting a concurrent (un)registration
@@ -228,7 +228,7 @@ public:
         }
     }
 
-    friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
+    friend void BuildModule(py::module_ &mod);
 
 private:
     template <bool NoneIsLeaf>
@@ -250,10 +250,9 @@ private:
                                               const py::object &path_entry_type,
                                               const std::string &registry_namespace);
 
-    [[nodiscard]] RegistryStatus UnregisterImpl(
-        const py::object &cls,
-        const std::string &registry_namespace,
-        RegistrationPtr &registration);  // NOLINT[runtime/references]
+    [[nodiscard]] RegistryStatus UnregisterImpl(const py::object &cls,
+                                                const std::string &registry_namespace,
+                                                RegistrationPtr &registration);
 
     // Get the number of registered types without locking. The caller must hold `sm_mutex`.
     [[nodiscard]] ssize_t SizeImpl(const std::optional<std::string> &registry_namespace) const;
@@ -283,10 +282,12 @@ private:
                                      InterpreterNamespaceHash,
                                      InterpreterNamespaceEqual>
         sm_dict_insertion_ordered_namespaces{};
+    // NOLINTNEXTLINE(bugprone-throwing-static-initialization)
     static inline read_write_mutex sm_dict_order_mutex{};
     friend class PyTreeSpec;
 
     static inline std::unordered_set<interpid_t> sm_alive_interpids{};
+    // NOLINTNEXTLINE(bugprone-throwing-static-initialization)
     static inline read_write_mutex sm_mutex{};
     static inline ssize_t sm_num_interpreters_seen = 0;
 };

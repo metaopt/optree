@@ -335,10 +335,9 @@ template PyTreeTypeRegistry::RegistrationPtr PyTreeTypeRegistry::Lookup<NONE_IS_
     const std::string &);
 
 template <bool NoneIsLeaf>
-/*static*/ PyTreeKind PyTreeTypeRegistry::GetKind(
-    const py::handle &handle,
-    PyTreeTypeRegistry::RegistrationPtr &custom,  // NOLINT[runtime/references]
-    const std::string &registry_namespace) {
+/*static*/ PyTreeKind PyTreeTypeRegistry::GetKind(const py::handle &handle,
+                                                  PyTreeTypeRegistry::RegistrationPtr &custom,
+                                                  const std::string &registry_namespace) {
     const RegistrationPtr registration =
         Lookup<NoneIsLeaf>(py::type::of(handle), registry_namespace);
     if (registration) [[likely]] {
@@ -359,18 +358,16 @@ template <bool NoneIsLeaf>
     return PyTreeKind::Leaf;
 }
 
-template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_NODE>(
-    const py::handle &,
-    PyTreeTypeRegistry::RegistrationPtr &,  // NOLINT[runtime/references]
-    const std::string &);
-template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
-    const py::handle &,
-    PyTreeTypeRegistry::RegistrationPtr &,  // NOLINT[runtime/references]
-    const std::string &);
+template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_NODE>(const py::handle &,
+                                                              PyTreeTypeRegistry::RegistrationPtr &,
+                                                              const std::string &);
+template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(const py::handle &,
+                                                              PyTreeTypeRegistry::RegistrationPtr &,
+                                                              const std::string &);
 
 /*static*/ void PyTreeTypeRegistry::Init() {
-    auto &registry1 = GetSingleton<NONE_IS_NODE>();
-    auto &registry2 = GetSingleton<NONE_IS_LEAF>();
+    const auto &registry1 = GetSingleton<NONE_IS_NODE>();
+    const auto &registry2 = GetSingleton<NONE_IS_LEAF>();
     const auto interpid = GetCurrentPyInterpreterID();
 
     {
@@ -392,7 +389,7 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     // the rollback a failed import would leave an ID that no callback can ever remove (mirrors
     // `WeakKeyCache::LookupOrInsert`). The rollback locks with the GIL held, as `Clear` does.
     try {
-        auto atexit_register = py::getattr(py::module_::import("atexit"), "register");
+        const auto atexit_register = py::getattr(py::module_::import("atexit"), "register");
         atexit_register(py::cpp_function(&Clear));
     } catch (...) {
         const scoped_write_lock lock{sm_mutex};
@@ -403,7 +400,7 @@ template PyTreeKind PyTreeTypeRegistry::GetKind<NONE_IS_LEAF>(
     }
 }
 
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 /*static*/ void PyTreeTypeRegistry::Clear() {
     auto &registry1 = GetSingleton<NONE_IS_NODE>();
     auto &registry2 = GetSingleton<NONE_IS_LEAF>();

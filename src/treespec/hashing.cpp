@@ -42,7 +42,7 @@ ssize_t PyTreeSpec::HashValueImpl() const {
 
         switch (node.kind) {
             case PyTreeKind::Custom: {
-                // We don't hash node_data of custom node types since they may not hashable.
+                // We don't hash `node_data` of custom node types because it may not be hashable.
                 const auto &type = GetType(node);
                 HashCombine(seed, EVALUATE_WITH_LOCK_HELD(py::hash(type), type));
                 break;

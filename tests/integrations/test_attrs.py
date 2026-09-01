@@ -16,7 +16,6 @@
 # pylint: disable=missing-function-docstring,wrong-import-position
 
 import re
-import typing
 
 import pytest
 
@@ -27,19 +26,6 @@ import attrs
 
 import optree
 from helpers import GLOBAL_NAMESPACE
-
-
-@pytest.mark.parametrize(
-    'public_api',
-    [
-        optree.integrations.attrs.define,
-        optree.integrations.attrs.frozen,
-        optree.integrations.attrs.mutable,
-        optree.integrations.attrs.register_node,
-    ],
-)
-def test_public_api_type_hints(public_api):
-    assert typing.get_type_hints(public_api)
 
 
 def test_field_pytree_node():

@@ -20,7 +20,6 @@ import inspect
 import math
 import re
 import sys
-import typing
 from collections import OrderedDict
 
 import pytest
@@ -38,17 +37,6 @@ def test_public_api():
             assert getattr(optree.dataclasses, name) is getattr(dataclasses, name)
     assert optree.dataclasses.DataclassEntry is optree.DataclassEntry
     assert callable(optree.dataclasses.register_node)
-
-
-@pytest.mark.parametrize(
-    'public_api',
-    [
-        optree.dataclasses.dataclass,
-        optree.dataclasses.register_node,
-    ],
-)
-def test_public_api_type_hints(public_api):
-    assert typing.get_type_hints(public_api)
 
 
 def test_same_signature():

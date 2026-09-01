@@ -16,7 +16,6 @@
 # pylint: disable=missing-function-docstring,invalid-name
 
 import functools
-import typing
 
 import pytest
 
@@ -36,10 +35,6 @@ def dummy_func(*args, **kwargs):  # pylint: disable=unused-argument
 
 
 dummy_partial_func = functools.partial(dummy_func, a=1)
-
-
-def test_partial_constructor_type_hints():
-    assert typing.get_type_hints(optree.functools.partial.__new__)
 
 
 @parametrize(

@@ -28,7 +28,7 @@ limitations under the License.
 namespace optree {
 
 template <bool NoneIsLeaf>
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 py::object PyTreeIter::NextImpl() {
     while (!m_agenda.empty()) [[likely]] {
         auto [object, depth] = m_agenda.back();
@@ -134,7 +134,7 @@ py::object PyTreeIter::NextImpl() {
                                     custom->type,
                                     num_out));
                 }
-                auto children = thread_safe_cast<py::tuple>(TupleGetItem(out, 0));
+                const auto children = thread_safe_cast<py::tuple>(TupleGetItem(out, 0));
                 const ssize_t arity = TupleGetSize(children);
                 if (num_out == 3) [[likely]] {
                     const py::object node_entries = TupleGetItem(out, 2);
@@ -202,7 +202,7 @@ py::object PyTreeIter::Next() {
 }
 
 template <bool PassRawNode>
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 py::object PyTreeSpec::WalkImpl(const py::iterable &leaves,
                                 const std::optional<py::function> &f_node,
                                 const std::optional<py::function> &f_leaf) const {

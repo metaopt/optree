@@ -18,19 +18,19 @@ PackArguments:
 PackParameters:
   BinPack: OnePerLine
 BreakBeforeTernaryOperators: true
-CommentPragmas: 'NOLINT(NEXTLINE|BEGIN|END)?\[.*\]'
+CommentPragmas: 'NOLINT(NEXTLINE|BEGIN|END)?\(.*\)'
 DerivePointerAlignment: false
 FixNamespaceComments: true
 IncludeBlocks: Regroup
 IncludeCategories:
   - Regex: '^[<"]Python\.h[">]$'
-    Priority: 2
+    Priority: 1
     CaseSensitive: true
   - Regex: '^[<"]pybind11/.*[">]$'
     Priority: 3
     CaseSensitive: true
   - Regex: '^<[[:alnum:]_/]+(\.h)?>$'
-    Priority: 1
+    Priority: 2
   - Regex: '^"optree/'
     Priority: 4
     CaseSensitive: true

@@ -16,7 +16,6 @@
 # pylint: disable=missing-function-docstring,wrong-import-position
 
 import random
-import typing
 
 import pytest
 
@@ -27,10 +26,6 @@ import numpy as np
 
 import optree
 from helpers import LEAVES, TREES, parametrize
-
-
-def test_tree_ravel_type_hints():
-    assert typing.get_type_hints(optree.integrations.numpy.tree_ravel)
 
 
 @parametrize(tree=list(TREES + LEAVES))

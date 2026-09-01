@@ -17,6 +17,8 @@ limitations under the License.
 
 #pragma once
 
+#include <Python.h>
+
 #include <atomic>    // std::atomic
 #include <memory>    // std::unique_ptr
 #include <optional>  // std::optional, std::nullopt
@@ -26,8 +28,6 @@ limitations under the License.
 #include <tuple>     // std::tuple
 #include <utility>   // std::pair
 #include <vector>    // std::vector
-
-#include <Python.h>
 
 #include <pybind11/pybind11.h>
 
@@ -40,8 +40,8 @@ limitations under the License.
 namespace optree {
 
 namespace py = pybind11;
-using size_t = py::size_t;
-using ssize_t = py::ssize_t;
+using py::size_t;
+using py::ssize_t;
 
 // The maximum depth of a pytree.
 #if defined(MS_WINDOWS) && (defined(Py_DEBUG) || defined(Py_GIL_DISABLED))
@@ -115,8 +115,8 @@ public:
     // Return an unflattened PyTree given an iterable of leaves and a PyTreeSpec.
     [[nodiscard]] py::object Unflatten(const py::iterable &leaves) const;
 
-    // Flatten a PyTree up to this PyTreeSpec. 'this' must be a tree prefix of the tree-structure of
-    // 'tree'.
+    // Flatten a PyTree up to this PyTreeSpec. `this` must be a tree prefix of the tree-structure of
+    // `tree`.
     // For example, if we flatten a value [(1, (2, 3)), {"foo": 4}] with a PyTreeSpec([(*, *), *]),
     // the result is the list of leaves [1, (2, 3), {"foo": 4}].
     [[nodiscard]] py::list FlattenUpTo(const py::object &tree) const;
@@ -267,7 +267,7 @@ public:
         const bool &none_is_leaf = false,
         const std::string &registry_namespace = "");
 
-    friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
+    friend void BuildModule(py::module_ &mod);
 
 private:
     using Registration = PyTreeTypeRegistry::Registration;
@@ -332,26 +332,25 @@ private:
 
     // Recursive helper used to implement Flatten().
     [[nodiscard]] bool FlattenInto(const py::handle &handle,
-                                   std::vector<py::object> &leaves,  // NOLINT[runtime/references]
+                                   std::vector<py::object> &leaves,
                                    const std::optional<py::function> &leaf_predicate,
                                    const bool &none_is_leaf,
                                    const std::string &registry_namespace);
 
     template <bool NoneIsLeaf, bool DictShouldBeSorted, typename Vector>
     [[nodiscard]] bool FlattenIntoImpl(const py::handle &handle,
-                                       Vector &leaves,  // NOLINT[runtime/references]
+                                       Vector &leaves,
                                        const ssize_t &depth,
                                        const std::optional<py::function> &leaf_predicate,
                                        const std::string &registry_namespace);
 
     // Recursive helper used to implement FlattenWithPath().
-    [[nodiscard]] bool FlattenIntoWithPath(
-        const py::handle &handle,
-        std::vector<py::object> &leaves,  // NOLINT[runtime/references]
-        std::vector<py::tuple> &paths,    // NOLINT[runtime/references]
-        const std::optional<py::function> &leaf_predicate,
-        const bool &none_is_leaf,
-        const std::string &registry_namespace);
+    [[nodiscard]] bool FlattenIntoWithPath(const py::handle &handle,
+                                           std::vector<py::object> &leaves,
+                                           std::vector<py::tuple> &paths,
+                                           const std::optional<py::function> &leaf_predicate,
+                                           const bool &none_is_leaf,
+                                           const std::string &registry_namespace);
 
     template <bool NoneIsLeaf,
               bool DictShouldBeSorted,
@@ -359,9 +358,9 @@ private:
               typename PathVector,
               typename Stack>
     [[nodiscard]] bool FlattenIntoWithPathImpl(const py::handle &handle,
-                                               LeafVector &leaves,  // NOLINT[runtime/references]
-                                               PathVector &paths,   // NOLINT[runtime/references]
-                                               Stack &stack,        // NOLINT[runtime/references]
+                                               LeafVector &leaves,
+                                               PathVector &paths,
+                                               Stack &stack,
                                                const ssize_t &depth,
                                                const std::optional<py::function> &leaf_predicate,
                                                const std::string &registry_namespace);
@@ -370,7 +369,7 @@ private:
     [[nodiscard]] py::object UnflattenImpl(const Span &leaves) const;
 
     [[nodiscard]] static std::tuple<ssize_t, ssize_t, ssize_t, ssize_t> BroadcastToCommonSuffixImpl(
-        std::vector<Node> &nodes,  // NOLINT[runtime/references]
+        std::vector<Node> &nodes,
         const std::vector<Node> &traversal,
         const ssize_t &pos,
         const std::vector<Node> &other_traversal,
@@ -391,14 +390,14 @@ private:
         const std::optional<py::function> &f_leaf = std::nullopt) const;
 
     template <typename PathVector, typename Stack>
-    [[nodiscard]] ssize_t PathsImpl(PathVector &paths,  // NOLINT[runtime/references]
-                                    Stack &stack,       // NOLINT[runtime/references]
+    [[nodiscard]] ssize_t PathsImpl(PathVector &paths,
+                                    Stack &stack,
                                     const ssize_t &pos,
                                     const ssize_t &depth) const;
 
     template <typename AccessorVector, typename Stack>
-    [[nodiscard]] ssize_t AccessorsImpl(AccessorVector &accessors,  // NOLINT[runtime/references]
-                                        Stack &stack,               // NOLINT[runtime/references]
+    [[nodiscard]] ssize_t AccessorsImpl(AccessorVector &accessors,
+                                        Stack &stack,
                                         const ssize_t &pos,
                                         const ssize_t &depth) const;
 
@@ -430,7 +429,8 @@ public:
           m_none_is_leaf{none_is_leaf},
           m_namespace{registry_namespace},
           m_is_dict_insertion_ordered{
-              PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace)} {}
+              PyTreeTypeRegistry::IsDictInsertionOrdered(registry_namespace),
+          } {}
 
     PyTreeIter() = delete;
     ~PyTreeIter() = default;
@@ -444,7 +444,7 @@ public:
 
     [[nodiscard]] py::object Next();
 
-    friend void BuildModule(py::module_ &mod);  // NOLINT[runtime/references]
+    friend void BuildModule(py::module_ &mod);
 
 private:
     py::object m_root;

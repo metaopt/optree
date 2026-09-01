@@ -39,10 +39,9 @@ from __future__ import annotations
 import contextlib
 import itertools
 import warnings
-from collections.abc import Callable  # noqa: TC003
 from operator import itemgetter
 from types import FunctionType
-from typing import Any, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import jax.numpy as jnp
 from jax import Array, lax
@@ -52,6 +51,10 @@ from jax.typing import ArrayLike
 from optree.ops import tree_flatten, tree_unflatten
 from optree.typing import PyTreeSpec, PyTreeTypeVar
 from optree.utils import safe_zip, total_order_sorted
+
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 __all__ = ['ArrayLikeTree', 'ArrayTree', 'tree_ravel']

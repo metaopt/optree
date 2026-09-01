@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import contextlib
 import functools
-from collections.abc import Callable  # noqa: TC003
 from typing import TYPE_CHECKING, Any, ClassVar
 from typing_extensions import Self  # Python 3.11+
 
@@ -29,6 +28,8 @@ from optree.typing import CustomTreeNode, T
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from optree.accessors import PyTreeEntry
 
 

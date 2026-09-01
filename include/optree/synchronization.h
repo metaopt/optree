@@ -17,9 +17,9 @@ limitations under the License.
 
 #pragma once
 
-#include <mutex>  // std::mutex, std::recursive_mutex, std::scoped_lock, std::unique_lock
-
 #include <Python.h>
+
+#include <mutex>  // std::mutex, std::recursive_mutex, std::scoped_lock, std::unique_lock
 
 #include <pybind11/pybind11.h>
 
@@ -47,12 +47,12 @@ private:
 };
 
 using mutex = pymutex;
-using recursive_mutex = std::recursive_mutex;
+using std::recursive_mutex;
 
 #else
 
-using mutex = std::mutex;
-using recursive_mutex = std::recursive_mutex;
+using std::mutex;
+using std::recursive_mutex;
 
 #endif
 

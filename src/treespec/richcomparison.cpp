@@ -24,7 +24,7 @@ limitations under the License.
 
 namespace optree {
 
-// NOLINTNEXTLINE[readability-function-cognitive-complexity]
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 bool PyTreeSpec::IsPrefix(const PyTreeSpec &other, const bool &strict) const {
     PYTREESPEC_SANITY_CHECK(*this);
     PYTREESPEC_SANITY_CHECK(other);
@@ -42,9 +42,7 @@ bool PyTreeSpec::IsPrefix(const PyTreeSpec &other, const bool &strict) const {
 
     bool all_leaves_match = true;
     std::vector<Node> other_traversal{other.m_traversal};
-    // NOLINTNEXTLINE[readability-qualified-auto]
     auto b = other_traversal.rbegin();
-    // NOLINTNEXTLINE[readability-qualified-auto]
     for (auto a = m_traversal.crbegin(); a != m_traversal.crend(); ++a, ++b) {
         if (b == other_traversal.rend()) [[unlikely]] {
             return false;
@@ -189,9 +187,7 @@ bool PyTreeSpec::EqualTo(const PyTreeSpec &other) const {
         return false;
     }
 
-    // NOLINTNEXTLINE[readability-qualified-auto]
     auto b = other.m_traversal.cbegin();
-    // NOLINTNEXTLINE[readability-qualified-auto]
     for (auto a = m_traversal.cbegin(); a != m_traversal.cend(); ++a, ++b) {
         if (a->kind != b->kind || a->arity != b->arity ||
             static_cast<bool>(a->node_data) != static_cast<bool>(b->node_data) ||

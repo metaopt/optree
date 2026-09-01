@@ -21,14 +21,17 @@ from __future__ import annotations
 
 import functools
 import warnings
-from collections.abc import Callable  # noqa: TC003
-from typing import Any, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import torch
 
 from optree.ops import tree_flatten, tree_unflatten
 from optree.typing import PyTreeSpec, PyTreeTypeVar
 from optree.utils import safe_zip
+
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 __all__ = ['TensorTree', 'tree_ravel']
