@@ -509,10 +509,11 @@ void BuildModule(py::module_ &mod) {
                              "Return a string representation of the treespec.")
         .def_method_pos_only("__hash__", &PyTreeSpec::HashValue, "Return the hash of the treespec.")
         .def_method_pos_only("__len__", &PyTreeSpec::GetNumLeaves, "Number of leaves in the tree.")
-        // Known limitation: pybind11's `tp_new` only allocates the wrapper, so between
-        // `cls.__new__(cls)` and `__setstate__` a method call reads uninitialized memory (undefined
-        // behavior, and `PYTREESPEC_SANITY_CHECK` cannot catch it). Only the GC is covered, by the
-        // `is_holder_constructed` guards in `PyTpTraverse` / `PyTpClear`.
+        // pybind11's `tp_new` only allocates the wrapper. Older pybind11 versions let method calls
+        // between `cls.__new__(cls)` and `__setstate__` read uninitialized memory (undefined
+        // behavior, which `PYTREESPEC_SANITY_CHECK` cannot catch). Newer versions raise
+        // `ValueError` instead. The holder checks in `PyTpTraverse` / `PyTpClear` protect GC
+        // callbacks in either case.
         .def(py::pickle([](const PyTreeSpec &t) -> py::object { return t.ToPicklable(); },
                         [](const py::object &o) -> std::unique_ptr<PyTreeSpec> {
                             return PyTreeSpec::FromPicklable(o);
@@ -564,8 +565,9 @@ void BuildModule(py::module_ &mod) {
              py::arg("leaf_predicate") = std::nullopt,
              py::arg("none_is_leaf") = false,
              py::arg("namespace") = "")
-        // Known limitation: `PyTreeIter.__new__(PyTreeIter)` leaves the C++ iterator unbuilt, so
-        // the methods below would read uninitialized memory (see the `PyTreeSpec` note above).
+        // `PyTreeIter.__new__(PyTreeIter)` leaves the C++ iterator unbuilt. Calling the methods
+        // below reads uninitialized memory with older pybind11 versions and raises `ValueError`
+        // with newer versions (see the `PyTreeSpec` note above).
         .def_method_pos_only("__iter__", &PyTreeIter::Iter, "Return the iterator object itself.")
         .def_method_pos_only("__next__", &PyTreeIter::Next, "Return the next leaf in the pytree.");
 

@@ -98,6 +98,10 @@ def test_treespec_construct():
                     treespec = optree.PyTreeSpec.__new__(optree.PyTreeSpec)
                     try:
                         repr(treespec)
+                    except ValueError as ex:
+                        # Newer pybind11 rejects access to the uninitialized C++ object.
+                        assert 'uninitialized' in str(ex)
+                        sys.exit(0)
                     except optree._C.InternalError as ex:
                         assert 'src/treespec/serialization.cpp' in str(ex).replace('\\', '/')
                         sys.exit(0)
