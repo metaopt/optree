@@ -46,6 +46,9 @@ env:
   OPTREE_CXX_WERROR: "ON"
   _GLIBCXX_USE_CXX11_ABI: "1"
   _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR: "1"
+  # Apple's libc++ gates `std::format` behind macOS 13.3; 14.0 keeps the wheel tag honest, see
+  # `build.yml`.
+  MACOSX_DEPLOYMENT_TARGET: "14.0"
   PYTHONDEVMODE: "1"
   PYTHONUNBUFFERED: "1"
   PYTHON: "python" # to be updated

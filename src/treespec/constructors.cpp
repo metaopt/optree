@@ -15,10 +15,10 @@ limitations under the License.
 ================================================================================
 */
 
-#include <algorithm>  // std::copy
+#include <algorithm>  // std::ranges::copy
+#include <format>     // std::format
 #include <iterator>   // std::back_inserter
 #include <memory>     // std::unique_ptr, std::make_unique
-#include <sstream>    // std::ostringstream
 #include <stdexcept>  // std::runtime_error
 #include <string>     // std::string
 #include <utility>    // std::move
@@ -85,10 +85,9 @@ template <bool NoneIsLeaf>
             std::vector<PyTreeSpec> &treespecs) -> void {
         for (const py::object &child : children) {
             if (!py::isinstance<PyTreeSpec>(child)) [[unlikely]] {
-                std::ostringstream oss{};
-                oss << "Expected a(n) " << NodeKindToString(node) << " of PyTreeSpec(s), got "
-                    << PyRepr(handle) << ".";
-                throw py::value_error(oss.str());
+                throw py::value_error(std::format("Expected a(n) {} of PyTreeSpec(s), got {}.",
+                                                  NodeKindToString(node),
+                                                  handle));
             }
             treespecs.emplace_back(thread_safe_cast<PyTreeSpec>(child));
         }
@@ -105,11 +104,10 @@ template <bool NoneIsLeaf>
                 if (common_registry_namespace.empty()) [[likely]] {
                     common_registry_namespace = treespec.m_namespace;
                 } else if (common_registry_namespace != treespec.m_namespace) [[unlikely]] {
-                    std::ostringstream oss{};
-                    oss << "Expected treespecs with the same namespace, got "
-                        << PyRepr(common_registry_namespace) << " vs. "
-                        << PyRepr(treespec.m_namespace) << ".";
-                    throw py::value_error(oss.str());
+                    throw py::value_error(
+                        std::format("Expected treespecs with the same namespace, got {} vs. {}.",
+                                    PyRepr(common_registry_namespace),
+                                    PyRepr(treespec.m_namespace)));
                 }
             }
         }
@@ -124,10 +122,9 @@ template <bool NoneIsLeaf>
             if (registry_namespace.empty()) [[likely]] {
                 registry_namespace = common_registry_namespace;
             } else if (registry_namespace != common_registry_namespace) [[unlikely]] {
-                std::ostringstream oss{};
-                oss << "Expected treespec(s) with namespace " << PyRepr(registry_namespace)
-                    << ", got " << PyRepr(common_registry_namespace) << ".";
-                throw py::value_error(oss.str());
+                throw py::value_error(std::format("Expected treespec(s) with namespace {}, got {}.",
+                                                  PyRepr(registry_namespace),
+                                                  PyRepr(common_registry_namespace)));
             }
         } else if (!depends_on_namespace) [[likely]] {
             registry_namespace = "";  // mirrors `Flatten`
@@ -241,10 +238,11 @@ template <bool NoneIsLeaf>
                 node.custom->flatten_func);
             const ssize_t num_out = TupleGetSize(out);
             if (num_out != 2 && num_out != 3) [[unlikely]] {
-                std::ostringstream oss{};
-                oss << "PyTree custom flatten function for type " << PyRepr(node.custom->type)
-                    << " should return a 2- or 3-tuple, got " << num_out << ".";
-                throw std::runtime_error(oss.str());
+                throw std::runtime_error(
+                    std::format("PyTree custom flatten function for type {} should return a 2- or "
+                                "3-tuple, got {}.",
+                                node.custom->type,
+                                num_out));
             }
             node.arity = 0;
             node.node_data = TupleGetItem(out, 1);
@@ -263,12 +261,13 @@ template <bool NoneIsLeaf>
                     node.node_entries = thread_safe_cast<py::tuple>(node_entries);
                     const ssize_t num_entries = TupleGetSize(node.node_entries);
                     if (num_entries != node.arity) [[unlikely]] {
-                        std::ostringstream oss{};
-                        oss << "PyTree custom flatten function for type "
-                            << PyRepr(node.custom->type)
-                            << " returned inconsistent number of children (" << node.arity
-                            << ") and number of entries (" << num_entries << ").";
-                        throw std::runtime_error(oss.str());
+                        throw std::runtime_error(
+                            std::format("PyTree custom flatten function for type {} returned "
+                                        "inconsistent number of children ({}) "
+                                        "and number of entries ({}).",
+                                        node.custom->type,
+                                        node.arity,
+                                        num_entries));
                     }
                 }
             }
@@ -283,9 +282,7 @@ template <bool NoneIsLeaf>
     auto out = std::make_unique<PyTreeSpec>();
     ssize_t num_leaves = ((node.kind == PyTreeKind::Leaf) ? 1 : 0);
     for (const PyTreeSpec &treespec : treespecs) {
-        std::copy(treespec.m_traversal.cbegin(),
-                  treespec.m_traversal.cend(),
-                  std::back_inserter(out->m_traversal));
+        std::ranges::copy(treespec.m_traversal, std::back_inserter(out->m_traversal));
         num_leaves += treespec.GetNumLeaves();
     }
     node.num_leaves = num_leaves;
@@ -301,12 +298,11 @@ template <bool NoneIsLeaf>
     // which resolves every custom node globally.
     if (!registry_namespace.empty()) [[unlikely]] {
         if (const auto stale_type = out->FindStaleCustomType(registry_namespace)) [[unlikely]] {
-            std::ostringstream oss{};
-            oss << "PyTreeSpecs cannot be composed into a collection: custom PyTree type "
-                << PyRepr(*stale_type)
-                << " no longer resolves to its original registration in namespace "
-                << PyRepr(registry_namespace) << ".";
-            throw py::value_error(oss.str());
+            throw py::value_error(
+                std::format("PyTreeSpecs cannot be composed into a collection: custom PyTree type "
+                            "{} no longer resolves to its original registration in namespace {}.",
+                            *stale_type,
+                            PyRepr(registry_namespace)));
         }
     }
     out->m_traversal.shrink_to_fit();

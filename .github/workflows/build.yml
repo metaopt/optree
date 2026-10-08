@@ -52,6 +52,12 @@ env:
   OPTREE_CXX_WERROR: "OFF"
   _GLIBCXX_USE_CXX11_ABI: "1"
   _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR: "1"
+  # Apple's libc++ gates `std::format` behind macOS 13.3 / iOS 16.3. iOS wheel tags carry the
+  # minor, so 16.3 is taggable exactly. macOS tags do not: PEP 425 floors the minor to zero above
+  # macOS 11, so a 13.3 binary would ship as `macosx_13_0_*`, install on 13.0-13.2 and fail in
+  # `dyld`. 14.0 is the lowest target whose tag does not lie.
+  MACOSX_DEPLOYMENT_TARGET: "14.0"
+  IPHONEOS_DEPLOYMENT_TARGET: "16.3"
   PYTHONUNBUFFERED: "1"
   PYTHON_TAG: "py3" # to be updated
   PYTHON_VERSION: "3" # to be updated
