@@ -339,7 +339,7 @@ jobs:
 
       - name: Build wheels
         if: matrix.python-version != '3.13t'
-        uses: pypa/cibuildwheel@v4.2
+        uses: pypa/cibuildwheel@v4.3
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
           CIBW_PLATFORM: ${{ matrix.target.platform }}
