@@ -6,8 +6,6 @@ on:
       - main
   pull_request:
     types:
-      - labeled
-      - unlabeled
       - opened
       - synchronize
       - reopened
@@ -254,13 +252,6 @@ jobs:
             rm -rf venv
           )
 
-      - name: Install test dependencies
-        shell: bash
-        run: |
-          if [[ ";${FULL_TEST_PYTHON_VERSIONS};" == *";${{ matrix.python-version }};"* ]]; then
-            ${{ env.PYTHON }} -m pip install -r tests/requirements.txt
-          fi
-
       - name: Install OpTree (with system CMake)
         shell: bash
         run: |
@@ -369,6 +360,13 @@ jobs:
             echo "Coredump files:" >&2
             ls -alh ${CORE_DUMP_FILES} >&2
             exit 1
+          fi
+
+      - name: Install test dependencies
+        shell: bash
+        run: |
+          if [[ ";${FULL_TEST_PYTHON_VERSIONS};" == *";${{ matrix.python-version }};"* ]]; then
+            ${{ env.PYTHON }} -m pip install -r tests/requirements.txt
           fi
 
       - name: Test with pytest
