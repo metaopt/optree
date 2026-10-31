@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Upload PyEmscripten/WASM wheels to PyPI by [@XuehaiPan](https://github.com/XuehaiPan) in [#295](https://github.com/metaopt/optree/pull/295).
+- Add PyPy 3.12 support by [@XuehaiPan](https://github.com/XuehaiPan) in [#299](https://github.com/metaopt/optree/pull/299).
 
 ### Changed
 
