@@ -9,6 +9,7 @@ indent_style = space
 indent_size = 4
 trim_trailing_whitespace = true
 insert_final_newline = true
+switch_case_indent = true
 
 [*.{py,pyi}]
 indent_size = 4
@@ -16,13 +17,28 @@ indent_size = 4
 [*.{cpp,hpp,cxx,cc,c,h,cu,cuh}]
 indent_size = 4
 
-[*.{yaml,yml,json}]
+[{CMakeLists.txt,CMakeLists.txt.in,*.cmake,*.cmake.in}]
+indent_size = 4
+
+[*.rs]
+indent_size = 4
+
+[{*.go,go.mod,go.work}]
+indent_style = tab
+
+[*.{js,ts,jsx,tsx,mjs,cjs,mts,cts,css,scss,html,htm,vue}]
+indent_size = 2
+
+[*.{yaml,yml,json,jsonc,json5,xml}]
 indent_size = 2
 
 [.clang-{format,tidy}]
 indent_size = 2
 
-[Makefile]
+[{,*.}[Dd]ockerfile{,.*}]
+indent_size = 2
+
+[{Makefile,Makefile.*}]
 indent_style = tab
 
 [*.sh]
@@ -32,10 +48,16 @@ indent_size = 4
 indent_size = 4
 end_of_line = crlf
 
-[*.md]
+[*.{md,mdx}]
 indent_size = 2
 x-soft-wrap-text = true
 
 [*.rst]
 indent_size = 4
 x-soft-wrap-text = true
+
+[.gitconfig]
+indent_style = tab
+
+[*.{patch,diff}]
+trim_trailing_whitespace = false
