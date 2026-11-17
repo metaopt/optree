@@ -7,7 +7,7 @@ AccessModifierOffset: -4
 ColumnLimit: 100
 
 Language: Cpp
-Standard: c++17
+Standard: c++20
 AlignAfterOpenBracket: Align
 AlignEscapedNewlines: Right
 AllowAllArgumentsOnNextLine: false
