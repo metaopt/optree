@@ -61,8 +61,8 @@ def unset_python_path() -> Generator[str | None]:
     python_path = None
     python_no_user_site = None
     try:
-        # pip's build environment pseudo-isolation sets `PYTHONPATH`.
-        # It may break console scripts (e.g., `cmake` installed from PyPI).
+        # `pip` sets `PYTHONPATH` for build isolation. This can break console scripts such as
+        # `cmake` installed from PyPI.
         python_path = os.environ.pop('PYTHONPATH', None)  # unset `PYTHONPATH`
         python_no_user_site = os.environ.pop('PYTHONNOUSERSITE', None)  # unset `PYTHONNOUSERSITE`
         yield python_path

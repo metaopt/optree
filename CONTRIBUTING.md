@@ -48,6 +48,7 @@ We use several tools to secure code quality, including:
 - Python code style: `ruff`, `isort`, `pylint`
 - Type hint check: `mypy`
 - C++ code style: `cpplint`, `clang-format`, `clang-tidy`
+- Markdown, Web files, JSON, and YAML code style: `prettier`
 - License: `addlicense`
 - Documentation: `pydocstyle`, `doc8`, `xdoctest`
 

@@ -3002,11 +3002,11 @@ def treespec_is_prefix(
 ) -> bool:
     r"""Return whether ``treespec`` is a prefix of ``other_treespec``.
 
-    A treespec is a *prefix* of another when the latter can be built by replacing some of the
-    former's leaves with subtrees. This is the broadcasting-compatibility relation behind
-    multi-input :func:`tree_map` and :func:`tree_broadcast_prefix`: a prefix treespec broadcasts
-    over any tree it is a prefix of, pairing each of its leaves with the corresponding subtree of
-    the fuller structure.
+    A treespec is a *prefix* of another if the second can be built by replacing zero or more leaves
+    of the first with subtrees. This is the broadcasting-compatibility relation behind multi-input
+    :func:`tree_map` and :func:`tree_broadcast_prefix`: a prefix treespec broadcasts over any tree
+    it is a prefix of, pairing each of its leaves with the corresponding subtree of the fuller
+    structure.
 
     See also :func:`treespec_is_suffix` and :meth:`PyTreeSpec.is_prefix`.
 

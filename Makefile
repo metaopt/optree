@@ -32,7 +32,8 @@ PYTESTOPTS     ?=
 RUN_CLANG_TIDY = $(shell command -v run-clang-tidy || command -v run-clang-tidy.py)
 CMAKE_CONFIGURE_ARGS ?=
 CMAKE_BUILD_TYPE     ?= Debug
-CMAKE_BUILD_TYPE_LOWER = $(shell $(PYTHON) -c 'print("$(CMAKE_BUILD_TYPE)".lower())')
+CMAKE_BUILD_TYPE_LOWER = $(shell printf '%s' "$(CMAKE_BUILD_TYPE)" | tr '[:upper:]' '[:lower:]')
+CMAKE_BUILD_DIR      ?= cmake-build-$(CMAKE_BUILD_TYPE_LOWER)
 CMAKE_CXX_STANDARD   ?= 20
 OPTREE_CXX_WERROR    ?= ON
 _GLIBCXX_USE_CXX11_ABI ?= 1
@@ -42,7 +43,6 @@ override CMAKE_CONFIGURE_ARGS += \
 	-DCMAKE_BUILD_TYPE="$(CMAKE_BUILD_TYPE)" \
 	-DCMAKE_CXX_STANDARD="$(CMAKE_CXX_STANDARD)" \
 	-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-	-DPython_EXECUTABLE="$(PYTHON)" \
 	-DOPTREE_CXX_WERROR="$(OPTREE_CXX_WERROR)" \
 	-D_GLIBCXX_USE_CXX11_ABI="$(_GLIBCXX_USE_CXX11_ABI)" \
 	-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR="$(_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)"
@@ -177,12 +177,18 @@ pytest test: pytest-install
 		--cov="$(PROJECT_NAME)" --cov-report=term-missing \
 		$(PYTESTOPTS) .
 
-# Python Linters
+# Linters
 
 .PHONY: pre-commit
 pre-commit: pre-commit-install
 	$(PYTHON) -m pre_commit --version
 	$(PYTHON) -m pre_commit run --all-files
+
+.PHONY: prettier
+prettier: pre-commit-install
+	$(PYTHON) -m pre_commit run prettier --all-files
+
+# Python Linters
 
 .PHONY: python-format pyfmt ruff-format
 python-format pyfmt ruff-format: python-format-install
@@ -217,44 +223,36 @@ xdoctest doctest: xdoctest-install
 
 # C++ Linters
 
+# `PYTHON` may include arguments, but CMake's `Python_EXECUTABLE` requires a single executable path.
 .PHONY: cmake-configure
+cmake-configure: Python_EXECUTABLE = $(shell $(PYTHON) -c 'import sys; print(sys.executable)')
 cmake-configure: cmake-install
 	cmake --version
-	cmake -S . -B cmake-build-$(CMAKE_BUILD_TYPE_LOWER) \
-		--fresh $(CMAKE_CONFIGURE_ARGS)
+	cmake -S . -B "$(CMAKE_BUILD_DIR)" \
+		--fresh $(CMAKE_CONFIGURE_ARGS) \
+		-DPython_EXECUTABLE="$(Python_EXECUTABLE)"
 
 .PHONY: cmake cmake-build
 cmake cmake-build: cmake-configure
-	cmake --build cmake-build-$(CMAKE_BUILD_TYPE_LOWER) --parallel
+	cmake --build "$(CMAKE_BUILD_DIR)" --config "$(CMAKE_BUILD_TYPE)" --parallel
 
 .PHONY: clang-format
 clang-format: clang-format-install
 	clang-format --version
 	clang-format --style=file --Werror -i $(CXX_FILES)
 
-.PHONY: clang-tidy
-clang-tidy: $(CLANG_TIDY_INSTALL) cmake-configure
+.PHONY: clang-tidy clang-tidy-fix
+clang-tidy clang-tidy-fix: $(CLANG_TIDY_INSTALL) cmake-configure
 	"$(CLANG_TIDY)" --version
 	if [[ -x "$(RUN_CLANG_TIDY)" ]]; then \
 		"$(RUN_CLANG_TIDY)" -clang-tidy-binary="$(CLANG_TIDY)" \
-			-config-file=".clang-tidy" -p="cmake-build-$(CMAKE_BUILD_TYPE_LOWER)" \
+			$(if $(filter clang-tidy-fix,$@),-fix) \
+			-config-file=".clang-tidy" -p="$(CMAKE_BUILD_DIR)" \
 			$(CXX_FILES); \
 	else \
 		"$(CLANG_TIDY)" \
-			--config-file=".clang-tidy" -p="cmake-build-$(CMAKE_BUILD_TYPE_LOWER)" \
-			$(CXX_FILES); \
-	fi
-
-.PHONY: clang-tidy-fix
-clang-tidy-fix: $(CLANG_TIDY_INSTALL) cmake-configure
-	"$(CLANG_TIDY)" --version
-	if [[ -x "$(RUN_CLANG_TIDY)" ]]; then \
-		"$(RUN_CLANG_TIDY)" -clang-tidy-binary="$(CLANG_TIDY)" \
-			-fix -config-file=".clang-tidy" -p="cmake-build-$(CMAKE_BUILD_TYPE_LOWER)" \
-			$(CXX_FILES); \
-	else \
-		"$(CLANG_TIDY)" \
-			--fix --config-file=".clang-tidy" -p="cmake-build-$(CMAKE_BUILD_TYPE_LOWER)" \
+			$(if $(filter clang-tidy-fix,$@),--fix) \
+			--config-file=".clang-tidy" -p="$(CMAKE_BUILD_DIR)" \
 			$(CXX_FILES); \
 	fi
 
@@ -282,7 +280,7 @@ docs: docs-install
 .PHONY: spelling
 spelling: docs-install
 	$(MAKE) -C docs clean || true
-	$(MAKE) -C docs spelling SPHINXOPTS="-W"
+	$(MAKE) -C docs spelling SPHINXOPTS="-W -t spelling"
 
 .PHONY: clean-docs
 clean-docs:
@@ -291,7 +289,7 @@ clean-docs:
 # Utility Functions
 
 .PHONY: lint
-lint: python-format ruff pylint mypy doctest clang-format clang-tidy cpplint addlicense docstyle spelling
+lint: python-format ruff pylint mypy doctest clang-format clang-tidy cpplint addlicense docstyle spelling prettier
 
 .PHONY: format
 format: python-format-install ruff-install clang-format-install addlicense-install
@@ -300,6 +298,8 @@ format: python-format-install ruff-install clang-format-install addlicense-insta
 	clang-format -style=file -i $(CXX_FILES)
 	addlicense -c $(COPYRIGHT) -l apache -y 2022-$(shell date +"%Y") \
 		-ignore tests/coverage.xml $(SOURCE_FOLDERS)
+	# Pre-commit exits nonzero after rewriting files. Verify the formatted result.
+	$(MAKE) prettier || $(MAKE) prettier
 
 .PHONY: clean-python
 clean-python:

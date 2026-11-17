@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Configure coverage exclusions for optional dependencies."""
 
 from __future__ import annotations
 
@@ -35,6 +36,7 @@ TEST_ROOT = Path(__file__).absolute().parent
 
 
 def is_importable(mod: str) -> bool:
+    """Check whether a fresh Python process can import the module."""
     env = {
         key: value
         for key, value in os.environ.items()
@@ -44,19 +46,22 @@ def is_importable(mod: str) -> bool:
         )
     }
     try:
-        subprocess.check_call(
+        subprocess.check_call(  # noqa: S603
             [
                 sys.executable,
                 '-c',
                 textwrap.dedent(
-                    f"""
+                    """
+                    import importlib
+                    import sys
+
                     try:
-                        import {mod}
+                        importlib.import_module(sys.argv[1])
                     except ImportError:
-                        exit(1)
-                    exit(0)
+                        sys.exit(1)
                     """,
                 ).strip(),
+                mod,
             ],
             cwd=TEST_ROOT,
             env=env,
@@ -68,10 +73,14 @@ def is_importable(mod: str) -> bool:
 
 
 class OptionalModuleConfigurer(CoveragePlugin):
+    """Apply coverage pragmas according to which optional modules are available."""
+
     def __init__(self, optional_modules: str = '') -> None:
+        """Read the whitespace-separated module names from the coverage configuration."""
         self._optional_modules = sorted(filter(None, set(optional_modules.split())))
 
     def configure(self, config: CoverageConfig) -> None:
+        """Merge package-specific line and branch exclusions with the configured patterns."""
         for k, v in (
             (
                 'report:exclude_lines',
@@ -118,4 +127,5 @@ class OptionalModuleConfigurer(CoveragePlugin):
 
 
 def coverage_init(reg: Plugins, options: dict[str, str]) -> None:
+    """Register the optional-module coverage plugin."""
     reg.add_configurer(OptionalModuleConfigurer(**options))

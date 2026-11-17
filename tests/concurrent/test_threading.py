@@ -273,9 +273,8 @@ def test_treespec_self_referential():  # noqa: C901
     del check1, check2, check3, check4, check5, check6, check7
     gc_collect()
 
-    with recursionlimit(64):
-        with pytest.raises(RecursionError):
-            assert treespec != other
+    with recursionlimit(64), pytest.raises(RecursionError):
+        assert treespec != other
 
     wr = weakref.ref(treespec)
     del treespec, key, other

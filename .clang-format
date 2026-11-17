@@ -43,13 +43,12 @@ InsertBraces: true
 InsertTrailingCommas: Wrapped
 LambdaBodyIndentation: Signature
 LineEnding: DeriveLF
-MacroBlockBegin: '^Py_BEGIN_(ALLOW_THREADS|CRITICAL_SECTION(2)?(_MUT)?)$'
-MacroBlockEnd: '^Py_END_(ALLOW_THREADS|CRITICAL_SECTION(2)?(_MUT)?)$'
+MacroBlockBegin: "^Py_BEGIN_(ALLOW_THREADS|CRITICAL_SECTION(2)?(_MUT)?)$"
+MacroBlockEnd: "^Py_END_(ALLOW_THREADS|CRITICAL_SECTION(2)?(_MUT)?)$"
 PackConstructorInitializers: NextLine
 PointerAlignment: Right
 QualifierAlignment: Custom
-QualifierOrder:
-  [friend, static, inline, const, constexpr, volatile, type, restrict]
+QualifierOrder: [friend, static, inline, const, constexpr, volatile, type, restrict]
 ReferenceAlignment: Right
 RemoveParentheses: ReturnStatement
 RemoveSemicolon: true

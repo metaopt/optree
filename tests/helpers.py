@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Shared test fixtures for pytree traversal, registration, and interpreter behavior."""
 
-# pylint: disable=missing-class-docstring,missing-function-docstring,invalid-name
+# pylint: disable=invalid-name
 
 import contextlib
 import dataclasses
@@ -30,8 +31,10 @@ import textwrap
 import time
 import types
 from collections import OrderedDict, UserDict, defaultdict, deque, namedtuple
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, ParamSpec, TypeVar
+from typing_extensions import Self
 
 import pytest
 
@@ -51,11 +54,13 @@ from optree.registry import _NODETYPE_REGISTRY as NODETYPE_REGISTRY
 
 
 TEST_ROOT = Path(__file__).absolute().parent
+P = ParamSpec('P')
+R = TypeVar('R')
 
 
 INITIAL_REGISTRY_SIZE = get_registry_size()
-assert INITIAL_REGISTRY_SIZE == (9 if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT else 8)
-assert INITIAL_REGISTRY_SIZE + 2 == len(NODETYPE_REGISTRY)
+assert (9 if sys.version_info >= (3, 15) and OPTREE_HAS_FROZENDICT else 8) == INITIAL_REGISTRY_SIZE
+assert len(NODETYPE_REGISTRY) == INITIAL_REGISTRY_SIZE + 2
 
 _ = PYBIND11_HAS_NATIVE_ENUM
 _ = PYBIND11_HAS_SUBINTERPRETER_SUPPORT
@@ -112,35 +117,39 @@ skipif_wasm = pytest.mark.skipif(
 NUM_GC_REPEAT = 10 if Py_GIL_DISABLED else 5
 
 
-def gc_collect(repeat=NUM_GC_REPEAT):
+def gc_collect(repeat: int = NUM_GC_REPEAT) -> None:
+    """Run repeated collections so reference-count checks see reclaimed objects."""
     for _ in range(repeat):
         gc.collect()
 
 
-def getrefcount(obj=None):
+def getrefcount(obj: object = None) -> int:
+    """Return the reference count after collecting garbage."""
     gc_collect()
     return sys.getrefcount(obj)
 
 
-def parametrize(**argvalues):
+def parametrize(**argvalues: Iterable[object]) -> pytest.MarkDecorator:
+    """Parametrize a test over the Cartesian product of the named arguments."""
     arguments = list(argvalues)
-    argvalues = list(itertools.product(*tuple(map(argvalues.get, arguments))))
+    combinations = list(itertools.product(*argvalues.values()))
 
-    def represent(value):
+    def represent(value: object) -> str:
         if isinstance(value, types.FunctionType):
             return f"<function '{value.__module__}.{value.__qualname__}'>"
         return repr(value)
 
     ids = tuple(
         '-'.join(f'{arg}({represent(value)})' for arg, value in zip(arguments, values, strict=True))
-        for values in argvalues
+        for values in combinations
     )
 
-    return pytest.mark.parametrize(arguments, argvalues, ids=ids)
+    return pytest.mark.parametrize(arguments, combinations, ids=ids)
 
 
 @contextlib.contextmanager
-def systrace(function):
+def systrace(function: Callable[[types.FrameType, str, Any], Any] | None) -> Iterator[None]:
+    """Temporarily replace the interpreter's trace function."""
     old_trace = sys.gettrace()
     sys.settrace(function)
     try:
@@ -150,7 +159,8 @@ def systrace(function):
 
 
 @contextlib.contextmanager
-def recursionlimit(limit):
+def recursionlimit(limit: int) -> Iterator[None]:
+    """Temporarily cap the recursion limit with tracing disabled."""
     with systrace(None):
         gc_collect()
         old_limit = sys.getrecursionlimit()
@@ -161,9 +171,11 @@ def recursionlimit(limit):
             sys.setrecursionlimit(old_limit)
 
 
-def disable_systrace(func):
+def disable_systrace(func: Callable[P, R]) -> Callable[P, R]:
+    """Disable tracing while the decorated function runs."""
+
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         with systrace(None):
             return func(*args, **kwargs)
 
@@ -171,7 +183,10 @@ def disable_systrace(func):
 
 
 class CalledProcessError(subprocess.CalledProcessError):
-    def __str__(self):
+    """Include captured process output in test failure messages."""
+
+    def __str__(self) -> str:
+        """Append any captured output and errors to the process failure."""
         return ''.join(
             (
                 super().__str__(),
@@ -182,21 +197,22 @@ class CalledProcessError(subprocess.CalledProcessError):
 
 
 def check_script_in_subprocess(
-    script,
+    script: str,
     /,
     *,
-    output,
-    timeout=300.0,
-    cwd=TEST_ROOT,
-    env=None,
-    rerun=1,
-    rstrip=False,
-):
+    output: str | re.Pattern[str] | None,
+    timeout: float = 300.0,
+    cwd: str | Path = TEST_ROOT,
+    env: Mapping[str, str] | None = None,
+    rerun: int = 1,
+    rstrip: bool = False,
+) -> str:
+    """Run the test script in a fresh interpreter for each repetition and check its output."""
     script = textwrap.dedent(script).strip()
     result = ''
     for _ in range(rerun):
         try:
-            result = subprocess.check_output(
+            result = subprocess.check_output(  # noqa: S603
                 [sys.executable, '-u', '-X', 'dev', '-Walways', '-Werror', '-c', script],
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -229,7 +245,13 @@ def check_script_in_subprocess(
 MISSING = object()
 
 
-def assert_equal_type_and_value(actual, expected=MISSING, *, expected_type=None):
+def assert_equal_type_and_value(
+    actual: Any,
+    expected: Any = MISSING,
+    *,
+    expected_type: type | None = None,
+) -> None:
+    """Assert the exact type and, if supplied, the value including individual accessor entries."""
     if expected_type is None:
         assert expected is not MISSING
         expected_type = type(expected)
@@ -245,19 +267,23 @@ def assert_equal_type_and_value(actual, expected=MISSING, *, expected_type=None)
             assert_equal_type_and_value(i, j)
 
 
-def is_tuple(tup):
+def is_tuple(tup: Any) -> bool:
+    """Treat tuples as leaves."""
     return isinstance(tup, tuple)
 
 
-def is_list(lst):
+def is_list(lst: Any) -> bool:
+    """Treat lists as leaves."""
     return isinstance(lst, list)
 
 
-def is_dict(dct):
+def is_dict(dct: Any) -> bool:
+    """Treat dictionaries as leaves."""
     return isinstance(dct, dict)
 
 
-def is_primitive_collection(obj):
+def is_primitive_collection(obj: Any) -> bool:
+    """Treat supported collections of primitive values as leaves."""
     if type(obj) in {tuple, list, deque}:
         return all(isinstance(item, (int, float, str, bool, type(None))) for item in obj)
     if type(obj) in STANDARD_DICT_TYPES:
@@ -265,19 +291,23 @@ def is_primitive_collection(obj):
     return False
 
 
-def is_none(none):
+def is_none(none: Any) -> bool:
+    """Treat only ``None`` as a leaf."""
     return none is None
 
 
-def is_not_none(none):
+def is_not_none(none: Any) -> bool:
+    """Treat every value except ``None`` as a leaf."""
     return none is not None
 
 
-def always(obj):  # pylint: disable=unused-argument
+def always(obj: Any) -> bool:  # pylint: disable=unused-argument
+    """Treat every object as a leaf."""
     return True
 
 
-def never(obj):  # pylint: disable=unused-argument
+def never(obj: Any) -> bool:  # pylint: disable=unused-argument
+    """Defer all leaf decisions to the registry."""
     return False
 
 
@@ -297,11 +327,11 @@ CustomTuple = namedtuple('CustomTuple', ('foo', 'bar'))  # noqa: PYI024
 
 
 class CustomNamedTupleSubclass(CustomTuple):
-    pass
+    """Exercise named tuple recognition through inheritance."""
 
 
 class EmptyTuple(NamedTuple):
-    pass
+    """A named tuple with no fields."""
 
 
 # sys.float_info(max=*, max_exp=*, max_10_exp=*, min=*, min_exp=*, min_10_exp=*, dig=*, mant_dig=*, epsilon=*, radix=*, rounds=*)
@@ -315,23 +345,37 @@ if PYPY:
 
 
 class Vector3D:
-    def __init__(self, x, y, z):
+    """A registered node with two children and a third coordinate stored as metadata."""
+
+    def __init__(self, x: Any, y: Any, z: Any) -> None:
+        """Store the three coordinates."""
         self.x = x
         self.y = y
         self.z = z
 
-    def __eq__(self, other):
-        return self.x == other.x and self.y == other.y and self.z == other.z
+    def __eq__(self, other: object) -> bool:
+        """Compare the three coordinates."""
+        return (
+            isinstance(other, Vector3D)
+            and self.x == other.x
+            and self.y == other.y
+            and self.z == other.z
+        )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
+        """Hash the coordinates together."""
         return hash((self.x, self.y, self.z))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Show the class name and all three coordinates."""
         return f'{self.__class__.__name__}(x={self.x}, y={self.y}, z={self.z})'
 
 
 class Vector3DEntry(optree.PyTreeEntry):
-    def __call__(self, obj):
+    """Access a vector child by its position in the flattened node."""
+
+    def __call__(self, obj: Vector3D) -> Any:
+        """Select the x or y coordinate."""
         assert self.entry in {0, 1}
         return obj.x if self.entry == 0 else obj.y
 
@@ -347,40 +391,52 @@ optree.register_pytree_node(
 
 @optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
 class Vector2D:
-    def __init__(self, x, y):
+    """A two-child node registered through its flatten and unflatten methods."""
+
+    def __init__(self, x: Any, y: Any) -> None:
+        """Store the two coordinates."""
         self.x = x
         self.y = y
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Any:
+        """Select the x or y coordinate."""
         assert index in {0, 1}
         return self.x if index == 0 else self.y
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        """Compare both coordinates of two vectors."""
         return isinstance(other, Vector2D) and (self.x, self.y) == (other.x, other.y)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
+        """Hash the coordinates together."""
         return hash((self.x, self.y))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Show the class name and both coordinates."""
         return f'{self.__class__.__name__}(x={self.x}, y={self.y})'
 
-    def tree_flatten(self):
+    def tree_flatten(self) -> tuple[tuple[Any, Any], None]:
+        """Return both coordinates as children with no metadata."""
         return (self.x, self.y), None
 
     @classmethod
-    def tree_unflatten(cls, metadata, children):  # pylint: disable=unused-argument
+    def tree_unflatten(cls, metadata: None, children: Iterable[Any]) -> Self:  # pylint: disable=unused-argument
+        """Rebuild the vector from its children."""
         return cls(*children)
 
 
 @optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
 @dataclasses.dataclass
 class MyDataclass:
+    """A four-child dataclass that supplies field names as path entries."""
+
     alpha: Any
     beta: Any
     gamma: Any
     delta: Any
 
-    def __tree_flatten__(self):
+    def __tree_flatten__(self) -> tuple[tuple[Any, Any, Any, Any], None, tuple[str, str, str, str]]:
+        """Return the field values and their path entries in declaration order."""
         return (
             (self.alpha, self.beta, self.gamma, self.delta),
             None,
@@ -388,19 +444,23 @@ class MyDataclass:
         )
 
     @classmethod
-    def __tree_unflatten__(cls, metadata, children):
+    def __tree_unflatten__(cls, metadata: None, children: Iterable[Any]) -> Self:
+        """Rebuild all four fields from the children."""
         return cls(*children)
 
 
 @optree.register_pytree_node_class(path_entry_type=optree.GetAttrEntry, namespace=GLOBAL_NAMESPACE)
 @dataclasses.dataclass
 class MyOtherDataclass:
+    """A dataclass with two children and two metadata fields."""
+
     a: Any
     b: Any
     c: Any
     d: Any
 
-    def tree_flatten(self):
+    def tree_flatten(self) -> tuple[tuple[Any, Any], tuple[Any, Any], tuple[str, str]]:
+        """Return fields a and c as children and fields b and d as metadata."""
         return (
             (self.a, self.c),
             (self.b, self.d),
@@ -408,7 +468,8 @@ class MyOtherDataclass:
         )
 
     @classmethod
-    def tree_unflatten(cls, metadata, children):
+    def tree_unflatten(cls, metadata: tuple[Any, Any], children: Iterable[Any]) -> Self:
+        """Restore the original field order from the children and metadata."""
         a, c = children
         b, d = metadata
         return cls(a, b, c, d)
@@ -417,52 +478,79 @@ class MyOtherDataclass:
 @optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
 @dataclasses.dataclass
 class MyAnotherDataclass:
+    """A three-child dataclass that uses positional path entries."""
+
     x: Any
     y: Any
     z: Any
 
-    def __tree_flatten__(self):
+    def __tree_flatten__(self) -> tuple[tuple[Any, Any, Any], None]:
+        """Return all three fields as children."""
         return (self.x, self.y, self.z), None
 
     @classmethod
-    def __tree_unflatten__(cls, metadata, children):
+    def __tree_unflatten__(cls, metadata: None, children: Iterable[Any]) -> Self:
+        """Restore the three fields from the children."""
         return cls(*children)
 
 
 @optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
 class FlatCache:
+    """Cache a tree's flattened representation and rebuild its structure on demand."""
+
     TREE_PATH_ENTRY_TYPE = optree.GetItemEntry
 
-    def __init__(self, structured, *, leaves=None, treespec=None):
+    def __init__(
+        self,
+        structured: Any,
+        *,
+        leaves: Sequence[Any] | None = None,
+        treespec: optree.PyTreeSpec | None = None,
+    ) -> None:
+        """Use the supplied leaves and treespec or flatten the structured value."""
         if treespec is None:
-            leaves, treespec = optree.tree_flatten(structured)
+            flattened, treespec = optree.tree_flatten(structured)
+            if leaves is not None:
+                if list(leaves) != flattened:
+                    raise ValueError('`leaves` does not match the flattened `structured` value.')
+            else:
+                leaves = flattened
+        elif leaves is None:
+            raise ValueError('Provide `leaves` when passing a `treespec`.')
         self._structured = structured
         self.treespec = treespec
         self.leaves = leaves
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Any:
+        """Return a cached leaf by index."""
         return self.leaves[index]
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        """Compare the structured values of two caches."""
         return isinstance(other, FlatCache) and self.structured == other.structured
 
-    def __hash__(self):
+    def __hash__(self) -> int:
+        """Hash the structured value."""
         return hash(self.structured)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Show the structured value held by the cache."""
         return f'{self.__class__.__name__}({self.structured!r})'
 
     @property
-    def structured(self):
+    def structured(self) -> Any:
+        """Return the structured value, rebuilding it on first access if needed."""
         if self._structured is None:
             self._structured = optree.tree_unflatten(self.treespec, self.leaves)
         return self._structured
 
-    def __tree_flatten__(self):
+    def __tree_flatten__(self) -> tuple[Sequence[Any], optree.PyTreeSpec]:
+        """Return cached leaves with their treespec as metadata."""
         return self.leaves, self.treespec
 
     @classmethod
-    def __tree_unflatten__(cls, metadata, children):
+    def __tree_unflatten__(cls, metadata: optree.PyTreeSpec, children: Sequence[Any]) -> Self:
+        """Build the cache from children, flattening any newly introduced subtrees."""
         if not optree.all_leaves(children):
             children, metadata = optree.tree_flatten(optree.tree_unflatten(metadata, children))
         return cls(structured=None, leaves=children, treespec=metadata)
@@ -470,46 +558,60 @@ class FlatCache:
 
 @optree.register_pytree_node_class(namespace=GLOBAL_NAMESPACE)
 class MyDict(UserDict):
+    """A registered mapping whose children follow reverse key order."""
+
     TREE_PATH_ENTRY_TYPE = optree.MappingEntry
 
-    def __tree_flatten__(self):
+    def __tree_flatten__(self) -> tuple[list[Any], list[Any], list[Any]]:
+        """Return the values with their keys as both metadata and path entries."""
         reversed_keys = sorted(self.keys(), reverse=True)
         return [self[key] for key in reversed_keys], reversed_keys, reversed_keys
 
     @classmethod
-    def __tree_unflatten__(cls, metadata, children):
+    def __tree_unflatten__(cls, metadata: Iterable[Any], children: Iterable[Any]) -> Self:
+        """Pair each key with its reconstructed value."""
         return cls(zip(metadata, children, strict=True))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Include the custom mapping class in its representation."""
         return f'{self.__class__.__name__}({super().__repr__()})'
 
 
 @optree.register_pytree_node_class('namespace')
 class MyAnotherDict(MyDict):
-    pass
+    """A custom mapping registered in a separate namespace."""
 
 
 class Counter:
-    def __init__(self, start=0):
+    """Mutable integer used to track visits to tree nodes."""
+
+    def __init__(self, start: int = 0) -> None:
+        """Initialize the count."""
         self.count = start
 
-    def increment(self, n=1):
+    def increment(self, n: int = 1) -> int:
+        """Add to the count and return the updated value."""
         self.count += n
         return self.count
 
-    def __int__(self):
+    def __int__(self) -> int:
+        """Return the current count."""
         return self.count
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        """Compare the current values of two counters."""
         return isinstance(other, Counter) and self.count == other.count
 
-    def __hash__(self):
+    def __hash__(self) -> int:
+        """Hash the current count."""
         return hash(self.count)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Show the current count."""
         return f'Counter({self.count})'
 
-    def __next__(self):
+    def __next__(self) -> int:
+        """Increment the count by one and return it."""
         return self.increment()
 
 

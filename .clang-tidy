@@ -1,10 +1,10 @@
 ---
 InheritParentConfig: true
-ExtraArgs: ['-v']
+ExtraArgs: ["-v"]
 FormatStyle: file
 UseColor: true
-WarningsAsErrors: '*'
-HeaderFilterRegex: 'optree/.*$'
+WarningsAsErrors: "*"
+HeaderFilterRegex: "optree/.*$"
 
 # NOTE: there must be no spaces before the '-', so put the comma last.
 Checks: |
@@ -28,4 +28,4 @@ Checks: |
   -readability-use-concise-preprocessor-directives,
 
 CheckOptions:
-  misc-include-cleaner.IgnoreHeaders: 'python.*/.*;pybind11/.*;optree/.*'
+  misc-include-cleaner.IgnoreHeaders: "python.*/.*;pybind11/.*;optree/.*"

@@ -135,6 +135,14 @@ jobs:
           fi
           make spelling
 
+      - name: Test Prettier plugin
+        run: |
+          prettier_package="$(yq -er '
+            .repos[].hooks[] | select(.id == "prettier") |
+            .additional_dependencies[] | select(test("^prettier@"))
+          ' .pre-commit-config.yaml)"
+          npm exec --yes --package="${prettier_package}" -- node --test docs/.prettier/markdown.test.cjs
+
       - name: List generated files
         if: ${{ !cancelled() }}
         shell: bash

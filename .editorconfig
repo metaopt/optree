@@ -7,6 +7,7 @@ charset = utf-8
 end_of_line = lf
 indent_style = space
 indent_size = 4
+max_line_length = 100
 trim_trailing_whitespace = true
 insert_final_newline = true
 switch_case_indent = true
@@ -26,13 +27,13 @@ indent_size = 4
 [{*.go,go.mod,go.work}]
 indent_style = tab
 
-[*.{js,ts,jsx,tsx,mjs,cjs,mts,cts,css,scss,html,htm,vue}]
+[*.{js,ts,jsx,tsx,mjs,cjs,mts,cts,css,scss,html,htm,xhtml,svg,vue}]
 indent_size = 2
 
 [*.{yaml,yml,json,jsonc,json5,xml}]
 indent_size = 2
 
-[.clang-{format,tidy}]
+[{.clang-{format,tidy},.prettierrc}]
 indent_size = 2
 
 [{,*.}[Dd]ockerfile{,.*}]
@@ -48,12 +49,19 @@ indent_size = 4
 indent_size = 4
 end_of_line = crlf
 
-[*.{md,mdx}]
+[*.{md,mdx,markdown}]
 indent_size = 2
+max_line_length = off
 x-soft-wrap-text = true
 
 [*.rst]
 indent_size = 4
+max_line_length = off
+x-soft-wrap-text = true
+
+[*.{bib,tex}]
+indent_size = 2
+max_line_length = off
 x-soft-wrap-text = true
 
 [.gitconfig]

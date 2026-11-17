@@ -13,9 +13,9 @@
 
 Optimized PyTree Utilities.
 
---------------------------------------------------------------------------------
+---
 
-### Table of Contents  <!-- omit in toc --> <!-- markdownlint-disable heading-increment -->
+### Table of Contents <!-- omit in toc --> <!-- markdownlint-disable heading-increment -->
 
 - [Installation](#installation)
 - [PyTrees](#pytrees)
@@ -28,7 +28,7 @@ Optimized PyTree Utilities.
 - [Changelog](#changelog)
 - [License](#license)
 
---------------------------------------------------------------------------------
+---
 
 ## Installation
 
@@ -74,7 +74,7 @@ pip3 install .
 
 Compiling from source requires Python 3.10+, a C++ compiler (`g++` / `clang++` / `icpx` / `cl.exe`) that supports C++20, and a `cmake` installation.
 
---------------------------------------------------------------------------------
+---
 
 ## PyTrees
 
@@ -359,8 +359,8 @@ There are several key attributes of the pytree type registry:
 
 2. **Duplicate registration is not allowed.** Registering the same type in the same namespace a second time raises an error. To update the behavior, first call `unregister_pytree_node(cls, namespace=...)` and then re-register. Alternatively, register the type under a different `namespace`.
 
-    > [!WARNING]
-    > Any `PyTreeSpec` objects created before the unregistration still hold a reference to the old registration. Unflattening such a `PyTreeSpec` will use the **old** `unflatten_func`, not the newly registered one.
+   > [!WARNING]
+   > Any `PyTreeSpec` objects created before the unregistration still hold a reference to the old registration. Unflattening such a `PyTreeSpec` will use the **old** `unflatten_func`, not the newly registered one.
 
 3. **Built-in types cannot be re-registered.** The behavior of the types listed in [Built-in PyTree Node Types](#built-in-pytree-node-types) (e.g., key-sorted traversal for `dict`, `collections.defaultdict`, and `frozendict`) is fixed.
 
@@ -628,13 +628,13 @@ This property is also preserved during serialization/deserialization.
 > [1.5, 1, 'a']
 > ```
 
---------------------------------------------------------------------------------
+---
 
 ## Changelog
 
 See [CHANGELOG.md](https://github.com/metaopt/optree/blob/HEAD/CHANGELOG.md).
 
---------------------------------------------------------------------------------
+---
 
 ## License
 

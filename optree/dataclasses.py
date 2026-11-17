@@ -378,7 +378,7 @@ def make_dataclass(  # type: ignore[no-redef] # noqa: C901,D417
             (name), (name, type), or (name, type, Field) objects.
         namespace (str): The registry namespace used for the PyTree registration.
         ns (dict or None, optional): The namespace used in dynamic type creation.
-            See :func:`dataclasses.make_dataclass` and the builtin :func:`type` function for more
+            See :func:`dataclasses.make_dataclass` and the built-in :func:`type` function for more
             information.
         **kwargs (optional): Optional keyword arguments passed to :func:`dataclasses.make_dataclass`.
 

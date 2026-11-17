@@ -32,7 +32,7 @@ If you are unsure about any of these, don't hesitate to ask. We are here to help
 
 - [ ] I have read the [CONTRIBUTION](https://github.com/metaopt/optree/blob/HEAD/CONTRIBUTING.md) guide. (**required**)
 - [ ] My change requires a change to the documentation.
-- [ ] I have updated the tests accordingly. (*required for a bug fix or a new feature*)
+- [ ] I have updated the tests accordingly. (_required for a bug fix or a new feature_)
 - [ ] I have updated the documentation accordingly.
 - [ ] I have reformatted the code using `make format`. (**required**)
 - [ ] I have checked the code using `make lint`. (**required**)

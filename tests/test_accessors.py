@@ -249,14 +249,14 @@ def test_pytree_accessor_not_equal_is_the_negation_of_equal():
     )
     accessor = optree.PyTreeAccessor(entries)
 
-    assert accessor == optree.PyTreeAccessor(entries)
-    assert not accessor != optree.PyTreeAccessor(entries)
-    assert accessor != optree.PyTreeAccessor(entries[:1])
+    assert (accessor == optree.PyTreeAccessor(entries)) is True
+    assert (accessor != optree.PyTreeAccessor(entries)) is False
+    assert (accessor != optree.PyTreeAccessor(entries[:1])) is True
     for other in (entries, list(entries), entries[:1], 'not-an-accessor'):
-        assert not accessor == other
-        assert accessor != other
-        assert not other == accessor
-        assert other != accessor
+        assert (accessor == other) is False
+        assert (accessor != other) is True
+        assert (other == accessor) is False
+        assert (other != accessor) is True
 
     # `PyTreeEntry` subclasses `object`, whose `__ne__` already negates `__eq__`.
     for other in (entries, entries[0].entry, 'not-an-entry'):

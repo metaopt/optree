@@ -206,12 +206,12 @@ def test_treespec_rich_compare(
             none_is_leaf=none_is_leaf,
             namespace=namespace,
         )
-        assert treespec == treespec
-        assert not (treespec != treespec)
-        assert not (treespec < treespec)
-        assert not (treespec > treespec)
-        assert treespec <= treespec
-        assert treespec >= treespec
+        assert (treespec == treespec) is True
+        assert (treespec != treespec) is False
+        assert (treespec < treespec) is False
+        assert (treespec > treespec) is False
+        assert (treespec <= treespec) is True
+        assert (treespec >= treespec) is True
         assert optree.treespec_is_prefix(treespec, treespec, strict=False)
         assert not optree.treespec_is_prefix(treespec, treespec, strict=True)
         assert optree.treespec_is_suffix(treespec, treespec, strict=False)
@@ -220,19 +220,19 @@ def test_treespec_rich_compare(
         if 'FlatCache' in str(treespec) or treespec == suffix_treespec:
             return
 
-        assert treespec != suffix_treespec
-        assert not (treespec == suffix_treespec)
-        assert treespec != suffix_treespec
-        assert treespec < suffix_treespec
-        assert not (treespec > suffix_treespec)
-        assert treespec <= suffix_treespec
-        assert not (treespec >= suffix_treespec)
-        assert suffix_treespec != treespec
-        assert not (suffix_treespec == treespec)
-        assert suffix_treespec > treespec
-        assert not (suffix_treespec < treespec)
-        assert suffix_treespec >= treespec
-        assert not (suffix_treespec <= treespec)
+        assert (treespec != suffix_treespec) is True
+        assert (treespec == suffix_treespec) is False
+        assert (treespec != suffix_treespec) is True
+        assert (treespec < suffix_treespec) is True
+        assert (treespec > suffix_treespec) is False
+        assert (treespec <= suffix_treespec) is True
+        assert (treespec >= suffix_treespec) is False
+        assert (suffix_treespec != treespec) is True
+        assert (suffix_treespec == treespec) is False
+        assert (suffix_treespec > treespec) is True
+        assert (suffix_treespec < treespec) is False
+        assert (suffix_treespec >= treespec) is True
+        assert (suffix_treespec <= treespec) is False
 
 
 @parametrize(
@@ -411,9 +411,8 @@ def test_treespec_self_referential():
 
     gc_collect()
     if not PYPY:
-        with recursionlimit(64):
-            with pytest.raises(RecursionError):
-                assert treespec != other
+        with recursionlimit(64), pytest.raises(RecursionError):
+            assert treespec != other
 
         wr = weakref.ref(treespec)
         del treespec, key, other
@@ -1466,15 +1465,15 @@ def test_treespec_compose_children(
                 stack.append((composed_child.children(), expected_child.children()))
 
         if treespec == expected_treespec:
-            assert not (treespec != expected_treespec)
-            assert not (treespec < expected_treespec)
-            assert treespec <= expected_treespec
-            assert not (treespec > expected_treespec)
-            assert treespec >= expected_treespec
-            assert expected_treespec >= treespec
-            assert not (expected_treespec > treespec)
-            assert expected_treespec <= treespec
-            assert not (expected_treespec < treespec)
+            assert (treespec != expected_treespec) is False
+            assert (treespec < expected_treespec) is False
+            assert (treespec <= expected_treespec) is True
+            assert (treespec > expected_treespec) is False
+            assert (treespec >= expected_treespec) is True
+            assert (expected_treespec >= treespec) is True
+            assert (expected_treespec > treespec) is False
+            assert (expected_treespec <= treespec) is True
+            assert (expected_treespec < treespec) is False
             assert not optree.treespec_is_prefix(treespec, expected_treespec, strict=True)
             assert optree.treespec_is_prefix(treespec, expected_treespec, strict=False)
             assert not optree.treespec_is_suffix(treespec, expected_treespec, strict=True)
@@ -1484,15 +1483,15 @@ def test_treespec_compose_children(
             assert not optree.treespec_is_suffix(expected_treespec, treespec, strict=True)
             assert optree.treespec_is_suffix(expected_treespec, treespec, strict=False)
         else:
-            assert treespec != expected_treespec
-            assert treespec < expected_treespec
-            assert treespec <= expected_treespec
-            assert not (treespec > expected_treespec)
-            assert not (treespec >= expected_treespec)
-            assert expected_treespec >= treespec
-            assert expected_treespec > treespec
-            assert not (expected_treespec <= treespec)
-            assert not (expected_treespec < treespec)
+            assert (treespec != expected_treespec) is True
+            assert (treespec < expected_treespec) is True
+            assert (treespec <= expected_treespec) is True
+            assert (treespec > expected_treespec) is False
+            assert (treespec >= expected_treespec) is False
+            assert (expected_treespec >= treespec) is True
+            assert (expected_treespec > treespec) is True
+            assert (expected_treespec <= treespec) is False
+            assert (expected_treespec < treespec) is False
             assert optree.treespec_is_prefix(treespec, expected_treespec, strict=True)
             assert optree.treespec_is_prefix(treespec, expected_treespec, strict=False)
             assert not optree.treespec_is_suffix(treespec, expected_treespec, strict=True)
@@ -3484,7 +3483,7 @@ def test_frozendict_unsupported_build_surface():
     assert 'treespec_frozendict' in optree.__all__
 
     # No dict-family surface claims `frozendict`.
-    assert STANDARD_DICT_TYPES == frozenset({dict, OrderedDict, defaultdict})
+    assert frozenset({dict, OrderedDict, defaultdict}) == STANDARD_DICT_TYPES
     assert not any(
         getattr(entry.type, '__name__', None) == 'frozendict'
         for entry in NODETYPE_REGISTRY.values()

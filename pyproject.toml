@@ -262,25 +262,22 @@ select = [
 ignore = [
     # E501: line too long
     # W505: doc line too long
-    # too long docstring due to long example blocks
+    # Long examples can exceed the docstring line limit.
     "E501",
     "W505",
-    # ANN401: dynamically typed expressions (typing.Any) are disallowed
+    # ANN401: dynamically typed expressions (`typing.Any`) are disallowed
     "ANN401",
-    # N999: invalid module name
-    # optree._C is not snake_cased
-    "N999",
     # S101: use of `assert` detected
-    # internal use and may never raise at runtime
+    # Internal assertions may never raise at runtime.
     "S101",
     # TRY003: avoid specifying long messages outside the exception class
-    # long messages are necessary for clarity
+    # Long messages are necessary for clarity.
     "TRY003",
-    # FURB152: literals that are similar to constants in `math` module.
-    # change code semantics
+    # FURB152: literals that are similar to constants in `math` module
+    # Replacing these literals can change code semantics.
     "FURB152",
-    # RUF022: `__all__` is not ordered according to an "isort-style" sort
-    # `__all__` contains comments to group names
+    # RUF022: `__all__` is not ordered according to an isort-style sort
+    # `__all__` can contain comments to group names.
     "RUF022",
 ]
 typing-modules = ["optree.typing"]
@@ -292,16 +289,14 @@ typing-modules = ["optree.typing"]
 "setup.py" = [
     "D",       # pydocstyle
 ]
-"tests/**/*.py" = [
+"tests/**/test_*.py" = [
     "D",       # pydocstyle
     "ANN",     # flake8-annotations
     "S",       # flake8-bandit
-    "SIM",     # flake8-simplify
     "INP001",  # flake8-no-pep420
 ]
 "docs/source/conf.py" = [
     "D",       # pydocstyle
-    "ANN",     # flake8-annotations
     "INP001",  # flake8-no-pep420
 ]
 ".github/workflows/**/*.py" = [
@@ -310,8 +305,8 @@ typing-modules = ["optree.typing"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["optree"]
-extra-standard-library = ["typing_extensions"]
 known-local-folder = ["tests"]
+extra-standard-library = ["typing_extensions"]
 lines-after-imports = 2
 
 [tool.ruff.lint.pydocstyle]

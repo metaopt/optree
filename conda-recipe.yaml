@@ -60,7 +60,7 @@ dependencies:
   - conda-forge::doc8
   - conda-forge::xdoctest
   - conda-forge::clang-format
-  - conda-forge::clang-tools  # clang-tidy
+  - conda-forge::clang-tools # clang-tidy
   - conda-forge::cpplint
   - conda-forge::pre-commit
   - conda-forge::identify

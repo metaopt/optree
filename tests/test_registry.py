@@ -1411,12 +1411,16 @@ def test_unregister_pytree_node_no_reference_leak():  # noqa: C901
 
 
 def test_dict_insertion_order_with_invalid_namespace():
-    with pytest.raises(TypeError, match='The namespace must be a string'):
-        with optree.dict_insertion_ordered(True, namespace=1):
-            pass
-    with pytest.raises(ValueError, match=re.escape('The namespace cannot be an empty string.')):
-        with optree.dict_insertion_ordered(True, namespace=''):
-            pass
+    with (
+        pytest.raises(TypeError, match='The namespace must be a string'),
+        optree.dict_insertion_ordered(True, namespace=1),
+    ):
+        pass
+    with (
+        pytest.raises(ValueError, match=re.escape('The namespace cannot be an empty string.')),
+        optree.dict_insertion_ordered(True, namespace=''),
+    ):
+        pass
 
 
 def test_dict_insertion_order_with_nested_context():
@@ -1788,7 +1792,7 @@ def test_dict_metadata_is_a_list_for_backward_compat():
     assert md[0] == 'a'
     assert md[-1] == 'b'
     assert len(md) == 2
-    assert ['a', 'b'] == md
+    assert ['a', 'b'] == md  # noqa: SIM300
 
 
 def test_dict_metadata_pickle_roundtrip():

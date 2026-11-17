@@ -14,6 +14,7 @@
 # ==============================================================================
 
 # pylint: disable=all
+# ruff: noqa: N999
 
 import builtins
 import enum

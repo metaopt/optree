@@ -18,22 +18,36 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 # pylint: disable=all
-# mypy: ignore-errors
 
-# -- Path setup --------------------------------------------------------------
+# -- Path setup ----------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+
+from __future__ import annotations
+
 import builtins
-import os
-import pathlib
 import sys
 import typing
+from pathlib import Path
 
 
-HERE = pathlib.Path(__file__).absolute().parent
+if typing.TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from sphinx.config import Config
+    from sphinx.util.tags import Tags
+
+    PyTreeInstance = tuple[object, str | None]
+
+
+# Sphinx sets this when loading the configuration.
+tags: Tags
+
+
+HERE = Path(__file__).absolute().parent
 PROJECT_ROOT = HERE.parent.parent
 
 
@@ -44,7 +58,7 @@ def get_version() -> str:
     return version.__version__
 
 
-# -- Project information -----------------------------------------------------
+# -- Project information -------------------------------------------------------
 
 project = 'OpTree'
 copyright = '2022-2026 MetaOPT Team'
@@ -53,7 +67,7 @@ author = 'OpTree Contributors'
 # The full version, including alpha/beta/rc tags
 release = get_version()
 
-# -- General configuration ---------------------------------------------------
+# -- General configuration -----------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -76,7 +90,7 @@ extensions = [
     'sphinx_autodoc_typehints',
 ]
 
-if not os.getenv('READTHEDOCS', None):
+if tags.has('spelling'):  # noqa: F821  # Sphinx injects `tags`.
     extensions.append('sphinxcontrib.spelling')
 
 # Add any paths that contain templates here, relative to this directory.
@@ -112,12 +126,14 @@ pygments_style = 'default'
 # A list of warning codes to suppress arbitrary warning messages.
 suppress_warnings = ['config.cache']
 
-# -- Options for autodoc -----------------------------------------------------
+# -- Options for autodoc -------------------------------------------------------
 
 try:
     from optree import PyTreeSpec
 except ImportError:
-    PyTreeSpec = type
+    pytree_spec_attrs = []
+else:
+    pytree_spec_attrs = dir(PyTreeSpec)
 
 autodoc_default_options = {
     'member-order': 'bysource',
@@ -126,6 +142,7 @@ autodoc_default_options = {
     'show-inheritance': True,
     'exclude-members': ', '.join(
         (
+            '__annotate_func__',
             '__module__',
             '__dict__',
             '__repr__',
@@ -146,13 +163,13 @@ autodoc_default_options = {
             '__instances__',
             '__instance_lock__',
             '__pybind11_native_enum__',
-            *(attr for attr in dir(PyTreeSpec) if attr.strip('_').startswith('pybind11')),
+            *(attr for attr in pytree_spec_attrs if attr.strip('_').startswith('pybind11')),
         ),
     ),
 }
 autoclass_content = 'both'
 
-# -- Options for HTML output -------------------------------------------------
+# -- Options for HTML output ---------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
@@ -182,46 +199,46 @@ html_css_files = ['style.css']
 #
 # html_sidebars = {}
 
-# -- Source code links -------------------------------------------------------
+# -- Source code links ---------------------------------------------------------
 
 extlinks = {
     'gitcode': ('https://github.com/metaopt/optree/blob/HEAD/%s', '%s'),
     'issue': ('https://github.com/metaopt/optree/issues/%s', 'issue %s'),
 }
 
-# -- Extension configuration -------------------------------------------------
+# -- Extension configuration ---------------------------------------------------
 
-# -- Options for napoleon extension ------------------------------------------
+# -- Options for napoleon extension --------------------------------------------
 
 napoleon_include_init_with_doc = True
 napoleon_include_private_with_doc = False
 napoleon_include_special_with_doc = True
 
-# -- Options for intersphinx extension ---------------------------------------
+# -- Options for intersphinx extension -----------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}
 
-# -- Options for todo extension ----------------------------------------------
+# -- Options for todo extension ------------------------------------------------
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
-# -- Options for copybutton extension ----------------------------------------
+# -- Options for copybutton extension ------------------------------------------
 
 # To make sphinx-copybutton skip all prompt characters generated by pygments
 copybutton_exclude = '.linenos, .gp'
 
-# -- Options for autodoc-typehints extension ---------------------------------
+# -- Options for autodoc-typehints extension -----------------------------------
 always_use_bars_union = True
 typehints_use_signature = False
 typehints_use_signature_return = False
 
 # Workaround for missing `typing` name in globals
-builtins.typing = typing
+builtins.typing = typing  # type: ignore[attr-defined]
 
 
-def get_pytree_typing_instance(annotation):  # noqa: C901
+def get_pytree_typing_instance(annotation: object) -> PyTreeInstance | None:  # noqa: C901
     if not (
         isinstance(annotation, type(typing.Union[int, str]))  # noqa: UP007
         and typing.get_origin(annotation) is typing.Union
@@ -233,29 +250,30 @@ def get_pytree_typing_instance(annotation):  # noqa: C901
 
     from optree import PyTree
 
+    instances: Mapping[object, PyTreeInstance] = PyTree.__instances__  # type: ignore[attr-defined]
     try:
-        pytree_instance = PyTree.__instances__.get(annotation)
+        pytree_instance = instances.get(annotation)
     except TypeError:
         pytree_instance = None
     else:
         if pytree_instance is not None:
             return pytree_instance
 
-    def collect_forward_refs(annotation):
+    def collect_forward_refs(annotation: object) -> set[str]:
         if isinstance(annotation, typing.ForwardRef):
             return {annotation.__forward_arg__}
 
-        forward_refs = set()
+        forward_refs: set[str] = set()
         for arg in typing.get_args(annotation):
             forward_refs.update(collect_forward_refs(arg))
         return forward_refs
 
     def matches_pytree_typing_alias(
-        annotation,
-        pattern,
-        recursive_pattern,
-        recursive_ref_names,
-    ):
+        annotation: object,
+        pattern: object,
+        recursive_pattern: object,
+        recursive_ref_names: set[str],
+    ) -> bool:
         if isinstance(pattern, typing.ForwardRef):
             if isinstance(annotation, typing.ForwardRef):
                 return annotation.__forward_arg__ in recursive_ref_names
@@ -284,7 +302,7 @@ def get_pytree_typing_instance(annotation):  # noqa: C901
             for arg, pat in zip(annotation_args, pattern_args, strict=True)
         )
 
-    for pytree_alias, pytree_instance in tuple(PyTree.__instances__.items()):
+    for pytree_alias, pytree_instance in tuple(instances.items()):
         recursive_ref_names = collect_forward_refs(pytree_alias)
         if matches_pytree_typing_alias(
             annotation,
@@ -296,7 +314,10 @@ def get_pytree_typing_instance(annotation):  # noqa: C901
     return None
 
 
-def format_pytree_typing_instance(pytree_instance, config=None):
+def format_pytree_typing_instance(
+    pytree_instance: PyTreeInstance,
+    config: Config | None = None,
+) -> str:
     param, name = pytree_instance
     if name is not None:
         return f':py:class:`{name}`'
@@ -306,7 +327,10 @@ def format_pytree_typing_instance(pytree_instance, config=None):
     return rf':py:class:`PyTree` \[{format_annotation(param, config=config)}]'
 
 
-def format_pytree_typing_union(annotation_args, config=None):
+def format_pytree_typing_union(
+    annotation_args: tuple[object, ...],
+    config: Config | None = None,
+) -> str | None:
     from sphinx_autodoc_typehints import format_annotation
 
     if 'optree' not in sys.modules:
@@ -314,7 +338,8 @@ def format_pytree_typing_union(annotation_args, config=None):
 
     from optree import PyTree
 
-    min_pytree_union_width = len(typing.get_args(PyTree[int]))
+    IntPyTree: typing.TypeAlias = PyTree[int]
+    min_pytree_union_width = len(typing.get_args(IntPyTree))
     formatted_args = []
     index = 0
     while index < len(annotation_args):
@@ -339,7 +364,7 @@ def format_pytree_typing_union(annotation_args, config=None):
     return ' | '.join(formatted_args)
 
 
-def typehints_formatter(annotation, config=None):
+def typehints_formatter(annotation: object, config: Config | None = None) -> str | None:
     pytree_instance = get_pytree_typing_instance(annotation)
     if pytree_instance is not None:
         return format_pytree_typing_instance(pytree_instance, config=config)

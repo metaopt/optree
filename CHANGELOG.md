@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-------
+---
 
 ## [Unreleased]
 
@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Drop Python 3.9 support by [@XuehaiPan](https://github.com/XuehaiPan) in [#272](https://github.com/metaopt/optree/pull/272).
 
-------
+---
 
 ## [0.20.0] - 2026-08-20
 
@@ -90,7 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix a dictionary whose keys cannot be compared being flattened in a partially sorted order instead of insertion order, when a comparison raised part way through the sort by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
 - Fix `tree_broadcast_common()` documenting that its results share one structure and `broadcast_common()` documenting that it returns two pytrees rather than two lists of leaves by [@XuehaiPan](https://github.com/XuehaiPan) in [#290](https://github.com/metaopt/optree/pull/290).
 
-------
+---
 
 ## [0.19.1] - 2026-05-05
 
@@ -105,7 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix Windows wheels crashing when another extension preloads an older `msvcp140.dll` by disabling MSVC's constexpr `std::mutex` constructor by [@XuehaiPan](https://github.com/XuehaiPan) in [#279](https://github.com/metaopt/optree/pull/279). Issued by [@jmkolbe](https://github.com/jmkolbe) in [#278](https://github.com/metaopt/optree/issues/278).
 
-------
+---
 
 ## [0.19.0] - 2026-02-23
 
@@ -117,7 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Polish docstrings and fix grammars by [@XuehaiPan](https://github.com/XuehaiPan) in [#256](https://github.com/metaopt/optree/pull/256).
 
-------
+---
 
 ## [0.18.0] - 2025-11-14
 
@@ -135,7 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove previously deprecated singular-named modules in [#209](https://github.com/metaopt/optree/pull/209) by [@XuehaiPan](https://github.com/XuehaiPan) in [#238](https://github.com/metaopt/optree/pull/238).
 - Remove PyPy 3.10 (EOL) wheels by [@dependabot](https://docs.github.com/en/code-security/dependabot) in [#241](https://github.com/metaopt/optree/pull/241).
 
-------
+---
 
 ## [0.17.0] - 2025-07-25
 
@@ -158,7 +158,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove PyPy 3.9 (EOL) wheels by [@dependabot](https://docs.github.com/en/code-security/dependabot) in [#228](https://github.com/metaopt/optree/pull/228).
 
-------
+---
 
 ## [0.16.0] - 2025-05-28
 
@@ -189,7 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Drop Python 3.8 support by [@XuehaiPan](https://github.com/XuehaiPan) in [#206](https://github.com/metaopt/optree/pull/206).
 - Retire benchmark script by [@XuehaiPan](https://github.com/XuehaiPan) in [#211](https://github.com/metaopt/optree/pull/211).
 
-------
+---
 
 ## [0.15.0] - 2025-04-06
 
@@ -206,7 +206,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove deprecated `optree.Partial` by [@XuehaiPan](https://github.com/XuehaiPan) in [#196](https://github.com/metaopt/optree/pull/196).
 - Remove duplicate lint checks by [@XuehaiPan](https://github.com/XuehaiPan) in [#202](https://github.com/metaopt/optree/pull/202).
 
-------
+---
 
 ## [0.14.1] - 2025-03-02
 
@@ -221,7 +221,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Enable CXX11 ABI in C++ extension by [@XuehaiPan](https://github.com/XuehaiPan) in [#184](https://github.com/metaopt/optree/pull/184).
 
-------
+---
 
 ## [0.14.0] - 2025-01-17
 
@@ -242,7 +242,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Drop Python 3.7 support by [@XuehaiPan](https://github.com/XuehaiPan) in [#161](https://github.com/metaopt/optree/pull/161).
 
-------
+---
 
 ## [0.13.1] - 2024-11-12
 
@@ -260,7 +260,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Improve typing support for `optree.dataclasses.dataclass` and `optree.dataclasses.field` by [@manulari](https://github.com/manulari) in [#165](https://github.com/metaopt/optree/pull/165).
 
-------
+---
 
 ## [0.13.0] - 2024-10-03
 
@@ -282,7 +282,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix potential segmentation fault for `structseq_fields` cache support by [@XuehaiPan](https://github.com/XuehaiPan) in [#150](https://github.com/metaopt/optree/pull/150).
 
-------
+---
 
 ## [0.12.1] - 2024-07-06
 
@@ -290,7 +290,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix warning regression during import when launch with strict warning filters by [@XuehaiPan](https://github.com/XuehaiPan) in [#149](https://github.com/metaopt/optree/pull/149).
 
-------
+---
 
 ## [0.12.0] - 2024-07-05
 
@@ -321,7 +321,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deprecate key path APIs by [@XuehaiPan](https://github.com/XuehaiPan) in [#108](https://github.com/metaopt/optree/pull/108).
 - Deprecate `optree.Partial` and replace with `optree.functools.partial` by [@XuehaiPan](https://github.com/XuehaiPan) in [#134](https://github.com/metaopt/optree/pull/134).
 
-------
+---
 
 ## [0.11.0] - 2024-03-26
 
@@ -350,7 +350,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix potential segmentation fault when modifying `treespec.entries()` by [@XuehaiPan](https://github.com/XuehaiPan) in [#116](https://github.com/metaopt/optree/pull/116).
 
-------
+---
 
 ## [0.10.0] - 2023-11-07
 
@@ -380,7 +380,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove dependence on `abseil-cpp` by [@XuehaiPan](https://github.com/XuehaiPan) in [#85](https://github.com/metaopt/optree/pull/85).
 
-------
+---
 
 ## [0.9.2] - 2023-09-18
 
@@ -393,7 +393,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix empty paths when flatten with custom `is_leaf` function by [@XuehaiPan](https://github.com/XuehaiPan) in [#76](https://github.com/metaopt/optree/pull/76).
 
-------
+---
 
 ## [0.9.1] - 2023-05-23
 
@@ -406,7 +406,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `@runtime_checkable` decorator for `CustomTreeNode` protocol class by [@XuehaiPan](https://github.com/XuehaiPan) in [#56](https://github.com/metaopt/optree/pull/56).
 
-------
+---
 
 ## [0.9.0] - 2023-03-23
 
@@ -418,7 +418,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Change keyword argument `initializer` back to `initial` for `tree_reduce` to align with `functools.reduce` C implementation by [@XuehaiPan](https://github.com/XuehaiPan) in [#47](https://github.com/metaopt/optree/pull/47).
 
-------
+---
 
 ## [0.8.0] - 2023-03-14
 
@@ -440,7 +440,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Inherit `optree._C.InternalError` from `SystemError` rather than `RuntimeError` by [@XuehaiPan](https://github.com/XuehaiPan) in [#41](https://github.com/metaopt/optree/pull/41).
 - Change keyword argument `initial` to `initializer` for `tree_reduce` to align with `functools.reduce` by [@XuehaiPan](https://github.com/XuehaiPan) in [#39](https://github.com/metaopt/optree/pull/39).
 
-------
+---
 
 ## [0.7.0] - 2023-02-07
 
@@ -453,7 +453,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `PyStructSequence` types as internal node types by [@XuehaiPan](https://github.com/XuehaiPan) in [#30](https://github.com/metaopt/optree/pull/30).
 - Use postponed evaluation of annotations by [@XuehaiPan](https://github.com/XuehaiPan) in [#28](https://github.com/metaopt/optree/pull/28).
 
-------
+---
 
 ## [0.6.0] - 2023-02-02
 
@@ -468,7 +468,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `doctest` integration and fix docstring by [@XuehaiPan](https://github.com/XuehaiPan) in [#23](https://github.com/metaopt/optree/pull/23).
 
-------
+---
 
 ## [0.5.1] - 2023-01-21
 
@@ -477,7 +477,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add property `PyTreeSpec.num_children` by [@XuehaiPan](https://github.com/XuehaiPan).
 - Update docstring and documentation by [@XuehaiPan](https://github.com/XuehaiPan).
 
-------
+---
 
 ## [0.5.0] - 2022-11-30
 
@@ -489,7 +489,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix `PyTreeSpec` equality test and hash by [@XuehaiPan](https://github.com/XuehaiPan).
 
-------
+---
 
 ## [0.4.2] - 2022-11-27
 
@@ -498,7 +498,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Better internal error handling by [@XuehaiPan](https://github.com/XuehaiPan) in [#17](https://github.com/metaopt/optree/pull/17).
 - Use static raw pointers for global imports by [@XuehaiPan](https://github.com/XuehaiPan) in [#16](https://github.com/metaopt/optree/pull/16).
 
-------
+---
 
 ## [0.4.1] - 2022-11-25
 
@@ -506,7 +506,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix segmentation fault error for global imports [@XuehaiPan](https://github.com/XuehaiPan) in [#14](https://github.com/metaopt/optree/pull/14).
 
-------
+---
 
 ## [0.4.0] - 2022-11-25
 
@@ -527,7 +527,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Drop Python 3.6 support by [@XuehaiPan](https://github.com/XuehaiPan).
 
-------
+---
 
 ## [0.3.0] - 2022-10-26
 
@@ -548,7 +548,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix generic `NamedTuple` for Python 3.8-3.10 by [@XuehaiPan](https://github.com/XuehaiPan).
 - Fix builds for Python 3.8-3.10 on Windows by [@XuehaiPan](https://github.com/XuehaiPan).
 
-------
+---
 
 ## [0.2.0] - 2022-09-24
 
@@ -565,7 +565,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix cross-platform compatibility by [@XuehaiPan](https://github.com/XuehaiPan).
 
-------
+---
 
 ## [0.1.0] - 2022-09-16
 
@@ -574,7 +574,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The first beta release of OpTree by [@XuehaiPan](https://github.com/XuehaiPan).
 - OpTree with Linux / Windows / macOS x64 support by [@XuehaiPan](https://github.com/XuehaiPan).
 
-------
+---
 
 [Unreleased]: https://github.com/metaopt/optree/compare/v0.20.0...HEAD
 [0.20.0]: https://github.com/metaopt/optree/compare/v0.19.1...v0.20.0
